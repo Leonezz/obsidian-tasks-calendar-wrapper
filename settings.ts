@@ -1,29 +1,31 @@
+import { Setting } from "obsidian";
+
 export interface CalendarSettings {
-    viewPath: String,
-    view: String,
-    firstDayOfWeek: String,
-    options: String,
-    dailyNoteFolder: String | null,
-    dailyNoteFormat: String | null,
-    startPosition: String | null,
-    globalTaskFilter: String | null,
-    css: String | null,
-    pages: String
+    viewPath: string,
+    view: string,
+    firstDayOfWeek: string,
+    options: string,
+    dailyNoteFolder: string | null,
+    dailyNoteFormat: string | null,
+    startPosition: string | null,
+    globalTaskFilter: string | null,
+    css: string | null,
+    pages: string
 };
 
 export interface TimelineSettings {
-    viewPath: String,
-    options: String,
-    dailyNoteFolder: String | null,
-    dailyNoteFormat: String | null,
-    section: String | null,
-    sort: String | null,
-    forward: String | null,
-    select: String | null,
-    inbox: String | null,
-    taskFiles: String,
-    globalTaskFilter: String | null,
-    pages: String
+    viewPath: string,
+    options: string,
+    dailyNoteFolder: string | null,
+    dailyNoteFormat: string | null,
+    section: string | null,
+    sort: string | null,
+    forward: string,
+    select: string | null,
+    inbox: string | null,
+    taskFiles: string,
+    globalTaskFilter: string | null,
+    pages: string
 };
 
 export function serializeSettingToDVJS(setting: CalendarSettings | TimelineSettings) {
