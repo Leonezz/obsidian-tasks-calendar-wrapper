@@ -110,7 +110,8 @@ class TasksCalendarSettingTab extends PluginSettingTab {
 
 		var fs = require('fs');
 		var path = require('path');
-		const root: string = this.app.vault.getRoot().vault.adapter.basePath;
+		const tmp: any = <any>this.app.vault.getRoot().vault.adapter
+		const root: string = tmp.basePath;
 
 		const folder: string = path.normalize(path.join(root, this.plugin.settings.viewPath));
 		const oldFolderPath = path.normalize(path.join(root, this.oldViewPath));
@@ -188,7 +189,8 @@ class TasksCalendarSettingTab extends PluginSettingTab {
 						// #TODO: Need an error dialog
 					}
 					if(value != this.plugin.settings.viewPath){
-						const root: string = await this.app.vault.getRoot().vault.adapter.basePath;
+						const tmp: any = <any>this.app.vault.getRoot().vault.adapter
+						const root: string = tmp.basePath;
 						
 						if(path.isAbsolute(value)){
 							this.plugin.settings.viewPath = path.relative(root, value);
