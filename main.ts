@@ -11,20 +11,20 @@ import { FormatInputPathObject, join } from 'path';
 
 // Remember to rename these classes and interfaces!
 
-interface MyPluginSettings {
+interface TasksCalendarWrapperSettings {
 	viewPath: string,
 	calendarSettings: CalendarSettings,
 	timelineSettings: TimelineSettings,
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
+const DEFAULT_SETTINGS: TasksCalendarWrapperSettings = {
 	viewPath: "scripts/",
 	calendarSettings: DEFAULT_CALENDAR_SETTINGS,
 	timelineSettings: DEFAULT_TIMELINE_SETTINGS
 };
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class TasksCalendarWrapper extends Plugin {
+	settings: TasksCalendarWrapperSettings;
 
 	async onload() {
 		await this.loadSettings();
@@ -57,7 +57,7 @@ export default class MyPlugin extends Plugin {
 		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new TasksCalendarSettingTab(this.app, this));
 	}
 
 	onunload() {
@@ -99,10 +99,10 @@ export default class MyPlugin extends Plugin {
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+class TasksCalendarSettingTab extends PluginSettingTab {
+	plugin: TasksCalendarWrapper;
 	oldViewPath: string;
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: TasksCalendarWrapper) {
 		super(app, plugin);
 		this.plugin = plugin;
 		this.oldViewPath = this.plugin.settings.viewPath;
