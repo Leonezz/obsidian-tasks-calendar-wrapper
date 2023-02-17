@@ -19,7 +19,7 @@ export const DEFAULT_CALENDAR_SETTINGS : CalendarSettings = {
     startPosition: null,
     globalTaskFilter: null,
     css: null,
-    pages: "dv.pages().file.tasks"
+    pages: "dv.pages().file.tasks.where(t => t.tags.includes(\"#TODO\"))"
 };
 
 export const  DEFAULT_TIMELINE_SETTINGS : TimelineSettings = {
@@ -34,7 +34,7 @@ export const  DEFAULT_TIMELINE_SETTINGS : TimelineSettings = {
     inbox: null,
     taskFiles: "",
     globalTaskFilter: null,
-    pages: ""
+    pages: "dv.pages().file.tasks.where(t => t.tags.includes(\"#TODO\"))"
 }
 
 export abstract class BaseTasksView extends ItemView {
@@ -80,7 +80,7 @@ export class TasksCalendarView extends BaseTasksView {
 export class TasksTimelineView extends BaseTasksView {
     constructor(leaf: WorkspaceLeaf, setting: TimelineSettings | null) {
         super(leaf, setting);
-
+        
         if(setting)this.setting = setting;
         else this.setting = DEFAULT_TIMELINE_SETTINGS;
         

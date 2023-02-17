@@ -26,12 +26,12 @@ export default class MyPlugin extends Plugin {
 
 		this.registerView(
 			CALENDAR_VIEW,
-			(leaf) => new TasksCalendarView(leaf, null)
+			(leaf) => new TasksCalendarView(leaf, this.settings.calendarSettings)
 		);
 
 		this.registerView(
 			TIMELINE_VIEW,
-			(leaf) => new TasksTimelineView(leaf, null)
+			(leaf) => new TasksTimelineView(leaf, this.settings.timelineSettings)
 		);
 
 		// This adds a simple command that can be triggered anywhere
@@ -163,7 +163,7 @@ class SampleSettingTab extends PluginSettingTab {
 				text.setPlaceholder("YYYY-MM or YYYY-WW");
 				if (null != this.plugin.settings.calendarSettings.startPosition)
 					text.setValue(this.plugin.settings.calendarSettings.startPosition);
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.calendarSettings.startPosition = value;
 					this.plugin.saveSettings();
 				})
@@ -179,7 +179,7 @@ class SampleSettingTab extends PluginSettingTab {
 					text.setValue(this.plugin.settings.calendarSettings.dailyNoteFolder)
 				}
 				text.inputEl.type = "text"
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.calendarSettings.dailyNoteFolder = value;
 					this.plugin.saveSettings();
 				})
@@ -197,7 +197,7 @@ class SampleSettingTab extends PluginSettingTab {
 					text.setValue(this.plugin.settings.calendarSettings.dailyNoteFormat)
 				}
 				text.inputEl.type = "text"
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.calendarSettings.dailyNoteFormat = value;
 					this.plugin.saveSettings();
 				})
@@ -208,11 +208,11 @@ class SampleSettingTab extends PluginSettingTab {
 			.setDesc("Specify how do you like to filter the vault if not all \"task items (i.e. - [ ] items \"\
 					should be shown in the calendar. Please make sure the filtering expression is a valid dataviewjs query expression.\
 					See https://blacksmithgu.github.io/obsidian-dataview/api/code-reference/ for more information.\
+					If the filter code contains quotation marks (i.e. \" or \'), please add a backslash (i.e. \\) before.\
 					You can also leave it default (leaving it empty is typically not valid) if all items are suited for the calendar.")
-			.addText((text) => {
+			.addTextArea((text) => {
 				text.setValue(this.plugin.settings.calendarSettings.pages)
-				text.inputEl.type = "text"
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.calendarSettings.pages = value;
 					this.plugin.saveSettings();
 				})
@@ -228,7 +228,7 @@ class SampleSettingTab extends PluginSettingTab {
 				if (null !== this.plugin.settings.calendarSettings.globalTaskFilter)
 					text.setValue(this.plugin.settings.calendarSettings.globalTaskFilter)
 				text.inputEl.type = "text"
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.calendarSettings.globalTaskFilter = value;
 					this.plugin.saveSettings();
 				})
@@ -243,7 +243,7 @@ class SampleSettingTab extends PluginSettingTab {
 				text.setPlaceholder("CSS snippet here");
 				if (null != this.plugin.settings.calendarSettings.css)
 					text.setValue(this.plugin.settings.calendarSettings.css)
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.calendarSettings.css = value;
 					this.plugin.saveSettings();
 				})
@@ -257,7 +257,8 @@ class SampleSettingTab extends PluginSettingTab {
 				text.setPlaceholder("space splited sub-options, e.g.: style1 noProcess");
 				if (null != this.plugin.settings.calendarSettings.options)
 					text.setValue(this.plugin.settings.calendarSettings.options)
-				text.onChange((value) => {
+				text.onChange(async (value) => {
+					console.log(value)
 					this.plugin.settings.calendarSettings.options = value;
 					this.plugin.saveSettings();
 				})
@@ -277,7 +278,7 @@ class SampleSettingTab extends PluginSettingTab {
 					text.setValue(this.plugin.settings.timelineSettings.dailyNoteFolder)
 				}
 				text.inputEl.type = "text"
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.timelineSettings.dailyNoteFolder = value;
 					this.plugin.saveSettings();
 				})
@@ -295,7 +296,7 @@ class SampleSettingTab extends PluginSettingTab {
 					text.setValue(this.plugin.settings.timelineSettings.dailyNoteFormat)
 				}
 				text.inputEl.type = "text"
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.timelineSettings.dailyNoteFormat = value;
 					this.plugin.saveSettings();
 				})
@@ -309,7 +310,7 @@ class SampleSettingTab extends PluginSettingTab {
 			.addText((text) => {
 				if (null != this.plugin.settings.timelineSettings.select)
 					text.setValue(this.plugin.settings.timelineSettings.select)
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.timelineSettings.select = value;
 					this.plugin.saveSettings();
 				})
@@ -327,7 +328,7 @@ class SampleSettingTab extends PluginSettingTab {
 			.addText((text) => {
 				if (null != this.plugin.settings.timelineSettings.inbox)
 					text.setValue(this.plugin.settings.timelineSettings.inbox)
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.timelineSettings.inbox = value;
 					this.plugin.saveSettings();
 				})
@@ -343,7 +344,7 @@ class SampleSettingTab extends PluginSettingTab {
 			.addText((text) => {
 				if (null != this.plugin.settings.timelineSettings.taskFiles)
 					text.setValue(this.plugin.settings.timelineSettings.taskFiles)
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.timelineSettings.taskFiles = value;
 					this.plugin.saveSettings();
 				})
@@ -358,7 +359,7 @@ class SampleSettingTab extends PluginSettingTab {
 				if (null !== this.plugin.settings.timelineSettings.section) {
 					text.setValue(this.plugin.settings.timelineSettings.section);
 				}
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.timelineSettings.section = value;
 					this.plugin.saveSettings();
 				})
@@ -373,7 +374,7 @@ class SampleSettingTab extends PluginSettingTab {
 				if (null !== this.plugin.settings.timelineSettings.sort) {
 					text.setValue(this.plugin.settings.timelineSettings.sort);
 				}
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.timelineSettings.sort = value;
 					this.plugin.saveSettings();
 
@@ -385,7 +386,7 @@ class SampleSettingTab extends PluginSettingTab {
 			.setDesc("Show uncompleted tasks from past on current date or not.")
 			.addToggle((toggle) => {
 				toggle.setValue(this.plugin.settings.timelineSettings.forward === "true");
-				toggle.onChange((value) => {
+				toggle.onChange(async (value) => {
 					if (value) this.plugin.settings.timelineSettings.forward = "true";
 					else this.plugin.settings.timelineSettings.forward = "false";
 					this.plugin.saveSettings();
@@ -401,7 +402,7 @@ class SampleSettingTab extends PluginSettingTab {
 			.addText((text) => {
 				text.setValue(this.plugin.settings.timelineSettings.pages)
 				text.inputEl.type = "text"
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.timelineSettings.pages = value;
 					this.plugin.saveSettings();
 
@@ -418,7 +419,7 @@ class SampleSettingTab extends PluginSettingTab {
 				if (null !== this.plugin.settings.timelineSettings.globalTaskFilter)
 					text.setValue(this.plugin.settings.timelineSettings.globalTaskFilter)
 				text.inputEl.type = "text"
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					this.plugin.settings.timelineSettings.globalTaskFilter = value;
 					this.plugin.saveSettings();
 				})
@@ -432,9 +433,8 @@ class SampleSettingTab extends PluginSettingTab {
 				text.setPlaceholder("space splited sub-options, e.g.: style1 noProcess");
 				if (null != this.plugin.settings.timelineSettings.options)
 					text.setValue(this.plugin.settings.timelineSettings.options)
-				text.onChange((value) => {
+				text.onChange(async (value) => {
 					console.log(value)
-					console.log(this.plugin.settings.timelineSettings.options)
 					this.plugin.settings.timelineSettings.options = value;
 					this.plugin.saveSettings();
 				})
