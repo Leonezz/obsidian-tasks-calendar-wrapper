@@ -1,13 +1,9 @@
-import { App, FileSystemAdapter, MarkdownView, Modal, normalizePath, Notice, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import {
 	TasksCalendarView, CALENDAR_VIEW, TasksTimelineView,
 	TIMELINE_VIEW, DEFAULT_CALENDAR_SETTINGS, DEFAULT_TIMELINE_SETTINGS
 } from './views';
-import { CalendarSettings, TimelineSettings } from 'settings';
-import { text } from 'stream/consumers';
-import { PathFilters } from 'obsidian-dataview/lib/data-index';
-import { resolvePathData } from 'obsidian-dataview/lib/data-index/resolver';
-import { FormatInputPathObject, join } from 'path';
+import { CalendarSettings, TimelineSettings } from './settings';
 
 // Remember to rename these classes and interfaces!
 

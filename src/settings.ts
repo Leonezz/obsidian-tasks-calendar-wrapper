@@ -1,5 +1,3 @@
-import { Setting } from "obsidian";
-
 export interface CalendarSettings {
     viewPath: string,
     view: string,

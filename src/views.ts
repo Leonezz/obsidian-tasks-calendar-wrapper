@@ -1,7 +1,7 @@
 import { Component, ItemView, WorkspaceLeaf } from "obsidian";
 import { DataviewApi, getAPI } from 'obsidian-dataview';
-import { CalendarSettings, TimelineSettings } from "settings";
-import { serializeSettingToDVJS } from "settings";
+import { CalendarSettings, TimelineSettings } from "./settings";
+import { serializeSettingToDVJS } from "./settings";
 
 export const CALENDAR_VIEW = "tasks_calendar_view";
 export const TIMELINE_VIEW = "tasks_timeline_view";
