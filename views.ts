@@ -72,6 +72,10 @@ export class TasksCalendarView extends BaseTasksView {
         return "Tasks Calendar";
     }
 
+    getIcon(): string {
+        return "calendar-with-checkmark";
+      }
+
     async onClose(): Promise<void> {
 
     }
@@ -94,7 +98,9 @@ export class TasksTimelineView extends BaseTasksView {
         return "Tasks Timeline";
     }
 
-
+    getIcon(): string {
+        return "calendar-clock";
+    }
 
     async onClose(): Promise<void> {
 
