@@ -1,19 +1,24 @@
-import { App, DropdownComponent, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf } from 'obsidian';
+import { App, FileSystemAdapter, MarkdownView, Modal, normalizePath, Notice, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf } from 'obsidian';
 import {
 	TasksCalendarView, CALENDAR_VIEW, TasksTimelineView,
 	TIMELINE_VIEW, DEFAULT_CALENDAR_SETTINGS, DEFAULT_TIMELINE_SETTINGS
 } from './views';
 import { CalendarSettings, TimelineSettings } from 'settings';
 import { text } from 'stream/consumers';
+import { PathFilters } from 'obsidian-dataview/lib/data-index';
+import { resolvePathData } from 'obsidian-dataview/lib/data-index/resolver';
+import { FormatInputPathObject, join } from 'path';
+
 // Remember to rename these classes and interfaces!
 
 interface MyPluginSettings {
+	viewPath: string,
 	calendarSettings: CalendarSettings,
 	timelineSettings: TimelineSettings,
-
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
+	viewPath: "scripts/",
 	calendarSettings: DEFAULT_CALENDAR_SETTINGS,
 	timelineSettings: DEFAULT_TIMELINE_SETTINGS
 };
@@ -62,6 +67,15 @@ export default class MyPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		console.log(`Loaded: ${this.settings}`);
+	}
+
+	reload() {
+		this.onunload();
+		//this.load();
+		this.loadSettings();
+		this.activateView(CALENDAR_VIEW);
+		this.activateView(TIMELINE_VIEW);
 	}
 
 	async saveSettings() {
@@ -74,7 +88,7 @@ export default class MyPlugin extends Plugin {
 		}
 		this.app.workspace.detachLeavesOfType(type);
 
-		await this.app.workspace.getRightLeaf(false).setViewState({
+		await this.app.workspace.getLeaf(false).setViewState({
 			type: type,
 			active: true,
 		});
@@ -87,10 +101,68 @@ export default class MyPlugin extends Plugin {
 
 class SampleSettingTab extends PluginSettingTab {
 	plugin: MyPlugin;
-
+	oldViewPath: string;
 	constructor(app: App, plugin: MyPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
+		this.oldViewPath = this.plugin.settings.viewPath;
+	}
+
+	refreshFiles(): void {
+
+		if(this.oldViewPath === this.plugin.settings.viewPath)return;
+
+		var fs = require('fs');
+		var path = require('path');
+		const root: string = this.app.vault.getRoot().vault.adapter.basePath;
+
+		const folder: string = path.normalize(path.join(root, this.plugin.settings.viewPath));
+		const oldFolderPath = path.normalize(path.join(root, this.oldViewPath));
+		
+		if(fs.existsSync(folder)){
+			// #TODO: Need an error dialog
+		}
+
+		//this.plugin.settings.calendarSettings.viewPath = path.normalize(path.join(this.plugin.settings.viewPath, "calendar"));
+		//this.plugin.settings.timelineSettings.viewPath = path.normalize(path.join(this.plugin.settings.viewPath, "timeline"));
+		
+		console.log(this.plugin.settings)
+
+		const calendarViewPath = path.normalize(path.join(root, this.plugin.settings.viewPath, "calendar"));
+		const timelineViewPath = path.normalize(path.join(root, this.plugin.settings.viewPath, "timeline"));
+
+		function FileErrorHandle(err: Error) {
+			new Notice(err.name + ": " + err.message, 5000);
+			throw err;
+		}
+
+		fs.mkdir(calendarViewPath, { recursive: true }, FileErrorHandle);
+		fs.mkdir(timelineViewPath, { recursive: true }, FileErrorHandle);
+
+		const configFolder = this.app.vault.getRoot().vault.configDir;
+		const sourcePath = path.normalize(path.join(root, configFolder, "plugins/obsidian-tasks-calendar-wrapper"));
+
+		fs.copyFileSync(
+			path.normalize(path.join(sourcePath, "Obsidian-Tasks-Calendar/tasksCalendar/view.css")),
+			path.normalize(path.join(calendarViewPath, "view.css")));
+		fs.copyFileSync(
+			path.normalize(path.join(sourcePath, "Obsidian-Tasks-Calendar/tasksCalendar/view.js")),
+			path.normalize(path.join(calendarViewPath, "view.js")));
+		fs.copyFileSync(
+			path.normalize(path.join(sourcePath, "Obsidian-Tasks-Timeline/Taskido/view.css")),
+			path.normalize(path.join(timelineViewPath, "view.css")));
+		fs.copyFileSync(
+			path.normalize(path.join(sourcePath, "Obsidian-Tasks-Timeline/Taskido/view.js")),
+			path.normalize(path.join(timelineViewPath, "view.js")));
+
+		this.plugin.settings.viewPath = this.plugin.settings.viewPath.split(path.sep).join("/");
+		this.plugin.settings.calendarSettings.viewPath = path.normalize(path.join(this.plugin.settings.viewPath, 'calendar'));
+		this.plugin.settings.calendarSettings.viewPath = this.plugin.settings.calendarSettings.viewPath.split(path.sep).join("/");
+		this.plugin.settings.timelineSettings.viewPath = path.normalize(path.join(this.plugin.settings.viewPath, 'timeline'));
+		this.plugin.settings.timelineSettings.viewPath = this.plugin.settings.timelineSettings.viewPath.split(path.sep).join("/");
+
+		this.plugin.saveSettings();
+		this.plugin.reload();
 	}
 
 	display(): void {
@@ -101,26 +173,45 @@ class SampleSettingTab extends PluginSettingTab {
 		containerEl.createEl("h3", { text: 'Settings for Tasks View Wrapper.' });
 		containerEl.createEl("h4", { text: "General" });
 
+		var path = require('path')
 		new Setting(containerEl)
 			.setName("Script Path")
 			.setDesc("Specify where to save the view scripts.\
 				Leave empty if default path (scripts/) is good enough.\
-				Note that folders start with . are not allowed.")
-			.addText(text => {
-				text.setPlaceholder('scripts/');
-				text.inputEl.type = "text",
-					text.setValue(String(this.plugin.settings.calendarSettings.viewPath));
+				Note that folders start with . are not allowed.\
+				If changed, you need to delete the original folder manually for data safety.")
+			.addText((text) => {
+				text.inputEl.type = "text";
+				text.setPlaceholder("e.g.: folder1/folder2");
+				if(this.plugin.settings.viewPath != ""){
+					text.setValue(this.plugin.settings.viewPath);
+				}
 				text.onChange(async (value) => {
-					if (value !== "" && value !== this.plugin.settings.calendarSettings.viewPath) {
-						this.plugin.settings.calendarSettings.viewPath = value;
-						this.plugin.saveSettings();
+					const reg = /^(\/|(\/[\w\-\.]{1,20})+\/?)$/;
+					if(!reg.test(value)){
+						// #TODO: Need an error dialog
 					}
+					if(value != this.plugin.settings.viewPath){
+						const root: string = await this.app.vault.getRoot().vault.adapter.basePath;
+						
+						if(path.isAbsolute(value)){
+							this.plugin.settings.viewPath = path.relative(root, value);
+						}else{
+							this.plugin.settings.viewPath = value;	
+						}
+						//this.plugin.settings.viewPath = this.plugin.settings.viewPath.replace("\\", "/");
+					}
+				})
+			})
+			.addButton((button) => {
+				button.setButtonText("Confirm");
+				button.onClick((evt: MouseEvent) => {
+					this.refreshFiles();
 				})
 			})
 
 		this.makeCalendarSettingPage();
 		this.makeTimelineSettingPage();
-
 
 	}
 	makeCalendarSettingPage(): void {
@@ -377,7 +468,6 @@ class SampleSettingTab extends PluginSettingTab {
 				text.onChange(async (value) => {
 					this.plugin.settings.timelineSettings.sort = value;
 					this.plugin.saveSettings();
-
 				})
 			})
 
@@ -405,7 +495,6 @@ class SampleSettingTab extends PluginSettingTab {
 				text.onChange(async (value) => {
 					this.plugin.settings.timelineSettings.pages = value;
 					this.plugin.saveSettings();
-
 				})
 			})
 

@@ -2,9 +2,9 @@
 # yarn lockfile v1
 
 
-"@codemirror/language@git+https://github.com/lishid/cm-language.git":
+"@codemirror/language@https://github.com/lishid/cm-language":
   version "6.3.1"
-  resolved "git+https://github.com/lishid/cm-language.git#6f84ca041393471ae1e2c82a0b6ec515a94e8dcf"
+  resolved "https://github.com/lishid/cm-language#6f84ca041393471ae1e2c82a0b6ec515a94e8dcf"
   dependencies:
     "@codemirror/state" "^6.0.0"
     "@codemirror/view" "^6.0.0"
@@ -451,6 +451,11 @@ doctrine@^3.0.0:
   integrity sha512-yS+Q5i3hBf7GBkd4KG8a7eBNNWNGLTaEwwYWUijIYM7zrlYDM0BFXHjjPWlWZ1Rg7UaddZeIDmi9jF3HmqiQ2w==
   dependencies:
     esutils "^2.0.2"
+
+election@latest:
+  version "0.0.0"
+  resolved "https://registry.yarnpkg.com/election/-/election-0.0.0.tgz#0ce5919b989160cd4cdddaf8fcf2b900976ff0ce"
+  integrity sha512-3IKCvAsOuE3sND/9BZoYoJXG66fPHDJjjiKrcPX6PkeQZcMJwynMIPkIChVtwvid1ld+xTLeuIMJv5hAmKzlIA==
 
 emoji-regex@^10.0.0:
   version "10.2.1"
@@ -938,17 +943,17 @@ obsidian-dataview@latest:
     parsimmon "^1.18.0"
     preact "^10.6.5"
 
-"obsidian@github:obsidianmd/obsidian-api#master":
-  version "1.1.13"
-  resolved "https://codeload.github.com/obsidianmd/obsidian-api/tar.gz/bceb489fc25ceba5973119d6e57759d64850f90d"
-  dependencies:
-    "@types/codemirror" "0.0.108"
-    moment "2.29.4"
-
 obsidian@latest:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/obsidian/-/obsidian-1.1.1.tgz#7cce6f19a6dd1cc5ec7e9f7dff8ea3ceacf2e2c3"
   integrity sha512-GcxhsHNkPEkwHEjeyitfYNBcQuYGeAHFs1pEpZIv0CnzSfui8p8bPLm2YKLgcg20B764770B1sYGtxCvk9ptxg==
+  dependencies:
+    "@types/codemirror" "0.0.108"
+    moment "2.29.4"
+
+obsidian@obsidianmd/obsidian-api#master:
+  version "1.1.13"
+  resolved "https://codeload.github.com/obsidianmd/obsidian-api/tar.gz/bceb489fc25ceba5973119d6e57759d64850f90d"
   dependencies:
     "@types/codemirror" "0.0.108"
     moment "2.29.4"
