@@ -1,10 +1,11 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, requestUrl, RequestUrlResponsePromise, Setting } from 'obsidian';
 import {
 	TasksCalendarView, CALENDAR_VIEW, TasksTimelineView,
 	TIMELINE_VIEW, DEFAULT_CALENDAR_SETTINGS, DEFAULT_TIMELINE_SETTINGS
 } from './views';
 import { CalendarSettings, TimelineSettings } from './settings';
-
+var fs = require('fs');
+var path = require('path');
 // Remember to rename these classes and interfaces!
 
 interface TasksCalendarWrapperSettings {
@@ -95,6 +96,25 @@ export default class TasksCalendarWrapper extends Plugin {
 	}
 }
 
+function requestAndSaveViewFiles(url: string, savePath: string){
+	const response = requestUrl(url)
+		.then((result) => {
+			fs.writeFile(savePath, result.text, {flag: "w"}, (err: Error) => {
+				if(!err)return;
+				const msg = `Error when writing file ${savePath}: ${err}`;
+				console.log(msg);
+				new Notice(msg, 5000);
+				throw err;
+			})
+		})
+		.catch((err) => {
+			const msg = `Error when requesting file ${url}: ${err}`;
+			console.log(msg);
+			new Notice(msg, 5000);
+			throw err;
+		})
+}
+
 class TasksCalendarSettingTab extends PluginSettingTab {
 	plugin: TasksCalendarWrapper;
 	oldViewPath: string;
@@ -106,10 +126,6 @@ class TasksCalendarSettingTab extends PluginSettingTab {
 
 	refreshFiles(): void {
 
-		if(this.oldViewPath === this.plugin.settings.viewPath)return;
-
-		var fs = require('fs');
-		var path = require('path');
 		const tmp: any = <any>this.app.vault.getRoot().vault.adapter
 		const root: string = tmp.basePath;
 
@@ -125,32 +141,30 @@ class TasksCalendarSettingTab extends PluginSettingTab {
 		
 		console.log(this.plugin.settings)
 
-		const calendarViewPath = path.normalize(path.join(root, this.plugin.settings.viewPath, "calendar"));
-		const timelineViewPath = path.normalize(path.join(root, this.plugin.settings.viewPath, "timeline"));
-
 		function FileErrorHandle(err: Error) {
+			if(!err)return;
 			new Notice(err.name + ": " + err.message, 5000);
 			throw err;
 		}
 
+		const calendarViewPath = path.normalize(path.join(root, this.plugin.settings.viewPath, "calendar"));
+		const timelineViewPath = path.normalize(path.join(root, this.plugin.settings.viewPath, "timeline"));
+
 		fs.mkdir(calendarViewPath, { recursive: true }, FileErrorHandle);
 		fs.mkdir(timelineViewPath, { recursive: true }, FileErrorHandle);
 
-		const configFolder = this.app.vault.getRoot().vault.configDir;
-		const sourcePath = path.normalize(path.join(root, configFolder, "plugins/obsidian-tasks-calendar-wrapper"));
+		const githubUrl = "https://raw.githubusercontent.com/702573N/";
+		const calendarViewjsUrl = githubUrl + "Obsidian-Tasks-Calendar/main/tasksCalendar/view.js";
+		const calendarViewcssUrl = githubUrl + "Obsidian-Tasks-Calendar/main/tasksCalendar/view.css";
 
-		fs.copyFileSync(
-			path.normalize(path.join(sourcePath, "Obsidian-Tasks-Calendar/tasksCalendar/view.css")),
-			path.normalize(path.join(calendarViewPath, "view.css")));
-		fs.copyFileSync(
-			path.normalize(path.join(sourcePath, "Obsidian-Tasks-Calendar/tasksCalendar/view.js")),
-			path.normalize(path.join(calendarViewPath, "view.js")));
-		fs.copyFileSync(
-			path.normalize(path.join(sourcePath, "Obsidian-Tasks-Timeline/Taskido/view.css")),
-			path.normalize(path.join(timelineViewPath, "view.css")));
-		fs.copyFileSync(
-			path.normalize(path.join(sourcePath, "Obsidian-Tasks-Timeline/Taskido/view.js")),
-			path.normalize(path.join(timelineViewPath, "view.js")));
+		requestAndSaveViewFiles(calendarViewjsUrl, path.normalize(path.join(calendarViewPath, "view.js")));
+		requestAndSaveViewFiles(calendarViewcssUrl, path.normalize(path.join(calendarViewPath, "view.css")));
+
+		const timelineViewjsUrl = githubUrl + "Obsidian-Tasks-Timeline/main/Taskido/view.js";
+		const timelineViewcssUrl = githubUrl + "Obsidian-Tasks-Timeline/main/Taskido/view.css";
+		
+		requestAndSaveViewFiles(timelineViewjsUrl, path.normalize(path.join(timelineViewPath, "view.js")));
+		requestAndSaveViewFiles(timelineViewcssUrl, path.normalize(path.join(timelineViewPath, "view.css")));
 
 		this.plugin.settings.viewPath = this.plugin.settings.viewPath.split(path.sep).join("/");
 		this.plugin.settings.calendarSettings.viewPath = path.normalize(path.join(this.plugin.settings.viewPath, 'calendar'));
@@ -169,8 +183,18 @@ class TasksCalendarSettingTab extends PluginSettingTab {
 
 		containerEl.createEl("h3", { text: 'Settings for Tasks View Wrapper.' });
 		containerEl.createEl("h4", { text: "General" });
+		
+		new Setting(containerEl)
+			.setName("Update")
+			.setDesc("Update view scripts from https://github.com/702573N/Obsidian-Tasks-Calendar\
+				and https://github.com/702573N/Obsidian-Tasks-Timeline.")
+			.addButton((button) => {
+				button.setButtonText("Update");
+				button.onClick((evt: MouseEvent) => {
+					this.refreshFiles();
+				})
+			})
 
-		var path = require('path')
 		new Setting(containerEl)
 			.setName("Script Path")
 			.setDesc("Specify where to save the view scripts.\
@@ -204,6 +228,7 @@ class TasksCalendarSettingTab extends PluginSettingTab {
 			.addButton((button) => {
 				button.setButtonText("Confirm");
 				button.onClick((evt: MouseEvent) => {
+					if(this.oldViewPath === this.plugin.settings.viewPath)return;
 					this.refreshFiles();
 				})
 			})
