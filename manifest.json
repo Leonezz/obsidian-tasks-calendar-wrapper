@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-tasks-calendar-wrapper",
 	"name": "tasks-calendar-wrapper",
-	"version": "0.0.1.3",
+	"version": "0.0.1.4",
 	"minAppVersion": "0.15.0",
 	"description": "This is a simple wrapper for Obsidian-Tasks-Calendar (https://github.com/702573N/Obsidian-Tasks-Calendar) and Obsidian-Tasks-Timeline (https://github.com/702573N/Obsidian-Tasks-Timeline).",
 	"author": "zhuwenq",
