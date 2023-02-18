@@ -1,4 +1,4 @@
-# Obsidian Tasks Calendar Wrapper
+# Tasks Calendar Wrapper
 
 This is a simple wrapper for Obsidian-Tasks-Calendar (https://github.com/702573N/Obsidian-Tasks-Calendar) and Obsidian-Tasks-Timeline (https://github.com/702573N/Obsidian-Tasks-Timeline).
 
