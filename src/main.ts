@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, PluginSettingTab, requestUrl, RequestUrlResponsePromise, Setting } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, requestUrl, Setting } from 'obsidian';
 import {
 	TasksCalendarView, CALENDAR_VIEW, TasksTimelineView,
 	TIMELINE_VIEW, DEFAULT_CALENDAR_SETTINGS, DEFAULT_TIMELINE_SETTINGS
