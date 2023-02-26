@@ -5,6 +5,12 @@ This is a simple wrapper for Obsidian-Tasks-Calendar (https://github.com/702573N
 This plugin provides setting pages and update support for [702573N](https://github.com/702573N)'s great work, for detailed information
 about the options, see [Obsidian-Tasks-Calendar](https://github.com/702573N/Obsidian-Tasks-Calendar) and [Obsidian-Tasks-Timeline](https://github.com/702573N/Obsidian-Tasks-Timeline).
 
+# News
+
+I am currently re-implement both the calendar and timeline views with typescript and react, so that they can be integrated in the plugin in a real way!
+
+An alpha version which integrates the timeline view will be released soon!
+
 # License
 
 MIT.
