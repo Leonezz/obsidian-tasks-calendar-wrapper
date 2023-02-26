@@ -7,7 +7,7 @@ about the options, see [Obsidian-Tasks-Calendar](https://github.com/702573N/Obsi
 
 # News
 
-I am currently re-implement both the calendar and timeline views with typescript and react, so that they can be integrated in the plugin in a real way!
+I am currently re-implementing both the calendar and timeline views with typescript and react, so that they can be integrated in the plugin in a real way!
 
 An alpha version which integrates the timeline view will be released soon!
 
