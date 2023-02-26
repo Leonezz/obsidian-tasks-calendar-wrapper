@@ -7,6 +7,7 @@ on:
 
 env:
   PLUGIN_NAME: obsidian-tasks-calendar-wrapper # Change this to match the id of your plugin.
+  JSPATH: ExampleVault/.obsidian/plugins/tasks-view/main.js
 
 jobs:
   build:
@@ -27,7 +28,7 @@ jobs:
           npm install
           npm run build
           mkdir ${{ env.PLUGIN_NAME }}
-          cp ExampleVault/.obsidian/plugins/tasks-view/main.js manifest.json styles.css ${{ env.PLUGIN_NAME }}
+          cp ${{ env.JSPATH }} manifest.json styles.css ${{ env.PLUGIN_NAME }}
           zip -r ${{ env.PLUGIN_NAME }}.zip ${{ env.PLUGIN_NAME }}
           ls
           echo "::set-output name=tag_name::$(git tag --sort version:refname | tail -n 1)"
@@ -62,7 +63,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./main.js
+          asset_path: ${{ env.JSPATH }}
           asset_name: main.js
           asset_content_type: text/javascript
 
