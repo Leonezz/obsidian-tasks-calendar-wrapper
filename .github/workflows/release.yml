@@ -22,6 +22,8 @@ jobs:
       - name: Build
         id: build
         run: |
+          git clone https://github.com/Leonezz/Obsidian-Tasks-Timeline.git
+          cd Obsidian-Tasks-Timeline && git checkout dev && cd ..
           npm install
           npm run build
           mkdir ${{ env.PLUGIN_NAME }}
