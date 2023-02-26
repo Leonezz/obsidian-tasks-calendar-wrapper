@@ -36,7 +36,7 @@ export class TasksTimelineView extends BaseTasksView {
         container.empty();
         this.root = createRoot(container);
         this.root.render(
-            <ObsidianBridge app={this.app} />
+            <ObsidianBridge plugin={this} />
         )
     }
 
