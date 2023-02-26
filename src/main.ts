@@ -78,6 +78,11 @@ class TasksCalendarSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 	display() {
-		
+		const { containerEl } = this;
+
+		containerEl.empty();
+
+		containerEl.createEl("h3", { text: 'Still working on re-designing the original user option system' });
+		containerEl.createEl("h4", { text: "hopfully it will be released in the next version." });
 	}
 }
