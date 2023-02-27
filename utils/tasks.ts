@@ -435,22 +435,23 @@ export namespace TaskMapable {
             return item;
         }
 
-        if (item.due && item.due.isBefore('day')) {
+        const today = moment();
+        if (item.due && item.due.isBefore(today, 'date')) {
             item.status = TaskStatus.overdue;
             return item;
         }
 
-        if (item.due && item.due.isSame('day')) {
+        if (item.due && item.due.isSame(today, 'date')) {
             item.status = TaskStatus.due;
             return item;
         }
 
-        if (item.start && item.start.isBefore('day')) {
+        if (item.start && item.start.isBefore(today, 'date')) {
             item.status = TaskStatus.process;
             return item;
         }
 
-        if (item.scheduled && item.scheduled.isBefore('day')) {
+        if (item.scheduled && item.scheduled.isBefore(today, 'date')) {
             item.status = TaskStatus.start;
             return item;
         }
