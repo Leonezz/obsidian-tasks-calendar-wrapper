@@ -1,8 +1,8 @@
-import { App, PluginSettingTab } from "obsidian";
+import { App, PluginSettingTab, Setting } from "obsidian";
 import { TaskDataModel } from "utils/tasks";
 import TasksCalendarWrapper from "./main";
 
-const defaultUserOptions = {
+export const defaultUserOptions = {
     /**
      * filter specific files and tasks only from these files are rendered */
     fileFilter: "" as string,
@@ -11,17 +11,17 @@ const defaultUserOptions = {
     styles: ['style1'] as string[],
     /**
      * specify the folder where the daily notes are saved */
-    dailyNoteFolder: '' as string, 
+    dailyNoteFolder: '' as string,
     /**
      * daily note file format */
     dailyNoteFormat: 'YYYY, MMMM DD - dddd' as string,
     /**
      * specify under which section the new task items should be appended.  */
-    sectionForNewTasks: "## Tasks" as string, 
+    sectionForNewTasks: "## Tasks" as string,
     /**
      * specify which tags are not necessary to display with a tag badge,
      * note that all tag texts are remove from the displayed item text by default. */
-    hideTags: [] as string[], 
+    hideTags: [] as string[],
     /**
      * Forward tasks from the past and display them on the today panel or not
      */
@@ -49,20 +49,181 @@ const defaultUserOptions = {
      * Note that this will override other color setting for tags.
      */
     tagColorPalette: [] as string[],
+    /**
+     * Use counters on the today panel or not
+     */
+    useCounters: true as boolean,
+    /**
+     * Use quick entry panel on the today panel or not
+     */
+    useQuickEntry: true as boolean,
+    /**
+     * Display which year it is or not.
+     */
+    useYearHeader: true as boolean,
+
+    /**
+     * Enable the whole info panel or not.
+     */
+    useInfo: {
+        /**
+        * Use relative dates to describe the task dates or not.
+        */
+        useRelative: true as boolean,
+        /**
+         * Display recurrence information of tasks or not.
+         */
+        useRecurrence: true as boolean,
+        /**
+         * Display priority information of tasks or not.
+         */
+        usePriority: true as boolean,
+        /**
+         * Display tags of tasks or not.
+         */
+        useTags: true as boolean,
+        /**
+         * Display which file the task is from or not.
+         */
+        useFileBadge: true as boolean,
+        /** 
+         * Display which section the task is from or not.
+         */
+        useSection: true as boolean,
+    },
+    /**
+     * Display completed task or not.
+     */
+    useCompletedTasks: true as boolean,
+    /**
+     * Activate today focus on load or not.
+     */
+    defaultTodayFocus: false as boolean,
+    /**
+     * Activate a filter or not.
+     */
+    defaultFilters: "" as string,
+
+
 };
+export type UserOption = typeof defaultUserOptions;
 
 export class TasksCalendarSettingTab extends PluginSettingTab {
-	plugin: TasksCalendarWrapper;
-	constructor(app: App, plugin: TasksCalendarWrapper) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-	display() {
-		const { containerEl } = this;
+    plugin: TasksCalendarWrapper;
+    constructor(app: App, plugin: TasksCalendarWrapper) {
+        super(app, plugin);
+        this.plugin = plugin;
+    }
+    display() {
+        const { containerEl } = this;
 
-		containerEl.empty();
+        containerEl.empty();
 
-		containerEl.createEl("h3", { text: 'Still working on re-designing the original user option system' });
-		containerEl.createEl("h4", { text: "hopfully it will be released in the next version." });
-	}
+        containerEl.createEl("h1", { text: 'Timeline Settings' });
+        containerEl.createEl("h2", { text: "UI Settings" });
+
+        new Setting(containerEl)
+            .setName("Enable Counters and Filters Panel")
+            .setDesc("Use counters and filters on the today panel or not.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.useCounters);
+                tg.onChange(v => this.plugin.writeOptions({ useCounters: v }))
+            })
+
+        new Setting(containerEl)
+            .setName("Enable Quick Entry Panel")
+            .setDesc("Use quick entry panel or not.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.useQuickEntry);
+                tg.onChange(v => this.plugin.writeOptions({ useQuickEntry: v }));
+            })
+
+        new Setting(containerEl)
+            .setName("Enable Year Header")
+            .setDesc("Display the year on top of tasks of that year or not.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.useYearHeader);
+                tg.onChange(v => this.plugin.writeOptions({ useYearHeader: v }));
+            })
+
+        new Setting(containerEl)
+            .setName("Display Completed Tasks")
+            .setDesc("Display completed task or not.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.useCompletedTasks);
+                tg.onChange(v => this.plugin.writeOptions({ useCompletedTasks: v }));
+            })
+        new Setting(containerEl)
+            .setName("Today Focus On Load")
+            .setDesc("Activate today focus on load or not.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.defaultTodayFocus);
+                tg.onChange(v => this.plugin.writeOptions({ defaultTodayFocus: v }));
+            })
+        new Setting(containerEl)
+            .setName("Activate Filter On Load")
+            .setDesc("Activate a filter or not")
+            .addDropdown(dd => {
+                dd.addOptions({
+                    "": "No filters",
+                    "todoFilter": "todo",
+                    "overdueFilter": "overdue",
+                    "unplannedFilter": "unplanned",
+                });
+                dd.setValue(this.plugin.userOptions.defaultFilters);
+                dd.onChange(v => this.plugin.writeOptions({ defaultFilters: v }));
+            })
+
+
+        containerEl.createEl("h2", { text: "Task Item Visualization Settings" });
+
+        new Setting(containerEl)
+            .setName("Use Relative Date")
+            .setDesc("Use relative date to describe the task dates or not.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.useInfo.useRelative);
+                const useinfo = this.plugin.userOptions.useInfo;
+                tg.onChange(v => this.plugin.writeOptions({ useInfo: { ...useinfo, useRelative: v } }));
+            })
+        new Setting(containerEl)
+            .setName("Use Recurrence")
+            .setDesc("Display the recurrence information of tasks or not.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.useInfo.useRecurrence);
+                const useinfo = this.plugin.userOptions.useInfo;
+                tg.onChange(v => this.plugin.writeOptions({ useInfo: { ...useinfo, useRecurrence: v } }));
+            })
+        new Setting(containerEl)
+            .setName("Use Priority")
+            .setDesc("Display the priority information of tasks or not.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.useInfo.usePriority);
+                const useinfo = this.plugin.userOptions.useInfo;
+                tg.onChange(v => this.plugin.writeOptions({ useInfo: { ...useinfo, usePriority: v } }));
+            })
+        new Setting(containerEl)
+            .setName("Use Tags")
+            .setDesc("Display the tags of tasks or not.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.useInfo.useTags);
+                const useinfo = this.plugin.userOptions.useInfo;
+                tg.onChange(v => this.plugin.writeOptions({ useInfo: { ...useinfo, useTags: v } }));
+            })
+        new Setting(containerEl)
+            .setName("Use Filename")
+            .setDesc("Display which file the task is from or not.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.useInfo.useFileBadge);
+                const useinfo = this.plugin.userOptions.useInfo;
+                tg.onChange(v => this.plugin.writeOptions({ useInfo: { ...useinfo, useFileBadge: v } }));
+            })
+        new Setting(containerEl)
+            .setName("Use Section")
+            .setDesc("Display which section the task is from or not.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.useInfo.useSection);
+                const useinfo = this.plugin.userOptions.useInfo;
+                tg.onChange(v => this.plugin.writeOptions({ useInfo: { ...useinfo, useSection: v } }));
+            })
+    }
 }

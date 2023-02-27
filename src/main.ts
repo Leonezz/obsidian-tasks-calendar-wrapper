@@ -1,17 +1,17 @@
-import { App, Plugin, PluginSettingTab } from 'obsidian';
+import { Plugin } from 'obsidian';
 
 import { TasksTimelineView, TIMELINE_VIEW } from './views';
 
 import { TimelineSettings } from '../utils/options';
-import { TasksCalendarSettingTab } from './settings'
+import { TasksCalendarSettingTab, UserOption, defaultUserOptions } from './settings';
 // Remember to rename these classes and interfaces!
 
 
 export default class TasksCalendarWrapper extends Plugin {
 	settings: TimelineSettings;
-
+	userOptions: UserOption = {} as UserOption;
 	async onload() {
-		await this.loadSettings();
+		await this.loadOptions();
 
 		this.registerView(
 			TIMELINE_VIEW,
@@ -19,7 +19,7 @@ export default class TasksCalendarWrapper extends Plugin {
 		);
 
 		// This adds a simple command that can be triggered anywhere
-		
+
 		this.addCommand({
 			id: 'open-tasks-timeline-view',
 			name: 'Open Tasks Timeline View',
@@ -38,20 +38,24 @@ export default class TasksCalendarWrapper extends Plugin {
 		this.app.workspace.detachLeavesOfType(TIMELINE_VIEW);
 	}
 
-	async loadSettings() {
-		this.settings = Object.assign({}, {}, await this.loadData());
-		console.log(`Loaded: ${this.settings}`);
+	private updateOptions(updatedOpts: Partial<UserOption>) {
+		Object.assign(this.userOptions, updatedOpts);
 	}
 
-	reload() {
-		this.onunload();
-		//this.load();
-		this.loadSettings();
-		this.activateView(TIMELINE_VIEW);
+	async loadOptions(): Promise<void> {
+		this.updateOptions(defaultUserOptions);
+		const options = await this.loadData();
+		if (!!options) {
+			this.updateOptions(options);
+			await this.saveData(this.userOptions);
+		}
 	}
 
-	async saveSettings() {
-		await this.saveData(this.settings);
+	async writeOptions(
+		changedOpts: Partial<UserOption>
+	): Promise<void> {
+		this.updateOptions(changedOpts);
+		await this.saveData(this.userOptions);
 	}
 
 	async activateView(type: string) {
