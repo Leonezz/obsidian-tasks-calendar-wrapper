@@ -413,8 +413,8 @@ If your plugin does not need CSS, delete this file.
 .taskido.overdueFocus .task.overdue,
 .taskido.unplannedFocus .task.unplanned { background: hsla(var(--interactive-accent-hsl), 0.2); }
 /* Filter */
-.taskido.todoFilter .year:not(.current):not([data-types*="due"][data-types*="scheduled"][data-types*="overdue"]) { display: none; }
-.taskido.todoFilter .details:not([data-types*="due"],[data-types*="scheduled"],[data-types*="overdue"]) { display: none; }
+.taskido.todoFilter .year:not(.current):not([data-types*="due"],[data-types*="scheduled"],[data-types*="overdue"]) { display: none; }
+.taskido.todoFilter .details:not(.today):not([data-types*="due"],[data-types*="scheduled"],[data-types*="overdue"]) { display: none; }
 .taskido.todoFilter .task:not(.due, .scheduled, .process, .start) { display: none; }
 .taskido.overdueFilter .year:not(.current):not([data-types*="overdue"]) { display: none; }
 .taskido.overdueFilter .details:not(.today):not([data-types*="overdue"]) { display: none; }
