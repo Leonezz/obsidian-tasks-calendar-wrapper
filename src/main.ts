@@ -55,7 +55,7 @@ export default class TasksCalendarWrapper extends Plugin {
 		changedOpts: Partial<UserOption>
 	): Promise<void> {
 		this.updateOptions(changedOpts);
-		await this.saveData(this.userOptions);
+		await this.saveData(Object.assign({}, this.userOptions));
 	}
 
 	async activateView(type: string) {
