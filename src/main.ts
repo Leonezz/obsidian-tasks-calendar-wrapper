@@ -3,6 +3,7 @@ import { App, Plugin, PluginSettingTab } from 'obsidian';
 import { TasksTimelineView, TIMELINE_VIEW } from './views';
 
 import { TimelineSettings } from '../utils/options';
+import { TasksCalendarSettingTab } from './settings'
 // Remember to rename these classes and interfaces!
 
 
@@ -67,22 +68,5 @@ export default class TasksCalendarWrapper extends Plugin {
 		this.app.workspace.revealLeaf(
 			this.app.workspace.getLeavesOfType(type)[0]
 		);
-	}
-}
-
-class TasksCalendarSettingTab extends PluginSettingTab {
-	plugin: TasksCalendarWrapper;
-	oldViewPath: string;
-	constructor(app: App, plugin: TasksCalendarWrapper) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-	display() {
-		const { containerEl } = this;
-
-		containerEl.empty();
-
-		containerEl.createEl("h3", { text: 'Still working on re-designing the original user option system' });
-		containerEl.createEl("h4", { text: "hopfully it will be released in the next version." });
 	}
 }
