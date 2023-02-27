@@ -1,5 +1,5 @@
-import { Options } from "Obsidian-Tasks-Timeline/src/utils/options";
-import { TaskDataModel } from "Obsidian-Tasks-Timeline/src/utils/tasks";
+import { Options } from "../utils/options";
+import { TaskDataModel } from "../utils/tasks";
 
 export interface CalendarSettings {
     viewPath: string,

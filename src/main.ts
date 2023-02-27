@@ -2,7 +2,7 @@ import { App, Plugin, PluginSettingTab } from 'obsidian';
 
 import { TasksTimelineView, TIMELINE_VIEW } from './views';
 
-import { TimelineSettings } from 'Obsidian-Tasks-Timeline/src/utils/options';
+import { TimelineSettings } from '../utils/options';
 // Remember to rename these classes and interfaces!
 
 

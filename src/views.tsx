@@ -1,6 +1,6 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import { ObsidianBridge } from 'Obsidian-Tasks-Timeline/src/obsidianbridge';
-import { TimelineSettings } from "Obsidian-Tasks-Timeline/src/utils/options";
+import { TimelineSettings } from "../utils/options";
 import { createRoot, Root } from 'react-dom/client';
 
 export const CALENDAR_VIEW = "tasks_calendar_view";
