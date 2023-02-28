@@ -126,6 +126,8 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
     constructor(app: App, plugin: TasksCalendarWrapper) {
         super(app, plugin);
         this.plugin = plugin;
+        this.onOptionUpdate = this.onOptionUpdate.bind(this);
+        this.tagsSettingItem = this.tagsSettingItem.bind(this);
     }
 
     private static createFragmentWithHTML = (html: string) =>
@@ -503,7 +505,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                 const modal = new TagModal(this.plugin);
                 modal.onClose = async () => {
                     if (!modal.valid) return;
-                    onadd(modal.tagText);
+                    await onadd(modal.tagText);
                 };
                 modal.open();
             })
@@ -556,6 +558,7 @@ class TagColorPaletteModal extends Modal {
                         this.valid = false;
                         return new Notice("The color seems to be empty, maybe you forget to click the color picker.", 5000);
                     }
+                    this.valid = true;
                     this.close();
                 });
                 return btn;
@@ -607,6 +610,7 @@ class TagModal extends Modal {
                         this.valid = false;
                         return new Notice(`${this.tagText} seems not a valid tag.`)
                     }
+                    this.valid = true;
                     this.close();
                 });
                 return btn;
