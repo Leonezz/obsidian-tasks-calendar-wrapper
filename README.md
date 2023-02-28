@@ -16,6 +16,7 @@ I am currently re-implementing both the calendar and timeline views with typescr
 An alpha version which integrates the timeline view will be released soon!
 
 - 2023-02-26: Alpha version with timeline view released, but with no setting tab... I am still working on that. 
+- 2023-02-28: The setting page seems to work now!
 
 # License
 
