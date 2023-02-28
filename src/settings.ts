@@ -407,9 +407,12 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Sort By")
-            .setDesc("Specify a callable (a lambda, a funcion and etc.) for sorting task items.\
+            .setDesc(TasksCalendarSettingTab.createFragmentWithHTML(
+                "Specify a callable (a lambda, a funcion and etc.) for sorting task items.\
                 Note that the input must be a valid javascript callable definition of type: \
-                (arg1: TaskDataModel, arg2: TaskDataModel) => number.")
+                (arg1: TaskDataModel, arg2: TaskDataModel) => number.\
+                <p style='color: red'>Please do pay more attention on security when modifying this,\
+                because the input string here is going to evaluate in javascript no matter what it is.</p>"))
             .addTextArea(async ta => {
                 ta.setPlaceholder("e.g.: (t1) => t1.order or (t1, t2) => t1.order - t2.order");
                 ta.setValue(this.plugin.userOptions.sort);
