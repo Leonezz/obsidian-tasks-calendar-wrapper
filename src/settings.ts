@@ -1,11 +1,24 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, SettingTab } from "obsidian";
-import { TaskDataModel } from "utils/tasks";
+import { TaskDataModel, TaskRegularExpressions } from "utils/tasks";
 import TasksCalendarWrapper from "./main";
 
 export const defaultUserOptions = {
     /**
      * filter specific files and tasks only from these files are rendered */
     fileFilter: "" as string,
+    /**
+     * Use tags filters to filter tasks or not.
+     */
+    useTagFilter: false as boolean,
+    /**
+     * Filter tasks with specific tags, only tasks with one or more of these tags are displayed.
+     */
+    taskTagFilters: [] as string[],
+    /**
+     * Filter tasks in specific files which contains one or more of these tags to be displayed.
+     */
+    fileTagFilters: [] as string[],
+
     /**
      * optional options to customize the look */
     styles: ['style1'] as string[],
@@ -339,40 +352,25 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                 });
             })
 
-        const tagsHide = new Setting(containerEl)
-            .setName("Hide Tags")
-            .setDesc("specify which tags are not necessary to display with a tag badge,\
-                note that all tag texts are remove from the displayed item text by default.")
-        tagsHide.controlEl.empty();
-        tagsHide.controlEl.appendChild(createDiv());
-        var tagsHideControl = new Setting(tagsHide.controlEl.firstChild as HTMLElement);
-        this.plugin.userOptions.hideTags.forEach((t, i) => {
-            if (i !== 0 && i % 3 === 0) tagsHideControl = new Setting(tagsHide.controlEl.firstChild as HTMLElement);
-            tagsHideControl.controlEl.appendChild(createEl('div', { cls: "tag", text: t }));
-            tagsHideControl.addExtraButton(eb => {
-                eb.setIcon("cross");
-                eb.onClick(async () => {
+
+        this.tagsSettingItem(containerEl, "Hide Tags",
+            "Specify which tags are not necessary to display with a tag badge,\
+            note that all tag texts are remove from the displayed item text by default.",
+            this.plugin.userOptions.hideTags,
+            (t: string) => {
+                return async () => {
                     this.plugin.userOptions.hideTags.remove(t);
                     await this.onOptionUpdate({}, true);
-                })
-            })
-        })
-
-        tagsHide.addExtraButton(eb => {
-            eb.setIcon("plus-with-circle");
-            eb.onClick(() => {
-                const modal = new TagModal(this.plugin);
-                modal.onClose = async () => {
-                    if (!modal.valid) return;
-                    if (this.plugin.userOptions.hideTags.contains(modal.tagText)) {
-                        return new Notice(`Tag ${modal.tagText} already exists.`, 5000);
-                    }
-                    this.plugin.userOptions.hideTags.push(modal.tagText);
+                }
+            },
+            async (t: string) => {
+                if (this.plugin.userOptions.hideTags.includes(t)) {
+                    new Notice(`Tag ${t} already exists.`);
+                } else {
+                    this.plugin.userOptions.hideTags.push(t);
                     await this.onOptionUpdate({}, true);
-                };
-                modal.open();
+                }
             })
-        })
 
         new Setting(containerEl)
             .setName("Use Filename")
@@ -426,9 +424,93 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                 })
             })
 
+        new Setting(containerEl)
+            .setName("Use Tag Filters")
+            .setDesc("Use tags filters to filter tasks or not.")
+            .addToggle(tg => {
+                tg
+                    .setValue(this.plugin.userOptions.useTagFilter)
+                    .onChange(async v => await this.onOptionUpdate({ useTagFilter: v }, true));
+            });
 
+        if (this.plugin.userOptions.useTagFilter) {
+            this.tagsSettingItem(containerEl, "Task Tag Filters",
+                "Filter tasks with specific tags, only tasks with one or more of these tags are displayed.",
+                this.plugin.userOptions.taskTagFilters,
+                (t: string) => {
+                    return async () => {
+                        this.plugin.userOptions.taskTagFilters.remove(t);
+                        await this.onOptionUpdate({}, true);
+                    }
+                },
+                async (t: string) => {
+                    if (this.plugin.userOptions.taskTagFilters.contains(t)) {
+                        new Notice(`Tag ${t} already exists.`, 5000);
+                    } else {
+                        this.plugin.userOptions.taskTagFilters.push(t);
+                        await this.onOptionUpdate({}, true);
+                    }
+                });
+
+            this.tagsSettingItem(containerEl, "File Tag Filters",
+                "Filter tasks in specific files which contains one or more of these tags to be displayed.",
+                this.plugin.userOptions.fileTagFilters,
+                (t: string) => {
+                    return async () => {
+                        this.plugin.userOptions.fileTagFilters.remove(t);
+                        await this.onOptionUpdate({}, true);
+                    }
+                },
+                async (t: string) => {
+                    if (this.plugin.userOptions.fileTagFilters.contains(t)) {
+                        new Notice(`Tag ${t} already exists.`, 5000);
+                    } else {
+                        this.plugin.userOptions.fileTagFilters.push(t);
+                        await this.onOptionUpdate({}, true);
+                    }
+                })
+        }
+    }
+
+    private tagsSettingItem = (
+        container: HTMLElement,
+        name: string,
+        desc: string,
+        tags: string[],
+        ondelete: (t: string) => (() => Promise<void>),
+        onadd: (t: string) => Promise<void>,
+    ) => {
+        const tagsSetting = new Setting(container)
+            .setName(name)
+            .setDesc(desc)
+        tagsSetting.controlEl.empty();
+        tagsSetting.controlEl.appendChild(createDiv());
+        var tagsSettingControlEl = new Setting(tagsSetting.controlEl.firstChild as HTMLElement);
+        tags.forEach((t, i) => {
+            if (i !== 0 && i % 3 === 0) tagsSettingControlEl = new Setting(tagsSetting.controlEl.firstChild as HTMLElement);
+            tagsSettingControlEl.controlEl.appendChild(createEl('div', { cls: "tag", text: t }));
+            tagsSettingControlEl.addExtraButton(eb => {
+                eb
+                    .setIcon("cross")
+                    .setTooltip("Delete")
+                    .onClick(ondelete(t));
+            })
+        })
+
+        tagsSetting.addExtraButton(eb => {
+            eb.setIcon("plus-with-circle");
+            eb.onClick(() => {
+                const modal = new TagModal(this.plugin);
+                modal.onClose = async () => {
+                    if (!modal.valid) return;
+                    onadd(modal.tagText);
+                };
+                modal.open();
+            })
+        })
     }
 }
+
 
 class TagColorPaletteModal extends Modal {
     tagText: string;
@@ -466,7 +548,14 @@ class TagColorPaletteModal extends Modal {
                 btn.setIcon("checkmark");
                 btn.setTooltip("Save");
                 btn.onClick(() => {
-                    this.valid = (this.tagText !== "" && this.color !== "");
+                    if (!this.tagText.match(TaskRegularExpressions.hashTags)) {
+                        this.valid = false;
+                        return new Notice(`${this.tagText} seems not a valid tag.`, 5000)
+                    }
+                    if (this.color === "") {
+                        this.valid = false;
+                        return new Notice("The color seems to be empty, maybe you forget to click the color picker.", 5000);
+                    }
                     this.close();
                 });
                 return btn;
@@ -499,11 +588,13 @@ class TagModal extends Modal {
         contentEl.empty();
         const settingdiv = contentEl.createDiv();
         new Setting(settingdiv)
-            .setName("Tag and color")
+            .setName("Tag")
             .setDesc("Enter tag text (# included) in the text input and select color in the color selector.")
             .addText(t => {
                 t.setValue(this.tagText);
-                t.onChange(v => this.tagText = v);
+                t.onChange(v => {
+                    this.tagText = v
+                });
                 return t;
             })
         const footer = contentEl.createDiv();
@@ -512,7 +603,10 @@ class TagModal extends Modal {
                 btn.setIcon("checkmark");
                 btn.setTooltip("Save");
                 btn.onClick(() => {
-                    this.valid = (this.tagText !== "");
+                    if (!this.tagText.match(TaskRegularExpressions.hashTags)) {
+                        this.valid = false;
+                        return new Notice(`${this.tagText} seems not a valid tag.`)
+                    }
                     this.close();
                 });
                 return btn;
