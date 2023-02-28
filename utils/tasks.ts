@@ -412,6 +412,17 @@ export namespace TaskMapable {
         return item;
     }
 
+    export function tagsParser(item: TaskDataModel) {
+        var match = TaskRegularExpressions.hashTags.exec(item.visual!);
+        while(match){
+            const tag = match[0];
+            item.visual = item.visual?.replace(tag, "");
+            item.tags.push(tag.trim());
+            match = TaskRegularExpressions.hashTags.exec(item.visual!);
+        }
+        return item;
+    }
+
     export function postProcessor(item: TaskDataModel) {
         //["overdue", "due", "scheduled", "start", "process", "unplanned","done","cancelled"]
 
