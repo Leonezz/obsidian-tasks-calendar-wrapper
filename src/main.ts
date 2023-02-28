@@ -2,20 +2,18 @@ import { Plugin } from 'obsidian';
 
 import { TasksTimelineView, TIMELINE_VIEW } from './views';
 
-import { TimelineSettings } from '../utils/options';
 import { TasksCalendarSettingTab, UserOption, defaultUserOptions } from './settings';
 // Remember to rename these classes and interfaces!
 
 
 export default class TasksCalendarWrapper extends Plugin {
-	settings: TimelineSettings;
 	userOptions: UserOption = {} as UserOption;
 	async onload() {
 		await this.loadOptions();
 
 		this.registerView(
 			TIMELINE_VIEW,
-			(leaf) => new TasksTimelineView(leaf, null)
+			(leaf) => new TasksTimelineView(leaf, this.userOptions)
 		);
 
 		// This adds a simple command that can be triggered anywhere

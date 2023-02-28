@@ -1,7 +1,7 @@
 import moment from "moment";
 import { TaskDataModel } from "./tasks";
 
-export interface Options {
+export interface __Options {
     inbox: string | undefined,
     select: string,
     taskOrder: Set<string>,
@@ -18,7 +18,7 @@ export interface Options {
     options: Set<string>,
 }
 
-export class TimelineSettings implements Options{
+export class TimelineSettings implements __Options{
     inbox: string | undefined = "Inbox.md";
     select: string = "Inbox.md";
     taskOrder: Set<string> = new Set(["overdue", "due", "scheduled", "start", "process", "unplanned", "done", "cancelled"]);
