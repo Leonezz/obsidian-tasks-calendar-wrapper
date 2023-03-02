@@ -96,34 +96,35 @@ export const defaultUserOptions = {
     useYearHeader: true as boolean,
 
     /**
-     * Enable the whole info panel or not.
+     * USE INFO BEGIN
      */
-    useInfo: {
-        /**
-        * Use relative dates to describe the task dates or not.
-        */
-        useRelative: true as boolean,
-        /**
-         * Display recurrence information of tasks or not.
-         */
-        useRecurrence: true as boolean,
-        /**
-         * Display priority information of tasks or not.
-         */
-        usePriority: true as boolean,
-        /**
-         * Display tags of tasks or not.
-         */
-        useTags: true as boolean,
-        /**
-         * Display which file the task is from or not.
-         */
-        useFileBadge: true as boolean,
-        /** 
-         * Display which section the task is from or not.
-         */
-        useSection: true as boolean,
-    },
+    /**
+    * Use relative dates to describe the task dates or not.
+    */
+    useRelative: true as boolean,
+    /**
+     * Display recurrence information of tasks or not.
+     */
+    useRecurrence: true as boolean,
+    /**
+     * Display priority information of tasks or not.
+     */
+    usePriority: true as boolean,
+    /**
+     * Display tags of tasks or not.
+     */
+    useTags: true as boolean,
+    /**
+     * Display which file the task is from or not.
+     */
+    useFileBadge: true as boolean,
+    /** 
+     * Display which section the task is from or not.
+     */
+    useSection: true as boolean,
+    /**
+     * USE INFO END
+     */
     /**
      * Display completed task or not.
      */
@@ -289,32 +290,29 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             .setName("Use Relative Date")
             .setDesc("Use relative date to describe the task dates or not.")
             .addToggle(async tg => {
-                tg.setValue(this.plugin.userOptions.useInfo.useRelative);
-                const useinfo = this.plugin.userOptions.useInfo;
-                tg.onChange(async v => await this.onOptionUpdate({ useInfo: { ...useinfo, useRelative: v } }));
+                tg.setValue(this.plugin.userOptions.useRelative);
+                tg.onChange(async v => await this.onOptionUpdate({ useRelative: v }));
             })
         new Setting(containerEl)
             .setName("Use Recurrence")
             .setDesc("Display the recurrence information of tasks or not.")
             .addToggle(async tg => {
-                tg.setValue(this.plugin.userOptions.useInfo.useRecurrence);
-                const useinfo = this.plugin.userOptions.useInfo;
-                tg.onChange(async v => await this.onOptionUpdate({ useInfo: { ...useinfo, useRecurrence: v } }));
+                tg.setValue(this.plugin.userOptions.useRecurrence);
+                tg.onChange(async v => await this.onOptionUpdate({ useRecurrence: v }));
             })
         new Setting(containerEl)
             .setName("Use Priority")
             .setDesc("Display the priority information of tasks or not.")
             .addToggle(async tg => {
-                tg.setValue(this.plugin.userOptions.useInfo.usePriority);
-                const useinfo = this.plugin.userOptions.useInfo;
-                tg.onChange(async v => await this.onOptionUpdate({ useInfo: { ...useinfo, usePriority: v } }));
+                tg.setValue(this.plugin.userOptions.usePriority);
+                tg.onChange(async v => await this.onOptionUpdate({ usePriority: v }));
             })
 
         const tagSettings = new Setting(containerEl);
         tagSettings.controlEl.empty();
         tagSettings.controlEl.appendChild(createEl('div'));
         var tagBadgeSetting = new Setting(tagSettings.controlEl.firstChild as HTMLElement);
-        if (this.plugin.userOptions.useInfo.useTags) {
+        if (this.plugin.userOptions.useTags) {
             Object.entries(this.plugin.userOptions.tagColorPalette).forEach(([tag, color], index) => {
                 if (index !== 0 && !(index & 0x01))
                     tagBadgeSetting = new Setting(tagSettings.controlEl.firstChild as HTMLElement);
@@ -367,10 +365,9 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             .setName("Use Tags")
             .setDesc("Display the tags of tasks or not.")
             .addToggle(tg => {
-                tg.setValue(this.plugin.userOptions.useInfo.useTags);
-                const useinfo = this.plugin.userOptions.useInfo;
+                tg.setValue(this.plugin.userOptions.useTags);
                 tg.onChange(async v => {
-                    await this.onOptionUpdate({ useInfo: { ...useinfo, useTags: v } }, true)
+                    await this.onOptionUpdate({ useTags: v }, true)
                 });
             })
 
@@ -398,17 +395,15 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             .setName("Use Filename")
             .setDesc("Display which file the task is from or not.")
             .addToggle(async tg => {
-                tg.setValue(this.plugin.userOptions.useInfo.useFileBadge);
-                const useinfo = this.plugin.userOptions.useInfo;
-                tg.onChange(async v => this.onOptionUpdate({ useInfo: { ...useinfo, useFileBadge: v } }));
+                tg.setValue(this.plugin.userOptions.useFileBadge);
+                tg.onChange(async v => this.onOptionUpdate({ useFileBadge: v }));
             })
         new Setting(containerEl)
             .setName("Use Section")
             .setDesc("Display which section the task is from or not.")
             .addToggle(async tg => {
-                tg.setValue(this.plugin.userOptions.useInfo.useSection);
-                const useinfo = this.plugin.userOptions.useInfo;
-                tg.onChange(async v => await this.onOptionUpdate({ useInfo: { ...useinfo, useSection: v } }));
+                tg.setValue(this.plugin.userOptions.useSection);
+                tg.onChange(async v => await this.onOptionUpdate({ useSection: v }));
             })
 
         containerEl.createEl("h2", { text: "Other Settings" })
