@@ -1,11 +1,10 @@
-import { ItemView, Notice, WorkspaceLeaf } from "obsidian";
+import { Model } from "backbone";
+import { ItemView, moment, Notice, WorkspaceLeaf } from "obsidian";
 import { ObsidianBridge } from 'Obsidian-Tasks-Timeline/src/obsidianbridge';
 import { ObsidianTaskAdapter } from "Obsidian-Tasks-Timeline/src/taskadapter";
 import { createRoot, Root } from 'react-dom/client';
+import { TaskDataModel, TaskMapable, TaskStatus } from "utils/tasks";
 import { defaultUserOptions, UserOption } from "./settings";
-import { TaskDataModel, TaskMapable, TaskRegularExpressions, TaskStatus } from "utils/tasks";
-import { Model } from "backbone";
-import { moment } from "obsidian";
 
 
 export const CALENDAR_VIEW = "tasks_calendar_view";

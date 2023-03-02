@@ -13,6 +13,7 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@svgr/webpack": "^6.5.1",
+		"@types/backbone": "^1.4.15",
 		"@types/luxon": "^3.2.0",
 		"@types/node": "^16.11.6",
 		"@types/parsimmon": "^1.10.6",
@@ -29,6 +30,7 @@
 		"typescript": "4.7.4"
 	},
 	"dependencies": {
+		"backbone": "^1.4.1",
 		"eslint": "^8.34.0",
 		"react": "^18.2.0",
 		"react-dom": "^18.2.0"

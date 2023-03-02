@@ -1,7 +1,7 @@
 import type { Moment } from 'moment';
-import { Link, STask } from '../dataview-util/markdown';
-import { getFileTitle } from '../dataview-util/dataview';
 import moment from 'moment';
+import { getFileTitle } from '../dataview-util/dataview';
+import { Link, STask } from '../dataview-util/markdown';
 import { momentToRegex } from './utils';
 
 /**

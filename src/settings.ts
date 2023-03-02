@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, SettingTab } from "obsidian";
+import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { TaskDataModel, TaskRegularExpressions } from "utils/tasks";
 import TasksCalendarWrapper from "./main";
 

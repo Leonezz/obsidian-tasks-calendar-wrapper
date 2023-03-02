@@ -1,7 +1,6 @@
-import { TaskRegularExpressions } from "./tasks";
 import { DateTime } from "luxon";
 import moment from "moment";
-import { innerDateFormat } from "./tasks";
+import { innerDateFormat, TaskRegularExpressions } from "./tasks";
 
 export function momentToDateTime(m: moment.Moment) {
     return DateTime.fromFormat(m.format(innerDateFormat), innerDateFormat);

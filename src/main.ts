@@ -2,7 +2,7 @@ import { Plugin } from 'obsidian';
 
 import { TasksTimelineView, TIMELINE_VIEW } from './views';
 
-import { TasksCalendarSettingTab, UserOption, defaultUserOptions } from './settings';
+import { defaultUserOptions, TasksCalendarSettingTab, UserOption } from './settings';
 // Remember to rename these classes and interfaces!
 
 
