@@ -4,21 +4,36 @@ import TasksCalendarWrapper from "./main";
 
 export const defaultUserOptions = {
     /**
+     * TODO
      * filter specific files and tasks only from these files are rendered */
     fileFilter: "" as string,
     /**
-     * Use tags filters to filter tasks or not.
+     * Use tags filters to filter tasks without specific tags out or not.
      */
-    useTagFilter: false as boolean,
+    useIncludeTags: false as boolean,
     /**
      * Filter tasks with specific tags, only tasks with one or more of these tags are displayed.
      */
-    taskTagFilters: [] as string[],
+    taskIncludeTags: [] as string[],
     /**
      * Filter tasks in specific files which contains one or more of these tags to be displayed.
      */
-    fileTagFilters: [] as string[],
-
+    fileIncludeTags: [] as string[],
+    /**
+     * TODO
+     * Use tags filters to filters tasks with specific tags out or not.
+     */
+    useExcludeTags: false as boolean,
+    /**
+     * TODO
+     * Filter tasks without specific tags, only tasks **without any** if these tags are displayed.
+     */
+    taskExcludeTags: [] as string[],
+    /**
+     * TODO
+     * Filter tasks in specific files which **does not** contains any of these tags to be displayed.
+     */
+    fileExcludeTags: [] as string[],
     /**
      * optional options to customize the look */
     styles: ['style1'] as string[],
@@ -43,6 +58,11 @@ export const defaultUserOptions = {
      * Specify how do you like the task item to be sorted, it must be a valid lambda
      */
     sort: "(t: TaskDataModel) => t.order",
+    /**
+     * Specify task status order
+     * TODO
+     */
+    taskStatusOrder: ["overdue", "due", "scheduled", "start", "process", "unplanned", "done", "cancelled"],
     /**
      * Specify in what format do you like the dates to be displayed.
      */
@@ -427,47 +447,47 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             })
 
         new Setting(containerEl)
-            .setName("Use Tag Filters")
-            .setDesc("Use tags filters to filter tasks or not.")
+            .setName("Use Include Tags")
+            .setDesc("Use tags filters to filter tasks without specific tags out or not.")
             .addToggle(tg => {
                 tg
-                    .setValue(this.plugin.userOptions.useTagFilter)
-                    .onChange(async v => await this.onOptionUpdate({ useTagFilter: v }, true));
+                    .setValue(this.plugin.userOptions.useIncludeTags)
+                    .onChange(async v => await this.onOptionUpdate({ useIncludeTags: v }, true));
             });
 
-        if (this.plugin.userOptions.useTagFilter) {
-            this.tagsSettingItem(containerEl, "Task Tag Filters",
+        if (this.plugin.userOptions.useIncludeTags) {
+            this.tagsSettingItem(containerEl, "Task Include Filters",
                 "Filter tasks with specific tags, only tasks with one or more of these tags are displayed.",
-                this.plugin.userOptions.taskTagFilters,
+                this.plugin.userOptions.taskIncludeTags,
                 (t: string) => {
                     return async () => {
-                        this.plugin.userOptions.taskTagFilters.remove(t);
+                        this.plugin.userOptions.taskIncludeTags.remove(t);
                         await this.onOptionUpdate({}, true);
                     }
                 },
                 async (t: string) => {
-                    if (this.plugin.userOptions.taskTagFilters.contains(t)) {
+                    if (this.plugin.userOptions.taskIncludeTags.contains(t)) {
                         new Notice(`Tag ${t} already exists.`, 5000);
                     } else {
-                        this.plugin.userOptions.taskTagFilters.push(t);
+                        this.plugin.userOptions.taskIncludeTags.push(t);
                         await this.onOptionUpdate({}, true);
                     }
                 });
 
-            this.tagsSettingItem(containerEl, "File Tag Filters",
+            this.tagsSettingItem(containerEl, "File Include Tags",
                 "Filter tasks in specific files which contains one or more of these tags to be displayed.",
-                this.plugin.userOptions.fileTagFilters,
+                this.plugin.userOptions.fileIncludeTags,
                 (t: string) => {
                     return async () => {
-                        this.plugin.userOptions.fileTagFilters.remove(t);
+                        this.plugin.userOptions.fileIncludeTags.remove(t);
                         await this.onOptionUpdate({}, true);
                     }
                 },
                 async (t: string) => {
-                    if (this.plugin.userOptions.fileTagFilters.contains(t)) {
+                    if (this.plugin.userOptions.fileIncludeTags.contains(t)) {
                         new Notice(`Tag ${t} already exists.`, 5000);
                     } else {
-                        this.plugin.userOptions.fileTagFilters.push(t);
+                        this.plugin.userOptions.fileIncludeTags.push(t);
                         await this.onOptionUpdate({}, true);
                     }
                 })
