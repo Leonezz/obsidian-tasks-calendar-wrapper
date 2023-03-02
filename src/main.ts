@@ -8,12 +8,18 @@ import { TasksCalendarSettingTab, UserOption, defaultUserOptions } from './setti
 
 export default class TasksCalendarWrapper extends Plugin {
 	userOptions: UserOption = {} as UserOption;
+	private timelineView: TasksTimelineView;
 	async onload() {
+
 		await this.loadOptions();
 
 		this.registerView(
 			TIMELINE_VIEW,
-			(leaf) => new TasksTimelineView(leaf, this.userOptions)
+			(leaf) => {
+				this.timelineView = new TasksTimelineView(leaf);
+				this.timelineView.onUpdateOptions({ ...this.userOptions });
+				return this.timelineView;
+			}
 		);
 
 		// This adds a simple command that can be triggered anywhere
@@ -29,7 +35,7 @@ export default class TasksCalendarWrapper extends Plugin {
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new TasksCalendarSettingTab(this.app, this));
 
-		this.activateView(TIMELINE_VIEW)
+		this.activateView(TIMELINE_VIEW);
 	}
 
 	onunload() {
@@ -37,7 +43,8 @@ export default class TasksCalendarWrapper extends Plugin {
 	}
 
 	private updateOptions(updatedOpts: Partial<UserOption>) {
-		Object.assign(this.userOptions, updatedOpts);
+		Object.assign(this.userOptions, { ...updatedOpts });
+		if (this.timelineView) this.timelineView.onUpdateOptions({ ...updatedOpts });
 	}
 
 	async loadOptions(): Promise<void> {
