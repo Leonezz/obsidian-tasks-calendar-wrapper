@@ -326,13 +326,14 @@ export namespace TaskMapable {
     }
 
     export function dataviewTaskParser(item: TaskDataModel) {
-        var inlineFields = TaskRegularExpressions.keyValueRegex.exec(item.text);
+        var itemText = item.visual || item.text;
+        var inlineFields = TaskRegularExpressions.keyValueRegex.exec(itemText);
         while (!!inlineFields) {
             const inlineField: string = inlineFields[0];
             const fieldKey = inlineFields[1].toLowerCase();
             const fieldValue: string = inlineFields[2];
-            item.text = item.text.replace(inlineField, "");
-            inlineFields = TaskRegularExpressions.keyValueRegex.exec(item.text);
+            itemText = itemText.replace(inlineField, "");
+            inlineFields = TaskRegularExpressions.keyValueRegex.exec(itemText);
 
             if (!(TaskStatusCollection.includes(fieldKey))) continue;
             const fieldDateMoment: moment.Moment = moment(fieldValue);
@@ -355,6 +356,7 @@ export namespace TaskMapable {
                     item.dates.set(fieldKey, fieldDateMoment);
             }
         }
+        item.visual = itemText;
         return item;
     }
 
