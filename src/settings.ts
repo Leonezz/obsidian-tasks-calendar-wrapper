@@ -335,6 +335,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                                 const modal = new TagColorPaletteModal(this.plugin, tag, color as string);
                                 modal.onClose = async () => {
                                     if (!modal.valid) return;
+                                    delete this.plugin.userOptions.tagColorPalette[tag];
                                     this.plugin.userOptions.tagColorPalette[modal.tagText] = modal.color;
 
                                     await this.onOptionUpdate({}, true);
