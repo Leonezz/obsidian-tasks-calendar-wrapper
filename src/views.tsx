@@ -72,8 +72,8 @@ export class TasksTimelineView extends BaseTasksView {
                 this.taskListModel.set({ taskList: tasks });
                 this.userOptionModel.set({ taskFiles: taskfiles || [] });
                 console.log("update tasks")
-            }).catch(reason => new Notice("Error when parsing task items: " + reason, 5000));
-        }).catch(reason => new Notice("Error when generating tasks from files: " + reason, 5000));
+            }).catch(reason => {new Notice("Error when parsing task items: " + reason, 5000); throw reason;});
+        }).catch(reason => {new Notice("Error when generating tasks from files: " + reason, 5000); throw reason;});
     }
 
     async parseTasks(taskList: TaskDataModel[]) {
@@ -82,7 +82,7 @@ export class TasksTimelineView extends BaseTasksView {
 
         const dailyNoteFormatParser = TaskMapable.dailyNoteTaskParser(
             this.userOptionModel.get("dailyNoteFormat"));
-        
+
         const forward = this.userOptionModel.get("forward");
         /**
          * initial parsers
@@ -151,6 +151,8 @@ export class TasksTimelineView extends BaseTasksView {
             });
 
         taskList = taskList.sort(t => t.order);
+        if (this.userOptionModel.get("sort"))
+            taskList = taskList.sort(eval(this.userOptionModel.get("sort")!) as (t1: TaskDataModel, t2: TaskDataModel) => number);
         return taskList;
     }
 
