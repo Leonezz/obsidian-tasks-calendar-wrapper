@@ -364,7 +364,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         tagSettings
             .setName("Use Tags")
-            .setDesc("Display the tags of tasks or not.")
+            .setDesc("Display the tags of tasks or not. Color palette can be defined for tags!")
             .addToggle(tg => {
                 tg.setValue(this.plugin.userOptions.useTags);
                 tg.onChange(async v => {
@@ -485,6 +485,54 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                         new Notice(`Tag ${t} already exists.`, 5000);
                     } else {
                         this.plugin.userOptions.fileIncludeTags.push(t);
+                        await this.onOptionUpdate({}, true);
+                    }
+                })
+        }
+
+
+        new Setting(containerEl)
+            .setName("Use Exclude Tags")
+            .setDesc("Use tags filters to filters tasks with specific tags out or not.")
+            .addToggle(tg => {
+                tg
+                    .setValue(this.plugin.userOptions.useExcludeTags)
+                    .onChange(async v => await this.onOptionUpdate({ useExcludeTags: v }, true));
+            });
+
+        if (this.plugin.userOptions.useExcludeTags) {
+            this.tagsSettingItem(containerEl, "Task Exclude Filters",
+                "Filter tasks without specific tags, only tasks **without any** if these tags are displayed.",
+                this.plugin.userOptions.taskExcludeTags,
+                (t: string) => {
+                    return async () => {
+                        this.plugin.userOptions.taskExcludeTags.remove(t);
+                        await this.onOptionUpdate({}, true);
+                    }
+                },
+                async (t: string) => {
+                    if (this.plugin.userOptions.taskExcludeTags.contains(t)) {
+                        new Notice(`Tag ${t} already exists.`, 5000);
+                    } else {
+                        this.plugin.userOptions.taskExcludeTags.push(t);
+                        await this.onOptionUpdate({}, true);
+                    }
+                });
+
+            this.tagsSettingItem(containerEl, "File Exclude Tags",
+                "Filter tasks in specific files which **does not** contains any of these tags to be displayed.",
+                this.plugin.userOptions.fileExcludeTags,
+                (t: string) => {
+                    return async () => {
+                        this.plugin.userOptions.fileExcludeTags.remove(t);
+                        await this.onOptionUpdate({}, true);
+                    }
+                },
+                async (t: string) => {
+                    if (this.plugin.userOptions.fileExcludeTags.contains(t)) {
+                        new Notice(`Tag ${t} already exists.`, 5000);
+                    } else {
+                        this.plugin.userOptions.fileExcludeTags.push(t);
                         await this.onOptionUpdate({}, true);
                     }
                 })
