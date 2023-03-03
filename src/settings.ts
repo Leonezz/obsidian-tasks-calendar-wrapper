@@ -57,7 +57,7 @@ export const defaultUserOptions = {
     /**
      * Specify how do you like the task item to be sorted, it must be a valid lambda
      */
-    sort: "(t: TaskDataModel) => t.order",
+    sort: "(t: TaskDataModel) => t.order" as string,
     /**
      * Specify task status order
      * TODO
@@ -374,7 +374,8 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         this.tagsSettingItem(containerEl, "Hide Tags",
             "Specify which tags are not necessary to display with a tag badge,\
-            note that all tag texts are remove from the displayed item text by default.",
+            note that all tag texts are remove from the displayed item text by default.\
+            Also note that the tags are just hided, not removed from the item.",
             this.plugin.userOptions.hideTags,
             (t: string) => {
                 return async () => {
