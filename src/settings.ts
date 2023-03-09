@@ -602,12 +602,10 @@ class TagColorPaletteModal extends Modal {
             .addText(t => {
                 t.setValue(this.tagText);
                 t.onChange(v => this.tagText = v);
-                return t;
             })
             .addColorPicker(cp => {
                 cp.setValue(this.color);
                 cp.onChange(v => this.color = v);
-                return cp;
             })
         const footer = contentEl.createDiv();
         new Setting(footer)
@@ -673,9 +671,10 @@ class TagModal extends Modal {
                 btn.onClick(() => {
                     if (!this.tagText.match(TaskRegularExpressions.hashTags)) {
                         this.valid = false;
-                        return new Notice(`${this.tagText} seems not a valid tag.`)
+                        new Notice(`${this.tagText} seems not a valid tag.`)
+                    } else {
+                        this.valid = true;
                     }
-                    this.valid = true;
                     this.close();
                 });
                 return btn;
