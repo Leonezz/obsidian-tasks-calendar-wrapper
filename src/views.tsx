@@ -51,7 +51,7 @@ export class TasksTimelineView extends BaseTasksView {
     }
 
     async onClose(): Promise<void> {
-        this.app.metadataCache.off('resolved', this.onReloadTasks);
+        // this.app.metadataCache.off('resolved', this.onReloadTasks);
     }
 
     onUpdateOptions(opt: Partial<UserOption>) {
