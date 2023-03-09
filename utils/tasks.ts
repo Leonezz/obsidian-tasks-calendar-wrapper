@@ -1,5 +1,4 @@
-import type { Moment } from 'moment';
-import moment from 'moment';
+import { moment } from 'obsidian';
 import { getFileTitle } from '../dataview-util/dataview';
 import { Link, STask } from '../dataview-util/markdown';
 import { momentToRegex } from './utils';
@@ -166,20 +165,20 @@ export interface TaskDataModel extends STask {
     fontMatter: Record<string, string>,
     //
     isTasksTask: boolean,
-    dates: Map<string, Moment>;
+    dates: Map<string, moment.Moment>;
 };
 
 export namespace TaskMapable {
 
-    export function filterDate(date: Moment) {
+    export function filterDate(date: moment.Moment) {
         return filterByDateTime(date, "date");
     }
 
-    export function filterYear(date: Moment) {
+    export function filterYear(date: moment.Moment) {
         return filterByDateTime(date, "year");
     }
 
-    function filterByDateTime(date: Moment, by: moment.unitOfTime.StartOf) {
+    function filterByDateTime(date: moment.Moment, by: moment.unitOfTime.StartOf) {
         return (item: TaskDataModel) => {
             if (item.due && date.isSame(item.due, by)) return true;
             if (item.scheduled && date.isSame(item.scheduled, by)) return true;
@@ -211,11 +210,11 @@ export namespace TaskMapable {
         // strings are in the expected order after the description.
         let matched: boolean;
         let priority: Priority = Priority.None;
-        let startDate: Moment | undefined = undefined;
-        let scheduledDate: Moment | undefined = undefined;
+        let startDate: moment.Moment | undefined = undefined;
+        let scheduledDate: moment.Moment | undefined = undefined;
         let scheduledDateIsInferred = false;
-        let dueDate: Moment | undefined = undefined;
-        let doneDate: Moment | undefined = undefined;
+        let dueDate: moment.Moment | undefined = undefined;
+        let doneDate: moment.Moment | undefined = undefined;
         let recurrenceRule: string = '';
         let recurrence: string | null = null;
         // Tags that are removed from the end while parsing, but we want to add them back for being part of the description.

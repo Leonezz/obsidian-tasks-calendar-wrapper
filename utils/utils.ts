@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import moment from "moment";
+import { moment } from "obsidian";
 import { innerDateFormat, TaskRegularExpressions } from "./tasks";
 
 export function momentToDateTime(m: moment.Moment) {
