@@ -1,5 +1,5 @@
-import * as P from "parsimmon";
 import emojiRegex from "emoji-regex";
+import * as P from "parsimmon";
 
 /** Get the "title" for a file, by stripping other parts of the path as well as the extension. */
 export function getFileTitle(path: string): string {

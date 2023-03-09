@@ -1,6 +1,6 @@
-import { normalizeHeaderForLink, getFileTitle } from './dataview'
-import { HeadingCache, LinkCache, ListItemCache, Pos, SectionCache } from 'obsidian'
 import { DateTime, Duration } from "luxon";
+import { LinkCache, Pos, SectionCache } from 'obsidian';
+import { getFileTitle, normalizeHeaderForLink } from './dataview';
 //////////
 // LINK //
 //////////
