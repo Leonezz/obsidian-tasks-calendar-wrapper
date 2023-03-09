@@ -39,7 +39,7 @@ export default class TasksCalendarWrapper extends Plugin {
 	}
 
 	onunload() {
-		this.app.workspace.detachLeavesOfType(TIMELINE_VIEW);
+		// this.app.workspace.detachLeavesOfType(TIMELINE_VIEW);
 	}
 
 	private updateOptions(updatedOpts: Partial<UserOption>) {
