@@ -434,6 +434,10 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                 ta.setPlaceholder("e.g.: (t1) => t1.order or (t1, t2) => t1.order - t2.order");
                 ta.setValue(this.plugin.userOptions.sort);
                 ta.onChange(async v => {
+                    if(v.length === 0) {
+                        await this.onOptionUpdate({ sort: v });
+                        return;
+                    }
                     const callable = eval(v);
                     if (typeof (callable) === typeof ((t1: TaskDataModel, t2: TaskDataModel) => 1)) {
                         await this.onOptionUpdate({ sort: v });
