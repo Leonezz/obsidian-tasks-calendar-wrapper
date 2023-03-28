@@ -8,7 +8,6 @@ import { defaultUserOptions, TasksCalendarSettingTab, UserOption } from './setti
 
 export default class TasksCalendarWrapper extends Plugin {
 	userOptions: UserOption = {} as UserOption;
-	private timelineView: TasksTimelineView;
 	async onload() {
 
 		await this.loadOptions();
@@ -16,9 +15,9 @@ export default class TasksCalendarWrapper extends Plugin {
 		this.registerView(
 			TIMELINE_VIEW,
 			(leaf) => {
-				this.timelineView = new TasksTimelineView(leaf);
-				this.timelineView.onUpdateOptions({ ...this.userOptions });
-				return this.timelineView;
+				const view = new TasksTimelineView(leaf);
+				view.onUpdateOptions({ ...this.userOptions });
+				return view;
 			}
 		);
 
@@ -44,7 +43,10 @@ export default class TasksCalendarWrapper extends Plugin {
 
 	private updateOptions(updatedOpts: Partial<UserOption>) {
 		Object.assign(this.userOptions, { ...updatedOpts });
-		if (this.timelineView) this.timelineView.onUpdateOptions({ ...updatedOpts });
+		for (let leaf of app.workspace.getLeavesOfType(TIMELINE_VIEW)) {
+			const view = leaf.view;
+			if (view instanceof TasksTimelineView) view.onUpdateOptions({ ...updatedOpts });
+		}
 	}
 
 	async loadOptions(): Promise<void> {
