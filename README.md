@@ -9,6 +9,10 @@ about the options, see [Obsidian-Tasks-Calendar](https://github.com/702573N/Obsi
 
 goto command panel and find "Tasks Calendar Wrapper: Open Tasks Timeline View", select the command and the view will show up.
 
+## Installation
+
+This plugin is available on the community market.
+
 ## News
 
 I am currently re-implementing both the calendar and timeline views with typescript and react, so that they can be integrated in the plugin in a real way!
