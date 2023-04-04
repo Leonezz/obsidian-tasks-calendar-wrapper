@@ -1,5 +1,7 @@
 # Tasks Calendar Wrapper
 
+![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22<PLUGIN_ID>%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json[\"tasks-calendar-wrapper\"])
+
 This is a simple wrapper for Obsidian-Tasks-Calendar (https://github.com/702573N/Obsidian-Tasks-Calendar) and Obsidian-Tasks-Timeline (https://github.com/702573N/Obsidian-Tasks-Timeline).
 
 This plugin provides setting pages and update support for [702573N](https://github.com/702573N)'s great work, for detailed information

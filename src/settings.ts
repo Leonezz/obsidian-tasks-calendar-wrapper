@@ -57,7 +57,7 @@ export const defaultUserOptions = {
     /**
      * Specify how do you like the task item to be sorted, it must be a valid lambda
      */
-    sort: "(t: TaskDataModel) => t.order" as string,
+    sort: "(t) => t.order" as string,
     /**
      * Specify task status order
      * TODO
