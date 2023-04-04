@@ -156,7 +156,7 @@ export class TasksTimelineView extends BaseTasksView {
                 const sort = eval(this.userOptionModel.get("sort")!);
                 taskList = taskList.sort(sort as (t1: TaskDataModel, t2: TaskDataModel) => number);
             } catch {
-                return new Notice("The sorting lambda is not applicable.");
+                new Notice("The sorting lambda is not applicable.");
             }
         }
 
