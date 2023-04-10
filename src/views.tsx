@@ -61,7 +61,10 @@ export class TasksTimelineView extends BaseTasksView {
     }
 
     onReloadTasks() {
-        this.dataAdapter.generateTasksList().then(() => {
+        const pathFilter = this.userOptionModel.get("excludePaths") || [];
+        const fileIncludeTagsFilter = this.userOptionModel.get("fileIncludeTags") || [];
+        const fileExcludeTagsFilter = this.userOptionModel.get("fileExcludeTags") || [];
+        this.dataAdapter.generateTasksList(pathFilter, fileIncludeTagsFilter, fileExcludeTagsFilter).then(() => {
             const taskList = this.dataAdapter.getTaskList();
             this.parseTasks(taskList).then(tasks => {
                 const taskfiles = this.userOptionModel.get("taskFiles");
@@ -107,24 +110,8 @@ export class TasksTimelineView extends BaseTasksView {
                 return false;
             })
             .filter((task) => {
-                if (!this.userOptionModel.get("useIncludeTags")) return true;
-                const tagIncludes = this.userOptionModel.get("fileIncludeTags");
-                if (!tagIncludes) return true;
-                if (tagIncludes.length === 0) return true;
-                if (tagIncludes.some(tag => task.tags.includes(tag))) return true;
-                return false;
-            })
-            .filter((task) => {
                 if (!this.userOptionModel.get("useExcludeTags")) return true;
                 const tagExcludes = this.userOptionModel.get("taskExcludeTags");
-                if (!tagExcludes) return true;
-                if (tagExcludes.length === 0) return true;
-                if (tagExcludes.every(tag => !task.tags.includes(tag))) return true;
-                return false;
-            })
-            .filter((task) => {
-                if (!this.userOptionModel.get("useExcludeTags")) return true;
-                const tagExcludes = this.userOptionModel.get("fileExcludeTags");
                 if (!tagExcludes) return true;
                 if (tagExcludes.length === 0) return true;
                 if (tagExcludes.every(tag => !task.tags.includes(tag))) return true;

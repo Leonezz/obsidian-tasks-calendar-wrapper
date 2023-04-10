@@ -4,7 +4,10 @@ import TasksCalendarWrapper from "./main";
 
 export const defaultUserOptions = {
     /**
-     * TODO
+     * Exclude tasks match specific paths (folders, files)
+     */
+    excludePaths: [] as string[],
+    /**
      * filter specific files and tasks only from these files are rendered */
     fileFilter: "" as string,
     /**
@@ -20,17 +23,14 @@ export const defaultUserOptions = {
      */
     fileIncludeTags: [] as string[],
     /**
-     * TODO
      * Use tags filters to filters tasks with specific tags out or not.
      */
     useExcludeTags: false as boolean,
     /**
-     * TODO
      * Filter tasks without specific tags, only tasks **without any** if these tags are displayed.
      */
     taskExcludeTags: [] as string[],
     /**
-     * TODO
      * Filter tasks in specific files which **does not** contains any of these tags to be displayed.
      */
     fileExcludeTags: [] as string[],
@@ -541,6 +541,19 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                     }
                 })
         }
+
+        new Setting(containerEl)
+            .setName("Exclude Paths")
+            .setDesc("Exclude tasks match specific paths (folders, files).")
+            .addTextArea(ta => {
+                ta.setPlaceholder("comma separated file paths, e.g.: path1,path2");
+                ta.setValue(this.plugin.userOptions.excludePaths.join(","));
+                ta.onChange(async v => {
+                    const values = v.split(',');
+                    const valuesTrimed = values.map(p => p.trim());
+                    await this.onOptionUpdate({ excludePaths: valuesTrimed });
+                })
+            })
     }
 
     private tagsSettingItem = (
