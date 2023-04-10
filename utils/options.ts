@@ -34,7 +34,7 @@ export class TimelineSettings implements __Options{
     section: string = "## Inbox";
     options: Set<string> = new Set();
     constructor(){
-        this.postProcessor();
+        //this.postProcessor();
     }
     postProcessor() {
         if(this.inbox && this.inbox !== '')this.taskFiles.add(this.inbox);

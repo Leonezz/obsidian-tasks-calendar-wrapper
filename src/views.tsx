@@ -65,10 +65,10 @@ export class TasksTimelineView extends BaseTasksView {
             const taskList = this.dataAdapter.getTaskList();
             this.parseTasks(taskList).then(tasks => {
                 const taskfiles = this.userOptionModel.get("taskFiles");
-                tasks.forEach(t => {
+                /*tasks.forEach(t => {
                     if (taskfiles?.contains(t.path)) return;
                     taskfiles?.push(t.path);
-                })
+                })*/
                 this.taskListModel.set({ taskList: tasks });
                 this.userOptionModel.set({ taskFiles: taskfiles || [] });
                 console.log("update tasks")
