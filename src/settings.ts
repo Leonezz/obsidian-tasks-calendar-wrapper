@@ -386,7 +386,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             },
             async (t: string) => {
                 if (this.plugin.userOptions.hideTags.includes(t)) {
-                    new Notice(`Tag ${t} already exists.`);
+                    new Notice(`Tag ${t} already exists.`, 5000);
                 } else {
                     this.plugin.userOptions.hideTags.push(t);
                     await this.onOptionUpdate({}, true);
@@ -688,7 +688,7 @@ class TagModal extends Modal {
                 btn.onClick(() => {
                     if (!this.tagText.match(TaskRegularExpressions.hashTags)) {
                         this.valid = false;
-                        new Notice(`${this.tagText} seems not a valid tag.`)
+                        new Notice(`${this.tagText} seems not a valid tag.`, 5000)
                     } else {
                         this.valid = true;
                     }
