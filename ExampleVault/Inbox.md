@@ -17,7 +17,7 @@ cover-image:
 
 - [x] #task 1
 - [x] #task 2
-	- [x] #task 2.1
+	- [x] #task 2.1 
 	- [x] #task 2.2
 	- [x] #task 2.3
 		- [x] #task 2.3.1
