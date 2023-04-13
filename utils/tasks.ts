@@ -187,7 +187,7 @@ export namespace TaskMapable {
             if (item.start && date.isSame(item.start, by)) return true;
             let dates = false;
             item.dates.forEach(d => {
-                if(date.isSame(d, by)){
+                if (date.isSame(d, by)) {
                     dates = true;
                     return true;
                 }
@@ -414,12 +414,12 @@ export namespace TaskMapable {
     }
 
     export function tagsParser(item: TaskDataModel) {
-        var match = TaskRegularExpressions.hashTags.exec(item.visual!);
-        while(match){
-            const tag = match[0];
-            item.visual = item.visual?.replace(tag, "");
-            item.tags.push(tag.trim());
-            match = TaskRegularExpressions.hashTags.exec(item.visual!);
+        var match = item.visual?.match(TaskRegularExpressions.hashTags);
+        if (!match) return item;
+        for (let m of match) {
+            item.visual = item.visual?.replace(m, "");
+            const tag = m.trim();
+            item.tags.push(tag);
         }
         return item;
     }
