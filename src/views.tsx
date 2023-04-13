@@ -128,6 +128,13 @@ export class TasksTimelineView extends BaseTasksView {
                 return t;
             })
             /**
+             * Filter empty
+             */
+            .filter((t: TaskDataModel) => {
+                if (!this.userOptionModel.get("filterEmpty")) return true;
+                return t.visual && t.visual.trim() !== "";
+            })
+            /**
              * Post processer
              */
             .map((t: TaskDataModel) => {

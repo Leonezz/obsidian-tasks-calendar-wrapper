@@ -204,7 +204,7 @@ export namespace TaskMapable {
      */
     export function tasksPluginTaskParser(item: TaskDataModel) {
         // Check the line to see if it is a markdown task.
-        var description = item.visual || item.text;
+        var description = item.visual || "";
         // Keep matching and removing special strings from the end of the
         // description in any order. The loop should only run once if the
         // strings are in the expected order after the description.
@@ -325,7 +325,7 @@ export namespace TaskMapable {
     }
 
     export function dataviewTaskParser(item: TaskDataModel) {
-        var itemText = item.visual || item.text;
+        var itemText = item.visual || "";
         var inlineFields = TaskRegularExpressions.keyValueRegex.exec(itemText);
         while (!!inlineFields) {
             const inlineField: string = inlineFields[0];

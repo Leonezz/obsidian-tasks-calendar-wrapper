@@ -4,6 +4,10 @@ import TasksCalendarWrapper from "./main";
 
 export const defaultUserOptions = {
     /**
+     * filter empty items out or not, if not, the raw text of empty items will be displayed
+     */
+    filterEmpty: true as boolean,
+    /**
      * Exclude tasks match specific paths (folders, files)
      */
     excludePaths: [] as string[],
@@ -434,7 +438,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                 ta.setPlaceholder("e.g.: (t1) => t1.order or (t1, t2) => t1.order - t2.order");
                 ta.setValue(this.plugin.userOptions.sort);
                 ta.onChange(async v => {
-                    if(v.length === 0) {
+                    if (v.length === 0) {
                         await this.onOptionUpdate({ sort: v });
                         return;
                     }
@@ -552,6 +556,16 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                     const values = v.split(',');
                     const valuesTrimed = values.map(p => p.trim());
                     await this.onOptionUpdate({ excludePaths: valuesTrimed });
+                })
+            })
+
+        new Setting(containerEl)
+            .setName("Filter Empty")
+            .setDesc("Filter empty items out or not. If not, the raw text will be displayed.")
+            .addToggle(to => {
+                to.setValue(this.plugin.userOptions.filterEmpty);
+                to.onChange(async v => {
+                    await this.onOptionUpdate({ filterEmpty: v });
                 })
             })
     }
