@@ -1,7 +1,6 @@
 
 
 ---
-cssclass: research-project
 file-class: _research-project_file-class
 class: research-project
 source-type: master-thesis
@@ -15,7 +14,7 @@ cover-image:
 
 # Tasks
 
-- [x] #task 1
+- [x] #task #TODO 1 #e #task
 - [x] #task 2
 	- [x] #task 2.1 
 	- [x] #task 2.2
