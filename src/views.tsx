@@ -144,11 +144,10 @@ export class TasksTimelineView extends BaseTasksView {
                 return t;
             });
 
-        taskList = taskList.sort(t => t.order);
         if (this.userOptionModel.get("sort")) {
             try {
                 const sort = eval(this.userOptionModel.get("sort")!);
-                taskList = taskList.sort(sort as (t1: TaskDataModel, t2: TaskDataModel) => number);
+                taskList.sort(sort);
             } catch {
                 new Notice("The sorting lambda is not applicable.", 5000);
             }
