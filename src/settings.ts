@@ -550,7 +550,8 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             .setName("Exclude Paths")
             .setDesc("Exclude tasks match specific paths (folders, files).")
             .addTextArea(ta => {
-                ta.setPlaceholder("comma separated file paths, e.g.: path1,path2");
+                ta.setPlaceholder("comma separated file paths, e.g.: path1,path2.\n\
+                **NOTE** that for non-root paths, no prefix \'/\' is needed.");
                 ta.setValue(this.plugin.userOptions.excludePaths.join(","));
                 ta.onChange(async v => {
                     const values = v.split(',');
