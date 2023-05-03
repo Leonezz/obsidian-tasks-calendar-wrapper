@@ -378,29 +378,32 @@ export namespace TaskMapable {
     }
 
     export function taskLinkParser(item: TaskDataModel) {
-        var outerLinkMatch = TaskRegularExpressions.outerLinkRegex.exec(item.text);
 
-        const buildLink = (text: string, display: string, path: string) => {
-            item.text = item.text.replace(text, "");
-            outerLinkMatch = TaskRegularExpressions.outerLinkRegex.exec(item.text);
+        item.outlinks = [];
+
+        var outerLinkMatch = TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
+
+        const buildLink = (text: string, display: string, path: string, index: number, inner: boolean) => {
+            item.visual = item.visual!.replace(text, display);
 
             if (item.outlinks.some(l => l.path === path)) return;
 
-            const link = Link.file(path, false, display);
+            const link = Link.file(path, inner, display);
+            link.subpath = index.toString();
             item.outlinks.push(link);
         };
 
         while (!!outerLinkMatch) {
-            buildLink(outerLinkMatch[0], outerLinkMatch[1], outerLinkMatch[2]);
-            outerLinkMatch = TaskRegularExpressions.outerLinkRegex.exec(item.text);
+            buildLink(outerLinkMatch[0], outerLinkMatch[1], outerLinkMatch[2], outerLinkMatch.index, false);
+            outerLinkMatch = TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
         }
 
-        var innerLinkMatch = TaskRegularExpressions.innerLinkRegex.exec(item.text);
-        var dataviewDateMatch = TaskRegularExpressions.keyValueRegex.exec(item.text);
+        var innerLinkMatch = TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
+        var dataviewDateMatch = TaskRegularExpressions.keyValueRegex.exec(item.visual!);
         while (!!innerLinkMatch && !dataviewDateMatch) {
-            buildLink(innerLinkMatch[0], innerLinkMatch[1], innerLinkMatch[2]);
-            innerLinkMatch = TaskRegularExpressions.innerLinkRegex.exec(item.text);
-            dataviewDateMatch = TaskRegularExpressions.keyValueRegex.exec(item.text);
+            buildLink(innerLinkMatch[0], innerLinkMatch[1], innerLinkMatch[1], innerLinkMatch['index'], true);
+            innerLinkMatch = TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
+            dataviewDateMatch = TaskRegularExpressions.keyValueRegex.exec(item.visual!);
         }
 
         return item;
