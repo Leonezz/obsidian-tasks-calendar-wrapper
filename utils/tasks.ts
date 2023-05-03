@@ -376,12 +376,18 @@ export namespace TaskMapable {
             return item;
         }
     }
-
+    /**
+     * !! NEED improvement
+     * @param item 
+     * @returns 
+     */
     export function taskLinkParser(item: TaskDataModel) {
 
         item.outlinks = [];
 
         var outerLinkMatch = TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
+        var innerLinkMatch = TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
+        var dataviewDateMatch = TaskRegularExpressions.keyValueRegex.exec(item.visual!);
 
         const buildLink = (text: string, display: string, path: string, index: number, inner: boolean) => {
             item.visual = item.visual!.replace(text, display);
@@ -393,17 +399,31 @@ export namespace TaskMapable {
             item.outlinks.push(link);
         };
 
-        while (!!outerLinkMatch) {
-            buildLink(outerLinkMatch[0], outerLinkMatch[1], outerLinkMatch[2], outerLinkMatch.index, false);
-            outerLinkMatch = TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
-        }
-
-        var innerLinkMatch = TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
-        var dataviewDateMatch = TaskRegularExpressions.keyValueRegex.exec(item.visual!);
-        while (!!innerLinkMatch && !dataviewDateMatch) {
-            buildLink(innerLinkMatch[0], innerLinkMatch[1], innerLinkMatch[1], innerLinkMatch['index'], true);
-            innerLinkMatch = TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
-            dataviewDateMatch = TaskRegularExpressions.keyValueRegex.exec(item.visual!);
+        while (!!outerLinkMatch || (!!innerLinkMatch && !dataviewDateMatch)) {
+            if (!!outerLinkMatch && (!!innerLinkMatch && !dataviewDateMatch)) {
+                if (outerLinkMatch.index < innerLinkMatch.index) {
+                    buildLink(outerLinkMatch[0], outerLinkMatch[1], outerLinkMatch[2], outerLinkMatch.index, false);
+                    innerLinkMatch = TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
+                    dataviewDateMatch = TaskRegularExpressions.keyValueRegex.exec(item.visual!);
+                    (!!innerLinkMatch && !dataviewDateMatch) &&
+                        buildLink(innerLinkMatch[0], innerLinkMatch[1], innerLinkMatch[1], innerLinkMatch.index, true);
+                } else {
+                    buildLink(innerLinkMatch[0], innerLinkMatch[1], innerLinkMatch[1], innerLinkMatch.index, true);
+                    outerLinkMatch = TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
+                    (!!outerLinkMatch) &&
+                        buildLink(outerLinkMatch[0], outerLinkMatch[1], outerLinkMatch[2], outerLinkMatch.index, false);
+                }
+                innerLinkMatch = TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
+                dataviewDateMatch = TaskRegularExpressions.keyValueRegex.exec(item.visual!);
+                outerLinkMatch = TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
+            } else if (!!outerLinkMatch) {
+                buildLink(outerLinkMatch[0], outerLinkMatch[1], outerLinkMatch[2], outerLinkMatch.index, false);
+                outerLinkMatch = TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
+            } else if (!!innerLinkMatch && !dataviewDateMatch) {
+                buildLink(innerLinkMatch[0], innerLinkMatch[1], innerLinkMatch[1], innerLinkMatch.index, true);
+                innerLinkMatch = TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
+                dataviewDateMatch = TaskRegularExpressions.keyValueRegex.exec(item.visual!);
+            }
         }
 
         return item;
