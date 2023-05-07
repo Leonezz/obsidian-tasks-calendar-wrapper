@@ -9,6 +9,7 @@ If your plugin does not need CSS, delete this file.
 .taskido {
 	cursor: default;
 	user-select: none;
+	margin-bottom: 15%;
 }
 .taskido a {
 	text-decoration: none !important;
