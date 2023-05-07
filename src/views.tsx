@@ -94,10 +94,10 @@ export class TasksTimelineView extends BaseTasksView {
             .map(TaskMapable.tasksPluginTaskParser)
             .map(TaskMapable.dataviewTaskParser)
             .map(dailyNoteFormatParser)
-            .map(TaskMapable.taskLinkParser)
             .map(TaskMapable.tagsParser)
             .map(TaskMapable.remainderParser)
             .map(TaskMapable.postProcessor)
+            .map(TaskMapable.taskLinkParser)
             /**
              * Tag Filters
              */
