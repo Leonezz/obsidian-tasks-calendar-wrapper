@@ -55,6 +55,13 @@ export const enum TaskStatus {
 }
 
 const TaskStatusCollection: string[] = [TaskStatus.due, TaskStatus.scheduled, TaskStatus.start, TaskStatus.done, TaskStatus.unplanned];
+const TaskStatusMarkerMap = {
+    '>': TaskStatus.overdue,
+    '<': TaskStatus.scheduled,
+    'x': TaskStatus.done,
+    '/': TaskStatus.process,
+    '-': TaskStatus.cancelled
+};
 
 export class TaskRegularExpressions {
     public static readonly dateFormat = 'YYYY-MM-DD';
@@ -447,11 +454,7 @@ export namespace TaskMapable {
         return item;
     }
 
-    export function postProcessor(item: TaskDataModel) {
-        //["overdue", "due", "scheduled", "start", "process", "unplanned","done","cancelled"]
-
-        //create ------------ scheduled ------- start --------- due --------- (done)
-        //        scheduled              start         process       overdue
+    function dateBasedStatusParser(item: TaskDataModel) {
         if (!item.due && !item.scheduled &&
             !item.start && !item.completion && item.dates.size === 0) {
             item.status = TaskStatus.unplanned;
@@ -493,5 +496,19 @@ export namespace TaskMapable {
 
         item.status = TaskStatus.scheduled;
         return item;
+    }
+
+    function markerBasedStatusParser(item: TaskDataModel) {
+        if (!Object.keys(TaskStatusMarkerMap).contains(item.status)) return dateBasedStatusParser(item);
+        item.status = (TaskStatusMarkerMap as any)[item.status];
+        return item;
+    }
+
+    export function postProcessor(item: TaskDataModel) {
+        //["overdue", "due", "scheduled", "start", "process", "unplanned","done","cancelled"]
+
+        //create ------------ scheduled ------- start --------- due --------- (done)
+        //        scheduled              start         process       overdue
+        return markerBasedStatusParser(item);
     }
 }
