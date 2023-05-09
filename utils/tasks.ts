@@ -369,13 +369,9 @@ export namespace TaskMapable {
     export function dailyNoteTaskParser(dailyNoteFormat: string = innerDateFormat) {
         return (item: TaskDataModel) => {
             const taskFile: string = getFileTitle(item.path);
-            const dailyNoteRegEx = momentToRegex(dailyNoteFormat)
-            const dailyNoteMatch = taskFile.match(dailyNoteRegEx);
-
-            item.dailyNote = !!dailyNoteMatch;
+            const dailyNoteDate = moment(taskFile, dailyNoteFormat, true);
+            item.dailyNote = dailyNoteDate.isValid();
             if (!item.dailyNote) return item;
-
-            const dailyNoteDate = moment(dailyNoteMatch![1], dailyNoteFormat);
             if (!item.start) item.start = dailyNoteDate;
             if (!item.scheduled) item.scheduled = dailyNoteDate;
             if (!item.created) item.created = dailyNoteDate;

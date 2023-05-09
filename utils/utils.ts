@@ -16,7 +16,11 @@ export function removeHightlightMarker(text: string){
     }
     return text;
 }
-
+/**
+ * @deprecated
+ * @param momentFormat 
+ * @returns 
+ */
 export function momentToRegex(momentFormat: string) : RegExp {
 	momentFormat = momentFormat.replaceAll(".", "\\.");
 	momentFormat = momentFormat.replaceAll(",", "\\,");
