@@ -192,14 +192,30 @@ export namespace TaskMapable {
             if (item.created && date.isSame(item.created, by)) return true;
             if (item.completion && date.isSame(item.completion, by)) return true;
             if (item.start && date.isSame(item.start, by)) return true;
-            let dates = false;
-            item.dates.forEach(d => {
+            for (let [_, d] of item.dates) {
                 if (date.isSame(d, by)) {
-                    dates = true;
                     return true;
                 }
-            });
-            return dates;
+            }
+            return false;
+        }
+    }
+
+    export function filterDateRange(from: moment.Moment, to: moment.Moment) {
+        return filterByDateTimeRange(from, to, 'date');
+    }
+
+    function filterByDateTimeRange(from: moment.Moment, to: moment.Moment, by: moment.unitOfTime.StartOf) {
+        return (item: TaskDataModel) => {
+            if (item.due && item.due.isBetween(from, to, by)) return true;
+            if (item.scheduled && item.scheduled.isBetween(from, to, by)) return true;
+            if (item.created && item.created.isBetween(from, to, by)) return true;
+            if (item.completion && item.completion.isBetween(from, to, by)) return true;
+            if (item.start && item.start.isBetween(from, to, by)) return true;
+            for (let [_, d] of item.dates) {
+                if (d.isBetween(from, to, by)) return true;
+            }
+            return false;
         }
     }
 
