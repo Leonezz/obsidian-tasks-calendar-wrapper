@@ -1,11 +1,11 @@
 {
 	"name": "tasks-calendar-wrapper",
-	"version": "0.1.7",
+	"version": "0.1.8",
 	"description": "This is a simple wrapper for Obsidian-Tasks-Calendar (https://github.com/702573N/Obsidian-Tasks-Calendar) and Obsidian-Tasks-Timeline (https://github.com/702573N/Obsidian-Tasks-Timeline).",
 	"main": "src/main.ts",
 	"scripts": {
-		"dev": "cp manifest.json styles.css ExampleVault/.obsidian/plugins/tasks-view/ && node esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"dev": "cp manifest.json ExampleVault/.obsidian/plugins/tasks-view/ && node esbuild.config.mjs",
+		"build": "cp manifest.json ExampleVault/.obsidian/plugins/tasks-view/ && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
 	"keywords": [],
