@@ -349,33 +349,32 @@ export namespace TaskMapable {
 
     export function dataviewTaskParser(item: TaskDataModel) {
         var itemText = item.visual || "";
-        var inlineFields = TaskRegularExpressions.keyValueRegex.exec(itemText);
-        while (!!inlineFields) {
-            const inlineField: string = inlineFields[0];
-            const fieldKey = inlineFields[1].toLowerCase();
-            const fieldValue: string = inlineFields[2];
-            itemText = itemText.replace(inlineField, "");
-            inlineFields = TaskRegularExpressions.keyValueRegex.exec(itemText);
+        const inlineFields = itemText.match(TaskRegularExpressions.keyValueRegex);
+        if (!inlineFields) return item;
+        for (let inlineField of inlineFields) {
+            // this is necessary since every time RegEx.exec,
+            // the lastIndex changed like an internal state.
+            TaskRegularExpressions.keyValueRegex.lastIndex = 0;
+            const tkv = TaskRegularExpressions.keyValueRegex.exec(inlineField)!;
+            const [text, key, value] = [tkv[0], tkv[1], tkv[2]];
+            itemText = itemText.replace(text, '');
 
-            if (!(TaskStatusCollection.includes(fieldKey))) continue;
-            const fieldDateMoment: moment.Moment = moment(fieldValue);
-            if (!fieldDateMoment.isValid()) continue;
-            //
-            switch (fieldKey) {
+            if (!TaskStatusCollection.includes(key)) continue;
+            const fieldDate = moment(value);
+            if (!fieldDate.isValid()) continue;
+            switch (key) {
                 case "due":
-                    item.due = fieldDateMoment; break;
+                    item.due = fieldDate; break;
                 case "scheduled":
-                    item.scheduled = fieldDateMoment; break;
+                    item.scheduled = fieldDate; break;
                 case "complete":
                 case "completion":
                 case "done":
-                    item.completion = fieldDateMoment; break;
+                    item.completion = fieldDate; break;
                 case "created":
-                    item.created = fieldDateMoment; break;
-                case "start":
-                    item.start = fieldDateMoment; break;
+                    item.start = fieldDate; break;
                 default:
-                    item.dates.set(fieldKey, fieldDateMoment);
+                    item.dates.set(key, fieldDate); break;
             }
         }
         item.visual = itemText;
@@ -384,6 +383,7 @@ export namespace TaskMapable {
 
     export function dailyNoteTaskParser(dailyNoteFormat: string = innerDateFormat) {
         return (item: TaskDataModel) => {
+            console.log(item)
             const taskFile: string = getFileTitle(item.path);
             const dailyNoteDate = moment(taskFile, dailyNoteFormat, true);
             item.dailyNote = dailyNoteDate.isValid();
