@@ -383,7 +383,6 @@ export namespace TaskMapable {
 
     export function dailyNoteTaskParser(dailyNoteFormat: string = innerDateFormat) {
         return (item: TaskDataModel) => {
-            console.log(item)
             const taskFile: string = getFileTitle(item.path);
             const dailyNoteDate = moment(taskFile, dailyNoteFormat, true);
             item.dailyNote = dailyNoteDate.isValid();
