@@ -14,15 +14,17 @@ cover-image:
 > [!info]- About 
 
 # Tasks
+- [ ] new test [due:: 2023-05-13]
 
-- [x] #task 1
-- [x] #task 2
-	- [x] #task 2.1 
-	- [x] #task 2.2
-	- [x] #task 2.3
-		- [x] #task 2.3.1
-		- [x] #task 2.3.2
 
-- [x] #test_empty
-- [ ] ayOfWeek: "1",options: "",globalTaskFilter: "#TODO",pages: "dv.pages().file.tasks",})
+
+- [ ] We hold these Truths to be self-evident, that all Men are created equal, that they are endowed by their Creator with certain unalienable Rights, that among these are Life, Liberty, and the pursuit of happiness ⏫ 
+
+- [ ] this is [space] 📅 2024-01-01
+- [x] this is [x]📅 2024-01-01
+- [-] this is [-]📅 2024-01-01
+- [>] this is [>]📅 2024-01-01
+- [<] this is [<] 📅 2024-01-01
+
+```tasks
 ```
