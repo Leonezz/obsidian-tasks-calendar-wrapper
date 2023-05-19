@@ -152,6 +152,13 @@ export const defaultUserOptions = {
      * Activate a filter or not.
      */
     defaultFilters: "" as string,
+    /**
+     * Where to put the entry panel,
+     * Top means on top of the view,
+     * Bottom means on bottom of the view,
+     * Today means in today's view.
+     */
+    entryPosition: "today" as "today" | "top" | "bottom",
 
 
 };
@@ -198,6 +205,22 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             .addToggle(async tg => {
                 tg.setValue(this.plugin.userOptions.useQuickEntry);
                 tg.onChange(async v => await this.onOptionUpdate({ useQuickEntry: v }, true));
+            })
+
+        new Setting(containerEl)
+            .setName("Quick Entry Panel Position")
+            .setDesc("Where you like the entry panel to be,\
+                * Top means on top of the view,\
+                * Bottom means on bottom of the view,\
+                * Today means in today's view.")
+            .addDropdown(async d => {
+                d.addOptions({
+                    "today": "today",
+                    "top": "top",
+                    "bottom": "bottom"
+                });
+                d.setValue(this.plugin.userOptions.entryPosition);
+                d.onChange(async v => await this.onOptionUpdate({ entryPosition: v as "today" | "top" | "bottom" }));
             })
 
         if (this.plugin.userOptions.useQuickEntry) {
