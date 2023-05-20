@@ -351,6 +351,7 @@ If your plugin does not need CSS, delete this file.
 
 .taskido .quickEntryPanel .left .dateFilter {
 	max-width: fit-content;
+	justify-content: space-between;
 }
 
 .taskido .quickEntryPanel .left .dateFilter input[type=date] {
@@ -511,21 +512,21 @@ If your plugin does not need CSS, delete this file.
 	padding: 0;
 }
 
-.taskido.todoFocus .details.today .task.due,
-.taskido.todoFocus .details.today .task.scheduled,
-.taskido.todoFocus .details.today .task.process,
-.taskido.todoFocus .details.today .task.start,
+.taskido.todoFocus .task.due,
+.taskido.todoFocus .task.scheduled,
+.taskido.todoFocus .task.process,
+.taskido.todoFocus .task.start,
 .taskido.overdueFocus .task.overdue,
 .taskido.unplannedFocus .task.unplanned {
 	background: hsla(var(--interactive-accent-hsl), 0.2);
 }
 
 /* Filter */
-.taskido.todoFilter .year:not(.current):not([data-types*="due"][data-types*="scheduled"][data-types*="overdue"]) {
+.taskido.todoFilter .year:not([data-types~="due"]):not([data-types~="scheduled"]):not([data-types~="process"]):not([data-types~="start"]) {
 	display: none;
 }
 
-.taskido.todoFilter .details:not(.today):not([data-types*="due"][data-types*="scheduled"][data-types*="overdue"]) {
+.taskido.todoFilter .details:not([data-types~="due"]):not([data-types~="scheduled"]):not([data-types~="process"]):not([data-types~="start"]) {
 	display: none;
 }
 
@@ -533,11 +534,11 @@ If your plugin does not need CSS, delete this file.
 	display: none;
 }
 
-.taskido.overdueFilter .year:not(.current):not([data-types*="overdue"]) {
+.taskido.overdueFilter .year:not([data-types*="overdue"]) {
 	display: none;
 }
 
-.taskido.overdueFilter .details:not(.today):not([data-types*="overdue"]) {
+.taskido.overdueFilter .details:not([data-types*="overdue"]) {
 	display: none;
 }
 
@@ -545,11 +546,11 @@ If your plugin does not need CSS, delete this file.
 	display: none;
 }
 
-.taskido.unplannedFilter .year:not(.current):not([data-types*="unplanned"]) {
+.taskido.unplannedFilter .year:not([data-types*="unplanned"]) {
 	display: none;
 }
 
-.taskido.unplannedFilter .details:not(.today):not([data-types*="unplanned"]) {
+.taskido.unplannedFilter .details:not([data-types*="unplanned"]) {
 	display: none;
 }
 
