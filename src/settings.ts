@@ -102,9 +102,23 @@ export const defaultUserOptions = {
      */
     useCounters: true as boolean,
     /**
+     * Default behavior for filter buttons,
+     * Focus to make items more clear or
+     * Filter others out.
+     */
+    counterBehavior: "Filter" as "Filter" | "Focus",
+    /**
      * Use quick entry panel on the today panel or not
      */
+
     useQuickEntry: true as boolean,
+    /**
+     * Where to put the entry panel,
+     * Top means on top of the view,
+     * Bottom means on bottom of the view,
+     * Today means in today's view.
+     */
+    entryPosition: "today" as "today" | "top" | "bottom",
     /**
      * Display which year it is or not.
      */
@@ -193,10 +207,25 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Enable Counters and Filters Panel")
-            .setDesc("Use counters and filters on the today panel or not.")
+            .setDesc("Use counters and filters on the quick entry panel or not.")
             .addToggle(async tg => {
                 tg.setValue(this.plugin.userOptions.useCounters);
                 tg.onChange(async v => await this.onOptionUpdate({ useCounters: v }));
+            })
+        new Setting(containerEl)
+            .setName("Behavior of Counters and Filters Panel")
+            .setDesc("Set the default behavior of the counter and filter buttons.\
+                Available choices are: *Filter* to filter other items out,\
+                or *Focus* to make selected items more clear.")
+            .addDropdown(async d => {
+                d.addOptions(
+                    {
+                        "Filter": "Filter",
+                        "Focus": "Focus"
+                    }
+                );
+                d.setValue(this.plugin.userOptions.counterBehavior);
+                d.onChange(async v => await this.onOptionUpdate({ counterBehavior: v as typeof this.plugin.userOptions.counterBehavior }));
             })
 
         new Setting(containerEl)
