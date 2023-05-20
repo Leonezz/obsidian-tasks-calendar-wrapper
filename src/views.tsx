@@ -119,12 +119,15 @@ export class TasksTimelineView extends BaseTasksView {
             })
             /**
              * Option Forward
+             * Current behavior: show unplanned and overdue tasks in today's part.
              */
             .map((t: TaskDataModel) => {
                 if (!forward) return t;
                 if (t.status === TaskStatus.unplanned) t.dates.set(TaskStatus.unplanned, moment())
                 else if (t.status === TaskStatus.done && !t.completion &&
                     !t.due && !t.start && !t.scheduled && !t.created) t.dates.set("done-unplanned", moment());
+                else if (t.status === TaskStatus.overdue &&
+                    !TaskMapable.filterDate(moment())(t)) t.dates.set(TaskStatus.overdue, moment())
                 return t;
             })
             /**
