@@ -166,14 +166,6 @@ export const defaultUserOptions = {
      * Activate a filter or not.
      */
     defaultFilters: "" as string,
-    /**
-     * Where to put the entry panel,
-     * Top means on top of the view,
-     * Bottom means on bottom of the view,
-     * Today means in today's view.
-     */
-    entryPosition: "today" as "today" | "top" | "bottom",
-
 
 };
 export type UserOption = typeof defaultUserOptions;
