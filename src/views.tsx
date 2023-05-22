@@ -3,7 +3,7 @@ import { ItemView, moment, Notice, WorkspaceLeaf } from "obsidian";
 import { ObsidianBridge } from 'Obsidian-Tasks-Timeline/src/obsidianbridge';
 import { ObsidianTaskAdapter } from "Obsidian-Tasks-Timeline/src/taskadapter";
 import { createRoot, Root } from 'react-dom/client';
-import { TaskDataModel, TaskMapable, TaskStatus } from "utils/tasks";
+import { TaskDataModel, TaskMapable, TaskStatus, TaskStatusMarkerMap } from "utils/tasks";
 import { defaultUserOptions, UserOption } from "./settings";
 
 
@@ -98,6 +98,16 @@ export class TasksTimelineView extends BaseTasksView {
             .map(TaskMapable.remainderParser)
             .map(TaskMapable.postProcessor)
             .map(TaskMapable.taskLinkParser)
+            /**
+             * Status Filters
+             */
+            .filter((task) => {
+                if (this.userOptionModel.get("hideStatusTasks")?.length === 0) return true;
+                const hideStatusTasks = this.userOptionModel.get("hideStatusTasks");
+                if (hideStatusTasks?.includes(task.statusMarker)) return false;
+                if (hideStatusTasks?.some(m => TaskStatusMarkerMap[m as keyof typeof TaskStatusMarkerMap] === task.status)) return false;
+                return true;
+            })
             /**
              * Tag Filters
              */

@@ -155,9 +155,9 @@ export const defaultUserOptions = {
      * USE INFO END
      */
     /**
-     * Display completed task or not.
+     * hide specific status of tasks.
      */
-    useCompletedTasks: true as boolean,
+    hideStatusTasks: ['x', '-'] as string[],
     /**
      * Activate today focus on load or not.
      */
@@ -306,12 +306,16 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             })
 
         new Setting(containerEl)
-            .setName("Display Completed Tasks")
-            .setDesc("Display completed task or not.")
-            .addToggle(async tg => {
-                tg.setValue(this.plugin.userOptions.useCompletedTasks);
-                tg.onChange(async v => await this.onOptionUpdate({ useCompletedTasks: v }));
-            })
+            .setName("Hide tasks of specific status.")
+            .setDesc("Provide comma split status markers, e.g.,: x, -")
+            .addText(async t => {
+                t.setPlaceholder("Status markers split by comma. e.g.,: x, -.\
+                Use [ ] if you would like to hide all tasks with marker [ ] or status todo.");
+                t.setValue(this.plugin.userOptions.hideStatusTasks.join(','));
+                t.onChange(async v => await this.onOptionUpdate({
+                    hideStatusTasks: v.split(',').map(s => s === "[ ]" ? " " : s.trim())
+                }))
+            });
 
         new Setting(containerEl)
             .setName("Forward Tasks From Past")

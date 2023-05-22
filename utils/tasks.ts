@@ -54,8 +54,8 @@ export const enum TaskStatus {
     cancelled = 'cancelled',
 }
 
-const TaskStatusCollection: string[] = [TaskStatus.due, TaskStatus.scheduled, TaskStatus.start, TaskStatus.done, TaskStatus.unplanned];
-const TaskStatusMarkerMap = {
+export const TaskStatusCollection: string[] = [TaskStatus.due, TaskStatus.scheduled, TaskStatus.start, TaskStatus.done, TaskStatus.unplanned];
+export const TaskStatusMarkerMap = {
     '>': TaskStatus.overdue,
     '<': TaskStatus.scheduled,
     'x': TaskStatus.done,
@@ -172,6 +172,7 @@ export interface TaskDataModel extends STask {
     fontMatter: Record<string, string>,
     //
     isTasksTask: boolean,
+    statusMarker: string,
     dates: Map<string, moment.Moment>;
 };
 
