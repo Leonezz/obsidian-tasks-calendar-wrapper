@@ -360,9 +360,9 @@ If your plugin does not need CSS, delete this file.
 
 .taskido .quickEntryPanel .MultiSelect {
 	display: flex;
-	flex-direction: row-reverse;
-	flex-wrap: nowrap;
-	justify-content: space-between;
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: flex-end;
 	align-items: center;
 	white-space: nowrap;
 }
