@@ -24,14 +24,14 @@ export class TasksTimelineView extends BaseTasksView {
         taskList: [] as TaskDataModel[],
     });
     private userOptionModel = new Model({ ...defaultUserOptions });
-
+    static view: TasksTimelineView | null = null;
     constructor(leaf: WorkspaceLeaf) {
         super(leaf);
 
         this.parseTasks = this.parseTasks.bind(this);
         this.onReloadTasks = this.onReloadTasks.bind(this);
         this.onUpdateOptions = this.onUpdateOptions.bind(this);
-
+        TasksTimelineView.view = this;
         //this.userOptionModel.set({ ...defaultUserOptions });
     }
 
@@ -97,7 +97,7 @@ export class TasksTimelineView extends BaseTasksView {
             .map(TaskMapable.tagsParser)
             .map(TaskMapable.remainderParser)
             .map(TaskMapable.postProcessor)
-            .map(TaskMapable.taskLinkParser)
+            //.map(TaskMapable.taskLinkParser)
             /**
              * Status Filters
              */
