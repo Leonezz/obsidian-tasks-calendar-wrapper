@@ -44,7 +44,7 @@ export default class TasksCalendarWrapper extends Plugin {
 		Object.assign(this.userOptions, { ...updatedOpts });
 		for (let leaf of app.workspace.getLeavesOfType(TIMELINE_VIEW)) {
 			const view = leaf.view;
-			if (view instanceof TasksTimelineView) view.onUpdateOptions({ ...updatedOpts });
+			if (view instanceof TasksTimelineView) view.onUpdateOptions({ ...this.userOptions });
 		}
 	}
 
