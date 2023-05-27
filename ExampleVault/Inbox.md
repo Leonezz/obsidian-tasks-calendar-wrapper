@@ -1,30 +1,22 @@
 
 
----
-cssclass: research-project
-file-class: _research-project_file-class
-class: research-project
-source-type: master-thesis
-research-name: BAYYE
-research-status: 7️⃣⛔ Write Intro Section
-due: 2023-01-04
-is-published: false
-cover-image:
----
-> [!info]- About 
 
-# Tasks
-- [ ] new test [due:: 2023-05-13]
+- [ ] Ground Control to Major Tom #TODO
+- [ ] Ground Control to Major Tom
+- [ ] Take your protein pills and put your helmet on  
 
-
-
-- [ ] We hold these Truths to be self-evident, that all Men are created equal, that they are endowed by their Creator with certain unalienable Rights, that among these are Life, Liberty, and the pursuit of happiness ⏫ 
-
-- [ ] this is [space] 📅 2024-01-01
-- [x] this is [x]📅 2024-01-01
-- [-] this is [-]📅 2024-01-01
-- [>] this is [>]📅 2024-01-01
-- [<] this is [<] 📅 2024-01-01
-
-```tasks
-```
+- [ ] Ground Control to Major Tom  
+- [ ] Commencing countdown, engines on  
+- [ ] Check ignition and may God's love be with you 
+  
+(spoken)  
+- [ ] Ten, Nine, Eight, Seven, Six, Five, Four, Three, Two, One, Liftoff 📅 2023-05-26
+- [ ] This is Ground Control to Major Tom📅 2023-05-26
+- [ ] You've really made the grade📅 2023-05-26
+- [ ] And the papers want to know whose shirts you wear📅 2023-05-26 
+- [ ] Now it's time to leave the capsule if you dare  📅 2023-05-26
+  
+- [>] This is Major Tom to Ground Control  📅 2023-05-26
+- [<] I'm stepping through the door  📅 2023-05-26
+- [-] And I'm floating in a most peculiar way  📅 2023-05-26 
+- [x] And the stars look very different today📅 2023-05-26
