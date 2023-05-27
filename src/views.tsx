@@ -12,10 +12,10 @@ export const TIMELINE_VIEW = "tasks_timeline_view";
 
 export abstract class BaseTasksView extends ItemView {
     protected root: Root;
-    protected dataAdapter: ObsidianTaskAdapter;
+    //protected dataAdapter: ObsidianTaskAdapter;
     constructor(leaf: WorkspaceLeaf) {
         super(leaf);
-        this.dataAdapter = new ObsidianTaskAdapter(this.app);
+        //this.dataAdapter = new ObsidianTaskAdapter(this.app);
     }
 }
 
@@ -38,6 +38,7 @@ export class TasksTimelineView extends BaseTasksView {
     async onOpen(): Promise<void> {
 
         this.registerEvent(this.app.metadataCache.on('resolved', this.onReloadTasks));
+        this.registerEvent(this.app.workspace.on("window-open", this.onReloadTasks));
 
         const { containerEl } = this;
         const container = containerEl.children[1];
@@ -64,14 +65,16 @@ export class TasksTimelineView extends BaseTasksView {
         const pathFilter = this.userOptionModel.get("excludePaths") || [];
         const fileIncludeTagsFilter = this.userOptionModel.get("fileIncludeTags") || [];
         const fileExcludeTagsFilter = this.userOptionModel.get("fileExcludeTags") || [];
-        this.dataAdapter.generateTasksList(pathFilter, fileIncludeTagsFilter, fileExcludeTagsFilter).then(() => {
-            const taskList = this.dataAdapter.getTaskList();
+        const adapter = new ObsidianTaskAdapter(this.app);
+        adapter.generateTasksList(pathFilter, fileIncludeTagsFilter, fileExcludeTagsFilter).then(() => {
+            const taskList = adapter.getTaskList();
             this.parseTasks(taskList).then(tasks => {
                 const taskfiles = this.userOptionModel.get("taskFiles");
                 /*tasks.forEach(t => {
                     if (taskfiles?.contains(t.path)) return;
                     taskfiles?.push(t.path);
                 })*/
+                this.taskListModel.clear();
                 this.taskListModel.set({ taskList: tasks });
                 this.userOptionModel.set({ taskFiles: taskfiles || [] });
                 console.log("update tasks")
