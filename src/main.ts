@@ -10,17 +10,16 @@ export default class TasksCalendarWrapper extends Plugin {
 	userOptions: UserOption = {} as UserOption;
 	async onload() {
 
-		await this.loadOptions();
-
 		this.registerView(
 			TIMELINE_VIEW,
 			(leaf) => {
 				const view = new TasksTimelineView(leaf);
-				view.onUpdateOptions({ ...this.userOptions });
+				//view.onUpdateOptions({ ...this.userOptions });
 				return view;
 			}
 		);
 
+		await this.loadOptions();
 		// This adds a simple command that can be triggered anywhere
 
 		this.addCommand({
