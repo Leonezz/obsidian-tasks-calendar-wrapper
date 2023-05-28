@@ -605,7 +605,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                 ta.setValue(this.plugin.userOptions.excludePaths.join(","));
                 ta.onChange(async v => {
                     const values = v.split(',');
-                    const valuesTrimed = values.map(p => p.trim());
+                    const valuesTrimed = values.map(p => p.trim()).filter(p => p.length > 0);
                     await this.onOptionUpdate({ excludePaths: valuesTrimed });
                 })
             })
