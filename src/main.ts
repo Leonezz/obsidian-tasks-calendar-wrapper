@@ -9,17 +9,17 @@ import { defaultUserOptions, TasksCalendarSettingTab, UserOption } from './setti
 export default class TasksCalendarWrapper extends Plugin {
 	userOptions: UserOption = {} as UserOption;
 	async onload() {
-
+		await this.loadOptions();
 		this.registerView(
 			TIMELINE_VIEW,
 			(leaf) => {
 				const view = new TasksTimelineView(leaf);
-				//view.onUpdateOptions({ ...this.userOptions });
+				view.onUpdateOptions({ ...this.userOptions });
 				return view;
 			}
 		);
-
-		await this.loadOptions();
+		this.activateView(TIMELINE_VIEW);
+		//this.app.workspace.getActiveViewOfType(TasksTimelineView)?.onUpdateOptions({ ...this.userOptions })
 		// This adds a simple command that can be triggered anywhere
 
 		this.addCommand({
@@ -32,29 +32,25 @@ export default class TasksCalendarWrapper extends Plugin {
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new TasksCalendarSettingTab(this.app, this));
-
-		this.activateView(TIMELINE_VIEW);
 	}
 
 	onunload() {
-		// this.app.workspace.detachLeavesOfType(TIMELINE_VIEW);
+		this.app.workspace.detachLeavesOfType(TIMELINE_VIEW);
 	}
 
 	private updateOptions(updatedOpts: Partial<UserOption>) {
 		Object.assign(this.userOptions, { ...updatedOpts });
-		for (let leaf of app.workspace.getLeavesOfType(TIMELINE_VIEW)) {
-			const view = leaf.view;
-			if (view instanceof TasksTimelineView) view.onUpdateOptions({ ...this.userOptions });
-		}
+		console.log(this.app.workspace.getLeavesOfType(TIMELINE_VIEW))
+		this.app.workspace.getLeavesOfType(TIMELINE_VIEW).forEach(leaf => {
+			if (leaf.view instanceof TasksTimelineView) {
+				leaf.view.onUpdateOptions({ ...this.userOptions });
+			}
+		});
 	}
 
 	async loadOptions(): Promise<void> {
-		this.updateOptions(defaultUserOptions);
-		const options = await this.loadData();
-		if (!!options) {
-			this.updateOptions(options);
-			await this.saveData(this.userOptions);
-		}
+		this.userOptions = Object.assign({}, defaultUserOptions, await this.loadData());
+		this.updateOptions(this.userOptions);
 	}
 
 	async writeOptions(
@@ -65,18 +61,22 @@ export default class TasksCalendarWrapper extends Plugin {
 	}
 
 	async activateView(type: string) {
-		if (type != TIMELINE_VIEW) {
+		if (type !== TIMELINE_VIEW) {
 			return;
 		}
 		this.app.workspace.detachLeavesOfType(type);
+		try {
+			await this.app.workspace.getRightLeaf(false).setViewState({
+				type: type,
+				active: true,
+			});
 
-		await this.app.workspace.getRightLeaf(false).setViewState({
-			type: type,
-			active: true,
-		});
+			this.app.workspace.revealLeaf(
+				this.app.workspace.getLeavesOfType(type).first()!
+			);
+		} catch (e) {
+			console.log(e)
+		}
 
-		this.app.workspace.revealLeaf(
-			this.app.workspace.getLeavesOfType(type)[0]
-		);
 	}
 }

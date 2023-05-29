@@ -2,15 +2,15 @@
 
 
 - [ ] Ground Control to Major Tom #TODO
-- [ ] Ground Control to Major Tom
+- [ ] Ground Control to Major Tom 
 - [ ] Take your protein pills and put your helmet on  
 
-- [ ] Ground Control to Major Tom  
-- [ ] Commencing countdown, engines on  
+- [ ] Ground Control to Major Tom  a
+- [ ] Commencing countdown, engines on   
 - [ ] Check ignition and may God's love be with you 
   
 (spoken)   
-- [ ] Ten, Nine, Eight, Seven, Six, Five, Four, Three , Two, One, Liftoff 📅 2023-05-26 
+- [ ] Ten, Nine, Eight, Seven, Six, Five, Four, Three , Two, One, Liftoff 📅 2023-05-26  
 - [ ] This is Ground Control to Major Tom📅 2023-05-26
 - [ ] You've really made the grade📅 2023-05-26
 - [ ] And the papers want to know whose shirts you wear📅 2023-05-26 

@@ -55,8 +55,8 @@ export class TasksTimelineView extends BaseTasksView {
         // this.app.metadataCache.off('resolved', this.onReloadTasks);
     }
 
-    onUpdateOptions(opt: Partial<UserOption>) {
-
+    onUpdateOptions(opt: UserOption) {
+        this.userOptionModel.clear();
         this.userOptionModel.set({ ...opt });
         this.onReloadTasks();
     }
