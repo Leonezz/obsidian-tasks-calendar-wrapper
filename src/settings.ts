@@ -307,10 +307,10 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Hide tasks of specific status.")
-            .setDesc("Provide comma split status markers, e.g.,: x, -")
+            .setDesc("Provide comma split status markers, e.g.,: x, -\n\
+                Use [ ] if you would like to hide all tasks with marker [ ] or status todo.")
             .addText(async t => {
-                t.setPlaceholder("Status markers split by comma. e.g.,: x, -.\
-                Use [ ] if you would like to hide all tasks with marker [ ] or status todo.");
+                t.setPlaceholder("Status markers split by comma. e.g.,: x, -.");
                 t.setValue(this.plugin.userOptions.hideStatusTasks.join(','));
                 t.onChange(async v => await this.onOptionUpdate({
                     hideStatusTasks: v.split(',').map(s => s === "[ ]" ? " " : s.trim())
