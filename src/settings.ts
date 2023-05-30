@@ -307,7 +307,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Hide tasks of specific status.")
-            .setDesc("Provide comma split status markers, e.g.,: x, -\n\
+            .setDesc("Provide comma split status markers, e.g.,: x, - \n\
                 Use [ ] if you would like to hide all tasks with marker [ ] or status todo.")
             .addText(async t => {
                 t.setPlaceholder("Status markers split by comma. e.g.,: x, -.");
@@ -319,7 +319,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Forward Tasks From Past")
-            .setDesc("Forward tasks from the past and display them on the today panel or not.")
+            .setDesc("Forward overdue tasks from the past and all unplanned tasks to display them on the today panel or not.")
             .addToggle(async tg => {
                 tg.setValue(this.plugin.userOptions.forward);
                 tg.onChange(async v => await this.onOptionUpdate({ forward: v }));
@@ -488,11 +488,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Sort By")
             .setDesc(TasksCalendarSettingTab.createFragmentWithHTML(
-                "Specify a callable (a lambda, a funcion and etc.) for sorting task items.\
-                Note that the input must be a valid javascript callable definition of type: \
-                (arg1: TaskDataModel, arg2: TaskDataModel) => number.\
-                <p style='color: red'>Please do pay more attention on security when modifying this,\
-                because the input string here is going to evaluate in javascript no matter what it is.</p>"))
+                "Specify how you would like the taks item to be sorted inside a date."))
             .addDropdown(async ta => {
                 ta.addOptions(sortOptions);
                 ta.setValue(this.plugin.userOptions.sort);
@@ -598,10 +594,12 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Exclude Paths")
-            .setDesc("Exclude tasks match specific paths (folders, files).")
+            .setDesc(TasksCalendarSettingTab.createFragmentWithHTML(
+                "Exclude tasks match specific paths (folders, files). \n\
+                <p style=color:red;>NOTE that no prefix or trailing '/' needed, unless you want to filter the entire vault out.</p>"
+            ))
             .addTextArea(ta => {
-                ta.setPlaceholder("comma separated file paths, e.g.: path1,path2.\n\
-                **NOTE** that for non-root paths, no prefix \'/\' is needed.");
+                ta.setPlaceholder("comma separated file paths, e.g.: path1,path2/path3,path4.md");
                 ta.setValue(this.plugin.userOptions.excludePaths.join(","));
                 ta.onChange(async v => {
                     const values = v.split(',');
