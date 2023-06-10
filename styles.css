@@ -52,8 +52,8 @@ If your plugin does not need CSS, delete this file.
 	cursor: pointer;
 }
 
-.taskido .details.today {
-	padding: 30px 0;
+.taskido .details.today .date {
+	color: var(--h1-color);
 }
 
 .taskido .counters {
