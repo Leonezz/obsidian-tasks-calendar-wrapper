@@ -168,7 +168,7 @@ If your plugin does not need CSS, delete this file.
 	align-items: center;
 	flex-shrink: 1;
 	flex-grow: 1;
-	margin: 0 auto;
+	margin: 2px auto 2px auto;
 	width: 1px;
 	background: var(--checkbox-border-color);
 }
@@ -242,17 +242,16 @@ If your plugin does not need CSS, delete this file.
 }
 
 .taskido .timeline .icon svg {
+	height: var(--checkbox-size);
+	width: var(--checkbox-size);
+	stroke-width: 1.75px;
 	color: var(--checkbox-border-color);
+	scale: 1.1;
 }
 
 .taskido .timeline .icon svg:hover {
 	color: var(--checkbox-border-color-hover);
-}
-
-.taskido .timeline .icon svg {
-	height: var(--checkbox-size);
-	width: var(--checkbox-size);
-	stroke-width: 1.75px;
+	scale: 1.3;
 }
 
 .taskido .task .info {
