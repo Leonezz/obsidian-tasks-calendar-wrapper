@@ -6,10 +6,16 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
 .taskido {
 	cursor: default;
 	user-select: none;
 	margin-bottom: 15%;
+	--taskido-color-warning: var(--color-red);
+	--taskido-color-focus: var(--interactive-accent);
+	--taskido-color-overdue: var(--taskido-color-warning);
+	--taskido-color-done: var(--color-green);
+	--taskido-color-process: var(--color-orange);
 }
 
 .taskido a {
@@ -21,8 +27,8 @@ If your plugin does not need CSS, delete this file.
 	display: contents;
 }
 
-.taskido .task .innerLink,
-.taskido .task .outerLink {
+.taskido .task .internal-link,
+.taskido .task .external-link {
 	color: var(--interactive-accent);
 	text-decoration: underline !important;
 }
@@ -53,7 +59,7 @@ If your plugin does not need CSS, delete this file.
 }
 
 .taskido .details.today .date {
-	color: var(--h1-color);
+	color: var(--taskido-color-focus);
 }
 
 .taskido .counters {
@@ -162,29 +168,37 @@ If your plugin does not need CSS, delete this file.
 	align-items: center;
 	flex-shrink: 1;
 	flex-grow: 1;
-	margin: 0 auto;
+	margin: 2px auto 2px auto;
 	width: 1px;
 	background: var(--checkbox-border-color);
 }
 
-.taskido .task.overdue .timeline .icon svg line {
-	stroke: #ff375f !important;
-	stroke-width: 2.5px !important;
+.taskido .task.overdue .stripe {
+	background-color: var(--taskido-color-overdue);
+}
+.taskido .task.done .stripe {
+	background-color: var(--taskido-color-done);
+}
+.taskido .task.process .stripe,
+.taskido .task.scheduled .stripe,
+.taskido .task.start .stripe {
+	background-color: var(--taskido-color-process);
+}
+
+.taskido .task.overdue .timeline .icon svg {
+	stroke: var(--taskido-color-overdue) !important;
 }
 
 .taskido .task.done .timeline .icon svg {
-	fill: var(--interactive-accent) !important;
-	stroke: var(--interactive-accent) !important;
+	stroke: var(--taskido-color-done) !important;
 }
 
-.taskido .task.done .timeline .icon svg path:nth-child(1) {
-	fill: var(--interactive-accent) !important;
+.taskido .task.process .timeline .icon svg,
+.taskido .task.scheduled .timeline .icon svg,
+.taskido .task.start .timeline .icon svg {
+	stroke: var(--taskido-color-process);
 }
 
-.taskido .task.done .timeline .icon svg path:nth-child(2) {
-	stroke: var(--checkbox-marker-color) !important;
-	stroke-width: 2.5px;
-}
 
 .taskido .task.done .info .tag,
 .taskido .task.done .info .repeat,
@@ -228,17 +242,16 @@ If your plugin does not need CSS, delete this file.
 }
 
 .taskido .timeline .icon svg {
+	height: var(--checkbox-size);
+	width: var(--checkbox-size);
+	stroke-width: 1.75px;
 	color: var(--checkbox-border-color);
+	scale: 1.1;
 }
 
 .taskido .timeline .icon svg:hover {
 	color: var(--checkbox-border-color-hover);
-}
-
-.taskido .timeline .icon svg {
-	height: var(--checkbox-size);
-	width: var(--checkbox-size);
-	stroke-width: 1.75px;
+	scale: 1.3;
 }
 
 .taskido .task .info {
@@ -307,7 +320,7 @@ If your plugin does not need CSS, delete this file.
 }
 
 .taskido .task.overdue .info .relative {
-	color: #ff375f !important;
+	color: var(--taskido-color-overdue) !important;
 }
 
 /* Quick Entry Panel */
@@ -459,7 +472,7 @@ If your plugin does not need CSS, delete this file.
 
 /* Classes */
 .taskido.todayFocus .todayHeader {
-	color: var(--interactive-accent);
+	color: var(--taskido-color-focus);
 }
 
 .taskido.todoFocus .counter#todo,
@@ -468,8 +481,8 @@ If your plugin does not need CSS, delete this file.
 .taskido.overdueFilter .counter#overdue,
 .taskido.unplannedFocus .counter#unplanned,
 .taskido.unplannedFilter .counter#unplanned {
-	color: var(--interactive-accent);
-	background: hsla(var(--interactive-accent-hsl), 0.2);
+	color: var(--taskido-color-focus);
+	background: rgba(var(--taskido-color-focus), 0.2);
 	box-shadow: var(--input-shadow);
 }
 
@@ -518,7 +531,11 @@ If your plugin does not need CSS, delete this file.
 .taskido.todoFocus .task.start,
 .taskido.overdueFocus .task.overdue,
 .taskido.unplannedFocus .task.unplanned {
-	background: hsla(var(--interactive-accent-hsl), 0.2);
+	background: rgba(var(--taskido-color-focus), 0.2);
+}
+
+.taskido .task:hover {
+	background: rgba(var(--taskido-color-focus), 0.2);
 }
 
 /* Filter */
