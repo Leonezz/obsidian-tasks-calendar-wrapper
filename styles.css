@@ -21,8 +21,8 @@ If your plugin does not need CSS, delete this file.
 	display: contents;
 }
 
-.taskido .task .innerLink,
-.taskido .task .outerLink {
+.taskido .task .internal-link,
+.taskido .task .external-link {
 	color: var(--interactive-accent);
 	text-decoration: underline !important;
 }
