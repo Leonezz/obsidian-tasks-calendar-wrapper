@@ -13,6 +13,7 @@ If your plugin does not need CSS, delete this file.
 	margin-bottom: 15%;
 	--taskido-color-warning: var(--color-red);
 	--taskido-color-focus: var(--interactive-accent);
+	--taskido-color-focus-hsl: var(--interactive-accent-hsl);
 	--taskido-color-overdue: var(--taskido-color-warning);
 	--taskido-color-done: var(--color-green);
 	--taskido-color-process: var(--color-orange);
@@ -482,7 +483,7 @@ If your plugin does not need CSS, delete this file.
 .taskido.unplannedFocus .counter#unplanned,
 .taskido.unplannedFilter .counter#unplanned {
 	color: var(--taskido-color-focus);
-	background: rgba(var(--taskido-color-focus), 0.2);
+	background: hsla(var(--taskido-color-focus-hsl), 0.2);
 	box-shadow: var(--input-shadow);
 }
 
@@ -531,11 +532,11 @@ If your plugin does not need CSS, delete this file.
 .taskido.todoFocus .task.start,
 .taskido.overdueFocus .task.overdue,
 .taskido.unplannedFocus .task.unplanned {
-	background: rgba(var(--taskido-color-focus), 0.2);
+	background: hsla(var(--taskido-color-focus-hsl), 0.2);
 }
 
 .taskido .task:hover {
-	background: rgba(var(--taskido-color-focus), 0.2);
+	background: hsla(var(--taskido-color-focus-hsl), 0.2);
 }
 
 /* Filter */
