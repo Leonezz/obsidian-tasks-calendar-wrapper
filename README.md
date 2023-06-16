@@ -27,6 +27,24 @@ about the options, see [Obsidian-Tasks-Calendar](https://github.com/702573N/Obsi
 
 goto command panel and find "Tasks Calendar Wrapper: Open Tasks Timeline View", select the command and the view will show up.
 
+### Date format
+
+For dates of an item, if the item belongs to a daily note, then the date of that daily note will be setted as the item's _created date_. Additionally, the start date and scheduled date will also be setted as to daily note date if these two dates are not otherwise given.
+
+For general date format, it is recommend to use the [Tasks Plugin](https://github.com/obsidian-tasks-group/obsidian-tasks)'s emoji format or the [Dataview](https://github.com/blacksmithgu/obsidian-dataview) format. Both are supported in this plugin.
+
+For example, an item with 2023-06-03 as the start date could be:
+
+- [ ] task that starts at 2023-06-03 🛫 2023-06-03
+
+or:
+
+- [ ] task that starts at 2023-06-03 [start::2023-06-03]
+
+or in a daily note of date 2023-06-03:
+
+- [ ] task that starts at 2023-06-03
+
 ## Installation
 
 This plugin is available on the community market.
@@ -56,9 +74,11 @@ Just some details to make it easier, you can input in the panel with some of the
 - start: 🛫 (for start date)
 - scheduled: ⏳ (for scheduled date)
 - done: ✅ (for done date)
+- highest: 🔺 (for priority highest)
 - high: ⏫ (for priority high)
 - medium: 🔼 (for priority medium)
 - low: 🔽 (for priority low)
+- lowest: ⏬ (for priority lowest)
 - repeat: 🔁 (for recurrence)
 - recurring: 🔁 (same as repeat)
 
