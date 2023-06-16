@@ -74,9 +74,11 @@ Just some details to make it easier, you can input in the panel with some of the
 - start: 🛫 (for start date)
 - scheduled: ⏳ (for scheduled date)
 - done: ✅ (for done date)
+- highest: 🔺 (for priority highest)
 - high: ⏫ (for priority high)
 - medium: 🔼 (for priority medium)
 - low: 🔽 (for priority low)
+- lowest: ⏬ (for priority lowest)
 - repeat: 🔁 (for recurrence)
 - recurring: 🔁 (same as repeat)
 
