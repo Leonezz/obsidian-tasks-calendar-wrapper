@@ -166,7 +166,11 @@ export const defaultUserOptions = {
      * Activate a filter or not.
      */
     defaultFilters: "" as string,
-
+    /**
+     * Use builtin style (status icons) or not.
+     * If disabled, icons defined by the theme will be used.
+     */
+    useBuiltinStyle: true as boolean,
 };
 export type UserOption = typeof defaultUserOptions;
 
@@ -196,6 +200,15 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         containerEl.createEl("h1", { text: 'Timeline Settings' });
         containerEl.createEl("h2", { text: "UI Settings" });
+
+        new Setting(containerEl)
+            .setName("Use Builtin Style")
+            .setDesc("Use builtin styles (the marker icons for task status) or not.\n\
+                If disabled, styles defined by the theme you are using will be used.")
+            .addToggle(async tg => {
+                tg.setValue(this.plugin.userOptions.useBuiltinStyle);
+                tg.onChange(async v => await this.onOptionUpdate({ useBuiltinStyle: v }));
+            })
 
         new Setting(containerEl)
             .setName("Enable Counters and Filters Panel")
