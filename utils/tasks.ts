@@ -1,28 +1,27 @@
 import { moment } from 'obsidian';
 import { getFileTitle } from '../dataview-util/dataview';
 import { Link, STask } from '../dataview-util/markdown';
-import { momentToRegex } from './utils';
 
-/**
- * When sorting, make sure low always comes after none. This way any tasks with low will be below any exiting
- * tasks that have no priority which would be the default.
- *
- * @export
- * @enum {number}
- */
-export enum Priority {
-    High = '1',
-    Medium = '2',
-    None = '3',
-    Low = '4',
+enum TasksPriorityLabel {
+    Highest = 'Highest',
+    High = 'High',
+    Medium = 'Medium',
+    None = 'No',
+    Low = 'Low',
+    Lowest = 'Lowest',
 }
 
-export const prioritySymbols = {
-    High: '⏫',
-    Medium: '🔼',
-    Low: '🔽',
-    None: '',
+export const TasksPrioritySymbolToLabel = {
+    '🔺': TasksPriorityLabel.Highest,
+    '⏫': TasksPriorityLabel.High,
+    '🔼': TasksPriorityLabel.Medium,
+    '🔽': TasksPriorityLabel.Low,
+    '': TasksPriorityLabel.None,
+    '⏬': TasksPriorityLabel.Lowest
 };
+
+export type TasksPrioritySymbol = keyof (typeof TasksPrioritySymbolToLabel);
+export type PriorityLabel = string;
 
 export const recurrenceSymbol = '🔁';
 export const startDateSymbol = '🛫';
@@ -113,7 +112,10 @@ export class TaskRegularExpressions {
 
     // The following regex's end with `$` because they will be matched and
     // removed from the end until none are left.
-    public static readonly priorityRegex = /([⏫🔼🔽])$/u;
+    public static readonly priorityRegex = RegExp("([" +
+        Object.keys(TasksPrioritySymbolToLabel).filter(s => s.length > 0).join('') +
+        "])$", "u");
+
     public static readonly startDateRegex = /🛫 *(\d{4}-\d{2}-\d{2})/u;
     public static readonly scheduledDateRegex = /[⏳⌛] *(\d{4}-\d{2}-\d{2})/u;
     public static readonly dueDateRegex = /[📅📆🗓] *(\d{4}-\d{2}-\d{2})/u;
@@ -167,9 +169,7 @@ export interface TaskDataModel extends STask {
     //
     order: number,
     //
-    priority: Priority,
-    //
-    priorityLabel: string,
+    priority: PriorityLabel,
     //
     //happens: Map<string, string>,
     //
@@ -239,7 +239,7 @@ export namespace TaskMapable {
         // description in any order. The loop should only run once if the
         // strings are in the expected order after the description.
         let matched: boolean;
-        let priority: Priority = Priority.None;
+        let priority: PriorityLabel = "";
         let startDate: moment.Moment | undefined = undefined;
         let scheduledDate: moment.Moment | undefined = undefined;
         let scheduledDateIsInferred = false;
@@ -259,18 +259,7 @@ export namespace TaskMapable {
             matched = false;
             const priorityMatch = description.match(TaskRegularExpressions.priorityRegex);
             if (priorityMatch !== null) {
-                switch (priorityMatch[1]) {
-                    case prioritySymbols.Low:
-                        priority = Priority.Low;
-                        break;
-                    case prioritySymbols.Medium:
-                        priority = Priority.Medium;
-                        break;
-                    case prioritySymbols.High:
-                        priority = Priority.High;
-                        break;
-                }
-
+                priority = TasksPrioritySymbolToLabel[priorityMatch[1] as TasksPrioritySymbol];
                 description = description.replace(TaskRegularExpressions.priorityRegex, '').trim();
                 matched = true;
             }
@@ -336,13 +325,8 @@ export namespace TaskMapable {
 
         let isTasksTask = [startDate, scheduledDate, dueDate, doneDate].some(d => !!d);
 
-
-        const priorityLabel = priority === Priority.High ? "High" :
-            priority === Priority.Low ? "Low" : priority === Priority.Medium ? "Medium" : "No" + " priority";
-
         item.visual = description;
         item.priority = priority;
-        item.priorityLabel = priorityLabel;
         item.recurrence = recurrenceRule;
         item.isTasksTask = isTasksTask;
         item.due = dueDate;
