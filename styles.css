@@ -155,6 +155,7 @@ If your plugin does not need CSS, delete this file.
 	width: 50px;
 	flex-shrink: 0;
 	flex-grow: 0;
+	align-items: center;
 }
 
 .taskido .lines {
@@ -163,26 +164,34 @@ If your plugin does not need CSS, delete this file.
 	overflow: hidden;
 }
 
-.taskido .stripe {
+.taskido .task .timeline::after {
+	content: "";
 	display: flex;
 	justify-content: center;
 	align-items: center;
 	flex-shrink: 1;
 	flex-grow: 1;
-	margin: 2px auto 2px auto;
-	width: 1px;
+	position: relative;
+	margin-top: 3px;
+	margin-bottom: 3px;
+	width: 1.2px;
 	background: var(--checkbox-border-color);
 }
 
-.taskido .task.overdue .stripe {
+.taskido .task.overdue .timeline::after,
+.taskido .task[data-task='>'] .timeline::after {
 	background-color: var(--taskido-color-overdue);
 }
-.taskido .task.done .stripe {
+
+.taskido .task.done .timeline::after,
+.taskido .task[data-task='x'] .timeline::after {
 	background-color: var(--taskido-color-done);
 }
-.taskido .task.process .stripe,
-.taskido .task.scheduled .stripe,
-.taskido .task.start .stripe {
+
+.taskido .task.process .timeline::after,
+.taskido .task.scheduled .timeline::after,
+.taskido .task.start .timeline::after,
+.taskido .task[data-task='<'] .timeline::after {
 	background-color: var(--taskido-color-process);
 }
 
@@ -228,6 +237,12 @@ If your plugin does not need CSS, delete this file.
 	align-items: center;
 }
 
+.taskido .task .timeline input[type='checkbox']:not(.icon) {
+	margin-top: calc(11px - var(--checkbox-size) / 2.0);
+	margin-left: 0;
+	margin-right: 0;
+}
+
 .taskido .icon {
 	display: flex;
 	justify-content: center;
@@ -237,9 +252,18 @@ If your plugin does not need CSS, delete this file.
 	text-align: center;
 }
 
-.taskido .timeline .icon {
+.taskido .timeline icon {
 	text-align: center;
 	height: 22px;
+	padding: 0;
+	margin: 0;
+	background-position: center;
+}
+
+.taskido .timeline input.icon,
+.taskido .timeline input.icon:checked {
+	visibility: hidden;
+	height: 0;
 }
 
 .taskido .timeline .icon svg {
@@ -247,7 +271,7 @@ If your plugin does not need CSS, delete this file.
 	width: var(--checkbox-size);
 	stroke-width: 1.75px;
 	color: var(--checkbox-border-color);
-	scale: 1.1;
+	scale: 1.2;
 }
 
 .taskido .timeline .icon svg:hover {
