@@ -18,7 +18,7 @@ export default class TasksCalendarWrapper extends Plugin {
 				return view;
 			}
 		);
-		this.activateView(TIMELINE_VIEW);
+		this.app.workspace.onLayoutReady(async () => await this.activateView(TIMELINE_VIEW))
 		//this.app.workspace.getActiveViewOfType(TasksTimelineView)?.onUpdateOptions({ ...this.userOptions })
 		// This adds a simple command that can be triggered anywhere
 
