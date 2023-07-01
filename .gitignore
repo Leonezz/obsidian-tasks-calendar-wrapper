@@ -24,3 +24,6 @@ data.json
 yarn-error.log
 
 ExampleVault/.obsidian
+
+*.lock
+package-lock.json
