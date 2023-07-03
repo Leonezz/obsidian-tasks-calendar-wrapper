@@ -6,7 +6,9 @@
 	"scripts": {
 		"dev": "cp manifest.json ExampleVault/.obsidian/plugins/tasks-view/ && node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-		"version": "node version-bump.mjs && git add manifest.json versions.json"
+		"version": "node version-bump.mjs && git add manifest.json versions.json",
+		"eslint": "npx eslint */**.ts",
+		"eslint:fix": "npx eslint --fix */**.ts ; exit 0"
 	},
 	"keywords": [],
 	"author": "",
