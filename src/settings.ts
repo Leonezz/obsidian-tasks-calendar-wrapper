@@ -186,7 +186,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
     private static createFragmentWithHTML = (html: string) =>
         createFragment((documentFragment) => (documentFragment.createDiv().innerHTML = html));
 
-    async onOptionUpdate(updatePart: Partial<UserOption>, refreashSettingPage: boolean = false) {
+    async onOptionUpdate(updatePart: Partial<UserOption>, refreashSettingPage = false) {
         await this.plugin.writeOptions(updatePart);
         if (refreashSettingPage) {
             this.display();
@@ -387,7 +387,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
         const tagSettings = new Setting(containerEl);
         tagSettings.controlEl.empty();
         tagSettings.controlEl.appendChild(createEl('div'));
-        var tagBadgeSetting = new Setting(tagSettings.controlEl.firstChild as HTMLElement);
+        let tagBadgeSetting = new Setting(tagSettings.controlEl.firstChild as HTMLElement);
         if (this.plugin.userOptions.useTags) {
             Object.entries(this.plugin.userOptions.tagColorPalette).forEach(([tag, color], index) => {
                 if (index !== 0 && !(index & 0x01))
@@ -645,7 +645,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             .setDesc(desc)
         tagsSetting.controlEl.empty();
         tagsSetting.controlEl.appendChild(createDiv());
-        var tagsSettingControlEl = new Setting(tagsSetting.controlEl.firstChild as HTMLElement);
+        let tagsSettingControlEl = new Setting(tagsSetting.controlEl.firstChild as HTMLElement);
         tags.forEach((t, i) => {
             if (i !== 0 && i % 3 === 0) tagsSettingControlEl = new Setting(tagsSetting.controlEl.firstChild as HTMLElement);
             tagsSettingControlEl.controlEl.appendChild(createEl('div', { cls: "tag", text: t }));

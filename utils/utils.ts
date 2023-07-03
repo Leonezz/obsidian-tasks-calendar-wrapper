@@ -10,7 +10,7 @@ export function DateTimeToMoment(d: DateTime){
 }
 
 export function removeHightlightMarker(text: string){
-    var match = TaskRegularExpressions.highlightRegex.exec(text);
+    const match = TaskRegularExpressions.highlightRegex.exec(text);
     while(match){
         text = text.replace(match[0], match[1]);
     }
@@ -47,5 +47,5 @@ export function momentToRegex(momentFormat: string) : RegExp {
 	
 	momentFormat = momentFormat.replace("ww", "\\d{1,2}");
 	return new RegExp("/^(" + momentFormat + ")$/");
-};
+}
 

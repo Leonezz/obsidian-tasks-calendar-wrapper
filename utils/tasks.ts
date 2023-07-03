@@ -180,7 +180,7 @@ export interface TaskDataModel extends STask {
     isTasksTask: boolean,
     statusMarker: string,
     dates: Map<string, moment.Moment>;
-};
+}
 
 export namespace TaskMapable {
 
@@ -199,7 +199,7 @@ export namespace TaskMapable {
             if (item.created && date.isSame(item.created, by)) return true;
             if (item.completion && date.isSame(item.completion, by)) return true;
             if (item.start && date.isSame(item.start, by)) return true;
-            for (let [_, d] of item.dates) {
+            for (const [_, d] of item.dates) {
                 if (date.isSame(d, by)) {
                     return true;
                 }
@@ -219,7 +219,7 @@ export namespace TaskMapable {
             if (item.created && item.created.isBetween(from, to, by)) return true;
             if (item.completion && item.completion.isBetween(from, to, by)) return true;
             if (item.start && item.start.isBetween(from, to, by)) return true;
-            for (let [_, d] of item.dates) {
+            for (const [_, d] of item.dates) {
                 if (d.isBetween(from, to, by)) return true;
             }
             return false;
@@ -234,7 +234,7 @@ export namespace TaskMapable {
      */
     export function tasksPluginTaskParser(item: TaskDataModel) {
         // Check the line to see if it is a markdown task.
-        var description = item.visual || "";
+        let description = item.visual || "";
         // Keep matching and removing special strings from the end of the
         // description in any order. The loop should only run once if the
         // strings are in the expected order after the description.
@@ -242,11 +242,11 @@ export namespace TaskMapable {
         let priority: PriorityLabel = "";
         let startDate: moment.Moment | undefined = undefined;
         let scheduledDate: moment.Moment | undefined = undefined;
-        let scheduledDateIsInferred = false;
+        const scheduledDateIsInferred = false;
         let dueDate: moment.Moment | undefined = undefined;
         let doneDate: moment.Moment | undefined = undefined;
-        let recurrenceRule: string = '';
-        let recurrence: string | null = null;
+        let recurrenceRule = '';
+        const recurrence: string | null = null;
         // Tags that are removed from the end while parsing, but we want to add them back for being part of the description.
         // In the original task description they are possibly mixed with other components
         // (e.g. #tag1 <due date> #tag2), they do not have to all trail all task components,
@@ -323,7 +323,7 @@ export namespace TaskMapable {
         // to actually have the description 'Do something #tag1 #tag2'
         if (trailingTags.length > 0) description += ' ' + trailingTags;
 
-        let isTasksTask = [startDate, scheduledDate, dueDate, doneDate].some(d => !!d);
+        const isTasksTask = [startDate, scheduledDate, dueDate, doneDate].some(d => !!d);
 
         item.visual = description;
         item.priority = priority;
@@ -339,10 +339,10 @@ export namespace TaskMapable {
     }
 
     export function dataviewTaskParser(item: TaskDataModel) {
-        var itemText = item.visual || "";
+        let itemText = item.visual || "";
         const inlineFields = itemText.match(TaskRegularExpressions.keyValueRegex);
         if (!inlineFields) return item;
-        for (let inlineField of inlineFields) {
+        for (const inlineField of inlineFields) {
             // this is necessary since every time RegEx.exec,
             // the lastIndex changed like an internal state.
             TaskRegularExpressions.keyValueRegex.lastIndex = 0;
@@ -394,9 +394,9 @@ export namespace TaskMapable {
 
         item.outlinks = [];
 
-        var outerLinkMatch = TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
-        var innerLinkMatch = TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
-        var dataviewDateMatch = TaskRegularExpressions.keyValueRegex.exec(item.visual!);
+        let outerLinkMatch = TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
+        let innerLinkMatch = TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
+        let dataviewDateMatch = TaskRegularExpressions.keyValueRegex.exec(item.visual!);
 
         const buildLink = (text: string, display: string, path: string, index: number, inner: boolean) => {
             item.visual = item.visual!.replace(text, display);
@@ -425,7 +425,7 @@ export namespace TaskMapable {
                 innerLinkMatch = TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
                 dataviewDateMatch = TaskRegularExpressions.keyValueRegex.exec(item.visual!);
                 outerLinkMatch = TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
-            } else if (!!outerLinkMatch) {
+            } else if (outerLinkMatch) {
                 buildLink(outerLinkMatch[0], outerLinkMatch[1], outerLinkMatch[2], outerLinkMatch.index, false);
                 outerLinkMatch = TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
             } else if (!!innerLinkMatch && !dataviewDateMatch) {
@@ -439,16 +439,16 @@ export namespace TaskMapable {
     }
 
     export function remainderParser(item: TaskDataModel) {
-        var match = item.text.match(TaskRegularExpressions.remainderRegex);
+        const match = item.text.match(TaskRegularExpressions.remainderRegex);
         if (!match) return item;
         item.text = item.text.replace(match[0], "");
         return item;
     }
 
     export function tagsParser(item: TaskDataModel) {
-        var match = item.visual?.match(TaskRegularExpressions.hashTags);
+        const match = item.visual?.match(TaskRegularExpressions.hashTags);
         if (!match) return item;
-        for (let m of match) {
+        for (const m of match) {
             item.visual = item.visual?.replace(m, "");
             const tag = m.trim();
             item.tags.push(tag);
