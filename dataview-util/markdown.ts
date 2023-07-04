@@ -46,7 +46,7 @@ export class Link {
     }
 
     /** Create a link to a specific file. */
-    public static file(path: string, embed: boolean = false, display?: string) {
+    public static file(path: string, embed = false, display?: string) {
         return new Link({
             path,
             embed,
@@ -56,12 +56,12 @@ export class Link {
         });
     }
 
-    public static infer(linkpath: string, embed: boolean = false, display?: string) {
+    public static infer(linkpath: string, embed = false, display?: string) {
         if (linkpath.includes("#^")) {
-            let split = linkpath.split("#^");
+            const split = linkpath.split("#^");
             return Link.block(split[0], split[1], embed, display);
         } else if (linkpath.includes("#")) {
-            let split = linkpath.split("#");
+            const split = linkpath.split("#");
             return Link.header(split[0], split[1], embed, display);
         } else return Link.file(linkpath, embed, display);
     }
@@ -140,7 +140,7 @@ export class Link {
         if (this.embed) {
             return this;
         } else {
-            let link = new Link(this);
+            const link = new Link(this);
             link.embed = true;
             return link;
         }
@@ -151,7 +151,7 @@ export class Link {
         if (!this.embed) {
             return this;
         } else {
-            let link = new Link(this);
+            const link = new Link(this);
             link.embed = false;
             return link;
         }

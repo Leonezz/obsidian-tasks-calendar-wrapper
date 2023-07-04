@@ -20,18 +20,18 @@ export interface __Options {
 
 export class TimelineSettings implements __Options{
     inbox: string | undefined = "Inbox.md";
-    select: string = "Inbox.md";
+    select = "Inbox.md";
     taskOrder: Set<string> = new Set(["overdue", "due", "scheduled", "start", "process", "unplanned", "done", "cancelled"]);
     taskFiles: Set<string> = new Set();
     globalTaskFilter: Set<string> = new Set();
-    dailyNoteFolder: string = "";
+    dailyNoteFolder = "";
     dailyNoteFormat: string | undefined = "YYYY-MM-DD";
-    done: boolean = false;
+    done = false;
     sort = (t1: TaskDataModel, t2: TaskDataModel) => { return t1.order - t2.order; };
     css: string | undefined = undefined;
-    forward: boolean = false;
-    dateFormat: string = "ddd, MMM D";
-    section: string = "## Inbox";
+    forward = false;
+    dateFormat = "ddd, MMM D";
+    section = "## Inbox";
     options: Set<string> = new Set();
     constructor(){
         //this.postProcessor();
@@ -42,5 +42,5 @@ export class TimelineSettings implements __Options{
         const dailyNoteFileName = moment().format(this.dailyNoteFormat) + ".md";
         const daileNoteFolder = this.dailyNoteFolder === '' ? '' : this.dailyNoteFolder.endsWith('/') ? this.dailyNoteFolder : this.dailyNoteFolder + '/'
         if(this.dailyNoteFormat && this.dailyNoteFormat !== '')this.taskFiles.add(daileNoteFolder + dailyNoteFileName);
-    };
-};
+    }
+}
