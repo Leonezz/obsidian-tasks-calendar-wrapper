@@ -124,10 +124,10 @@ export class TaskRegularExpressions {
 
     // regex from @702573N
     public static readonly hexColorRegex = /([a-fA-F0-9]{6}|[a-fA-F0-9]{3})\/(.*)/;
-    public static readonly TasksPluginDateRegex = /[🛫|⏳|📅|✅] *(\d{4}-\d{2}-\d{2})/;
+    public static readonly TasksPluginDateRegex = /[🛫|⏳|📅|✅] *(\d{4}-\d{2}-\d{2})/u;
 
     // [[a::b]] => a, b
-    public static readonly keyValueRegex = /\[+([^\]]+)\:\:([^\]]+)\]/g;
+    public static readonly keyValueRegex = /\[+([^\]]+)::([^\]]+)\]/g;
 
     /**
      * [a](b) => a, b (a could be empty)
@@ -136,12 +136,12 @@ export class TaskRegularExpressions {
      * #3: b
      */
     public static readonly outerLinkRegex =
-        /\[((?:\[[^\]]*\]|[^\[\]])*)\]\([ \t]*<?((?:\([^)]*\)|[^()\s])*?)>?[ \t]*((['"])(.*?)\6[ \t]*)?\)/g
+        /\[((?:\[[^\]]*\]|[^[\]])*)\]\([ \t]*<?((?:\([^)]*\)|[^()\s])*?)>?[ \t]*((['"])(.*?)\6[ \t]*)?\)/g
 
     public static readonly innerLinkRegex = /\[\[([^\]]+)\]\]/g;
-    public static readonly highlightRegex = /\=\=([^\]]+)\=\=/g;
+    public static readonly highlightRegex = /==([^\]]+)==/g;
     public static readonly remainderRegex =
-        /⏰ *(\d{4}-\d{2}-\d{2}) *(\d{2}\:\d{2})|⏰ *(\d{4}-\d{2}-\d{2})|(\(\@(\d{4}-\d{2}-\d{2}) *(\d{2}\:\d{2})\))|(\(\@(\d{4}-\d{2}-\d{2})\))/;
+        /⏰ *(\d{4}-\d{2}-\d{2}) *(\d{2}:\d{2})|⏰ *(\d{4}-\d{2}-\d{2})|(\(@(\d{4}-\d{2}-\d{2}) *(\d{2}:\d{2})\))|(\(@(\d{4}-\d{2}-\d{2})\))/;
     // Regex to match all hash tags, basically hash followed by anything but the characters in the negation.
     // To ensure URLs are not caught it is looking of beginning of string tag and any
     // tag that has a space in front of it. Any # that has a character in front
