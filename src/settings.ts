@@ -1,5 +1,5 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
-import { TaskDataModel, TaskRegularExpressions } from "utils/tasks";
+import { TaskRegularExpressions } from "utils/tasks";
 import TasksCalendarWrapper from "./main";
 const sortOptions = {
     "(t1, t2) => t1.order <= t2.order ? -1 : 1": "status(ascending)",

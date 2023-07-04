@@ -1,4 +1,3 @@
-import { DateTime, Duration } from "luxon";
 import { LinkCache, Pos, SectionCache } from 'obsidian';
 import { getFileTitle, normalizeHeaderForLink } from './dataview';
 //////////
@@ -18,7 +17,7 @@ export class Link {
     /** The type of this link, which determines what 'subpath' refers to, if anything. */
     public type: "file" | "header" | "block";
 
-    public withListCache(id?: string, itemText?: string) {
+    public withListCache(id?: string, _itemText?: string) {
         return new Link({
             path: this.path,
             display: this.display,
@@ -28,18 +27,18 @@ export class Link {
         })
     }
 
-    public static withLinkCache(cache: LinkCache){
+    public static withLinkCache(cache: LinkCache) {
         return Link.file(cache.link, false, cache.displayText);
     }
 
-    public withSectionCache(cache: SectionCache, text: string){
-        switch(cache.type){
+    public withSectionCache(cache: SectionCache, text: string) {
+        switch (cache.type) {
             case "heading":
                 return this.withHeader(text);
             case "list":
                 return this.withListCache(cache.id, text);
             case "block":
-                return new Link({path: this.path, display: this.display, subpath: cache.id, embed: this.embed, type: "block"})
+                return new Link({ path: this.path, display: this.display, subpath: cache.id, embed: this.embed, type: "block" })
             default:
                 return this.toFile();
         }
@@ -298,36 +297,6 @@ export class ListItem {
         else return `${this.symbol} ${this.text}`;
     }
 }
-
-
-/** Shorthand for a mapping from keys to values. */
-export type DataObject = { [key: string]: Literal };
-/** The literal types supported by the query engine. */
-export type LiteralType =
-    | "boolean"
-    | "number"
-    | "string"
-    | "date"
-    | "duration"
-    | "link"
-    | "array"
-    | "object"
-    | "function"
-    | "null"
-    | "html"
-/** The raw values that a literal can take on. */
-export type Literal =
-    | boolean
-    | number
-    | string
-    | DateTime
-    | Duration
-    | Link
-    | Array<Literal>
-    | DataObject
-    | Function
-    | null
-    | HTMLElement
 
 /** A serialized list item as seen by users; this is not a task. */
 export interface SListEntry extends SListItemBase {

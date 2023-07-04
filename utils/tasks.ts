@@ -162,7 +162,7 @@ export class TaskRegularExpressions {
  * @class Task
  */
 
-const defaultSort = (t1: TaskDataModel, t2: TaskDataModel) => { return t1.order - t2.order; };
+//const defaultSort = (t1: TaskDataModel, t2: TaskDataModel) => { return t1.order - t2.order; };
 export interface TaskDataModel extends STask {
     // 
     dailyNote: boolean,
