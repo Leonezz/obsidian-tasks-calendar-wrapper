@@ -18,7 +18,7 @@ function filterByDateTime(date: moment.Moment, by: moment.unitOfTime.StartOf) {
         if (item.created && date.isSame(item.created, by)) return true;
         if (item.completion && date.isSame(item.completion, by)) return true;
         if (item.start && date.isSame(item.start, by)) return true;
-        for (const [, d] of item.dates) {
+        for (const [_, d] of item.dates) {
             if (date.isSame(d, by)) {
                 return true;
             }
@@ -38,7 +38,7 @@ function filterByDateTimeRange(from: moment.Moment, to: moment.Moment, by: momen
         if (item.created && item.created.isBetween(from, to, by)) return true;
         if (item.completion && item.completion.isBetween(from, to, by)) return true;
         if (item.start && item.start.isBetween(from, to, by)) return true;
-        for (const [, d] of item.dates) {
+        for (const [_, d] of item.dates) {
             if (d.isBetween(from, to, by)) return true;
         }
         return false;
@@ -61,11 +61,11 @@ export function tasksPluginTaskParser(item: TasksUtil.TaskDataModel) {
     let priority: TasksUtil.PriorityLabel = "";
     let startDate: moment.Moment | undefined = undefined;
     let scheduledDate: moment.Moment | undefined = undefined;
-    //const scheduledDateIsInferred = false;
+    const scheduledDateIsInferred = false;
     let dueDate: moment.Moment | undefined = undefined;
     let doneDate: moment.Moment | undefined = undefined;
     let recurrenceRule = '';
-    //const recurrence: string | null = null;
+    const recurrence: string | null = null;
     // Tags that are removed from the end while parsing, but we want to add them back for being part of the description.
     // In the original task description they are possibly mixed with other components
     // (e.g. #tag1 <due date> #tag2), they do not have to all trail all task components,
