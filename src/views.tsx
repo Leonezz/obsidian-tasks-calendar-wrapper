@@ -3,7 +3,8 @@ import { ItemView, moment, Notice, WorkspaceLeaf } from "obsidian";
 import { ObsidianBridge } from 'Obsidian-Tasks-Timeline/src/obsidianbridge';
 import { ObsidianTaskAdapter } from "Obsidian-Tasks-Timeline/src/taskadapter";
 import { createRoot, Root } from 'react-dom/client';
-import { TaskDataModel, TaskMapable, TaskStatus, TaskStatusMarkerMap } from "utils/tasks";
+import * as TaskMapable from 'utils/taskmapable';
+import { TaskDataModel, TaskStatus, TaskStatusMarkerMap } from "utils/tasks";
 import { defaultUserOptions, UserOption } from "./settings";
 
 

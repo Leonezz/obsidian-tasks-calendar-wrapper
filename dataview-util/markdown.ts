@@ -27,18 +27,18 @@ export class Link {
         })
     }
 
-    public static withLinkCache(cache: LinkCache) {
+    public static withLinkCache(cache: LinkCache){
         return Link.file(cache.link, false, cache.displayText);
     }
 
-    public withSectionCache(cache: SectionCache, text: string) {
-        switch (cache.type) {
+    public withSectionCache(cache: SectionCache, text: string){
+        switch(cache.type){
             case "heading":
                 return this.withHeader(text);
             case "list":
                 return this.withListCache(cache.id, text);
             case "block":
-                return new Link({ path: this.path, display: this.display, subpath: cache.id, embed: this.embed, type: "block" })
+                return new Link({path: this.path, display: this.display, subpath: cache.id, embed: this.embed, type: "block"})
             default:
                 return this.toFile();
         }
