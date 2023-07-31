@@ -63,11 +63,12 @@ export class TasksTimelineView extends BaseTasksView {
     }
 
     onReloadTasks() {
-        const pathFilter = this.userOptionModel.get("excludePaths") || [];
+        const fileExcludeFilter = this.userOptionModel.get("excludePaths") || [];
+        const fileIncludeFilter = this.userOptionModel.get("includePaths") || [];
         const fileIncludeTagsFilter = this.userOptionModel.get("fileIncludeTags") || [];
         const fileExcludeTagsFilter = this.userOptionModel.get("fileExcludeTags") || [];
         const adapter = new ObsidianTaskAdapter(this.app);
-        adapter.generateTasksList(pathFilter, fileIncludeTagsFilter, fileExcludeTagsFilter).then(() => {
+        adapter.generateTasksList(fileIncludeFilter, fileExcludeFilter, fileIncludeTagsFilter, fileExcludeTagsFilter).then(() => {
             const taskList = adapter.getTaskList();
             this.parseTasks(taskList).then(tasks => {
                 const taskfiles = this.userOptionModel.get("taskFiles");
