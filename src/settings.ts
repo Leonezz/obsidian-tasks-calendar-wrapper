@@ -24,7 +24,7 @@ export const defaultUserOptions = {
     excludePaths: [] as string[],
     /**
      * filter specific files and tasks only from these files are rendered */
-    fileFilter: "" as string,
+    fileFilter: [] as string[],
     /**
      * Use tags filters to filter tasks without specific tags out or not.
      */
@@ -618,6 +618,22 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                     const values = v.split(',');
                     const valuesTrimed = values.map(p => p.trim()).filter(p => p.length > 0);
                     await this.onOptionUpdate({ excludePaths: valuesTrimed });
+                })
+            })
+
+        new Setting(containerEl)
+            .setName("Include Paths")
+            .setDesc(TasksCalendarSettingTab.createFragmentWithHTML(
+                "Include tasks match specific paths (folders, files). \n\
+                <p style=color:red;>NOTE that no prefix or trailing '/' needed, unless you want to filter the entire vault out.</p>"
+            ))
+            .addTextArea(ta => {
+                ta.setPlaceholder("comma separated file paths, e.g.: path1,path2/path3,path4.md");
+                ta.setValue(this.plugin.userOptions.fileFilter.join(","));
+                ta.onChange(async v => {
+                    const values = v.split(',');
+                    const valuesTrimed = values.map(p => p.trim()).filter(p => p.length > 0);
+                    await this.onOptionUpdate({ fileFilter: valuesTrimed });
                 })
             })
 
