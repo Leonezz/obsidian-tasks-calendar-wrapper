@@ -629,11 +629,11 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             ))
             .addTextArea(ta => {
                 ta.setPlaceholder("comma separated file paths, e.g.: path1,path2/path3,path4.md");
-                ta.setValue(this.plugin.userOptions.fileFilter.join(","));
+                ta.setValue(this.plugin.userOptions.includePaths.join(","));
                 ta.onChange(async v => {
                     const values = v.split(',');
                     const valuesTrimed = values.map(p => p.trim()).filter(p => p.length > 0);
-                    await this.onOptionUpdate({ fileFilter: valuesTrimed });
+                    await this.onOptionUpdate({ includePaths: valuesTrimed });
                 })
             })
 
