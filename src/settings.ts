@@ -24,7 +24,7 @@ export const defaultUserOptions = {
     excludePaths: [] as string[],
     /**
      * filter specific files and tasks only from these files are rendered */
-    fileFilter: [] as string[],
+    includePaths: [] as string[],
     /**
      * Use tags filters to filter tasks without specific tags out or not.
      */
