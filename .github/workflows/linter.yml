@@ -2,6 +2,8 @@ name: Eslinter Fix and Push CI
 
 on:
   push:
+    branches:
+      - "**"
 
 jobs:
   linter:
