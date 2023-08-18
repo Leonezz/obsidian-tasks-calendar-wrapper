@@ -171,6 +171,17 @@ export class TasksTimelineView extends BaseTasksView {
             }
         }
 
+		if (this.userOptionModel.get("convert24HourTimePrefix")) {
+			taskList = taskList.map((t: TaskDataModel) => {
+				if (!t.visual || t.visual.length < 5) return t;
+				const timePrefix = moment(t.visual.substring(0,5), "HH:mm", true);
+				if (!timePrefix.isValid()) return t;
+				const updatedTimePrefix = timePrefix.format("h:mm a");
+				t.visual = updatedTimePrefix + t.visual.substring(5);
+				return t;
+			});
+		}
+
         return taskList;
     }
 
