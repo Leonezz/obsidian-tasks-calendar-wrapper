@@ -171,6 +171,10 @@ export const defaultUserOptions = {
      * If disabled, icons defined by the theme will be used.
      */
     useBuiltinStyle: true as boolean,
+    /**
+     * Convert a 24 hour time prefix in task description (15:30) to 12 hour time with am/pm (3:30 pm)
+     */
+	convert24HourTimePrefix: false as boolean,
 };
 export type UserOption = typeof defaultUserOptions;
 
@@ -508,6 +512,16 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                 ta.onChange(async v => {
                     await this.onOptionUpdate({ sort: v });
                 })
+            })
+
+        new Setting(containerEl)
+            .setName("Convert Time Prefix")
+            .setDesc("Convert 24 hour time prefix to 12 hour time with am/pm. \n\
+			    For example, 15:30 at the beginning of a task will become 3:30 pm.\n\
+			    This is applied after sorting, enabling a chronological ordering.")
+            .addToggle(async tg => {
+                tg.setValue(this.plugin.userOptions.convert24HourTimePrefix);
+                tg.onChange(async v => await this.onOptionUpdate({ convert24HourTimePrefix: v }));
             })
 
         new Setting(containerEl)
