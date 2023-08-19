@@ -146,6 +146,7 @@ Below is a screen shot with theme [AnuPpuccin](https://github.com/AnubisNekhet/A
 - **Date Format**: Specify a date format you like the most, the visible dates in this view will be formated as such. Do note the input here should be a valid [moment](https://momentjs.com/docs/#/displaying/format/) format.
 - **Sort By**: Specify how would you like the task items in the same date to be sorted. Available options are:
   - (I believe all option texts here explain themselves)
+- **Convert Time Prefix**: If enabled, tasks prefixed with a 24-hour timestamp (i.e. "09:00") will be displayed in the timeline with a 12-hour timestamp instead (i.e. "9:00 am"). This is a purely visual option that does not affect sorting, allowing users to display tasks with a 12-hour time format chronologically.
 - **Use Include Tags**: If enabled, you could specify tags without which the tasks should not be displayed.
   - **Task Include Filters**: Tasks without any of these tags should not be displayed.
   - **File Include Tags**: Tasks of the files which have none of these tags should not be displayed.
