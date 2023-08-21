@@ -154,6 +154,7 @@ Below is a screen shot with theme [AnuPpuccin](https://github.com/AnubisNekhet/A
   - **Task Exclude Tags**: Tasks with any of these tags should not be displayed.
   - **File Exclude Tags**: Tasks of files which have any of these tags should not be displayed.
 - **Exclude Paths**: Specify items of which paths should not be counted as tasks. In most of the time your template folder path should be included here.
+- **Include Paths**: Specify items of which paths should be counted as tasks.
 - **Filter Empty**: If enabled, tasks with empty content will not be displayed. If disabled, the raw text of the empty content tasks will be displayed.
 
 # License
