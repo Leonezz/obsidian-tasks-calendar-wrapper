@@ -112,6 +112,8 @@ Below is a screen shot with theme [AnuPpuccin](https://github.com/AnubisNekhet/A
 
 ## Options
 
+Modification to the options will take effect after 5 secs.
+
 - **Use Builtin Style**: Enable plugin defined icons for tasks status or disable them and use those defined by the theme that you prefer.
 - **Enable Counters and Filters Panel**: Use counters / filters on the quick entry panel or not, the counters / filters will not be displayed if this option not enabled.
 - **Behavior of Counters and Filters Panel**: Control the effect of the counter/filter button, available options are:
