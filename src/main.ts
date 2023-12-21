@@ -8,7 +8,7 @@ import { defaultUserOptions, TasksCalendarSettingTab, UserOption } from './setti
 
 export default class TasksCalendarWrapper extends Plugin {
 	userOptions: UserOption = {} as UserOption;
-	private userOptionsReloading: boolean = false;
+	private userOptionsReloading = false;
 	async onload() {
 		await this.loadOptions();
 		this.registerView(
