@@ -1,3 +1,10 @@
+# NEWS about v1.0
+
+I am currently refactoring this plugin with NextUI components, to make this plugin more maintainable and expandable, more features and better visualization will come with this major revision!
+Here is a very eary preview, please do leave an issue if you have any thoughts!
+
+![image](https://github.com/Leonezz/obsidian-tasks-calendar-wrapper/assets/33564074/14084925-4109-4abd-8ee0-b41af12bf992)
+
 # Tasks Calendar Wrapper
 
 ![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22tasks-calendar-wrapper%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json)
