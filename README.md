@@ -3,7 +3,8 @@
 I am currently refactoring this plugin with NextUI components, to make this plugin more maintainable and expandable, more features and better visualization will come with this major revision!
 Here is a very eary preview, please do leave an issue if you have any thoughts!
 
-![image](https://github.com/Leonezz/obsidian-tasks-calendar-wrapper/assets/33564074/14084925-4109-4abd-8ee0-b41af12bf992)
+![image](https://github.com/Leonezz/obsidian-tasks-calendar-wrapper/assets/33564074/69d5a590-9d61-4a5a-9cd3-94a5598d4d50)
+
 
 # Tasks Calendar Wrapper
 
