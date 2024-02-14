@@ -10,11 +10,11 @@ Here is a very eary preview, please do leave an issue if you have any thoughts! 
 
 ![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22tasks-calendar-wrapper%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json)
 
-This plugin currently provides a timeline view to display your tasks from your [obsidian](https://obsidian.md/) valut, with customizable filters and renderring options.
+This plugin currently provides a timeline view to display your tasks from your [obsidian](https://obsidian.md/) vault, with customizable filters and rendering options.
 
 ## Overview
 
-The [ExampleValut](https://github.com/Leonezz/obsidian-tasks-calendar-wrapper/tree/master/ExampleVault) provides an example using this plugin, the screen shot with the [Blue-Topaz](https://github.com/whyt-byte/Blue-Topaz_Obsidian-css) light theme is as follows:
+The [ExampleVault](https://github.com/Leonezz/obsidian-tasks-calendar-wrapper/tree/master/ExampleVault) provides an example using this plugin, the screen shot with the [Blue-Topaz](https://github.com/whyt-byte/Blue-Topaz_Obsidian-css) light theme is as follows:
 
 ![](imgs/overview.png)
 
@@ -33,7 +33,7 @@ about the options, see [Obsidian-Tasks-Calendar](https://github.com/702573N/Obsi
 
 ## Usage
 
-goto command panel and find "Tasks Calendar Wrapper: Open Tasks Timeline View", select the command and the view will show up.
+Go to command panel and find "Tasks Calendar Wrapper: Open Tasks Timeline View", select the command and the view will show up.
 
 ### Date format
 
@@ -63,7 +63,7 @@ There are mainly two components in the timeline view, which are the quick entry 
 
 ### Quick Entry
 
-The quick entry panel provides four buttons an one input line.
+The quick entry panel provides four buttons and one input line.
 ![](imgs/quick_entry.png)
 
 #### Buttons
