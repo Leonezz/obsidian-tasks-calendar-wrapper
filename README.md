@@ -170,3 +170,8 @@ Modification to the options will take effect after 5 secs.
 # License
 
 MIT.
+
+# Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=leonezz/obsidian-tasks-calendar-wrapper&type=Date)](https://star-history.com/#leonezz/obsidian-tasks-calendar-wrapper&Date)
+
