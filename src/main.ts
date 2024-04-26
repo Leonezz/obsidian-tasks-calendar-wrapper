@@ -71,6 +71,13 @@ export default class TasksCalendarWrapper extends Plugin {
 		if (type !== TIMELINE_VIEW) {
 			return;
 		}
+
+        const leaves = this.app.workspace.getLeavesOfType(type);
+		if (leaves.length > 0) {
+			this.app.workspace.revealLeaf(leaves[0]);
+			return;
+		}
+
 		this.app.workspace.detachLeavesOfType(type);
 		try {
 			await this.app.workspace.getRightLeaf(false).setViewState({
@@ -78,9 +85,9 @@ export default class TasksCalendarWrapper extends Plugin {
 				active: true,
 			});
 
-			this.app.workspace.revealLeaf(
-				this.app.workspace.getLeavesOfType(type).first()!
-			);
+			//  this.app.workspace.revealLeaf(
+			//	  this.app.workspace.getLeavesOfType(type).first()!
+			//. );
 		} catch (e) {
 			console.log(e)
 		}
