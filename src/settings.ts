@@ -15,6 +15,10 @@ const sortOptions = {
 };
 export const defaultUserOptions = {
     /**
+	 * Open the view on startup or not
+	 */
+	openViewOnStartup: false as boolean,
+    /**
      * filter empty items out or not, if not, the raw text of empty items will be displayed
      */
     filterEmpty: true as boolean,
@@ -204,6 +208,17 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         containerEl.createEl("h1", { text: 'Timeline Settings' });
         containerEl.createEl("h2", { text: "UI Settings" });
+
+        new Setting(containerEl)
+			.setName("Open View On Startup")
+			.setDesc("Open the view on startup or not.")
+			.addToggle(async (tg) => {
+				tg.setValue(this.plugin.userOptions.openViewOnStartup);
+				tg.onChange(
+					async (v) =>
+						await this.onOptionUpdate({ openViewOnStartup: v })
+				);
+			});
 
         new Setting(containerEl)
             .setName("Use Builtin Style")

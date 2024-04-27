@@ -19,8 +19,12 @@ export default class TasksCalendarWrapper extends Plugin {
 				return view;
 			}
 		);
-		this.app.workspace.onLayoutReady(async () => await this.activateView(TIMELINE_VIEW))
-		//this.app.workspace.getActiveViewOfType(TasksTimelineView)?.onUpdateOptions({ ...this.userOptions })
+        if (this.userOptions.openViewOnStartup)
+			this.app.workspace.onLayoutReady(
+				async () => await this.activateView(TIMELINE_VIEW)
+			);
+		// this.app.workspace.onLayoutReady(async () => await this.initView(TIMELINE_VIEW))
+		// this.app.workspace.getActiveViewOfType(TasksTimelineView)?.onUpdateOptions({ ...this.userOptions })
 		// This adds a simple command that can be triggered anywhere
 
 		this.addCommand({
@@ -84,13 +88,8 @@ export default class TasksCalendarWrapper extends Plugin {
 				type: type,
 				active: true,
 			});
-
-			//  this.app.workspace.revealLeaf(
-			//	  this.app.workspace.getLeavesOfType(type).first()!
-			//. );
 		} catch (e) {
 			console.log(e)
 		}
-
-	}
+    }
 }
