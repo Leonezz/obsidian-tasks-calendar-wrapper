@@ -84,7 +84,7 @@ export default class TasksCalendarWrapper extends Plugin {
 
 		this.app.workspace.detachLeavesOfType(type);
 		try {
-			await this.app.workspace.getRightLeaf(false).setViewState({
+			await this.app.workspace.getRightLeaf(false)?.setViewState({
 				type: type,
 				active: true,
 			});
