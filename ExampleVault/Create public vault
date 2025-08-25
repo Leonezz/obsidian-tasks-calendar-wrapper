@@ -1,0 +1,1 @@
+const { id: vaultId } = await tusky.vault.create("My public vault", { encrypted: false });
