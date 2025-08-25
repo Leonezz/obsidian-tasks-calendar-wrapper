@@ -1,0 +1,1 @@
+const vaults = await tusky.vault.listAll();
