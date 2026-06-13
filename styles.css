@@ -12,7 +12,7 @@ If your plugin does not need CSS, delete this file.
 	user-select: none;
 	margin-bottom: 15%;
 	--taskido-color-warning: var(--color-red);
-	--taskido-color-focus: var(--interactive-accent);
+	--taskido-color-focus: var(--text-accent, var(--interactive-accent));
 	--taskido-color-focus-hsl: var(--interactive-accent-hsl);
 	--taskido-color-overdue: var(--taskido-color-warning);
 	--taskido-color-done: var(--color-green);
@@ -30,7 +30,7 @@ If your plugin does not need CSS, delete this file.
 
 .taskido .task .internal-link,
 .taskido .task .external-link {
-	color: var(--interactive-accent);
+	color: var(--text-accent, var(--interactive-accent));
 	text-decoration: underline !important;
 }
 
@@ -507,7 +507,7 @@ If your plugin does not need CSS, delete this file.
 .taskido.unplannedFocus .counter#unplanned,
 .taskido.unplannedFilter .counter#unplanned {
 	color: var(--taskido-color-focus);
-	background: hsla(var(--taskido-color-focus-hsl), 0.2);
+	background: var(--background-modifier-hover);
 	box-shadow: var(--input-shadow);
 }
 
@@ -550,17 +550,22 @@ If your plugin does not need CSS, delete this file.
 	padding: 0;
 }
 
+.taskido .details.today {
+	background: transparent !important;
+	background-color: transparent !important;
+}
+
 .taskido.todoFocus .task.due,
 .taskido.todoFocus .task.scheduled,
 .taskido.todoFocus .task.process,
 .taskido.todoFocus .task.start,
 .taskido.overdueFocus .task.overdue,
 .taskido.unplannedFocus .task.unplanned {
-	background: hsla(var(--taskido-color-focus-hsl), 0.2);
+	background: var(--background-modifier-hover);
 }
 
 .taskido .task:hover {
-	background: hsla(var(--taskido-color-focus-hsl), 0.2);
+	background: var(--background-modifier-hover);
 }
 
 /* Filter */
