@@ -76,7 +76,11 @@ export class TasksTimelineView extends BaseTasksView {
         const adapter = new ObsidianTaskAdapter(this.app);
         adapter.generateTasksList(fileIncludeFilter, fileExcludeFilter, fileIncludeTagsFilter, fileExcludeTagsFilter)
             .then(() => {
-                const taskList = adapter.getTaskList();
+				let taskList = adapter.getTaskList();
+
+				const sortOptionFn = (0, eval)(this.userOptionModel.get("sort") || "")
+				if (sortOptionFn) taskList = taskList.sort(sortOptionFn)
+
                 const taskListPromise = this.parseTasks(taskList)
                 taskListPromise.then(tasks => {
                     tasks = this.filterTasks(tasks);
