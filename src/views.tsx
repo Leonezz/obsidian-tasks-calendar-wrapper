@@ -1,10 +1,10 @@
 import { Model } from "backbone";
-import { ItemView, moment, Notice, WorkspaceLeaf } from "obsidian";
+import { Editor, ItemView, moment, Notice, WorkspaceLeaf } from "obsidian";
 import { ObsidianBridge } from 'Obsidian-Tasks-Timeline/src/obsidianbridge';
 import { ObsidianTaskAdapter } from "Obsidian-Tasks-Timeline/src/taskadapter";
 import { createRoot, Root } from 'react-dom/client';
 import * as TaskMapable from 'utils/taskmapable';
-import { TaskDataModel, TaskStatus, TaskStatusMarkerMap } from "utils/tasks";
+import { TaskDataModel, TaskRegularExpressions, TaskStatus, TaskStatusMarkerMap } from "utils/tasks";
 import { defaultUserOptions, UserOption } from "./settings";
 
 
@@ -26,6 +26,9 @@ export class TasksTimelineView extends BaseTasksView {
     });
 
     private isReloading: boolean = false;
+    private reloadPending: boolean = false;
+    private editorReloadTimer: number | null = null;
+    private allTasks: TaskDataModel[] = [];
     private userOptionModel = new Model({ ...defaultUserOptions });
     static view: TasksTimelineView | null = null;
     constructor(leaf: WorkspaceLeaf) {
@@ -33,6 +36,7 @@ export class TasksTimelineView extends BaseTasksView {
 
         this.parseTasks = this.parseTasks.bind(this);
         this.onReloadTasks = this.onReloadTasks.bind(this);
+        this.onEditorChange = this.onEditorChange.bind(this);
         this.onUpdateOptions = this.onUpdateOptions.bind(this);
         TasksTimelineView.view = this;
         //this.userOptionModel.set({ ...defaultUserOptions });
@@ -41,6 +45,8 @@ export class TasksTimelineView extends BaseTasksView {
     async onOpen(): Promise<void> {
 
         this.registerEvent(this.app.metadataCache.on('resolved', this.onReloadTasks));
+        this.registerEvent(this.app.metadataCache.on('changed', this.onReloadTasks));
+        this.registerEvent(this.app.workspace.on('editor-change', this.onEditorChange));
         this.registerEvent(this.app.workspace.on("window-open", this.onReloadTasks));
 
         const { containerEl } = this;
@@ -55,7 +61,23 @@ export class TasksTimelineView extends BaseTasksView {
     }
 
     async onClose(): Promise<void> {
-        // this.app.metadataCache.off('resolved', this.onReloadTasks);
+        if (this.editorReloadTimer !== null) window.clearTimeout(this.editorReloadTimer);
+    }
+
+    onEditorChange(editor: Editor): void {
+        const activeFile = this.app.workspace.activeEditor?.file;
+        const cursor = editor.getCursor();
+        const statusMarker = editor.getLine(cursor.line).match(TaskRegularExpressions.taskRegex)?.[3];
+        const previousTask = this.allTasks.find(task =>
+            task.path === activeFile?.path && task.line === cursor.line);
+
+        if (statusMarker === undefined || previousTask?.statusMarker === statusMarker) return;
+
+        if (this.editorReloadTimer !== null) window.clearTimeout(this.editorReloadTimer);
+        this.editorReloadTimer = window.setTimeout(() => {
+            this.editorReloadTimer = null;
+            this.onReloadTasks();
+        }, 25);
     }
 
     onUpdateOptions(opt: UserOption) {
@@ -66,6 +88,7 @@ export class TasksTimelineView extends BaseTasksView {
 
     async onReloadTasks() {
         if (this.isReloading) {
+            this.reloadPending = true;
             return;
         }
         this.isReloading = true;
@@ -74,23 +97,23 @@ export class TasksTimelineView extends BaseTasksView {
         const fileIncludeTagsFilter = this.userOptionModel.get("fileIncludeTags") || [];
         const fileExcludeTagsFilter = this.userOptionModel.get("fileExcludeTags") || [];
         const adapter = new ObsidianTaskAdapter(this.app);
-        adapter.generateTasksList(fileIncludeFilter, fileExcludeFilter, fileIncludeTagsFilter, fileExcludeTagsFilter)
-            .then(() => {
-                const taskList = adapter.getTaskList();
-                const taskListPromise = this.parseTasks(taskList)
-                taskListPromise.then(tasks => {
-                    tasks = this.filterTasks(tasks);
-                    const taskfiles = this.userOptionModel.get("taskFiles");
-                    /*tasks.forEach(t => {
-                        if (taskfiles?.contains(t.path)) return;
-                        taskfiles?.push(t.path);
-                    })*/
-                    this.taskListModel.set({ taskList: tasks });
-                    this.userOptionModel.set({ taskFiles: taskfiles || [] });
-                }).catch(reason => { new Notice("Error when parsing task items: " + reason, 5000); throw reason; });
-            })
-            .catch(reason => { new Notice("Error when generating tasks from files: " + reason, 5000); throw reason; })
-            .finally(() => this.isReloading = false);
+        try {
+            await adapter.generateTasksList(fileIncludeFilter, fileExcludeFilter, fileIncludeTagsFilter, fileExcludeTagsFilter);
+            this.allTasks = await this.parseTasks(adapter.getTaskList());
+            const tasks = this.filterTasks(this.allTasks);
+            const taskfiles = this.userOptionModel.get("taskFiles");
+            this.taskListModel.set({ taskList: tasks });
+            this.userOptionModel.set({ taskFiles: taskfiles || [] });
+        } catch (reason) {
+            new Notice("Error when refreshing task items: " + reason, 5000);
+            console.error(reason);
+        } finally {
+            this.isReloading = false;
+            if (this.reloadPending) {
+                this.reloadPending = false;
+                this.onReloadTasks();
+            }
+        }
     }
 
     filterTasks(taskList: TaskDataModel[]) {
