@@ -1,7 +1,7 @@
 {
 	"name": "tasks-calendar-wrapper",
 	"version": "0.3.2",
-	"description": "This is a simple wrapper for Obsidian-Tasks-Calendar (https://github.com/702573N/Obsidian-Tasks-Calendar) and Obsidian-Tasks-Timeline (https://github.com/702573N/Obsidian-Tasks-Timeline).",
+	"description": "Shows the tasks in your vault on a timeline view, based on the Tasks Calendar and Tasks Timeline scripts.",
 	"main": "src/main.ts",
 	"scripts": {
 		"dev": "cp manifest.json ExampleVault/.obsidian/plugins/tasks-view/ && node esbuild.config.mjs",
@@ -15,28 +15,27 @@
 	"author": "",
 	"license": "MIT",
 	"devDependencies": {
-		"@svgr/webpack": "^6.5.1",
-		"@types/backbone": "^1.4.15",
-		"@types/luxon": "^3.2.0",
-		"@types/node": "^16.11.6",
-		"@types/parsimmon": "^1.10.6",
-		"@types/react": "^18.0.28",
-		"@types/react-dom": "^18.0.11",
+		"@svgr/webpack": "6.5.1",
+		"@types/backbone": "1.4.23",
+		"@types/luxon": "3.7.1",
+		"@types/node": "16.18.126",
+		"@types/parsimmon": "1.10.9",
+		"@types/react": "18.3.27",
+		"@types/react-dom": "18.3.7",
 		"@typescript-eslint/eslint-plugin": "5.29.0",
 		"@typescript-eslint/parser": "5.29.0",
-		"builtin-modules": "3.3.0",
-		"emoji-regex": "^10.2.1",
 		"esbuild": "0.17.3",
-		"luxon": "^3.2.1",
-		"obsidian": "latest",
-		"parsimmon": "^1.18.1",
+		"luxon": "3.7.2",
+		"obsidian": "1.11.0",
+		"parsimmon": "1.18.1",
 		"tslib": "2.4.0",
 		"typescript": "4.7.4"
 	},
 	"dependencies": {
-		"backbone": "^1.4.1",
-		"eslint": "^8.34.0",
-		"react": "^18.2.0",
-		"react-dom": "^18.2.0"
-	}
+		"backbone": "1.6.1",
+		"eslint": "8.57.1",
+		"react": "18.3.1",
+		"react-dom": "18.3.1"
+	},
+	"packageManager": "pnpm@10.27.0+sha512.72d699da16b1179c14ba9e64dc71c9a40988cbdc65c264cb0e489db7de917f20dcf4d64d8723625f2969ba52d4b7e2a1170682d9ac2a5dcaeaab732b7e16f04a"
 }

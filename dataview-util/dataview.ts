@@ -1,5 +1,15 @@
-import emojiRegex from "emoji-regex";
 import * as P from "parsimmon";
+
+/**
+ * Parses one RGI emoji, including multi-codepoint sequences such as flags and ZWJ sequences.
+ * P.regex rejects the `v` flag that `\p{RGI_Emoji}` needs, so the match is done by hand.
+ */
+const EMOJI_AT_INDEX = new RegExp("\\p{RGI_Emoji}", "vy");
+const EMOJI: P.Parser<string> = P.Parser((input, index) => {
+    EMOJI_AT_INDEX.lastIndex = index;
+    const match = EMOJI_AT_INDEX.exec(input);
+    return match ? P.makeSuccess(index + match[0].length, match[0]) : P.makeFailure(index, "an emoji");
+});
 
 /** Get the "title" for a file, by stripping other parts of the path as well as the extension. */
 export function getFileTitle(path: string): string {
@@ -9,7 +19,7 @@ export function getFileTitle(path: string): string {
 }
 
 const HEADER_CANONICALIZER: P.Parser<string> = P.alt(
-    P.regex(new RegExp(emojiRegex(), "")),
+    EMOJI,
     P.regex(/[0-9\p{Letter}_-]+/u),
     P.whitespace.map(_ => " "),
     P.any.map(_ => " ")

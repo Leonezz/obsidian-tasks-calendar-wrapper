@@ -10,17 +10,23 @@ jobs:
     name: Linter
     runs-on: ubuntu-latest
     steps:
-        - uses: actions/checkout@v2
-        - name: Use Node.js
-          uses: actions/setup-node@v1
+        - uses: actions/checkout@v4
           with:
-            node-version: "14.x"
+            submodules: recursive
+
+        - uses: pnpm/action-setup@v4
+
+        - name: Use Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: "20.x"
+            cache: pnpm
 
         - name: Install dependencies
-          run: npm install
+          run: pnpm install --frozen-lockfile
 
         - name: Fix Eslint issues
-          run: npm run eslint:fix
+          run: pnpm run eslint:fix
 
         - name: Commit changes
           run: |
@@ -35,4 +41,7 @@ jobs:
             branch: ${{ github.ref }}
 
         - name: Check again to validate all issues are fixed
-          run: npm run eslint
+          run: pnpm run eslint
+
+        - name: Test
+          run: pnpm test

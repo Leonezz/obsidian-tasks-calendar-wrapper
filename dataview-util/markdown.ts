@@ -88,7 +88,7 @@ export class Link {
         });
     }
 
-    public static fromObject(object: Record<string, any>) {
+    public static fromObject(object: Partial<Link>) {
         return new Link(object);
     }
 
@@ -109,7 +109,7 @@ export class Link {
     }
 
     /** Convert this link to a raw object which is serialization-friendly. */
-    public toObject(): Record<string, any> {
+    public toObject(): Partial<Link> {
         return { path: this.path, type: this.type, subpath: this.subpath, display: this.display, embed: this.embed };
     }
 

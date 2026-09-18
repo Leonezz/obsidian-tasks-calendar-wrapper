@@ -19,19 +19,31 @@ If your plugin does not need CSS, delete this file.
 	--taskido-color-process: var(--color-orange);
 }
 
-.taskido a {
-	text-decoration: none !important;
-	color: inherit !important;
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido a {
+	text-decoration: none;
 }
 
-.taskido span {
-	display: contents;
+/*
+ * Links and badges inherit their color unless a scoped rule (tag, overdue, done, noColor) sets one.
+ * The repeated class lifts this above the unscoped badge rules such as `.taskido .task .info .file`.
+ */
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.taskido.taskido a {
+	color: inherit;
+}
+
+/* The year list is wrapped in a span directly under .taskido; lay it out as a block. */
+.taskido > span {
+	display: block;
 }
 
 .taskido .task .internal-link,
 .taskido .task .external-link {
 	color: var(--text-accent, var(--interactive-accent));
-	text-decoration: underline !important;
+}
+
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .internal-link,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .external-link {
+	text-decoration: underline;
 }
 
 .taskido .year {
@@ -195,12 +207,12 @@ If your plugin does not need CSS, delete this file.
 	background-color: var(--taskido-color-process);
 }
 
-.taskido .task.overdue .timeline .icon svg {
-	stroke: var(--taskido-color-overdue) !important;
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.overdue .timeline .icon svg {
+	stroke: var(--taskido-color-overdue);
 }
 
-.taskido .task.done .timeline .icon svg {
-	stroke: var(--taskido-color-done) !important;
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.done .timeline .icon svg {
+	stroke: var(--taskido-color-done);
 }
 
 .taskido .task.process .timeline .icon svg,
@@ -220,8 +232,20 @@ If your plugin does not need CSS, delete this file.
 .taskido .task.cancelled .info .priority,
 .taskido .task.cancelled .info .relative,
 .taskido .task.cancelled .info .file {
-	color: var(--text-muted) !important;
 	line-height: 0;
+}
+
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.done .info .tag,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.done .info .repeat,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.done .info .priority,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.done .info .relative,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.done .info .file,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.cancelled .info .tag,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.cancelled .info .repeat,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.cancelled .info .priority,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.cancelled .info .relative,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.cancelled .info .file {
+	color: var(--text-muted);
 }
 
 .taskido .task.done .content,
@@ -250,14 +274,6 @@ If your plugin does not need CSS, delete this file.
 	flex-shrink: 0;
 	flex-grow: 0;
 	text-align: center;
-}
-
-.taskido .timeline icon {
-	text-align: center;
-	height: 22px;
-	padding: 0;
-	margin: 0;
-	background-position: center;
 }
 
 .taskido .timeline input.icon,
@@ -312,11 +328,17 @@ If your plugin does not need CSS, delete this file.
 	font-weight: normal;
 	margin: 2px 5px 2px 0;
 	color: var(--text-muted);
-	padding: 0px;
 	border: none;
-	line-height: 1 !important;
 	padding: 0;
-	border-radius: 3px !important;
+}
+
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .tag,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .repeat,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .priority,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .relative,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .file {
+	line-height: 1;
+	border-radius: 3px;
 }
 
 .taskido .task .info .file {
@@ -324,9 +346,12 @@ If your plugin does not need CSS, delete this file.
 }
 
 .taskido .task .info .tag {
-	color: var(--tag-color) !important;
-	background: none !important;
 	cursor: pointer;
+}
+
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .tag {
+	color: var(--tag-color);
+	background: none;
 }
 
 .taskido .info .icon {
@@ -344,8 +369,8 @@ If your plugin does not need CSS, delete this file.
 	stroke-width: 1.75px;
 }
 
-.taskido .task.overdue .info .relative {
-	color: var(--taskido-color-overdue) !important;
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.overdue .info .relative {
+	color: var(--taskido-color-overdue);
 }
 
 /* Quick Entry Panel */
@@ -369,7 +394,10 @@ If your plugin does not need CSS, delete this file.
 	flex-grow: 1;
 	overflow: hidden;
 	border-radius: 5px;
-	padding: 0 5px !important;
+}
+
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel .left {
+	padding: 0 5px;
 }
 
 .taskido .quickEntryPanel .left .actionSelect {
@@ -414,13 +442,13 @@ If your plugin does not need CSS, delete this file.
 	border-radius: 5px;
 }
 
-.taskido .quickEntryPanel select,
-.taskido .quickEntryPanel input,
-.taskido .quickEntryPanel button {
-	box-shadow: none !important;
-	border: none !important;
-	background: none !important;
-	border-radius: 0 !important;
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel select,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel input,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel button {
+	box-shadow: none;
+	border: none;
+	background: none;
+	border-radius: 0;
 }
 
 .taskido .quickEntryPanel select,
@@ -439,9 +467,12 @@ If your plugin does not need CSS, delete this file.
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	overflow: hidden;
-	padding: 0 !important;
-	margin: 2.5px 0 !important;
 	color: var(--text-muted);
+}
+
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel select {
+	padding: 0;
+	margin: 2.5px 0;
 }
 
 .taskido .quickEntryPanel select:hover,
@@ -463,9 +494,12 @@ If your plugin does not need CSS, delete this file.
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	overflow: hidden;
-	padding: 0 !important;
-	margin: 0 !important;
 	font-size: 14px;
+}
+
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel input {
+	padding: 0;
+	margin: 0;
 }
 
 .taskido .quickEntryPanel button {
@@ -476,9 +510,12 @@ If your plugin does not need CSS, delete this file.
 	align-items: center;
 	height: 100%;
 	width: auto;
-	padding: 0 5px !important;
-	margin: 0 !important;
 	color: var(--text-muted);
+}
+
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel button {
+	padding: 0 5px;
+	margin: 0;
 }
 
 .taskido .quickEntryPanel svg {
@@ -487,12 +524,12 @@ If your plugin does not need CSS, delete this file.
 	stroke-width: 1.75px;
 }
 
-.taskido .quickEntryPanel select:active,
-.taskido .quickEntryPanel input:active,
-.taskido .quickEntryPanel button:active {
-	border: none !important;
-	box-shadow: none !important;
-	transition: none !important;
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel select:active,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel input:active,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel button:active {
+	border: none;
+	box-shadow: none;
+	transition: none;
 }
 
 /* Classes */
@@ -511,48 +548,48 @@ If your plugin does not need CSS, delete this file.
 	box-shadow: var(--input-shadow);
 }
 
-.taskido.noYear .year,
-.taskido.noRepeat .repeat,
-.taskido.noTag .tag,
-.taskido.noPriority .priority,
-.taskido.noFile .task .file,
-.taskido.noHeader .task .header,
-.taskido.noFile .task .info>.file,
-.taskido.noInfo .task .line:nth-child(2),
-.taskido.noDone .year[data-types="done"],
-.taskido.noDone .details[data-types="done"],
-.taskido.noDone .task.done,
-.taskido.noUnplanned .task.unplanned,
-.taskido.noUnplanned .counter#unplanned,
-.taskido.noUnplanned .year[data-types="unplanned"],
-.taskido.noUnplanned .details[data-types="unplanned"],
-.taskido.noRelative .relative,
-.taskido.noQuickEntry .quickEntryPanel,
-.taskido.noCounters .counters {
-	display: none !important;
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noYear .year,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noRepeat .repeat,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noTag .tag,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noPriority .priority,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noFile .task .file,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noHeader .task .header,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noFile .task .info>.file,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noInfo .task .line:nth-child(2),
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noDone .year[data-types="done"],
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noDone .details[data-types="done"],
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noDone .task.done,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noUnplanned .task.unplanned,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noUnplanned .counter#unplanned,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noUnplanned .year[data-types="unplanned"],
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noUnplanned .details[data-types="unplanned"],
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noRelative .relative,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noQuickEntry .quickEntryPanel,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noCounters .counters {
+	display: none;
 }
 
-.taskido.noColor .task .file {
-	color: var(--text-muted) !important
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noColor .task .file {
+	color: var(--text-muted);
 }
 
-.taskido.noColor .task .info .file {
-	color: var(--text-muted) !important
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noColor .task .info .file {
+	color: var(--text-muted);
 }
 
 /* Focus */
-.taskido.todayFocus .details:not(.today),
-.taskido.todayFocus .year {
-	display: none !important;
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.todayFocus .details:not(.today),
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.todayFocus .year {
+	display: none;
 }
 
 .taskido.todayFocus .details.today {
 	padding: 0;
 }
 
-.taskido .details.today {
-	background: transparent !important;
-	background-color: transparent !important;
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .details.today {
+	background: transparent;
+	background-color: transparent;
 }
 
 .taskido.todoFocus .task.due,
@@ -603,4 +640,9 @@ If your plugin does not need CSS, delete this file.
 
 .taskido.unplannedFilter .task:not(.unplanned) {
 	display: none;
+}
+
+/* Warning note in setting descriptions, e.g. the path filters. */
+.tasks-calendar-wrapper-setting-warning {
+	color: var(--text-error);
 }
