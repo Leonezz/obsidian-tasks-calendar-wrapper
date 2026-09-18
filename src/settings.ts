@@ -100,7 +100,7 @@ export const defaultUserOptions = {
      * Specify a color palette for tags.
      * Note that this will override other color setting for tags.
      */
-    tagColorPalette: { "#TODO": "#339988", "#TEST": "#998877" } as any,
+    tagColorPalette: { "#TODO": "#339988", "#TEST": "#998877" } as Record<string, string>,
     /**
      * Use counters on the today panel or not
      */
@@ -187,12 +187,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
     constructor(app: App, plugin: TasksCalendarWrapper) {
         super(app, plugin);
         this.plugin = plugin;
-        this.onOptionUpdate = this.onOptionUpdate.bind(this);
-        this.tagsSettingItem = this.tagsSettingItem.bind(this);
     }
-
-    private static createFragmentWithHTML = (html: string) =>
-        createFragment((documentFragment) => (documentFragment.createDiv().innerHTML = html));
 
     async onOptionUpdate(updatePart: Partial<UserOption>, refreashSettingPage = false) {
         await this.plugin.writeOptions(updatePart);
@@ -201,13 +196,17 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
         }
     }
 
-    async display() {
+    /** Saves options from a callback that cannot wait for the result, reporting failures to the user. */
+    private saveOptionsInBackground(updatePart: Partial<UserOption>, refreashSettingPage = false) {
+        this.onOptionUpdate(updatePart, refreashSettingPage).catch(reportSaveError);
+    }
+
+    display(): void {
         const { containerEl } = this;
 
         containerEl.empty();
 
-        containerEl.createEl("h1", { text: 'Timeline Settings' });
-        containerEl.createEl("h2", { text: "UI Settings" });
+        new Setting(containerEl).setName("Interface").setHeading();
 
         new Setting(containerEl)
 			.setName("Open View On Startup")
@@ -318,12 +317,9 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Daily Note Format")
-            .setDesc(
-                TasksCalendarSettingTab.createFragmentWithHTML(
-                    "Daily note file format.\
-                    The format sould be of moment format,\
-                    see <a href=https://momentjs.com/docs/#/displaying/format/>docs of moment.js</a>\
-                    for more details."))
+            .setDesc(descriptionWithMomentDocsLink(
+                "Daily note file format. The format sould be of moment format, see ",
+                " for more details."))
             .addMomentFormat(m => {
                 m.setValue(this.plugin.userOptions.dailyNoteFormat);
                 m.onChange(async v => await this.onOptionUpdate({ dailyNoteFormat: v }));
@@ -379,7 +375,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             })
 
 
-        containerEl.createEl("h2", { text: "Task Item Visualization Settings" });
+        new Setting(containerEl).setName("Task items").setHeading();
 
         new Setting(containerEl)
             .setName("Use Relative Date")
@@ -405,13 +401,13 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         const tagSettings = new Setting(containerEl);
         tagSettings.controlEl.empty();
-        tagSettings.controlEl.appendChild(createEl('div'));
+        tagSettings.controlEl.appendChild(createDiv());
         let tagBadgeSetting = new Setting(tagSettings.controlEl.firstChild as HTMLElement);
         if (this.plugin.userOptions.useTags) {
             Object.entries(this.plugin.userOptions.tagColorPalette).forEach(([tag, color], index) => {
                 if (index !== 0 && !(index & 0x01))
                     tagBadgeSetting = new Setting(tagSettings.controlEl.firstChild as HTMLElement);
-                tagBadgeSetting.controlEl.appendChild(createEl('div', { cls: "tag", text: `${tag}`, attr: { style: `color: ${color}` } }));
+                tagBadgeSetting.controlEl.appendChild(createDiv({ cls: "tag", text: tag, attr: { style: `color: ${color}` } }));
                 tagBadgeSetting
                     .addExtraButton(async btn => {
                         btn.setIcon("cross")
@@ -427,13 +423,13 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                         btn.setIcon("pencil")
                             .setTooltip("Edit")
                             .onClick(async () => {
-                                const modal = new TagColorPaletteModal(this.plugin, tag, color as string);
-                                modal.onClose = async () => {
+                                const modal = new TagColorPaletteModal(this.plugin, tag, color);
+                                modal.onClose = () => {
                                     if (!modal.valid) return;
                                     delete this.plugin.userOptions.tagColorPalette[tag];
                                     this.plugin.userOptions.tagColorPalette[modal.tagText] = modal.color;
 
-                                    await this.onOptionUpdate({}, true);
+                                    this.saveOptionsInBackground({}, true);
                                 }
                                 modal.open();
                             })
@@ -446,11 +442,11 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                         .setTooltip("Add a palette")
                         .onClick(async () => {
                             const modal = new TagColorPaletteModal(this.plugin)
-                            modal.onClose = async () => {
+                            modal.onClose = () => {
                                 if (!modal.valid) return;
                                 this.plugin.userOptions.tagColorPalette[modal.tagText] = modal.color;
 
-                                await this.onOptionUpdate({}, true);
+                                this.saveOptionsInBackground({}, true);
                             }
                             modal.open();
                         })
@@ -503,14 +499,12 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                 tg.onChange(async v => await this.onOptionUpdate({ useSection: v }));
             })
 
-        containerEl.createEl("h2", { text: "Other Settings" })
+        new Setting(containerEl).setName("Formats and filters").setHeading();
         new Setting(containerEl)
             .setName("Date Format")
-            .setDesc(TasksCalendarSettingTab.createFragmentWithHTML(
-                "Specify format you would like to use for dates.\
-                Note that the format should be of moment format.\
-                See <a href=https://momentjs.com/docs/#/displaying/format/>docs of moment.js</a> for more details."
-            ))
+            .setDesc(descriptionWithMomentDocsLink(
+                "Specify format you would like to use for dates. Note that the format should be of moment format. See ",
+                " for more details."))
             .addMomentFormat(async m => {
                 m.setPlaceholder("e.g.: YYYY-MM-DD");
                 m.setValue(this.plugin.userOptions.dateFormat);
@@ -519,8 +513,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Sort By")
-            .setDesc(TasksCalendarSettingTab.createFragmentWithHTML(
-                "Specify how you would like the taks item to be sorted inside a date."))
+            .setDesc("Specify how you would like the taks item to be sorted inside a date.")
             .addDropdown(async ta => {
                 ta.addOptions(sortOptions);
                 ta.setValue(this.plugin.userOptions.sort);
@@ -636,10 +629,9 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Exclude Paths")
-            .setDesc(TasksCalendarSettingTab.createFragmentWithHTML(
-                "Exclude tasks match specific paths (folders, files). \n\
-                <p style=color:red;>NOTE that no prefix or trailing '/' needed, unless you want to filter the entire vault out.</p>"
-            ))
+            .setDesc(descriptionWithWarning(
+                "Exclude tasks match specific paths (folders, files).",
+                PATH_FILTER_WARNING))
             .addTextArea(ta => {
                 ta.setPlaceholder("comma separated file paths, e.g.: path1,path2/path3,path4.md");
                 ta.setValue(this.plugin.userOptions.excludePaths.join(","));
@@ -652,10 +644,9 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Include Paths")
-            .setDesc(TasksCalendarSettingTab.createFragmentWithHTML(
-                "Include tasks match specific paths (folders, files). \n\
-                <p style=color:red;>NOTE that no prefix or trailing '/' needed, unless you want to filter the entire vault out.</p>"
-            ))
+            .setDesc(descriptionWithWarning(
+                "Include tasks match specific paths (folders, files).",
+                PATH_FILTER_WARNING))
             .addTextArea(ta => {
                 ta.setPlaceholder("comma separated file paths, e.g.: path1,path2/path3,path4.md");
                 ta.setValue(this.plugin.userOptions.includePaths.join(","));
@@ -693,7 +684,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
         let tagsSettingControlEl = new Setting(tagsSetting.controlEl.firstChild as HTMLElement);
         tags.forEach((t, i) => {
             if (i !== 0 && i % 3 === 0) tagsSettingControlEl = new Setting(tagsSetting.controlEl.firstChild as HTMLElement);
-            tagsSettingControlEl.controlEl.appendChild(createEl('div', { cls: "tag", text: t }));
+            tagsSettingControlEl.controlEl.appendChild(createDiv({ cls: "tag", text: t }));
             tagsSettingControlEl.addExtraButton(eb => {
                 eb
                     .setIcon("cross")
@@ -706,9 +697,9 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             eb.setIcon("plus-with-circle");
             eb.onClick(() => {
                 const modal = new TagModal(this.plugin);
-                modal.onClose = async () => {
+                modal.onClose = () => {
                     if (!modal.valid) return;
-                    await onadd(modal.tagText);
+                    onadd(modal.tagText).catch(reportSaveError);
                 };
                 modal.open();
             })
@@ -716,6 +707,29 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
     }
 }
 
+
+const MOMENT_FORMAT_DOCS_URL = "https://momentjs.com/docs/#/displaying/format/";
+const PATH_FILTER_WARNING = "NOTE that no prefix or trailing '/' needed, unless you want to filter the entire vault out.";
+
+function descriptionWithMomentDocsLink(before: string, after: string): DocumentFragment {
+    return createFragment(fragment => {
+        fragment.appendText(before);
+        fragment.createEl("a", { text: "docs of moment.js", href: MOMENT_FORMAT_DOCS_URL });
+        fragment.appendText(after);
+    });
+}
+
+function descriptionWithWarning(description: string, warning: string): DocumentFragment {
+    return createFragment(fragment => {
+        fragment.appendText(description);
+        fragment.createEl("p", { text: warning, cls: "mod-warning" });
+    });
+}
+
+function reportSaveError(error: unknown) {
+    console.error("Tasks Calendar Wrapper: failed to save settings", error);
+    new Notice("Failed to save the timeline settings. See the developer console for details.", 5000);
+}
 
 class TagColorPaletteModal extends Modal {
     tagText: string;

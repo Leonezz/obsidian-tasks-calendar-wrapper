@@ -4,7 +4,7 @@ import { ObsidianBridge } from 'Obsidian-Tasks-Timeline/src/obsidianbridge';
 import { ObsidianTaskAdapter } from "Obsidian-Tasks-Timeline/src/taskadapter";
 import { createRoot, Root } from 'react-dom/client';
 import * as TaskMapable from 'utils/taskmapable';
-import { TaskDataModel, TaskStatus, TaskStatusMarkerMap } from "utils/tasks";
+import { TaskDataModel, TaskStatusMarkerMap } from "utils/tasks";
 import { defaultUserOptions, UserOption } from "./settings";
 
 
@@ -31,17 +31,14 @@ export class TasksTimelineView extends BaseTasksView {
     constructor(leaf: WorkspaceLeaf) {
         super(leaf);
 
-        this.parseTasks = this.parseTasks.bind(this);
-        this.onReloadTasks = this.onReloadTasks.bind(this);
-        this.onUpdateOptions = this.onUpdateOptions.bind(this);
         TasksTimelineView.view = this;
         //this.userOptionModel.set({ ...defaultUserOptions });
     }
 
     async onOpen(): Promise<void> {
 
-        this.registerEvent(this.app.metadataCache.on('resolved', this.onReloadTasks));
-        this.registerEvent(this.app.workspace.on("window-open", this.onReloadTasks));
+        this.registerEvent(this.app.metadataCache.on('resolved', () => this.onReloadTasks()));
+        this.registerEvent(this.app.workspace.on("window-open", () => this.onReloadTasks()));
 
         const { containerEl } = this;
         const container = containerEl.children[1];
@@ -64,7 +61,7 @@ export class TasksTimelineView extends BaseTasksView {
         this.onReloadTasks();
     }
 
-    async onReloadTasks() {
+    onReloadTasks(): void {
         if (this.isReloading) {
             return;
         }
@@ -102,7 +99,7 @@ export class TasksTimelineView extends BaseTasksView {
                 if (this.userOptionModel.get("hideStatusTasks")?.length === 0) return true;
                 const hideStatusTasks = this.userOptionModel.get("hideStatusTasks");
                 if (hideStatusTasks?.includes(task.statusMarker)) return false;
-                if (hideStatusTasks?.some(m => TaskStatusMarkerMap[m as keyof typeof TaskStatusMarkerMap] === task.status)) return false;
+                if (hideStatusTasks?.some(m => task.status === TaskStatusMarkerMap[m as keyof typeof TaskStatusMarkerMap] as string)) return false;
                 return true;
             })
             /**
@@ -163,38 +160,20 @@ export class TasksTimelineView extends BaseTasksView {
             /**
              * Post processer
              */
-            .map((task: Promise<TaskDataModel>) => {
-                return new Promise(resolve => {
-                    task.then(t => {
-                        if (!stautsOrder) {
-                            resolve(t);
-                            return;
-                        }
-                        if (!stautsOrder.includes(t.status)) return t;
-                        t.order = stautsOrder.indexOf(t.status) + 1;
-                        resolve(t);
-                    });
-                });
+            .map(async (task: Promise<TaskDataModel>) => {
+                const t = await task;
+                if (stautsOrder?.includes(t.status)) t.order = stautsOrder.indexOf(t.status) + 1;
+                return t;
             });
 
         if (this.userOptionModel.get("convert24HourTimePrefix")) {
-            taskListPromise = taskListPromise.map((task: Promise<TaskDataModel>) => {
-                return new Promise(resolve => {
-                    task.then(t => {
-                        if (!t.visual || t.visual.length < 5) {
-                            resolve(t);
-                            return;
-                        }
-                        const timePrefix = moment(t.visual.substring(0, 5), "HH:mm", true);
-                        if (!timePrefix.isValid()) {
-                            resolve(t);
-                            return;
-                        }
-                        const updatedTimePrefix = timePrefix.format("h:mm a");
-                        t.visual = updatedTimePrefix + t.visual.substring(5);
-                        resolve(t);
-                    });
-                });
+            taskListPromise = taskListPromise.map(async (task: Promise<TaskDataModel>) => {
+                const t = await task;
+                if (!t.visual || t.visual.length < 5) return t;
+                const timePrefix = moment(t.visual.substring(0, 5), "HH:mm", true);
+                if (!timePrefix.isValid()) return t;
+                t.visual = timePrefix.format("h:mm a") + t.visual.substring(5);
+                return t;
             });
         }
 

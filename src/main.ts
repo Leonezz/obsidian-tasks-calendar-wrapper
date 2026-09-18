@@ -1,4 +1,4 @@
-import { Plugin } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 
 import { TasksTimelineView, TIMELINE_VIEW } from './views';
 
@@ -21,7 +21,7 @@ export default class TasksCalendarWrapper extends Plugin {
 		);
         if (this.userOptions.openViewOnStartup)
 			this.app.workspace.onLayoutReady(
-				async () => await this.activateView(TIMELINE_VIEW)
+				() => { this.activateView(TIMELINE_VIEW).catch(reportError); }
 			);
 		// this.app.workspace.onLayoutReady(async () => await this.initView(TIMELINE_VIEW))
 		// this.app.workspace.getActiveViewOfType(TasksTimelineView)?.onUpdateOptions({ ...this.userOptions })
@@ -31,7 +31,7 @@ export default class TasksCalendarWrapper extends Plugin {
 			id: 'open-tasks-timeline-view',
 			name: 'Open Tasks Timeline View',
 			callback: () => {
-				this.activateView(TIMELINE_VIEW);
+				this.activateView(TIMELINE_VIEW).catch(reportError);
 			}
 		});
 
@@ -39,16 +39,11 @@ export default class TasksCalendarWrapper extends Plugin {
 		this.addSettingTab(new TasksCalendarSettingTab(this.app, this));
 	}
 
-	onunload() {
-		this.app.workspace.detachLeavesOfType(TIMELINE_VIEW);
-	}
-
 	private updateOptions(updatedOpts: Partial<UserOption>) {
 		Object.assign(this.userOptions, { ...updatedOpts });
-		console.log(this.app.workspace.getLeavesOfType(TIMELINE_VIEW))
 		if (!this.userOptionsReloading) {
 			this.userOptionsReloading = true;
-			setTimeout(() => {
+			window.setTimeout(() => {
 				this.app.workspace.getLeavesOfType(TIMELINE_VIEW).forEach(leaf => {
 					if (leaf.view instanceof TasksTimelineView) {
 						leaf.view.onUpdateOptions({ ...this.userOptions });
@@ -60,7 +55,8 @@ export default class TasksCalendarWrapper extends Plugin {
 	}
 
 	async loadOptions(): Promise<void> {
-		this.userOptions = Object.assign({}, defaultUserOptions, await this.loadData());
+		const savedOptions = (await this.loadData()) as Partial<UserOption> | null;
+		this.userOptions = Object.assign({}, defaultUserOptions, savedOptions);
 		this.updateOptions(this.userOptions);
 	}
 
@@ -78,18 +74,19 @@ export default class TasksCalendarWrapper extends Plugin {
 
         const leaves = this.app.workspace.getLeavesOfType(type);
 		if (leaves.length > 0) {
-			this.app.workspace.revealLeaf(leaves[0]);
+			await this.app.workspace.revealLeaf(leaves[0]);
 			return;
 		}
 
 		this.app.workspace.detachLeavesOfType(type);
-		try {
-			await this.app.workspace.getRightLeaf(false)?.setViewState({
-				type: type,
-				active: true,
-			});
-		} catch (e) {
-			console.log(e)
-		}
+		await this.app.workspace.getRightLeaf(false)?.setViewState({
+			type: type,
+			active: true,
+		});
     }
+}
+
+function reportError(error: unknown) {
+	console.error("Tasks Calendar Wrapper: failed to open the timeline view", error);
+	new Notice("Failed to open the timeline view. See the developer console for details.", 5000);
 }
