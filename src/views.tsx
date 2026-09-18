@@ -142,6 +142,7 @@ export class TasksTimelineView extends BaseTasksView {
             this.userOptionModel.get("dailyNoteFormat"));
 
         const forward = this.userOptionModel.get("forward");
+        const forwardToToday = TaskMapable.forwardParser(moment());
         /**
          * initial parsers
          */
@@ -158,22 +159,7 @@ export class TasksTimelineView extends BaseTasksView {
              * Option Forward
              * Current behavior: show unplanned and overdue tasks in today's part.
              */
-            .map(async (task: Promise<TaskDataModel>): Promise<TaskDataModel> => {
-                return new Promise((resolve) => {
-                    task.then(t => {
-                        if (!forward) {
-                            resolve(t);
-                            return;
-                        }
-                        if (t.status === TaskStatus.unplanned) t.dates.set(TaskStatus.unplanned, moment())
-                        else if (t.status === TaskStatus.done && !t.completion &&
-                            !t.due && !t.start && !t.scheduled && !t.created) t.dates.set("done-unplanned", moment());
-                        else if (t.status === TaskStatus.overdue &&
-                            !TaskMapable.filterDate(moment())(t)) t.dates.set(TaskStatus.overdue, moment())
-                        resolve(t);
-                    })
-                })
-            })
+            .map(task => forward ? forwardToToday(task) : task)
             /**
              * Post processer
              */
