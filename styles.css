@@ -21,6 +21,13 @@ If your plugin does not need CSS, delete this file.
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido a {
 	text-decoration: none;
+}
+
+/*
+ * Links and badges inherit their color unless a scoped rule (tag, overdue, done, noColor) sets one.
+ * The repeated class lifts this above the unscoped badge rules such as `.taskido .task .info .file`.
+ */
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.taskido.taskido a {
 	color: inherit;
 }
 
@@ -633,4 +640,9 @@ If your plugin does not need CSS, delete this file.
 
 .taskido.unplannedFilter .task:not(.unplanned) {
 	display: none;
+}
+
+/* Warning note in setting descriptions, e.g. the path filters. */
+.tasks-calendar-wrapper-setting-warning {
+	color: var(--text-error);
 }

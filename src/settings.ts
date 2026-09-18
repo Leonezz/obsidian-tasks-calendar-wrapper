@@ -722,7 +722,7 @@ function descriptionWithMomentDocsLink(before: string, after: string): DocumentF
 function descriptionWithWarning(description: string, warning: string): DocumentFragment {
     return createFragment(fragment => {
         fragment.appendText(description);
-        fragment.createEl("p", { text: warning, cls: "mod-warning" });
+        fragment.createEl("p", { text: warning, cls: "tasks-calendar-wrapper-setting-warning" });
     });
 }
 
