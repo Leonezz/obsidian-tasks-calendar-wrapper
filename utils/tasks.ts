@@ -108,11 +108,14 @@ export class TaskRegularExpressions {
     // Match on block link at end.
     public static readonly blockLinkRegex = / \^[a-zA-Z0-9-]+/u;
 
-    // The following regex's end with `$` because they will be matched and
-    // removed from the end until none are left.
+    // The following regex's are matched anywhere in the task, not only at its end,
+    // so that unknown content after a field (e.g. `⏫ ➕ 2026-09-14` or trailing text)
+    // does not prevent the field from being parsed.
     public static readonly priorityRegex = RegExp("([" +
         Object.keys(TasksPrioritySymbolToLabel).filter(s => s.length > 0).join('') +
-        "])$", "u");
+        "])", "u");
+
+    public static readonly createdDateRegex = /➕ *(\d{4}-\d{2}-\d{2})/u;
 
     public static readonly startDateRegex = /🛫 *(\d{4}-\d{2}-\d{2})/u;
     public static readonly scheduledDateRegex = /[⏳⌛] *(\d{4}-\d{2}-\d{2})/u;

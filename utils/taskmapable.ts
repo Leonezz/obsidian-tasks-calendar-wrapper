@@ -114,6 +114,14 @@ export async function tasksPluginTaskParser(item: Promise<TasksUtil.TaskDataMode
                         matched = true;
                     }
 
+                    // The created date is only removed from the description. It is not
+                    // assigned to `created`, because that would add an extra entry for the
+                    // task on its creation date in the timeline.
+                    if (TasksUtil.TaskRegularExpressions.createdDateRegex.test(description)) {
+                        description = description.replace(TasksUtil.TaskRegularExpressions.createdDateRegex, '').trim();
+                        matched = true;
+                    }
+
                     const recurrenceMatch = description.match(TasksUtil.TaskRegularExpressions.recurrenceRegex);
                     if (recurrenceMatch !== null) {
                         // Save the recurrence rule, but *do not parse it yet*.
@@ -367,6 +375,37 @@ function markerBasedStatusParser(item: TasksUtil.TaskDataModel) {
     if (!Object.keys(TasksUtil.TaskStatusMarkerMap).contains(item.status)) return dateBasedStatusParser(item);
     item.status = (TasksUtil.TaskStatusMarkerMap as any)[item.status];
     return item;
+}
+
+/**
+ * Option Forward: show tasks that have no date of their own in today's part
+ * of the timeline, so that they are not only counted but also displayed.
+ */
+export function forwardParser(today: moment.Moment) {
+    return async (item: Promise<TasksUtil.TaskDataModel>): Promise<TasksUtil.TaskDataModel> => {
+        const t = await item;
+        if (t.status === TasksUtil.TaskStatus.unplanned) t.dates.set(TasksUtil.TaskStatus.unplanned, today.clone());
+        else if (t.status === TasksUtil.TaskStatus.done && !t.completion &&
+            !t.due && !t.start && !t.scheduled && !t.created) t.dates.set("done-unplanned", today.clone());
+        else if (t.status === TasksUtil.TaskStatus.overdue &&
+            !filterDate(today)(t)) t.dates.set(TasksUtil.TaskStatus.overdue, today.clone());
+        // A status marker such as `[/]` or `[<]` makes a task to-do even without any date.
+        // Such a task is counted as to-do, so it has to be shown somewhere as well.
+        else if (todoStatuses.includes(t.status) && !hasAnyDate(t)) t.dates.set(t.status, today.clone());
+        return t;
+    };
+}
+
+const todoStatuses: string[] = [
+    TasksUtil.TaskStatus.due,
+    TasksUtil.TaskStatus.scheduled,
+    TasksUtil.TaskStatus.start,
+    TasksUtil.TaskStatus.process,
+];
+
+function hasAnyDate(item: TasksUtil.TaskDataModel): boolean {
+    return !!(item.due || item.scheduled || item.start || item.created || item.completion) ||
+        item.dates.size > 0;
 }
 
 export async function postProcessor(item: Promise<TasksUtil.TaskDataModel>): Promise<TasksUtil.TaskDataModel> {
