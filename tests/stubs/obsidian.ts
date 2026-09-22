@@ -5,3 +5,8 @@
 import moment from "moment";
 
 export { moment };
+
+/** Obsidian shows a toast; the tests only need it to exist. */
+export class Notice {
+    constructor(public message: string, public duration?: number) { }
+}

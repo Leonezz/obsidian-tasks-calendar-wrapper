@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import moment from "moment";
 
-import { parse as parseChain } from "./helpers";
+import { makeTask, parse as parseChain } from "./helpers";
 import * as TaskMapable from "../utils/taskmapable";
 import { TaskDataModel, TaskStatus } from "../utils/tasks";
 
@@ -142,4 +142,50 @@ test("an unknown dataview priority value is ignored", async () => {
 test("the emoji priority still wins over nothing", async () => {
     const task = await parse("- [ ] Task ⏫");
     assert.equal(task.priority, "High");
+});
+
+// Issue #84: tasks whose start or scheduled date has passed can be forwarded too
+
+const parseForwardedLine = (line: string) => parseChain(line, TODAY, { pastStartAndScheduled: true });
+
+test("a task started in the past is shown today when the option is on", async () => {
+    const task = await parseForwardedLine("- [ ] started earlier 🛫 2026-09-10");
+    assert.equal(task.status, TaskStatus.process);
+    assert.ok(isShownOn(task, TODAY), "should be placed on today");
+    assert.ok(isShownOn(task, moment("2026-09-10", "YYYY-MM-DD")), "should stay on its own date");
+});
+
+test("a task scheduled in the past is shown today when the option is on", async () => {
+    const task = await parseForwardedLine("- [ ] scheduled earlier ⏳ 2026-09-10");
+    assert.equal(task.status, TaskStatus.start);
+    assert.ok(isShownOn(task, TODAY));
+});
+
+test("a task starting in the future is left alone", async () => {
+    const task = await parseForwardedLine("- [ ] starts later 🛫 2026-09-30");
+    assert.ok(!isShownOn(task, TODAY));
+});
+
+test("the option does not change tasks that are already due", async () => {
+    const task = await parseForwardedLine("- [ ] due today 📅 2026-09-18");
+    assert.equal(task.dates.size, 0);
+});
+
+test("without the option a task started in the past stays on its own date", async () => {
+    const task = await parse("- [ ] started earlier 🛫 2026-09-10");
+    assert.ok(!isShownOn(task, TODAY));
+});
+
+// Issue #61: nested task items can be hidden
+
+test("nested tasks are dropped when subtasks are hidden", () => {
+    const top = makeTask("- [ ] top level");
+    const nested = makeTask("  - [ ] nested", "Inbox.md", 2);
+    assert.deepEqual([top, nested].filter(TaskMapable.filterSubTasks(true)).map(t => t.visual), ["top level"]);
+});
+
+test("nested tasks are kept when the option is off", () => {
+    const top = makeTask("- [ ] top level");
+    const nested = makeTask("  - [ ] nested", "Inbox.md", 2);
+    assert.equal([top, nested].filter(TaskMapable.filterSubTasks(false)).length, 2);
 });

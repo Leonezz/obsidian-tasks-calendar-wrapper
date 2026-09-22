@@ -36,6 +36,11 @@ export function DateTimeToMoment(d: DateTime){
     return d.toFormat(innerDateFormat);
 }
 
+/** A tag is hidden by an entry that names it, or by one of its parent tags, e.g. #work hides #work/admin. */
+export function isTagHidden(tag: string, hiddenTags: string[]): boolean {
+    return hiddenTags.some(hidden => tag === hidden || tag.startsWith(hidden + "/"));
+}
+
 export function removeHightlightMarker(text: string){
     const match = TaskRegularExpressions.highlightRegex.exec(text);
     while(match){
