@@ -2,6 +2,7 @@ import { Notice, Plugin } from 'obsidian';
 
 import { TasksTimelineView, TIMELINE_VIEW } from './views';
 
+import { migrateSortOption } from '../utils/sort';
 import { defaultUserOptions, TasksCalendarSettingTab, UserOption } from './settings';
 // Remember to rename these classes and interfaces!
 
@@ -57,6 +58,7 @@ export default class TasksCalendarWrapper extends Plugin {
 	async loadOptions(): Promise<void> {
 		const savedOptions = (await this.loadData()) as Partial<UserOption> | null;
 		this.userOptions = Object.assign({}, defaultUserOptions, savedOptions);
+		this.userOptions.sort = migrateSortOption(this.userOptions.sort);
 		this.updateOptions(this.userOptions);
 	}
 

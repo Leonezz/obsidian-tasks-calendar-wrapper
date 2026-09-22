@@ -1,18 +1,7 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { defaultSortKey, sortOptionLabels } from "utils/sort";
 import { TaskRegularExpressions } from "utils/tasks";
 import TasksCalendarWrapper from "./main";
-const sortOptions = {
-    "(t1, t2) => t1.order <= t2.order ? -1 : 1": "status(ascending)",
-    "(t1, t2) => t1.order >= t2.order ? -1 : 1": "status(descending)",
-    "(t1, t2) => t1.visual.trim() <= t2.visual.trim() ? -1 : 1": "text(ascending)",
-    "(t1, t2) => t1.visual.trim() >= t2.visual.trim() ? -1 : 1": "text(descending)",
-    "(t1, t2) => t1.start <= t2.start ? -1 : 1": "start time(ascending)",
-    "(t1, t2) => t1.start >= t2.start ? -1 : 1": "start time(descending)",
-    "(t1, t2) => t1.due <= t2.due ? -1 : 1": "due time(ascending)",
-    "(t1, t2) => t1.due >= t2.due ? -1 : 1": "due time(descending)",
-    "(t1, t2) => t1.tags <= t2.tags ? -1 : 1": "tags(ascending)",
-    "(t1, t2) => t1.tags >= t2.tags ? -1 : 1": "tags(descending)"
-};
 export const defaultUserOptions = {
     /**
 	 * Open the view on startup or not
@@ -74,9 +63,9 @@ export const defaultUserOptions = {
      */
     forward: true as boolean,
     /**
-     * Specify how do you like the task item to be sorted, it must be a valid lambda
+     * Specify how do you like the task items to be sorted, see utils/sort.ts for the options.
      */
-    sort: "(t1, t2) => t1.order <= t2.order ? -1 : 1" as string,
+    sort: defaultSortKey as string,
     /**
      * Specify task status order
      * TODO
@@ -341,7 +330,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                 t.setPlaceholder("Status markers split by comma. e.g.,: x, -.");
                 t.setValue(this.plugin.userOptions.hideStatusTasks.join(','));
                 t.onChange(async v => await this.onOptionUpdate({
-                    hideStatusTasks: v.split(',').map(s => s === "[ ]" ? " " : s.trim())
+                    hideStatusTasks: v.split(',').map(s => s.trim()).map(s => s === "[ ]" ? " " : s)
                 }))
             });
 
@@ -515,7 +504,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             .setName("Sort By")
             .setDesc("Specify how you would like the taks item to be sorted inside a date.")
             .addDropdown(async ta => {
-                ta.addOptions(sortOptions);
+                ta.addOptions(sortOptionLabels);
                 ta.setValue(this.plugin.userOptions.sort);
                 ta.onChange(async v => {
                     await this.onOptionUpdate({ sort: v });
