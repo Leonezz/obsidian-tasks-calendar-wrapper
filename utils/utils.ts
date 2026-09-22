@@ -1,5 +1,32 @@
 import { DateTime } from "luxon";
+import { moment } from "obsidian";
 import { innerDateFormat, TaskRegularExpressions } from "./tasks";
+
+/**
+ * Describes a date relative to today, e.g. "Tomorrow" or "in 2 days", in the language
+ * the app is set to.
+ *
+ * Both sides are compared by day. Comparing the exact moments made every date two or more
+ * days away read as "in a day" from midday onwards, see issue #108.
+ */
+export function relativeDate(date: moment.Moment, now: moment.Moment = moment()): string {
+    const day = date.clone().startOf("day");
+    const today = now.clone().startOf("day");
+    const days = day.diff(today, "days");
+    const text = relativeDays(days, moment.locale()) ?? day.from(today);
+    // Today, tomorrow and yesterday stand on their own, so they read better capitalized.
+    return Math.abs(days) <= 1 ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+}
+
+/** Uses the platform formatter, which names the nearby days instead of counting them. */
+function relativeDays(days: number, locale: string): string | undefined {
+    try {
+        return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(days, "day");
+    } catch (error) {
+        console.warn(`Tasks Calendar Wrapper: no relative date format for locale ${locale}`, error);
+        return undefined;
+    }
+}
 
 export function momentToDateTime(m: moment.Moment) {
     return DateTime.fromFormat(m.format(innerDateFormat), innerDateFormat);
