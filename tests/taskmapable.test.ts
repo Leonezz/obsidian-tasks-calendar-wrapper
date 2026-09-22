@@ -1,44 +1,14 @@
-import "./setup";
-
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import moment from "moment";
 
-import { Link } from "../dataview-util/markdown";
-import { ObsidianTaskAdapter } from "../Obsidian-Tasks-Timeline/src/taskadapter";
+import { parse as parseChain } from "./helpers";
 import * as TaskMapable from "../utils/taskmapable";
 import { TaskDataModel, TaskStatus } from "../utils/tasks";
 
 const TODAY = moment("2026-09-18", "YYYY-MM-DD");
-const FILE = "Inbox.md";
 
-type LineParser = (
-    line: string, filePath: string, parent: Link, position: unknown,
-    outLinks: Link[], frontMatter: undefined, tags: string[],
-) => TaskDataModel | null;
-
-function makeTask(line: string): TaskDataModel {
-    const adapter = new ObsidianTaskAdapter({} as never);
-    const fromLine = (adapter as unknown as { fromLine: LineParser }).fromLine;
-    const position = { start: { line: 0, col: 0, offset: 0 }, end: { line: 0, col: line.length, offset: line.length } };
-    const task = fromLine(line, FILE, Link.file(FILE), position, [], undefined, []);
-    if (!task) throw new Error(`not a task line: ${line}`);
-    return task;
-}
-
-/** Runs the same parser chain as TasksTimelineView.parseTasks with the forward option on. */
-async function parse(line: string): Promise<TaskDataModel> {
-    const chain = [
-        TaskMapable.tasksPluginTaskParser,
-        TaskMapable.dataviewTaskParser,
-        TaskMapable.dailyNoteTaskParser(),
-        TaskMapable.tagsParser,
-        TaskMapable.remainderParser,
-        TaskMapable.postProcessor,
-        TaskMapable.forwardParser(TODAY),
-    ];
-    return chain.reduce((acc, step) => step(acc), Promise.resolve(makeTask(line)));
-}
+const parse = (line: string) => parseChain(line, TODAY);
 
 const isShownOn = (task: TaskDataModel, day: moment.Moment) => TaskMapable.filterDate(day)(task);
 
@@ -101,4 +71,75 @@ test("undated cancelled task is not moved to today", async () => {
     const task = await parse("- [-] Cancelled");
     assert.equal(task.status, TaskStatus.cancelled);
     assert.ok(!isShownOn(task, TODAY));
+});
+
+// Issue #105, #140: a well formed but non-existent date must not break the view
+
+test("an impossible calendar date is ignored instead of becoming an invalid date", async () => {
+    const task = await parse("- [ ] Broken due date 📅 2024-02-31");
+    assert.equal(task.due, undefined);
+    assert.equal(task.visual, "Broken due date");
+});
+
+test("a leap day is still parsed", async () => {
+    const task = await parse("- [ ] Leap day 📅 2024-02-29");
+    assert.equal(task.due?.format("YYYY-MM-DD"), "2024-02-29");
+});
+
+test("impossible start, scheduled and done dates are ignored", async () => {
+    const task = await parse("- [x] All broken 🛫 2024-13-01 ⏳ 2024-04-31 ✅ 2024-02-30");
+    assert.equal(task.start, undefined);
+    assert.equal(task.scheduled, undefined);
+    assert.equal(task.completion, undefined);
+    assert.equal(task.visual, "All broken");
+});
+
+// Issue #125, #100: markdown comments must not be shown
+
+test("a markdown comment is removed from the task text", async () => {
+    const task = await parse("- [ ] Write docs %%private note%%");
+    assert.equal(task.visual, "Write docs");
+});
+
+test("a comment wrapping an inline field leaves no comment markers behind", async () => {
+    const task = await parse("- [ ] Sync task %%[ticktick_id:: 665850a0]%%");
+    assert.equal(task.visual, "Sync task");
+});
+
+test("an inline field outside a comment is still parsed", async () => {
+    const task = await parse("- [ ] Field task [due:: 2026-09-20] %%hidden%%");
+    assert.equal(task.due?.format("YYYY-MM-DD"), "2026-09-20");
+    assert.equal(task.visual, "Field task");
+});
+
+test("a date inside a comment is not treated as a task date", async () => {
+    const task = await parse("- [ ] Commented date %%📅 2026-09-20%%");
+    assert.equal(task.due, undefined);
+    assert.equal(task.visual, "Commented date");
+});
+
+// Issue #102: dataview style priority
+
+test("dataview priority field is read", async () => {
+    const task = await parse("- [ ] Dataview priority [priority:: high]");
+    assert.equal(task.priority, "High");
+    assert.equal(task.visual, "Dataview priority");
+});
+
+test("dataview priority is case insensitive and covers every level", async () => {
+    const levels: [string, string][] = [["Highest", "Highest"], ["HIGH", "High"], ["medium", "Medium"], ["low", "Low"], ["lowest", "Lowest"], ["none", "No"]];
+    for (const [value, label] of levels) {
+        const task = await parse(`- [ ] Task [priority:: ${value}]`);
+        assert.equal(task.priority, label, `priority:: ${value}`);
+    }
+});
+
+test("an unknown dataview priority value is ignored", async () => {
+    const task = await parse("- [ ] Task [priority:: urgent]");
+    assert.equal(task.priority, "");
+});
+
+test("the emoji priority still wins over nothing", async () => {
+    const task = await parse("- [ ] Task ⏫");
+    assert.equal(task.priority, "High");
 });

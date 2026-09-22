@@ -3,6 +3,7 @@ import { ItemView, moment, Notice, WorkspaceLeaf } from "obsidian";
 import { ObsidianBridge } from 'Obsidian-Tasks-Timeline/src/obsidianbridge';
 import { ObsidianTaskAdapter } from "Obsidian-Tasks-Timeline/src/taskadapter";
 import { createRoot, Root } from 'react-dom/client';
+import { getSortComparator } from 'utils/sort';
 import * as TaskMapable from 'utils/taskmapable';
 import { TaskDataModel, TaskStatusMarkerMap } from "utils/tasks";
 import { defaultUserOptions, UserOption } from "./settings";
@@ -144,6 +145,7 @@ export class TasksTimelineView extends BaseTasksView {
          * initial parsers
          */
         let taskListPromise: Promise<TaskDataModel>[] = taskList.map(async item => item)
+            .map(TaskMapable.commentsParser)
             .map(TaskMapable.tasksPluginTaskParser)
             .map(TaskMapable.dataviewTaskParser)
             .map(dailyNoteFormatParser)
@@ -177,7 +179,12 @@ export class TasksTimelineView extends BaseTasksView {
             });
         }
 
-        return Promise.all(taskListPromise);
+        const parsedTasks = await Promise.all(taskListPromise);
+        /**
+         * Sorting is applied to the whole list here. The views only filter it afterwards,
+         * which keeps this order inside every date section.
+         */
+        return parsedTasks.sort(getSortComparator(this.userOptionModel.get("sort") ?? ""));
     }
 
     getViewType(): string {

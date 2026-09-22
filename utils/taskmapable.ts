@@ -51,8 +51,23 @@ function filterByDateTimeRange(from: moment.Moment, to: moment.Moment, by: momen
  * @param item 
  * @returns 
  */
+/**
+ * Removes Obsidian comments before any other parser looks at the text, so that neither their
+ * content nor their markers show up in the task, see issue #125 and #100.
+ */
+export async function commentsParser(item: Promise<TasksUtil.TaskDataModel>): Promise<TasksUtil.TaskDataModel> {
+    const itemValue = await item;
+    itemValue.visual = (itemValue.visual || "").replace(TasksUtil.TaskRegularExpressions.commentRegex, '').trim();
+    return itemValue;
+}
+
 export async function tasksPluginTaskParser(item: Promise<TasksUtil.TaskDataModel>): Promise<TasksUtil.TaskDataModel> {
     const itemValue = await item;
+    /** Dates such as 2024-02-31 match the regex but are not real days, see issue #105 and #140. */
+    const parseDate = (value: string) => {
+        const date = window.moment(value, TasksUtil.TaskRegularExpressions.dateFormat, true);
+        return date.isValid() ? date : undefined;
+    };
     // Check the line to see if it is a markdown task.
     let description = itemValue.visual || "";
     // Keep matching and removing special strings from the end of the
@@ -86,28 +101,28 @@ export async function tasksPluginTaskParser(item: Promise<TasksUtil.TaskDataMode
 
         const doneDateMatch = description.match(TasksUtil.TaskRegularExpressions.doneDateRegex);
         if (doneDateMatch !== null) {
-            doneDate = window.moment(doneDateMatch[1], TasksUtil.TaskRegularExpressions.dateFormat);
+            doneDate = parseDate(doneDateMatch[1]);
             description = description.replace(TasksUtil.TaskRegularExpressions.doneDateRegex, '').trim();
             matched = true;
         }
 
         const dueDateMatch = description.match(TasksUtil.TaskRegularExpressions.dueDateRegex);
         if (dueDateMatch !== null) {
-            dueDate = window.moment(dueDateMatch[1], TasksUtil.TaskRegularExpressions.dateFormat);
+            dueDate = parseDate(dueDateMatch[1]);
             description = description.replace(TasksUtil.TaskRegularExpressions.dueDateRegex, '').trim();
             matched = true;
         }
 
         const scheduledDateMatch = description.match(TasksUtil.TaskRegularExpressions.scheduledDateRegex);
         if (scheduledDateMatch !== null) {
-            scheduledDate = window.moment(scheduledDateMatch[1], TasksUtil.TaskRegularExpressions.dateFormat);
+            scheduledDate = parseDate(scheduledDateMatch[1]);
             description = description.replace(TasksUtil.TaskRegularExpressions.scheduledDateRegex, '').trim();
             matched = true;
         }
 
         const startDateMatch = description.match(TasksUtil.TaskRegularExpressions.startDateRegex);
         if (startDateMatch !== null) {
-            startDate = window.moment(startDateMatch[1], TasksUtil.TaskRegularExpressions.dateFormat);
+            startDate = parseDate(startDateMatch[1]);
             description = description.replace(TasksUtil.TaskRegularExpressions.startDateRegex, '').trim();
             matched = true;
         }
@@ -181,6 +196,12 @@ export async function dataviewTaskParser(item: Promise<TasksUtil.TaskDataModel>)
         const [text, key, value] = [tkv[0], tkv[1], tkv[2]];
         itemText = itemText.replace(text, '');
 
+        if (key.trim() === "priority") {
+            const priorityLabel = TasksUtil.TasksPriorityNameToLabel[value.trim().toLowerCase()];
+            if (priorityLabel) itemValue.priority = priorityLabel;
+            continue;
+        }
+
         if (!TasksUtil.TaskStatusCollection.includes(key)) continue;
         const fieldDate = moment(value);
         if (!fieldDate.isValid()) {
@@ -203,7 +224,7 @@ export async function dataviewTaskParser(item: Promise<TasksUtil.TaskDataModel>)
                 itemValue.dates.set(key, fieldDate); break;
         }
     }
-    itemValue.visual = itemText;
+    itemValue.visual = itemText.trim();
     return itemValue;
 }
 

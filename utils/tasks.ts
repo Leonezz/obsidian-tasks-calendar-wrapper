@@ -21,6 +21,27 @@ export const TasksPrioritySymbolToLabel = {
 export type TasksPrioritySymbol = keyof (typeof TasksPrioritySymbolToLabel);
 export type PriorityLabel = string;
 
+/** Priority names as the dataview format writes them, e.g. `[priority:: high]`. */
+export const TasksPriorityNameToLabel: Record<string, PriorityLabel> = {
+    highest: TasksPriorityLabel.Highest,
+    high: TasksPriorityLabel.High,
+    medium: TasksPriorityLabel.Medium,
+    none: TasksPriorityLabel.None,
+    low: TasksPriorityLabel.Low,
+    lowest: TasksPriorityLabel.Lowest,
+};
+
+/** Sort order of the priorities, highest first. Tasks without a priority sit in the middle. */
+export const TasksPriorityRank: Record<PriorityLabel, number> = {
+    [TasksPriorityLabel.Highest]: 0,
+    [TasksPriorityLabel.High]: 1,
+    [TasksPriorityLabel.Medium]: 2,
+    [TasksPriorityLabel.None]: 3,
+    "": 3,
+    [TasksPriorityLabel.Low]: 4,
+    [TasksPriorityLabel.Lowest]: 5,
+};
+
 export const recurrenceSymbol = '🔁';
 export const startDateSymbol = '🛫';
 export const scheduledDateSymbol = '⏳';
@@ -140,6 +161,8 @@ export class TaskRegularExpressions {
         /\[((?:\[[^\]]*\]|[^[\]])*)\]\([ \t]*<?((?:\([^)]*\)|[^()\s])*?)>?[ \t]*((['"])(.*?)\6[ \t]*)?\)/g
 
     public static readonly innerLinkRegex = /\[\[([^\]]+)\]\]/g;
+    /** Obsidian comments, e.g. `%% not shown %%`. */
+    public static readonly commentRegex = /%%[\s\S]*?%%/g;
     public static readonly highlightRegex = /==([^\]]+)==/g;
     public static readonly remainderRegex =
         /⏰ *(\d{4}-\d{2}-\d{2}) *(\d{2}:\d{2})|⏰ *(\d{4}-\d{2}-\d{2})|(\(@(\d{4}-\d{2}-\d{2}) *(\d{2}:\d{2})\))|(\(@(\d{4}-\d{2}-\d{2})\))/;
