@@ -1,6 +1,6 @@
 {
 	"name": "tasks-calendar-wrapper",
-	"version": "0.3.3",
+	"version": "0.3.4",
 	"description": "Shows the tasks in your vault on a timeline view, based on the Tasks Calendar and Tasks Timeline scripts.",
 	"main": "src/main.ts",
 	"scripts": {
