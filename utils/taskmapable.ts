@@ -181,6 +181,13 @@ export async function tasksPluginTaskParser(item: Promise<TasksUtil.TaskDataMode
     return itemValue;
 }
 
+/**
+ * Date fields understood in the dataview format, e.g. `[due:: 2024-01-31]`. `completion` and
+ * `created` are what the Tasks plugin writes; they used to be dropped, and `start` used to be
+ * kept as a generic date instead of the start date.
+ */
+const dataviewDateFields = ["due", "scheduled", "start", "done", "complete", "completion", "created", "unplanned"];
+
 export async function dataviewTaskParser(item: Promise<TasksUtil.TaskDataModel>): Promise<TasksUtil.TaskDataModel> {
     const itemValue = await item;
     let itemText = itemValue.visual || "";
@@ -202,26 +209,30 @@ export async function dataviewTaskParser(item: Promise<TasksUtil.TaskDataModel>)
             continue;
         }
 
-        if (!TasksUtil.TaskStatusCollection.includes(key)) continue;
+        const field = key.trim();
+        if (!dataviewDateFields.includes(field)) continue;
+        // Like the ➕ emoji, a created date is only removed from the text. Placing the task on
+        // its creation date would add an extra entry for it in the timeline.
+        if (field === "created") continue;
         const fieldDate = moment(value);
         if (!fieldDate.isValid()) {
             console.warn("Parse date for item failed, item: ")
             console.warn(inlineFields)
             continue;
         }
-        switch (key) {
+        switch (field) {
             case "due":
                 itemValue.due = fieldDate; break;
             case "scheduled":
                 itemValue.scheduled = fieldDate; break;
+            case "start":
+                itemValue.start = fieldDate; break;
             case "complete":
             case "completion":
             case "done":
                 itemValue.completion = fieldDate; break;
-            case "created":
-                itemValue.start = fieldDate; break;
             default:
-                itemValue.dates.set(key, fieldDate); break;
+                itemValue.dates.set(field, fieldDate); break;
         }
     }
     itemValue.visual = itemText.trim();
@@ -237,9 +248,12 @@ export function dailyNoteTaskParser(dailyNoteFormat: string = TasksUtil.innerDat
         if (!itemValue.dailyNote) {
             return itemValue;
         }
-        if (!itemValue.start) itemValue.start = dailyNoteDate;
-        if (!itemValue.scheduled) itemValue.scheduled = dailyNoteDate;
-        if (!itemValue.created) itemValue.created = dailyNoteDate;
+        // The note's date is only a fallback. Adding it to a task that has dates of its own put
+        // the task on several days of the timeline at once, see issue #114 and #118.
+        if (hasAnyDate(itemValue)) return itemValue;
+        itemValue.start = dailyNoteDate;
+        itemValue.scheduled = dailyNoteDate;
+        itemValue.created = dailyNoteDate;
 
         return itemValue;
     }
@@ -394,6 +408,8 @@ export function forwardParser(today: moment.Moment, options: ForwardOptions = {}
         if (hasStatus(t, TasksUtil.TaskStatus.unplanned)) t.dates.set(TasksUtil.TaskStatus.unplanned, today.clone());
         else if (hasStatus(t, TasksUtil.TaskStatus.done) && !t.completion &&
             !t.due && !t.start && !t.scheduled && !t.created) t.dates.set("done-unplanned", today.clone());
+        // Like an undated done task, an undated cancelled task has no other day to be shown on, see issue #66.
+        else if (hasStatus(t, TasksUtil.TaskStatus.cancelled) && !hasAnyDate(t)) t.dates.set("cancelled-unplanned", today.clone());
         else if (hasStatus(t, TasksUtil.TaskStatus.overdue) &&
             !filterDate(today)(t)) t.dates.set(TasksUtil.TaskStatus.overdue, today.clone());
         // A status marker such as `[/]` or `[<]` makes a task to-do even without any date.
