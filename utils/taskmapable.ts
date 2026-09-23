@@ -375,7 +375,20 @@ function markerBasedStatusParser(item: TasksUtil.TaskDataModel) {
  * Option Forward: show tasks that have no date of their own in today's part
  * of the timeline, so that they are not only counted but also displayed.
  */
-export function forwardParser(today: moment.Moment) {
+/** Task items indented under another list item start at a column other than zero, see issue #61. */
+export function filterSubTasks(hideSubTasks: boolean) {
+    return (item: TasksUtil.TaskDataModel) => !hideSubTasks || item.position.start.col === 0;
+}
+
+export interface ForwardOptions {
+    /** Also show tasks whose start or scheduled date has passed, see issue #84. */
+    pastStartAndScheduled?: boolean;
+}
+
+/** Marks a task that is shown on today on top of its own date, so views can skip it elsewhere. */
+export const forwardedDateKey = "forwarded";
+
+export function forwardParser(today: moment.Moment, options: ForwardOptions = {}) {
     return async (item: Promise<TasksUtil.TaskDataModel>): Promise<TasksUtil.TaskDataModel> => {
         const t = await item;
         if (hasStatus(t, TasksUtil.TaskStatus.unplanned)) t.dates.set(TasksUtil.TaskStatus.unplanned, today.clone());
@@ -386,6 +399,8 @@ export function forwardParser(today: moment.Moment) {
         // A status marker such as `[/]` or `[<]` makes a task to-do even without any date.
         // Such a task is counted as to-do, so it has to be shown somewhere as well.
         else if (todoStatuses.includes(t.status) && !hasAnyDate(t)) t.dates.set(t.status, today.clone());
+        else if (options.pastStartAndScheduled && isUnderway(t) && !filterDate(today)(t))
+            t.dates.set(forwardedDateKey, today.clone());
         return t;
     };
 }
@@ -396,6 +411,11 @@ const todoStatuses: string[] = [
     TasksUtil.TaskStatus.start,
     TasksUtil.TaskStatus.process,
 ];
+
+/** A task that has started or whose scheduled date has passed, but that is not due yet. */
+function isUnderway(item: TasksUtil.TaskDataModel): boolean {
+    return hasStatus(item, TasksUtil.TaskStatus.process) || hasStatus(item, TasksUtil.TaskStatus.start);
+}
 
 function hasStatus(item: TasksUtil.TaskDataModel, status: TasksUtil.TaskStatus): boolean {
     return item.status === String(status);

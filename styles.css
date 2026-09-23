@@ -550,6 +550,7 @@ If your plugin does not need CSS, delete this file.
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noYear .year,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noRepeat .repeat,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noModify .modify,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noTag .tag,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noPriority .priority,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noFile .task .file,

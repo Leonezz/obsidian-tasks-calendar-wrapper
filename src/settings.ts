@@ -63,6 +63,10 @@ export const defaultUserOptions = {
      */
     forward: true as boolean,
     /**
+     * Also show tasks whose start or scheduled date has passed on the today panel.
+     */
+    forwardPastStartAndScheduled: false as boolean,
+    /**
      * Specify how do you like the task items to be sorted, see utils/sort.ts for the options.
      */
     sort: defaultSortKey as string,
@@ -145,12 +149,20 @@ export const defaultUserOptions = {
      */
     useSection: true as boolean,
     /**
+     * Display the badge that opens the task in the Tasks plugin dialog or not.
+     */
+    useModifyBadge: true as boolean,
+    /**
      * USE INFO END
      */
     /**
      * hide specific status of tasks.
      */
     hideStatusTasks: ['x', '-'] as string[],
+    /**
+     * Hide task items that are nested under another list item.
+     */
+    hideSubTasks: false as boolean,
     /**
      * Activate today focus on load or not.
      */
@@ -343,6 +355,22 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             })
 
         new Setting(containerEl)
+            .setName("Forward Started And Scheduled Tasks")
+            .setDesc("Also show tasks that have started or were scheduled before today on the today panel. They are shown there instead of on their own date.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.forwardPastStartAndScheduled);
+                tg.onChange(async v => await this.onOptionUpdate({ forwardPastStartAndScheduled: v }));
+            })
+
+        new Setting(containerEl)
+            .setName("Hide Subtasks")
+            .setDesc("Hide task items that are nested under another list item.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.hideSubTasks);
+                tg.onChange(async v => await this.onOptionUpdate({ hideSubTasks: v }));
+            })
+
+        new Setting(containerEl)
             .setName("Today Focus On Load")
             .setDesc("Activate today focus on load or not.")
             .addToggle(async tg => {
@@ -486,6 +514,13 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             .addToggle(async tg => {
                 tg.setValue(this.plugin.userOptions.useSection);
                 tg.onChange(async v => await this.onOptionUpdate({ useSection: v }));
+            })
+        new Setting(containerEl)
+            .setName("Use Modify Badge")
+            .setDesc("Display the badge that opens a task in the Tasks plugin dialog or not.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.useModifyBadge);
+                tg.onChange(async v => await this.onOptionUpdate({ useModifyBadge: v }));
             })
 
         new Setting(containerEl).setName("Formats and filters").setHeading();

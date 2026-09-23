@@ -94,6 +94,10 @@ export class TasksTimelineView extends BaseTasksView {
     filterTasks(taskList: TaskDataModel[]) {
         return taskList
             /**
+             * Subtask Filter
+             */
+            .filter(TaskMapable.filterSubTasks(!!this.userOptionModel.get("hideSubTasks")))
+            /**
              * Status Filters
              */
             .filter((task: TaskDataModel) => {
@@ -140,7 +144,9 @@ export class TasksTimelineView extends BaseTasksView {
             this.userOptionModel.get("dailyNoteFormat"));
 
         const forward = this.userOptionModel.get("forward");
-        const forwardToToday = TaskMapable.forwardParser(moment());
+        const forwardToToday = TaskMapable.forwardParser(moment(), {
+            pastStartAndScheduled: this.userOptionModel.get("forwardPastStartAndScheduled"),
+        });
         /**
          * initial parsers
          */

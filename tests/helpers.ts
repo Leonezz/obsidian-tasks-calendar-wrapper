@@ -15,17 +15,22 @@ type LineParser = (
 ) => TaskDataModel | null;
 
 /** Builds a task the same way the adapter does when it reads a markdown line. */
-export function makeTask(line: string, file: string = FILE): TaskDataModel {
+export function makeTask(line: string, file: string = FILE, col = 0): TaskDataModel {
     const adapter = new ObsidianTaskAdapter({} as never);
     const fromLine = (adapter as unknown as { fromLine: LineParser }).fromLine;
-    const position = { start: { line: 0, col: 0, offset: 0 }, end: { line: 0, col: line.length, offset: line.length } };
+    const position = { start: { line: 0, col, offset: 0 }, end: { line: 0, col: line.length, offset: line.length } };
     const task = fromLine(line, file, Link.file(file), position, [], undefined, []);
     if (!task) throw new Error(`not a task line: ${line}`);
     return task;
 }
 
 /** Runs the same parser chain as TasksTimelineView.parseTasks with the forward option on. */
-export function parse(line: string, today: moment.Moment, file: string = FILE): Promise<TaskDataModel> {
+export function parse(
+    line: string,
+    today: moment.Moment,
+    options: TaskMapable.ForwardOptions = {},
+    file: string = FILE,
+): Promise<TaskDataModel> {
     const chain = [
         TaskMapable.commentsParser,
         TaskMapable.tasksPluginTaskParser,
@@ -34,7 +39,7 @@ export function parse(line: string, today: moment.Moment, file: string = FILE): 
         TaskMapable.tagsParser,
         TaskMapable.remainderParser,
         TaskMapable.postProcessor,
-        TaskMapable.forwardParser(today),
+        TaskMapable.forwardParser(today, options),
     ];
     return chain.reduce((acc, step) => step(acc), Promise.resolve(makeTask(line, file)));
 }
