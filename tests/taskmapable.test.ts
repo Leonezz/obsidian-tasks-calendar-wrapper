@@ -67,10 +67,18 @@ test("undated open task is still unplanned and shown today", async () => {
     assert.ok(isShownOn(task, TODAY));
 });
 
-test("undated cancelled task is not moved to today", async () => {
+// Issue #66: an undated cancelled task had no date to be shown on, even when cancelled tasks were not hidden
+test("undated cancelled task is shown today, like an undated done task", async () => {
     const task = await parse("- [-] Cancelled");
     assert.equal(task.status, TaskStatus.cancelled);
+    assert.ok(isShownOn(task, TODAY));
+});
+
+test("a dated cancelled task stays on its own date", async () => {
+    const task = await parse("- [-] Cancelled 📅 2026-09-10");
+    assert.equal(task.status, TaskStatus.cancelled);
     assert.ok(!isShownOn(task, TODAY));
+    assert.ok(isShownOn(task, moment("2026-09-10", "YYYY-MM-DD")));
 });
 
 // Issue #105, #140: a well formed but non-existent date must not break the view
@@ -188,4 +196,53 @@ test("nested tasks are kept when the option is off", () => {
     const top = makeTask("- [ ] top level");
     const nested = makeTask("  - [ ] nested", "Inbox.md", 2);
     assert.equal([top, nested].filter(TaskMapable.filterSubTasks(false)).length, 2);
+});
+
+// Issue #114, #118: a task in a daily note was shown on the note's date and on its own date
+
+const DAILY_NOTE = "Journal/2026-09-15.md";
+const NOTE_DAY = moment("2026-09-15", "YYYY-MM-DD");
+const parseInNote = (line: string) => parseChain(line, TODAY, {}, DAILY_NOTE);
+
+test("a dated task in a daily note is shown on its own date only", async () => {
+    const task = await parseInNote("- [ ] pay rent 📅 2026-09-30");
+    assert.ok(isShownOn(task, moment("2026-09-30", "YYYY-MM-DD")));
+    assert.ok(!isShownOn(task, NOTE_DAY), "should not also appear on the daily note's date");
+    assert.equal(task.start, undefined);
+    assert.equal(task.scheduled, undefined);
+});
+
+test("an undated task in a daily note still takes the note's date", async () => {
+    const task = await parseInNote("- [ ] undated note task");
+    assert.ok(task.dailyNote);
+    assert.equal(task.scheduled?.format("YYYY-MM-DD"), "2026-09-15");
+    assert.ok(isShownOn(task, NOTE_DAY));
+});
+
+test("a done task in a daily note is shown on its completion date only", async () => {
+    const task = await parseInNote("- [x] finished ✅ 2026-09-16");
+    assert.ok(isShownOn(task, moment("2026-09-16", "YYYY-MM-DD")));
+    assert.ok(!isShownOn(task, NOTE_DAY));
+});
+
+// Dataview style dates that were dropped or misread
+
+test("a dataview start date is read as the start date", async () => {
+    const task = await parse("- [ ] started [start:: 2026-09-10]");
+    assert.equal(task.start?.format("YYYY-MM-DD"), "2026-09-10");
+    assert.equal(task.status, TaskStatus.process);
+    assert.equal(task.visual, "started");
+});
+
+test("a dataview completion date is read as the done date", async () => {
+    const task = await parse("- [x] finished [completion:: 2026-09-17]");
+    assert.equal(task.completion?.format("YYYY-MM-DD"), "2026-09-17");
+    assert.ok(isShownOn(task, moment("2026-09-17", "YYYY-MM-DD")));
+});
+
+test("a dataview created date is removed from the text without becoming the start date", async () => {
+    const task = await parse("- [ ] noted [created:: 2026-09-01]");
+    assert.equal(task.visual, "noted");
+    assert.equal(task.start, undefined);
+    assert.ok(!isShownOn(task, moment("2026-09-01", "YYYY-MM-DD")));
 });
