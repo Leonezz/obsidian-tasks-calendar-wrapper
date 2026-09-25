@@ -36,6 +36,23 @@ export function DateTimeToMoment(d: DateTime){
     return d.toFormat(innerDateFormat);
 }
 
+type EditorCheckCallback = (checking: boolean, editor: unknown, view: unknown) => boolean | void;
+type EditorCommand = { editorCheckCallback?: EditorCheckCallback };
+
+/**
+ * Looks up an editor command of the Tasks plugin. When the plugin is disabled or missing the
+ * command is absent, which used to end in an uncaught TypeError with nothing shown to the user.
+ */
+export function tasksPluginCommand(
+    commands: Record<string, EditorCommand>,
+    commandId: string,
+): Required<EditorCommand> {
+    const command = commands[commandId];
+    if (!command?.editorCheckCallback) throw new Error(`the Tasks plugin is not enabled, so ${commandId} is not available`);
+    // The command object itself is returned, so the callback is still called as its method.
+    return command as Required<EditorCommand>;
+}
+
 /** A tag is hidden by an entry that names it, or by one of its parent tags, e.g. #work hides #work/admin. */
 export function isTagHidden(tag: string, hiddenTags: string[]): boolean {
     return hiddenTags.some(hidden => tag === hidden || tag.startsWith(hidden + "/"));

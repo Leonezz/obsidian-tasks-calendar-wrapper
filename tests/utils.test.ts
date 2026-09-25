@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import moment from "moment";
 import "moment/locale/zh-cn";
 
-import { isTagHidden, relativeDate } from "../utils/utils";
+import { isTagHidden, relativeDate, tasksPluginCommand } from "../utils/utils";
 
 // Loading a locale file switches moment over to it, so the default is set back here.
 moment.locale("en");
@@ -72,4 +72,19 @@ test("a hidden tag does not hide unrelated tags that start with the same letters
 
 test("nothing is hidden when no tags are configured", () => {
     assert.ok(!isTagHidden("#work", []));
+});
+
+// Toggling a task with the Tasks plugin disabled threw an uncaught TypeError and showed nothing
+
+test("an available Tasks command is returned", () => {
+    const editorCheckCallback = () => true;
+    const commands = { "obsidian-tasks-plugin:toggle-done": { editorCheckCallback } };
+    assert.equal(tasksPluginCommand(commands, "obsidian-tasks-plugin:toggle-done"), commands["obsidian-tasks-plugin:toggle-done"]);
+});
+
+test("a missing Tasks command raises an error that says what to do", () => {
+    assert.throws(() => tasksPluginCommand({}, "obsidian-tasks-plugin:toggle-done"),
+        /Tasks plugin is not enabled/);
+    assert.throws(() => tasksPluginCommand({ "obsidian-tasks-plugin:toggle-done": {} }, "obsidian-tasks-plugin:toggle-done"),
+        /Tasks plugin is not enabled/);
 });
