@@ -169,8 +169,9 @@ test("a task scheduled in the past is shown today when the option is on", async 
     assert.ok(isShownOn(task, TODAY));
 });
 
+// The status is computed from the real clock, so "the future" has to stay in the future.
 test("a task starting in the future is left alone", async () => {
-    const task = await parseForwardedLine("- [ ] starts later 🛫 2026-09-30");
+    const task = await parseForwardedLine("- [ ] starts later 🛫 2099-01-01");
     assert.ok(!isShownOn(task, TODAY));
 });
 
