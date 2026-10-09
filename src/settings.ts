@@ -8,6 +8,14 @@ export const defaultUserOptions = {
 	 */
 	openViewOnStartup: false as boolean,
     /**
+     * Show the release notes once after the plugin is updated.
+     */
+    showWhatsNewOnUpdate: true as boolean,
+    /**
+     * The version the release notes were last shown for. Managed by the plugin.
+     */
+    lastSeenVersion: "" as string,
+    /**
      * filter empty items out or not, if not, the raw text of empty items will be displayed
      */
     filterEmpty: true as boolean,
@@ -219,6 +227,14 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 						await this.onOptionUpdate({ openViewOnStartup: v })
 				);
 			});
+
+        new Setting(containerEl)
+            .setName("Show What's New After Updates")
+            .setDesc("Show the release notes once after the plugin is updated. They can always be opened with the \"Show what's new\" command.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.showWhatsNewOnUpdate);
+                tg.onChange(async v => await this.onOptionUpdate({ showWhatsNewOnUpdate: v }));
+            });
 
         new Setting(containerEl)
             .setName("Use Builtin Style")
