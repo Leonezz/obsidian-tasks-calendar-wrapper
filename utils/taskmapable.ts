@@ -239,13 +239,54 @@ export async function dataviewTaskParser(item: Promise<TasksUtil.TaskDataModel>)
     return itemValue;
 }
 
+/**
+ * The part of a note's path that a daily note format describes. A format with folders, such as
+ * YYYY/MMM/Wo/ddd, covers that many trailing path segments; comparing only the file name meant
+ * such notes were never recognised, see issue #95.
+ */
+function dailyNoteName(path: string, dailyNoteFormat: string): string {
+    const segments = dailyNoteFormat.split("/").length;
+    if (segments === 1) return getFileTitle(path);
+    return path.replace(/\.md$/i, "").split("/").slice(-segments).join("/");
+}
+
+function parseDailyNoteDate(name: string, dailyNoteFormat: string): moment.Moment | undefined {
+    const parsed = moment(name, dailyNoteFormat, true);
+    return parsed.isValid() ? parsed : dailyNoteDateByLookup(name, dailyNoteFormat);
+}
+
+/** Daily note names of one year, keyed by locale, format and year. */
+const dailyNoteNameIndex = new Map<string, Map<string, moment.Moment>>();
+
+/**
+ * Some formats, such as YYYY/MMM/Wo/ddd, can be written by moment but not read back, because a
+ * week number and a weekday do not parse into a date. For those, the names of every day in the
+ * years mentioned in the name are generated once and looked up.
+ */
+function dailyNoteDateByLookup(name: string, dailyNoteFormat: string): moment.Moment | undefined {
+    const years = new Set((name.match(/\d{4}/g) ?? []).map(Number).filter(year => year >= 1900 && year <= 2200));
+    for (const year of years) {
+        const key = `${moment.locale()}|${dailyNoteFormat}|${year}`;
+        let index = dailyNoteNameIndex.get(key);
+        if (!index) {
+            index = new Map();
+            for (const day = moment({ year, month: 0, date: 1 }); day.year() === year; day.add(1, "day")) {
+                index.set(day.format(dailyNoteFormat), day.clone());
+            }
+            dailyNoteNameIndex.set(key, index);
+        }
+        const date = index.get(name);
+        if (date) return date.clone();
+    }
+    return undefined;
+}
+
 export function dailyNoteTaskParser(dailyNoteFormat: string = TasksUtil.innerDateFormat) {
     return async (item: Promise<TasksUtil.TaskDataModel>): Promise<TasksUtil.TaskDataModel> => {
         const itemValue = await item;
-        const taskFile: string = getFileTitle(itemValue.path);
-        const dailyNoteDate = moment(taskFile, dailyNoteFormat, true);
-        itemValue.dailyNote = dailyNoteDate.isValid();
-        if (!itemValue.dailyNote) {
+        const dailyNoteDate = parseDailyNoteDate(dailyNoteName(itemValue.path, dailyNoteFormat), dailyNoteFormat);
+        itemValue.dailyNote = dailyNoteDate !== undefined;
+        if (dailyNoteDate === undefined) {
             return itemValue;
         }
         // The note's date is only a fallback. Adding it to a task that has dates of its own put
