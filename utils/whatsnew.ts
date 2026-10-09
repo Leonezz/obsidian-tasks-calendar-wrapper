@@ -16,6 +16,13 @@ export interface SupportLink {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: "0.3.6",
+        items: [
+            "This dialog: after each update it shows what changed, with links to star the plugin and to support its development. Turn it off in the settings, or reopen it any time with the \"Show what's new\" command.",
+            "Daily notes whose format has folders, such as YYYY/MMM/Wo/ddd, are recognised, so their tasks get the note's date.",
+        ],
+    },
+    {
         version: "0.3.5",
         items: [
             "Tasks in large notes, or in notes another plugin makes slow to read, no longer go missing.",
