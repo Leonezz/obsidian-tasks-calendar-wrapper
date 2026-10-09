@@ -3,6 +3,8 @@ import { Notice, Plugin } from 'obsidian';
 import { TasksTimelineView, TIMELINE_VIEW } from './views';
 
 import { migrateSortOption } from '../utils/sort';
+import { notesSince, RELEASE_NOTES, shouldShowWhatsNew, SUPPORT_LINKS } from '../utils/whatsnew';
+import { WhatsNewModal } from './whatsnew-modal';
 import { defaultUserOptions, TasksCalendarSettingTab, UserOption } from './settings';
 // Remember to rename these classes and interfaces!
 
@@ -36,8 +38,36 @@ export default class TasksCalendarWrapper extends Plugin {
 			}
 		});
 
+		this.addCommand({
+			id: 'show-whats-new',
+			name: "Show what's new",
+			callback: () => {
+				new WhatsNewModal(this.app, notesSince(RELEASE_NOTES, "", this.manifest.version), SUPPORT_LINKS).open();
+			}
+		});
+
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new TasksCalendarSettingTab(this.app, this));
+
+		this.app.workspace.onLayoutReady(() => {
+			this.showWhatsNewAfterUpdate().catch(error => {
+				console.error("Tasks Calendar Wrapper: showing what's new failed", error);
+			});
+		});
+	}
+
+	/** Shows the release notes once after an update, and remembers the version they were shown for. */
+	private async showWhatsNewAfterUpdate(): Promise<void> {
+		const currentVersion = this.manifest.version;
+		const lastSeenVersion = this.userOptions.lastSeenVersion;
+		const notes = notesSince(RELEASE_NOTES, lastSeenVersion, currentVersion);
+		const show = shouldShowWhatsNew({
+			lastSeenVersion,
+			currentVersion,
+			enabled: this.userOptions.showWhatsNewOnUpdate,
+		});
+		if (show && notes.length > 0) new WhatsNewModal(this.app, notes, SUPPORT_LINKS).open();
+		if (lastSeenVersion !== currentVersion) await this.writeOptions({ lastSeenVersion: currentVersion });
 	}
 
 	private updateOptions(updatedOpts: Partial<UserOption>) {

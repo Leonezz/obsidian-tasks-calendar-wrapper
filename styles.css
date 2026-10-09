@@ -647,3 +647,12 @@ If your plugin does not need CSS, delete this file.
 .tasks-calendar-wrapper-setting-warning {
 	color: var(--text-error);
 }
+
+/* What's new dialog: the star and support buttons wrap and stay centred. */
+.tasks-calendar-wrapper-whats-new .tasks-calendar-wrapper-support-links {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--size-4-2);
+	margin-bottom: var(--size-4-4);
+}

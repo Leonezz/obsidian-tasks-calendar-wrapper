@@ -6,5 +6,11 @@
 	"description": "Shows the tasks in your vault on a timeline view, based on the Tasks Calendar and Tasks Timeline scripts.",
 	"author": "zhuwenq",
 	"authorUrl": "https://github.com/Leonezz",
+	"fundingUrl": {
+		"Buy Me a Coffee": "https://buymeacoffee.com/zhuwenqa",
+		"Ko-fi": "https://ko-fi.com/zhuwenqa",
+		"Patreon": "https://patreon.com/zhuwenq",
+		"PayPal": "https://www.paypal.com/paypalme/zhuwenq"
+	},
 	"isDesktopOnly": false
 }
