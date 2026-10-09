@@ -1,5 +1,5 @@
 import { App, ButtonComponent, Modal } from "obsidian";
-import { ReleaseNote, SupportLink } from "../utils/whatsnew";
+import { REPOSITORY_URL, ReleaseNote, SupportLink } from "../utils/whatsnew";
 
 /** Lists what changed in the versions since the user last looked, with links to support the plugin. */
 export class WhatsNewModal extends Modal {
@@ -18,19 +18,22 @@ export class WhatsNewModal extends Modal {
             note.items.forEach(item => list.createEl("li", { text: item }));
         }
 
-        if (this.links.length > 0) {
-            contentEl.createEl("p", {
-                text: "If you find this plugin useful, please consider supporting its development.",
-                cls: "tasks-calendar-wrapper-support-text",
-            });
-        }
+        contentEl.createEl("p", {
+            text: "If you find this plugin useful, a star on GitHub or your support for its development helps a lot.",
+            cls: "tasks-calendar-wrapper-support-text",
+        });
 
-        const buttons = contentEl.createDiv({ cls: "modal-button-container" });
+        const links = contentEl.createDiv({ cls: "tasks-calendar-wrapper-support-links" });
+        new ButtonComponent(links)
+            .setButtonText("⭐ Star on GitHub")
+            .onClick(() => window.open(REPOSITORY_URL));
         for (const link of this.links) {
-            new ButtonComponent(buttons)
+            new ButtonComponent(links)
                 .setButtonText(link.label)
                 .onClick(() => window.open(link.url));
         }
+
+        const buttons = contentEl.createDiv({ cls: "modal-button-container" });
         new ButtonComponent(buttons)
             .setButtonText("Thanks!")
             .setCta()

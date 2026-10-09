@@ -29,8 +29,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     },
 ];
 
-/** Shown under the release notes. The section is left out while the list is empty. */
-export const SUPPORT_LINKS: SupportLink[] = [];
+/** Shown under the release notes. Keep in sync with fundingUrl in manifest.json; a test checks it. */
+export const SUPPORT_LINKS: SupportLink[] = [
+    { label: "Buy Me a Coffee", url: "https://buymeacoffee.com/zhuwenqa" },
+    { label: "Ko-fi", url: "https://ko-fi.com/zhuwenqa" },
+    { label: "Patreon", url: "https://patreon.com/zhuwenq" },
+    { label: "PayPal", url: "https://www.paypal.com/paypalme/zhuwenq" },
+];
+
+/** Where the star button leads. */
+export const REPOSITORY_URL = "https://github.com/Leonezz/obsidian-tasks-calendar-wrapper";
 
 /** Compares dotted version numbers by value, so 0.3.10 comes after 0.3.9. Missing parts count as 0. */
 export function compareVersions(a: string, b: string): number {
@@ -44,16 +52,14 @@ export function compareVersions(a: string, b: string): number {
 }
 
 export interface WhatsNewState {
-    /** True when the plugin had no saved settings yet, i.e. it was just installed. */
-    freshInstall: boolean;
-    /** The version the user last saw the notes for. Empty for releases before this feature. */
+    /** The version the user last saw the notes for. Empty on a fresh install and for releases before this feature. */
     lastSeenVersion: string;
     currentVersion: string;
     enabled: boolean;
 }
 
 export function shouldShowWhatsNew(state: WhatsNewState): boolean {
-    if (!state.enabled || state.freshInstall) return false;
+    if (!state.enabled) return false;
     if (state.lastSeenVersion === "") return true;
     return compareVersions(state.currentVersion, state.lastSeenVersion) > 0;
 }

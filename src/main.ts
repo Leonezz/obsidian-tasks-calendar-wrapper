@@ -12,8 +12,6 @@ import { defaultUserOptions, TasksCalendarSettingTab, UserOption } from './setti
 export default class TasksCalendarWrapper extends Plugin {
 	userOptions: UserOption = {} as UserOption;
 	private userOptionsReloading = false;
-	/** True when there were no saved settings, i.e. the plugin was just installed. */
-	private freshInstall = false;
 	async onload() {
 		await this.loadOptions();
 		this.registerView(
@@ -64,7 +62,6 @@ export default class TasksCalendarWrapper extends Plugin {
 		const lastSeenVersion = this.userOptions.lastSeenVersion;
 		const notes = notesSince(RELEASE_NOTES, lastSeenVersion, currentVersion);
 		const show = shouldShowWhatsNew({
-			freshInstall: this.freshInstall,
 			lastSeenVersion,
 			currentVersion,
 			enabled: this.userOptions.showWhatsNewOnUpdate,
@@ -90,7 +87,6 @@ export default class TasksCalendarWrapper extends Plugin {
 
 	async loadOptions(): Promise<void> {
 		const savedOptions = (await this.loadData()) as Partial<UserOption> | null;
-		this.freshInstall = savedOptions === null;
 		this.userOptions = Object.assign({}, defaultUserOptions, savedOptions);
 		this.userOptions.sort = migrateSortOption(this.userOptions.sort);
 		this.updateOptions(this.userOptions);
