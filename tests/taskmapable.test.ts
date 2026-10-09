@@ -1,10 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import moment from "moment";
+import "moment/locale/zh-cn";
 
 import { makeTask, parse as parseChain } from "./helpers";
 import * as TaskMapable from "../utils/taskmapable";
 import { TaskDataModel, TaskStatus } from "../utils/tasks";
+
+// Loading a locale file switches moment over to it, so the default is set back here.
+moment.locale("en");
 
 const TODAY = moment("2026-09-18", "YYYY-MM-DD");
 
@@ -246,4 +250,47 @@ test("a dataview created date is removed from the text without becoming the star
     assert.equal(task.visual, "noted");
     assert.equal(task.start, undefined);
     assert.ok(!isShownOn(task, moment("2026-09-01", "YYYY-MM-DD")));
+});
+
+// Issue #95: a daily note format with folders, such as YYYY/MMM/Wo/ddd, was never recognised,
+// because only the file name was compared with the format
+
+const dailyNote = (format: string, path: string) =>
+    TaskMapable.dailyNoteTaskParser(format)(Promise.resolve(makeTask("- [ ] diary task", path)));
+
+test("a daily note format with folders is recognised", async () => {
+    const task = await dailyNote("YYYY/MM/DD", "2024/01/22.md");
+    assert.ok(task.dailyNote);
+    assert.equal(task.scheduled?.format("YYYY-MM-DD"), "2024-01-22");
+});
+
+test("a daily note format with folders is recognised below a daily notes folder", async () => {
+    const task = await dailyNote("YYYY/MM/DD", "Journal/2024/01/22.md");
+    assert.ok(task.dailyNote);
+    assert.equal(task.scheduled?.format("YYYY-MM-DD"), "2024-01-22");
+});
+
+test("a localised daily note format with folders is recognised", async () => {
+    const previous = moment.locale();
+    try {
+        moment.locale("zh-cn");
+        const task = await dailyNote("YYYY/MMM/Wo/ddd", "2024/1月/4周/周一.md");
+        assert.ok(task.dailyNote);
+        assert.equal(task.scheduled?.format("YYYY-MM-DD"), "2024-01-22");
+        // The last days of December can fall in week 1 of the next year.
+        const yearEnd = await dailyNote("YYYY/MMM/Wo/ddd", "2024/12月/1周/周一.md");
+        assert.equal(yearEnd.scheduled?.format("YYYY-MM-DD"), "2024-12-30");
+    } finally {
+        moment.locale(previous);
+    }
+});
+
+test("a note that only partly matches a folder format is not a daily note", async () => {
+    const task = await dailyNote("YYYY/MM/DD", "Projects/notes/22.md");
+    assert.ok(!task.dailyNote);
+});
+
+test("a flat daily note format still matches the file name inside any folder", async () => {
+    const task = await dailyNote("YYYY-MM-DD", "Journal/2024-01-22.md");
+    assert.ok(task.dailyNote);
 });
