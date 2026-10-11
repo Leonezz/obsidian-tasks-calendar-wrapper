@@ -6,6 +6,7 @@ import { TaskDataModel, recurrenceSymbol } from "../../../utils/tasks";
 import { isTagHidden, relativeDate } from "../../../utils/utils";
 import * as Icons from './asserts/icons';
 import { TaskItemEventHandlersContext, UserOptionContext } from "./context";
+import { StripWithIcon } from "./statusmarker";
 
 const defaultTaskItemProps = {
     taskItem: {} as TaskDataModel
@@ -125,33 +126,6 @@ class Content extends React.Component<ContentProps> {
     }
 }
 
-
-const defaultStripWithIconProps = {
-    status: "task",
-    marker: " ",
-    useBuiltinStyle: true,
-    onToggle: () => { },
-}
-
-type StripWithIconProps = Readonly<typeof defaultStripWithIconProps>
-class StripWithIcon extends React.Component<StripWithIconProps> {
-
-    render(): React.ReactNode {
-        return (
-            <div className='timeline' >
-                <input id="statusMarker" type="checkbox" className={this.props.useBuiltinStyle ? "icon" : ""}
-                    data-task={this.props.marker}
-                    defaultChecked={this.props.marker !== ' '} onClick={() => {
-                        if (!this.props.useBuiltinStyle) this.props.onToggle();
-                    }}></input>
-                {this.props.useBuiltinStyle &&
-                    <label htmlFor="statusMarker" className="icon" onClick={() => {
-                        if (this.props.useBuiltinStyle) this.props.onToggle();
-                    }}>{Icons.getTaskStatusIcon(this.props.status)}</label>}
-            </div>
-        )
-    }
-}
 
 const defaultTagBadgeProps = {
     tag: "",
