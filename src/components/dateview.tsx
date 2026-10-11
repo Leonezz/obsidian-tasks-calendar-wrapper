@@ -80,7 +80,8 @@ class NormalDateContent extends React.Component<NormalDateContentProps> {
             <TaskListContext.Consumer>
                 {({ taskList }) => (
                     <div className='content'>
-                        {taskList.map((t, i) => <TaskItemView key={i} taskItem={t} />)}
+                        {/* Keyed by the task's place in the vault, so a row is never reused for another task, see issue #138. */}
+                        {taskList.map(t => <TaskItemView key={`${t.path}:${t.line}`} taskItem={t} />)}
                     </div>
                 )}
             </TaskListContext.Consumer>
