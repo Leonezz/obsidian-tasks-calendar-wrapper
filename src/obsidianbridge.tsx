@@ -182,8 +182,6 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
     }
 
     render(): React.ReactNode {
-        console.debug("Now the root node are rendering with: ", this.state.taskList)
-        console.debug("Now the root node are reddering with: ", this.state.userOptions)
         return (
             <QuickEntryHandlerContext.Provider
                 value={{
