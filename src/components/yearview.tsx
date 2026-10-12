@@ -1,7 +1,6 @@
 import { moment } from 'obsidian';
 import * as React from 'react';
-import * as TaskMapable from '../../../utils/taskmapable';
-import { innerDateFormat } from '../../../utils/tasks';
+import { groupTasksByDate } from '../taskdates';
 import { TaskListContext } from './context';
 import { DateView } from './dateview';
 
@@ -14,17 +13,8 @@ export class YearView extends React.Component<YearViewProps> {
         return (
             <TaskListContext.Consumer>{({ taskList, entryOnDate }) => {
                 const tasksOfThisYear = taskList;
-                const daysOfThisYear: Set<string> = new Set();
-                tasksOfThisYear.forEach((t) => {
-                    t.due && daysOfThisYear.add(t.due.format(innerDateFormat));
-                    t.scheduled && daysOfThisYear.add(t.scheduled.format(innerDateFormat));
-                    t.created && daysOfThisYear.add(t.created.format(innerDateFormat));
-                    t.start && daysOfThisYear.add(t.start.format(innerDateFormat));
-                    t.completion && daysOfThisYear.add(t.completion.format(innerDateFormat));
-                    t.dates.forEach((d: moment.Moment, k: string) => {
-                        daysOfThisYear.add(d.format(innerDateFormat));
-                    });
-                })
+                const tasksByDate = groupTasksByDate(tasksOfThisYear);
+                const daysOfThisYear: Set<string> = new Set(tasksByDate.keys());
                 if (this.props.year === moment(entryOnDate).year() && !daysOfThisYear.has(entryOnDate))
                     daysOfThisYear.add(entryOnDate);
                 return (
@@ -35,7 +25,7 @@ export class YearView extends React.Component<YearViewProps> {
                             .filter(d => moment(d).year() === this.props.year)
                             .sort()
                             .map((d, i) => {
-                                const tasksOfThisDate = tasksOfThisYear.filter(TaskMapable.filterDate(moment(d)));
+                                const tasksOfThisDate = tasksByDate.get(d) ?? [];
                                 return (
                                     <TaskListContext.Provider value={{ taskList: tasksOfThisDate, entryOnDate: entryOnDate }} key={i}>
                                         <DateView date={moment(d)} key={i} />
