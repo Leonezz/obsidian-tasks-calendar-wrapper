@@ -16,6 +16,14 @@ export interface SupportLink {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: "0.3.7",
+        items: [
+            "The timeline no longer freezes Obsidian while you type. Saving a note without tasks no longer reloads it, and in a vault with 4,000 tasks the pause after saving a note with tasks went from about 2.5 seconds to about 0.3 seconds.",
+            "Memory use no longer grows with every save, and closing the timeline frees its memory.",
+            "Open tasks are no longer shown with a ticked checkbox, and clicking a task's checkbox toggles that task instead of the first one on the page.",
+        ],
+    },
+    {
         version: "0.3.6",
         items: [
             "This dialog: after each update it shows what changed, with links to star the plugin and to support its development. Turn it off in the settings, or reopen it any time with the \"Show what's new\" command.",
