@@ -74,6 +74,15 @@ export class TasksTimelineView extends BaseTasksView {
 
     async onClose(): Promise<void> {
         this.requestReload.cancel();
+        // Runs the components' cleanup, so a reload that finishes after closing renders nothing.
+        this.root?.unmount();
+        // Task rows render their markdown with this static view as the owner. Hand it to another open
+        // timeline, so a closed view and its whole task list are not kept in memory.
+        if (TasksTimelineView.view === this) {
+            TasksTimelineView.view = this.app.workspace.getLeavesOfType(TIMELINE_VIEW)
+                .map(leaf => leaf.view)
+                .find((view): view is TasksTimelineView => view instanceof TasksTimelineView && view !== this) ?? null;
+        }
     }
 
     private onFileChanged(paths: string[], cache: CachedMetadata | null): void {
