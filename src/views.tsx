@@ -1,8 +1,9 @@
 import { Model } from "backbone";
-import { ItemView, moment, Notice, WorkspaceLeaf } from "obsidian";
+import { CachedMetadata, debounce, ItemView, moment, Notice, TFile, WorkspaceLeaf } from "obsidian";
 import { ObsidianBridge } from 'Obsidian-Tasks-Timeline/src/obsidianbridge';
 import { ObsidianTaskAdapter } from "Obsidian-Tasks-Timeline/src/taskadapter";
 import { createRoot, Root } from 'react-dom/client';
+import { changeAffectsTasks } from 'utils/refresh';
 import { getSortComparator } from 'utils/sort';
 import * as TaskMapable from 'utils/taskmapable';
 import { TaskDataModel, TaskStatusMarkerMap } from "utils/tasks";
@@ -11,6 +12,9 @@ import { defaultUserOptions, UserOption } from "./settings";
 
 export const CALENDAR_VIEW = "tasks_calendar_view";
 export const TIMELINE_VIEW = "tasks_timeline_view";
+
+/** Changes that arrive within this time of each other are applied in one reload. */
+const RELOAD_DELAY_MS = 500;
 
 export abstract class BaseTasksView extends ItemView {
     protected root: Root;
@@ -26,7 +30,12 @@ export class TasksTimelineView extends BaseTasksView {
         taskList: [] as TaskDataModel[],
     });
 
-    private isReloading: boolean = false;
+    private isReloading = false;
+    /** A reload was asked for while one was running, so the list is loaded again when it is done. */
+    private reloadAgain = false;
+    /** The files that had tasks at the last reload. */
+    private filesWithTasks: ReadonlySet<string> = new Set();
+    private readonly requestReload = debounce(() => this.onReloadTasks(), RELOAD_DELAY_MS, true);
     private userOptionModel = new Model({ ...defaultUserOptions });
     static view: TasksTimelineView | null = null;
     constructor(leaf: WorkspaceLeaf) {
@@ -38,7 +47,18 @@ export class TasksTimelineView extends BaseTasksView {
 
     async onOpen(): Promise<void> {
 
-        this.registerEvent(this.app.metadataCache.on('resolved', () => this.onReloadTasks()));
+        // Only changes to files that have or had tasks reload the list, see issue #63.
+        this.registerEvent(this.app.metadataCache.on('changed', (file, _data, cache) => this.onFileChanged([file.path], cache)));
+        this.registerEvent(this.app.metadataCache.on('deleted', (file, prevCache) => this.onFileChanged([file.path], prevCache)));
+        this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
+            if (file instanceof TFile) this.onFileChanged([file.path, oldPath], this.app.metadataCache.getFileCache(file));
+        }));
+        // When the view opens while Obsidian starts, the metadata of some files may not be read yet.
+        const firstResolved = this.app.metadataCache.on('resolved', () => {
+            this.app.metadataCache.offref(firstResolved);
+            this.requestReload();
+        });
+        this.registerEvent(firstResolved);
         this.registerEvent(this.app.workspace.on("window-open", () => this.onReloadTasks()));
 
         const { containerEl } = this;
@@ -53,7 +73,11 @@ export class TasksTimelineView extends BaseTasksView {
     }
 
     async onClose(): Promise<void> {
-        // this.app.metadataCache.off('resolved', this.onReloadTasks);
+        this.requestReload.cancel();
+    }
+
+    private onFileChanged(paths: string[], cache: CachedMetadata | null): void {
+        if (changeAffectsTasks(paths, cache, this.filesWithTasks)) this.requestReload();
     }
 
     onUpdateOptions(opt: UserOption) {
@@ -64,6 +88,7 @@ export class TasksTimelineView extends BaseTasksView {
 
     onReloadTasks(): void {
         if (this.isReloading) {
+            this.reloadAgain = true;
             return;
         }
         this.isReloading = true;
@@ -73,22 +98,28 @@ export class TasksTimelineView extends BaseTasksView {
         const fileExcludeTagsFilter = this.userOptionModel.get("fileExcludeTags") || [];
         const adapter = new ObsidianTaskAdapter(this.app);
         adapter.generateTasksList(fileIncludeFilter, fileExcludeFilter, fileIncludeTagsFilter, fileExcludeTagsFilter)
+            .catch(reason => { new Notice("Error when generating tasks from files: " + reason, 5000); throw reason; })
             .then(() => {
                 const taskList = adapter.getTaskList();
-                const taskListPromise = this.parseTasks(taskList)
-                taskListPromise.then(tasks => {
-                    tasks = this.filterTasks(tasks);
-                    const taskfiles = this.userOptionModel.get("taskFiles");
-                    /*tasks.forEach(t => {
-                        if (taskfiles?.contains(t.path)) return;
-                        taskfiles?.push(t.path);
-                    })*/
-                    this.taskListModel.set({ taskList: tasks });
-                    this.userOptionModel.set({ taskFiles: taskfiles || [] });
-                }).catch(reason => { new Notice("Error when parsing task items: " + reason, 5000); throw reason; });
+                this.filesWithTasks = new Set(taskList.map(task => task.path));
+                // Returned, so the reload counts as running until the parsed list is shown.
+                return this.parseTasks(taskList)
+                    .catch(reason => { new Notice("Error when parsing task items: " + reason, 5000); throw reason; });
             })
-            .catch(reason => { new Notice("Error when generating tasks from files: " + reason, 5000); throw reason; })
-            .finally(() => this.isReloading = false);
+            .then(tasks => {
+                tasks = this.filterTasks(tasks);
+                const taskfiles = this.userOptionModel.get("taskFiles");
+                this.taskListModel.set({ taskList: tasks });
+                this.userOptionModel.set({ taskFiles: taskfiles || [] });
+            })
+            .catch(reason => console.error("Tasks Calendar Wrapper: reloading tasks failed", reason))
+            .finally(() => {
+                this.isReloading = false;
+                if (this.reloadAgain) {
+                    this.reloadAgain = false;
+                    this.onReloadTasks();
+                }
+            });
     }
 
     filterTasks(taskList: TaskDataModel[]) {
