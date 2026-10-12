@@ -2,8 +2,8 @@ import { MarkdownRenderer } from "obsidian";
 import * as React from "react";
 import { getFileTitle } from "../../../dataview-util/dataview";
 import { TasksTimelineView } from "../../../src/views";
-import { TaskDataModel, recurrenceSymbol } from "../../../utils/tasks";
-import { isTagHidden, relativeDate } from "../../../utils/utils";
+import { TaskDataModel } from "../../../utils/tasks";
+import { BadgeKind, TaskRowModel, taskRowModel } from "../taskrow";
 import * as Icons from './asserts/icons';
 import { TaskItemEventHandlersContext, UserOptionContext } from "./context";
 import { StripWithIcon } from "./statusmarker";
@@ -13,102 +13,91 @@ const defaultTaskItemProps = {
 }
 
 type TaskItemProps = Readonly<typeof defaultTaskItemProps>;
-const defaultTaskItemState = {
-    taskStatus: "task" as string,
+export class TaskItemView extends React.Component<TaskItemProps> {
+    render(): React.ReactNode {
+        return (
+            <TaskItemEventHandlersContext.Consumer>{
+                callbacks => (
+                    <UserOptionContext.Consumer>{
+                        ({ dateFormat, hideTags, tagPalette, useBuiltinStyle }) => {
+                            const model = taskRowModel(this.props.taskItem, { dateFormat, hideTags, tagPalette, useBuiltinStyle });
+                            return <TaskRow model={model} modelKey={JSON.stringify(model)} callbacks={callbacks} />;
+                        }}
+                    </UserOptionContext.Consumer>
+                )}
+            </TaskItemEventHandlersContext.Consumer>
+        )
+    }
 }
-type TaskItemState = typeof defaultTaskItemState;
-export class TaskItemView extends React.Component<TaskItemProps, TaskItemState> {
-    constructor(props: TaskItemProps) {
-        super(props);
-        this.state = {
-            taskStatus: "task",
-        }
+
+const badgeIcons: Record<BadgeKind, JSX.Element> = {
+    created: Icons.taskIcon,
+    start: Icons.startIcon,
+    scheduled: Icons.scheduledIcon,
+    due: Icons.dueIcon,
+    done: Icons.doneIcon,
+    repeat: Icons.repeatIcon,
+    priority: Icons.priorityIcon,
+};
+
+const badgeClasses: Record<BadgeKind, string> = {
+    created: "relative",
+    start: "relative",
+    scheduled: "relative",
+    due: "relative",
+    done: "relative",
+    repeat: "repeat",
+    priority: "priority",
+};
+
+type TaskRowProps = {
+    model: TaskRowModel,
+    modelKey: string,
+    callbacks: React.ContextType<typeof TaskItemEventHandlersContext>,
+};
+
+/**
+ * One row, rendered only from its model. Every save re-renders the timeline with new task objects,
+ * so a row is skipped when its model and handlers are unchanged (issue #63).
+ */
+class TaskRow extends React.Component<TaskRowProps> {
+    shouldComponentUpdate(next: TaskRowProps): boolean {
+        return next.modelKey !== this.props.modelKey || next.callbacks !== this.props.callbacks;
     }
 
     render(): React.ReactNode {
-        const item = this.props.taskItem;
-        const display = item.visual || item.text;
-        const line = item.line;
-        const col = item.position.end.col;
-        const link = item.link.path.replace("'", "&apos;");
-        const isDailyNote = item.dailyNote;
-        const color = item.fontMatter["color"];
-        const ariaLabel = getFileTitle(item.path);
-        const tags = [...new Set(item.tags)];
-        //const outlinks = item.outlinks;
-
-        const path = item.path;
-        const position = item.position;
+        const { model, callbacks } = this.props;
+        const openTaskFile = () => {
+            callbacks.handleOpenFile(model.path, model.position);
+        };
+        const onToggleTask = () => {
+            callbacks.handleCompleteTask(model.path, model.position);
+        };
+        const onModifyTask = () => {
+            callbacks.handleModifyTask(model.path, model.position);
+        };
         return (
-            <TaskItemEventHandlersContext.Consumer>{
-                callbacks => {
-                    const openTaskFile = () => {
-                        callbacks.handleOpenFile(path, position);
-                    };
-                    const onToggleTask = () => {
-                        callbacks.handleCompleteTask(path, position);
-                    };
-                    const onModifyTask = () => {
-                        callbacks.handleModifyTask(path, position);
-                    };
-                    return (
-                        <UserOptionContext.Consumer>{
-                            ({ dateFormat, hideTags, useBuiltinStyle }) =>
-                            (<div data-line={line} data-task={item.statusMarker} data-col={col} data-link={link} data-dailynote={isDailyNote}
-                                className={`task ${item.status}`}
-                                style={{ "--task-color": color || "var(--text-muted)" } as React.CSSProperties} aria-label={ariaLabel}>
-                                <StripWithIcon onToggle={onToggleTask} useBuiltinStyle={useBuiltinStyle}
-                                    marker={item.statusMarker} status={item.status} />
-                                <div className='lines' onClick={openTaskFile}>
-                                    <div className="content">
-                                        <Content display={display} fileName={item.path} />
-                                    </div>
-                                    <div className='line info'>
-                                        {callbacks.handleModifyTask &&
-                                            <ModifyBadge onClick={onModifyTask}></ModifyBadge>}
-                                        {item.created &&
-                                            <DateStatusBadge //onClick={openTaskFile}
-                                                className='relative' ariaLabel={"create at " + item.created.format(dateFormat)}
-                                                label={relativeDate(item.created)} icon={Icons.taskIcon} />}
-                                        {item.start &&
-                                            <DateStatusBadge //onClick={openTaskFile}
-                                                className='relative' ariaLabel={"start at " + item.start.format(dateFormat)}
-                                                label={relativeDate(item.start)} icon={Icons.startIcon} />}
-                                        {item.scheduled &&
-                                            <DateStatusBadge //onClick={openTaskFile}
-                                                className='relative' ariaLabel={"scheduled to " + item.scheduled.format(dateFormat)}
-                                                label={relativeDate(item.scheduled)} icon={Icons.scheduledIcon} />}
-                                        {item.due &&
-                                            <DateStatusBadge //onClick={openTaskFile}
-                                                className='relative' ariaLabel={"due at " + item.due.format(dateFormat)}
-                                                label={relativeDate(item.due)} icon={Icons.dueIcon} />}
-                                        {item.completion &&
-                                            <DateStatusBadge //onClick={openTaskFile}
-                                                className='relative' ariaLabel={"complete at " + item.completion.format(dateFormat)}
-                                                label={relativeDate(item.completion)} icon={Icons.doneIcon} />}
-
-                                        {item.recurrence &&
-                                            <DateStatusBadge //onClick={openTaskFile}
-                                                className='repeat' ariaLabel={'recurrent: ' + item.recurrence.replace(recurrenceSymbol, '')}
-                                                label={item.recurrence.replace(recurrenceSymbol, '')} icon={Icons.repeatIcon} />}
-
-                                        {item.priority &&
-                                            <DateStatusBadge //onClick={openTaskFile}
-                                                className='priority' ariaLabel={'priority: ' + item.priority}
-                                                label={item.priority.length > 0 ? item.priority + " Priority" : "No Priority"}
-                                                icon={Icons.priorityIcon} />}
-                                        <FileBadge filePath={item.path} subPath={item.section.subpath || ""} />
-                                        {[...new Set(tags)].filter(t => !isTagHidden(t, hideTags)).map((t, i) => {
-                                            return < TagBadge tag={t} key={i} />
-                                        }
-                                        )}
-                                    </div>
-                                </div>
-                            </div>)}
-                        </UserOptionContext.Consumer>
-                    )
-                }}
-            </TaskItemEventHandlersContext.Consumer>
+            <div data-line={model.line} data-task={model.statusMarker} data-col={model.col} data-link={model.link} data-dailynote={model.isDailyNote}
+                className={`task ${model.status}`}
+                style={{ "--task-color": model.color || "var(--text-muted)" } as React.CSSProperties} aria-label={model.fileTitle}>
+                <StripWithIcon onToggle={onToggleTask} useBuiltinStyle={model.useBuiltinStyle}
+                    marker={model.statusMarker} status={model.status} />
+                <div className='lines' onClick={openTaskFile}>
+                    <div className="content">
+                        <Content display={model.display} fileName={model.path} />
+                    </div>
+                    <div className='line info'>
+                        {callbacks.handleModifyTask &&
+                            <ModifyBadge onClick={onModifyTask}></ModifyBadge>}
+                        {model.badges.map(badge =>
+                            <DateStatusBadge key={badge.kind} className={badgeClasses[badge.kind]} ariaLabel={badge.ariaLabel}
+                                label={badge.label} icon={badgeIcons[badge.kind]} />)}
+                        <FileBadge filePath={model.path} subPath={model.subPath} />
+                        {model.tags.map((t, i) =>
+                            <TagBadge tag={t.tag} color={t.color} onClick={callbacks.handleTagClick} key={i} />)}
+                    </div>
+                </div>
+            </div>
         )
     }
 }
@@ -118,7 +107,11 @@ const defaultContentProps = {
     fileName: "",
 }
 type ContentProps = Readonly<typeof defaultContentProps>
-class Content extends React.Component<ContentProps> {
+/**
+ * Rendering markdown is the most expensive part of a row, so it only runs again when the text or the file changes.
+ * Every reload creates new task objects, so without this every row was rendered again after each save (issue #63).
+ */
+class Content extends React.PureComponent<ContentProps> {
     render(): React.ReactNode {
         const cont = createEl("a")
         MarkdownRenderer.renderMarkdown(this.props.display, cont, this.props.fileName, TasksTimelineView.view!);
@@ -127,48 +120,40 @@ class Content extends React.Component<ContentProps> {
 }
 
 
-const defaultTagBadgeProps = {
-    tag: "",
+type TagBadgeProps = {
+    tag: string,
+    color: string | undefined,
+    onClick: (tag: string) => void,
 };
-
-type TagBadgeProps = Readonly<typeof defaultTagBadgeProps>;
 
 class TagBadge extends React.Component<TagBadgeProps> {
 
     render(): React.ReactNode {
+        const tag = this.props.tag;
+        const tagText = tag.replace("#", "");
+        const color = this.props.color;
+        let style: Record<string, unknown>;
+        if (color) {
+            style = {
+                '--tag-color': color,
+                '--tag-background': `${color}1a`,
+                'zIndex': 9999,
+            };
+        } else {
+            style = {
+                '--tag-color': 'var(--text-muted)',
+                'zIndex': 9999,
+            };
+        }
         return (
-            <UserOptionContext.Consumer>{({ tagPalette }) => {
-                const tag = this.props.tag;
-                const tagText = tag.replace("#", "");
-                let color;
-                if (Object.keys(tagPalette).contains(tag)) color = tagPalette[tag];
-                let style: Record<string, unknown>;
-                if (color) {
-                    style = {
-                        '--tag-color': color,
-                        '--tag-background': `${color}1a`,
-                        'zIndex': 9999,
-                    };
-                } else {
-                    style = {
-                        '--tag-color': 'var(--text-muted)',
-                        'zIndex': 9999,
-                    };
-                }
-                return (
-                    <TaskItemEventHandlersContext.Consumer>{callbacks => (
-                        <a href={tag} className={'tag'} target='_blank' rel='noopener' style={style} aria-label={tag}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                callbacks.handleTagClick(tag);
-                            }}>
-                            <div className='icon'>{Icons.tagIcon}</div>
-                            <div className='label'>{tagText}</div>
-                        </a>)}
-                    </TaskItemEventHandlersContext.Consumer>)
-            }}
-            </UserOptionContext.Consumer>
-        );
+            <a href={tag} className={'tag'} target='_blank' rel='noopener' style={style} aria-label={tag}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    this.props.onClick(tag);
+                }}>
+                <div className='icon'>{Icons.tagIcon}</div>
+                <div className='label'>{tagText}</div>
+            </a>);
     }
 }
 
