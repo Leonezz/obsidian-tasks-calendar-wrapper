@@ -24,11 +24,12 @@ export class YearView extends React.Component<YearViewProps> {
                         {[...daysOfThisYear]
                             .filter(d => moment(d).year() === this.props.year)
                             .sort()
-                            .map((d, i) => {
+                            .map((d) => {
                                 const tasksOfThisDate = tasksByDate.get(d) ?? [];
+                                // Keyed by the day, so a day added above does not make React rebuild every day below it.
                                 return (
-                                    <TaskListContext.Provider value={{ taskList: tasksOfThisDate, entryOnDate: entryOnDate }} key={i}>
-                                        <DateView date={moment(d)} key={i} />
+                                    <TaskListContext.Provider value={{ taskList: tasksOfThisDate, entryOnDate: entryOnDate }} key={d}>
+                                        <DateView date={moment(d)} />
                                     </TaskListContext.Provider>
                                 )
                             })}

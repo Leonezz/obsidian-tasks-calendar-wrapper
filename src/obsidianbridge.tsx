@@ -23,6 +23,7 @@ type ObsidianBridgeState = typeof defaultObsidianBridgeState;
 export class ObsidianBridge extends React.Component<ObsidianBridgeProps, ObsidianBridgeState> {
     //private readonly adapter: ObsidianTaskAdapter;
     private readonly app: App;
+    private taskItemHandlers?: React.ContextType<typeof TaskItemEventHandlersContext>;
     constructor(props: ObsidianBridgeProps) {
         super(props);
 
@@ -181,6 +182,24 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
         })
     }
 
+    /**
+     * The same object on every render while the handlers stay the same, so task rows that did not
+     * change can skip rendering (issue #63). Modifying a task needs the Tasks plugin.
+     */
+    getTaskItemHandlers(): React.ContextType<typeof TaskItemEventHandlersContext> {
+        //@ts-ignore plugins is not part of the public API
+        const handleModifyTask = this.app.plugins.plugins['obsidian-tasks-plugin'] === undefined ? undefined : this.handleModifyTask;
+        if (!this.taskItemHandlers || this.taskItemHandlers.handleModifyTask !== handleModifyTask) {
+            this.taskItemHandlers = {
+                handleOpenFile: this.handleOpenFile,
+                handleCompleteTask: this.handleCompleteTask,
+                handleTagClick: this.handleTagClick,
+                handleModifyTask,
+            };
+        }
+        return this.taskItemHandlers;
+    }
+
     render(): React.ReactNode {
         return (
             <QuickEntryHandlerContext.Provider
@@ -188,14 +207,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
                     handleCreateNewTask: this.handleCreateNewTask,
                     handleFilterEnable: this.handleFilterEnable
                 }}>
-                <TaskItemEventHandlersContext.Provider value={{
-                    handleOpenFile: this.handleOpenFile,
-                    handleCompleteTask: this.handleCompleteTask,
-                    handleTagClick: this.handleTagClick,
-                    // pass an undefined if the obsidian-tasks-plugin not installed
-                    //@ts-ignore
-                    handleModifyTask: this.app.plugins.plugins['obsidian-tasks-plugin'] === undefined ? undefined : this.handleModifyTask,
-                }}>
+                <TaskItemEventHandlersContext.Provider value={this.getTaskItemHandlers()}>
                     <TimelineView userOptions={this.state.userOptions} taskList={this.state.taskList} />
                 </TaskItemEventHandlersContext.Provider>
             </QuickEntryHandlerContext.Provider>
