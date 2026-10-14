@@ -24,6 +24,15 @@ export default tseslint.config(
 		},
 	},
 	{
+		files: ["apps/**/*.{ts,tsx}"],
+		ignores: ["apps/obsidian-plugin/utils/moment.ts"],
+		rules: {
+			"no-restricted-imports": ["error", {
+				paths: [{ name: "obsidian", importNames: ["moment"], message: "Import moment from utils/moment, which types it as callable." }],
+			}],
+		},
+	},
+	{
 		// The shared packages run outside Obsidian, see the restructuring plan.
 		files: ["packages/**/*.{ts,tsx}"],
 		rules: {

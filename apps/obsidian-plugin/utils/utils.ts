@@ -1,5 +1,6 @@
 import { DateTime } from "luxon";
-import { moment } from "obsidian";
+import { moment } from "./moment";
+import type { Moment } from "moment";
 import { innerDateFormat, TaskRegularExpressions } from "./tasks";
 
 /**
@@ -9,7 +10,7 @@ import { innerDateFormat, TaskRegularExpressions } from "./tasks";
  * Both sides are compared by day. Comparing the exact moments made every date two or more
  * days away read as "in a day" from midday onwards, see issue #108.
  */
-export function relativeDate(date: moment.Moment, now: moment.Moment = moment()): string {
+export function relativeDate(date: Moment, now: Moment = moment()): string {
     const day = date.clone().startOf("day");
     const today = now.clone().startOf("day");
     const days = day.diff(today, "days");
@@ -28,7 +29,7 @@ function relativeDays(days: number, locale: string): string | undefined {
     }
 }
 
-export function momentToDateTime(m: moment.Moment) {
+export function momentToDateTime(m: Moment) {
     return DateTime.fromFormat(m.format(innerDateFormat), innerDateFormat);
 }
 

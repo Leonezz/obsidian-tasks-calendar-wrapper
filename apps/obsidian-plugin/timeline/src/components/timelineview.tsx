@@ -1,4 +1,5 @@
-import { moment } from 'obsidian';
+import { moment } from '../../../utils/moment';
+import type { Moment } from 'moment';
 import * as React from 'react';
 import { UserOption } from '../../../src/settings';
 import * as TaskMapable from '../../../utils/taskmapable';
@@ -58,7 +59,7 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
             t.created && involvedDates.add(t.created.format(innerDateFormat));
             t.start && involvedDates.add(t.start.format(innerDateFormat));
             t.completion && involvedDates.add(t.completion.format(innerDateFormat));
-            t.dates.forEach((d: moment.Moment, k: string) => {
+            t.dates.forEach((d: Moment, k: string) => {
                 involvedDates.add(d.format(innerDateFormat));
             });
         })

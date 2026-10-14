@@ -1,5 +1,6 @@
 import { Model } from 'backbone';
-import { App, ItemView, Notice, Pos, moment } from 'obsidian';
+import { App, ItemView, Notice, Pos } from 'obsidian';
+import { moment } from '../../utils/moment';
 import * as React from 'react';
 import { UserOption, defaultUserOptions } from '../../src/settings';
 import * as TaskMapable from '../../utils/taskmapable';

@@ -1,4 +1,5 @@
-import { Pos, moment } from 'obsidian';
+import { Pos } from 'obsidian';
+import { moment } from '../../../utils/moment';
 import * as React from 'react';
 import { TaskDataModel } from '../../../utils/tasks';
 import { CounterProps } from './dateview';

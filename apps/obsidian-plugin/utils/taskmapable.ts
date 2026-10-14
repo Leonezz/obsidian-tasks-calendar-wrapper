@@ -1,16 +1,17 @@
 import { getFileTitle } from "../dataview-util/dataview";
-import { moment } from "obsidian";
+import { moment } from "./moment";
+import type { Moment, unitOfTime } from "moment";
 import * as TasksUtil from "./tasks";
 
-export function filterDate(date: moment.Moment) {
+export function filterDate(date: Moment) {
     return filterByDateTime(date, "date");
 }
 
-export function filterYear(date: moment.Moment) {
+export function filterYear(date: Moment) {
     return filterByDateTime(date, "year");
 }
 
-function filterByDateTime(date: moment.Moment, by: moment.unitOfTime.StartOf) {
+function filterByDateTime(date: Moment, by: unitOfTime.StartOf) {
     return (item: TasksUtil.TaskDataModel) => {
         if (item.due && date.isSame(item.due, by)) return true;
         if (item.scheduled && date.isSame(item.scheduled, by)) return true;
@@ -26,11 +27,11 @@ function filterByDateTime(date: moment.Moment, by: moment.unitOfTime.StartOf) {
     }
 }
 
-export function filterDateRange(from: moment.Moment, to: moment.Moment) {
+export function filterDateRange(from: Moment, to: Moment) {
     return filterByDateTimeRange(from, to, 'date');
 }
 
-function filterByDateTimeRange(from: moment.Moment, to: moment.Moment, by: moment.unitOfTime.StartOf) {
+function filterByDateTimeRange(from: Moment, to: Moment, by: unitOfTime.StartOf) {
     return (item: TasksUtil.TaskDataModel) => {
         if (item.due && item.due.isBetween(from, to, by)) return true;
         if (item.scheduled && item.scheduled.isBetween(from, to, by)) return true;
@@ -74,11 +75,11 @@ export async function tasksPluginTaskParser(item: Promise<TasksUtil.TaskDataMode
     // strings are in the expected order after the description.
     let matched: boolean;
     let priority: TasksUtil.PriorityLabel = "";
-    let startDate: moment.Moment | undefined = undefined;
-    let scheduledDate: moment.Moment | undefined = undefined;
+    let startDate: Moment | undefined = undefined;
+    let scheduledDate: Moment | undefined = undefined;
     //const scheduledDateIsInferred = false;
-    let dueDate: moment.Moment | undefined = undefined;
-    let doneDate: moment.Moment | undefined = undefined;
+    let dueDate: Moment | undefined = undefined;
+    let doneDate: Moment | undefined = undefined;
     let recurrenceRule = '';
     //const recurrence: string | null = null;
     // Tags that are removed from the end while parsing, but we want to add them back for being part of the description.
@@ -249,20 +250,20 @@ function dailyNoteName(path: string, dailyNoteFormat: string): string {
     return path.replace(/\.md$/i, "").split("/").slice(-segments).join("/");
 }
 
-function parseDailyNoteDate(name: string, dailyNoteFormat: string): moment.Moment | undefined {
+function parseDailyNoteDate(name: string, dailyNoteFormat: string): Moment | undefined {
     const parsed = moment(name, dailyNoteFormat, true);
     return parsed.isValid() ? parsed : dailyNoteDateByLookup(name, dailyNoteFormat);
 }
 
 /** Daily note names of one year, keyed by locale, format and year. */
-const dailyNoteNameIndex = new Map<string, Map<string, moment.Moment>>();
+const dailyNoteNameIndex = new Map<string, Map<string, Moment>>();
 
 /**
  * Some formats, such as YYYY/MMM/Wo/ddd, can be written by moment but not read back, because a
  * week number and a weekday do not parse into a date. For those, the names of every day in the
  * years mentioned in the name are generated once and looked up.
  */
-function dailyNoteDateByLookup(name: string, dailyNoteFormat: string): moment.Moment | undefined {
+function dailyNoteDateByLookup(name: string, dailyNoteFormat: string): Moment | undefined {
     const years = new Set((name.match(/\d{4}/g) ?? []).map(Number).filter(year => year >= 1900 && year <= 2200));
     for (const year of years) {
         const key = `${moment.locale()}|${dailyNoteFormat}|${year}`;
@@ -389,7 +390,7 @@ export interface ForwardOptions {
 /** Marks a task that is shown on today on top of its own date, so views can skip it elsewhere. */
 export const forwardedDateKey = "forwarded";
 
-export function forwardParser(today: moment.Moment, options: ForwardOptions = {}) {
+export function forwardParser(today: Moment, options: ForwardOptions = {}) {
     return async (item: Promise<TasksUtil.TaskDataModel>): Promise<TasksUtil.TaskDataModel> => {
         const t = await item;
         if (hasStatus(t, TasksUtil.TaskStatus.unplanned)) t.dates.set(TasksUtil.TaskStatus.unplanned, today.clone());

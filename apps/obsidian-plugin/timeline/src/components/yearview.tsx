@@ -1,4 +1,4 @@
-import { moment } from 'obsidian';
+import { moment } from '../../../utils/moment';
 import * as React from 'react';
 import { groupTasksByDate } from '../taskdates';
 import { TaskListContext } from './context';

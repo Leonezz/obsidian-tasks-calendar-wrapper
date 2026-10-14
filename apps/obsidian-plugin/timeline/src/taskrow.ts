@@ -1,4 +1,6 @@
-import { moment, Pos } from "obsidian";
+import { Pos } from "obsidian";
+import { moment } from "../../utils/moment";
+import type { Moment } from "moment";
 import { getFileTitle } from "../../dataview-util/dataview";
 import { recurrenceSymbol, TaskDataModel } from "../../utils/tasks";
 import { isTagHidden, relativeDate } from "../../utils/utils";
@@ -35,8 +37,8 @@ export interface TaskRowModel {
     tags: { tag: string; color: string | undefined }[];
 }
 
-export function taskRowModel(item: TaskDataModel, options: RowOptions, now: moment.Moment = moment()): TaskRowModel {
-    const dateBadge = (kind: BadgeKind, prefix: string, date: moment.Moment | undefined) =>
+export function taskRowModel(item: TaskDataModel, options: RowOptions, now: Moment = moment()): TaskRowModel {
+    const dateBadge = (kind: BadgeKind, prefix: string, date: Moment | undefined) =>
         date ? [{ kind, ariaLabel: prefix + date.format(options.dateFormat), label: relativeDate(date, now) }] : [];
     const recurrence = item.recurrence ? item.recurrence.replace(recurrenceSymbol, "") : undefined;
     const badges = [

@@ -1,5 +1,6 @@
 import { Model } from "backbone";
-import { CachedMetadata, debounce, ItemView, moment, Notice, TFile, WorkspaceLeaf } from "obsidian";
+import { CachedMetadata, debounce, ItemView, Notice, TFile, WorkspaceLeaf } from "obsidian";
+import { moment } from "../utils/moment";
 import { ObsidianBridge } from '../timeline/src/obsidianbridge';
 import { ObsidianTaskAdapter } from "../timeline/src/taskadapter";
 import { createRoot, Root } from 'react-dom/client';

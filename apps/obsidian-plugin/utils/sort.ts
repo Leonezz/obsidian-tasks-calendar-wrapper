@@ -1,13 +1,13 @@
-import { moment } from "obsidian";
+import type { Moment } from "moment";
 import { PriorityLabel, TaskDataModel, TasksPriorityRank } from "./tasks";
 
 export type TaskComparator = (t1: TaskDataModel, t2: TaskDataModel) => number;
 
 const text = (task: TaskDataModel) => (task.visual ?? "").trim();
-const time = (date: moment.Moment | undefined) => (date ? date.valueOf() : undefined);
+const time = (date: Moment | undefined) => (date ? date.valueOf() : undefined);
 
 /** Undated tasks sort last, whichever direction the dates are sorted in. */
-const byDate = (pick: (task: TaskDataModel) => moment.Moment | undefined, descending: boolean): TaskComparator =>
+const byDate = (pick: (task: TaskDataModel) => Moment | undefined, descending: boolean): TaskComparator =>
     (t1, t2) => {
         const [a, b] = [time(pick(t1)), time(pick(t2))];
         if (a === undefined && b === undefined) return 0;

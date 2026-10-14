@@ -1,4 +1,5 @@
-import { moment } from 'obsidian';
+import { moment } from '../../../utils/moment';
+import type { Moment, unitOfTime } from 'moment';
 import * as React from 'react';
 import { getFileTitle } from '../../../dataview-util/dataview';
 import { TaskStatus, doneDateSymbol, dueDateSymbol, recurrenceSymbol, scheduledDateSymbol, startDateSymbol } from '../../../utils/tasks';
@@ -70,7 +71,7 @@ class DateHeader extends React.Component<DateHeaderProps> {
 }
 
 type NormalDateContentProps = {
-    date: moment.Moment,
+    date: Moment,
 }
 
 class NormalDateContent extends React.Component<NormalDateContentProps> {
@@ -161,7 +162,7 @@ class QuickEntry extends React.Component<Record<string, unknown>, QuickEntryStat
         const futureDate = newTask.match(/(in)\W(\d{1,3})\W(days|day|weeks|week|month|years|year) /);
         if (futureDate && futureDate.length > 3) {
             const value: number = parseInt(futureDate[2]);
-            const unit = futureDate[3] as moment.unitOfTime.Base;
+            const unit = futureDate[3] as unitOfTime.Base;
             const date = moment().add(value, unit).format("YYYY-MM-DD[ ]")
             input.value = newTask.replace(futureDate[0], date);
         }
