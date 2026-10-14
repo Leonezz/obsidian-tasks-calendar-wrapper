@@ -16,7 +16,7 @@ export const TIMELINE_VIEW = "tasks_timeline_view";
 const RELOAD_DELAY_MS = 500;
 
 export abstract class BaseTasksView extends ItemView {
-    protected root: Root;
+    protected root?: Root;
     //protected dataAdapter: ObsidianTaskAdapter;
     constructor(leaf: WorkspaceLeaf) {
         super(leaf);

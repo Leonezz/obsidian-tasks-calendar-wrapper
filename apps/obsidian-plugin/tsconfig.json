@@ -1,23 +1,15 @@
 {
   "compilerOptions": {
-    "inlineSourceMap": true,
-    "inlineSources": true,
     "module": "ESNext",
-    "target": "ES6",
-    "allowJs": true,
-    "noImplicitAny": true,
-    "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true,
-    "isolatedModules": true,
-    "strictNullChecks": true,
+    "target": "ES2018",
+    "moduleResolution": "bundler",
+    "lib": ["DOM", "ES2021"],
+    "types": ["node"],
     "jsx": "react-jsx",
-    "lib": [
-      "DOM",
-      "ES5",
-      "ES6",
-      "ES7",
-      "es2021"
-    ]
+    "strict": true,
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "noEmit": true
   },
   "include": [
     "**/*.ts",

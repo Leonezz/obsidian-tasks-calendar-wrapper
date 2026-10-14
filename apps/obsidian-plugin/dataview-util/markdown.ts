@@ -7,15 +7,15 @@ import { getFileTitle, normalizeHeaderForLink } from './dataview';
 /** The Obsidian 'link', used for uniquely describing a file, header, or block. */
 export class Link {
     /** The file path this link points to. */
-    public path: string;
+    public path!: string;
     /** The display name associated with the link. */
     public display?: string;
     /** The block ID or header this link points to within a file, if relevant. */
     public subpath?: string;
     /** Is this link an embedded link (!)? */
-    public embed: boolean;
+    public embed!: boolean;
     /** The type of this link, which determines what 'subpath' refers to, if anything. */
-    public type: "file" | "header" | "block";
+    public type!: "file" | "header" | "block";
 
     public withListCache(id?: string, _itemText?: string) {
         return new Link({
@@ -189,27 +189,27 @@ export class Link {
 /** All extracted markdown file metadata obtained from a file. */
 export class PageMetadata {
     /** The path this file exists at. */
-    public path: string;
+    public path!: string;
     /** Obsidian-provided date this page was created. */
-    public ctime: string;
+    public ctime!: string;
     /** Obsidian-provided date this page was modified. */
-    public mtime: string;
+    public mtime!: string;
     /** Obsidian-provided size of this page in bytes. */
-    public size: number;
+    public size!: number;
     /** The day associated with this page, if relevant. */
     public day?: string;
     /** The first H1/H2 header in the file. May not exist. */
     public title?: string;
     /** All of the fields contained in this markdown file - both frontmatter AND in-file links. */
-    public fields: Map<string, string>;
+    public fields!: Map<string, string>;
     /** All of the exact tags (prefixed with '#') in this file overall. */
-    public tags: Set<string>;
+    public tags!: Set<string>;
     /** All of the aliases defined for this file. */
     public aliases: Set<string>;
     /** All OUTGOING links (including embeds, header + block links) in this file. */
-    public links: Link[];
+    public links!: Link[];
     /** All list items contained within this page. Filter for tasks to get just tasks. */
-    public lists: ListItem[];
+    public lists!: ListItem[];
     /** The raw frontmatter for this document. */
     public frontmatter: Record<string, string>;
 
@@ -236,33 +236,33 @@ export class PageMetadata {
 /** A list item inside of a list. */
 export class ListItem {
     /** The symbol ('*', '-', '1.') used to define this list item. */
-    symbol: string;
+    symbol!: string;
     /** A link which points to this task, or to the closest block that this task is contained in. */
-    link: Link;
+    link!: Link;
     /** A link to the section that contains this list element; could be a file if this is not in a section. */
-    section: Link;
+    section!: Link;
     /** The text of this list item. This may be multiple lines of markdown. */
-    text: string;
+    text!: string;
     /** The line that this list item starts on in the file. */
-    line: number;
+    line!: number;
     /** The number of lines that define this list item. */
-    lineCount: number;
+    lineCount!: number;
     /** The line number for the first list item in the list this item belongs to. */
-    list: number;
+    list!: number;
     /** Any links contained within this list item. */
-    links: Link[];
+    links!: Link[];
     /** The tags contained within this list item. */
-    tags: Set<string>;
+    tags!: Set<string>;
     /** The raw Obsidian-provided position for where this task is. */
-    position: Pos;
+    position!: Pos;
     /** The line number of the parent list item, if present; if this is undefined, this is a root item. */
     parent?: number;
     /** The line numbers of children of this list item. */
-    children: number[];
+    children!: number[];
     /** The block ID for this item, if one is present. */
     blockId?: string;
     /** Any fields defined in this list item. For tasks, this includes fields underneath the task. */
-    fields: Map<string, string>;
+    fields!: Map<string, string>;
 
     task?: {
         /** The text in between the brackets of the '[ ]' task indicator ('[X]' would yield 'X', for example.) */

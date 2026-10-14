@@ -13,7 +13,7 @@ export const UserOptionContext = React.createContext({
     select: "" as string,
     counters: [] as CounterProps[],
     dateFormat: "YYYY-MM-DD" as string,
-    tagPalette: {} as any,
+    tagPalette: {} as Record<string, string>,
     hideTags: [] as string[],
     forward: false as boolean,
     useBuiltinStyle: true as boolean,
@@ -32,5 +32,5 @@ export const TaskItemEventHandlersContext = React.createContext({
     handleOpenFile: (filePath: string, position: Pos) => { },
     handleCompleteTask: (filePath: string, position: Pos) => { },
     handleTagClick: (tag: string) => { },
-    handleModifyTask: undefined as any,
+    handleModifyTask: undefined as ((filePath: string, position: Pos) => void) | undefined,
 })

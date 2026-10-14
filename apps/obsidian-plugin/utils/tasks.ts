@@ -151,16 +151,6 @@ export class TaskRegularExpressions {
     // [[a::b]] => a, b
     public static readonly keyValueRegex = /\[+([^\]]+)::([^\]]+)\]/g;
 
-    /**
-     * [a](b) => a, b (a could be empty)
-     * #1: [a](b)
-     * #2: a
-     * #3: b
-     */
-    public static readonly outerLinkRegex =
-        /\[((?:\[[^\]]*\]|[^[\]])*)\]\([ \t]*<?((?:\([^)]*\)|[^()\s])*?)>?[ \t]*((['"])(.*?)\6[ \t]*)?\)/g
-
-    public static readonly innerLinkRegex = /\[\[([^\]]+)\]\]/g;
     /** Obsidian comments, e.g. `%% not shown %%`. */
     public static readonly commentRegex = /%%[\s\S]*?%%/g;
     public static readonly highlightRegex = /==([^\]]+)==/g;

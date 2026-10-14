@@ -74,7 +74,7 @@ class TaskRow extends React.Component<TaskRowProps> {
             callbacks.handleCompleteTask(model.path, model.position);
         };
         const onModifyTask = () => {
-            callbacks.handleModifyTask(model.path, model.position);
+            callbacks.handleModifyTask?.(model.path, model.position);
         };
         return (
             <div data-line={model.line} data-task={model.statusMarker} data-col={model.col} data-link={model.link} data-dailynote={model.isDailyNote}
