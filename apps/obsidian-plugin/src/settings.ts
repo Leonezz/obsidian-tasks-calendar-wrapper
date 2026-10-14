@@ -1,6 +1,6 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
-import { defaultSortKey, sortOptionLabels } from "utils/sort";
-import { TaskRegularExpressions } from "utils/tasks";
+import { defaultSortKey, sortOptionLabels } from "../utils/sort";
+import { TaskRegularExpressions } from "../utils/tasks";
 import TasksCalendarWrapper from "./main";
 export const defaultUserOptions = {
     /**

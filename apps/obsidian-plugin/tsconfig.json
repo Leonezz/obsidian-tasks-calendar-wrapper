@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
@@ -9,7 +8,6 @@
     "noImplicitAny": true,
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
-    "importHelpers": true,
     "isolatedModules": true,
     "strictNullChecks": true,
     "jsx": "react-jsx",
@@ -18,12 +16,12 @@
       "ES5",
       "ES6",
       "ES7",
-      "es2021",
+      "es2021"
     ]
   },
   "include": [
     "**/*.ts",
-    "Obsidian-Tasks-Timeline/src/components/asserts/icons.tsx",
-    "src/views.tsx"
-  ]
+    "**/*.tsx"
+  ],
+  "exclude": ["node_modules"]
 }

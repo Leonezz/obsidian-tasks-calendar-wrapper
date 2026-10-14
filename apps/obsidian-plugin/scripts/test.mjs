@@ -36,7 +36,6 @@ try {
 		target: "node18",
 		logLevel: "warning",
 		alias: { obsidian: path.join(testDir, "stubs", "obsidian.ts") },
-		nodePaths: [root],
 	});
 	const bundles = readdirSync(outdir)
 		.filter((name) => name.endsWith(".js"))

@@ -1,12 +1,12 @@
 import { Model } from "backbone";
 import { CachedMetadata, debounce, ItemView, moment, Notice, TFile, WorkspaceLeaf } from "obsidian";
-import { ObsidianBridge } from 'Obsidian-Tasks-Timeline/src/obsidianbridge';
-import { ObsidianTaskAdapter } from "Obsidian-Tasks-Timeline/src/taskadapter";
+import { ObsidianBridge } from '../timeline/src/obsidianbridge';
+import { ObsidianTaskAdapter } from "../timeline/src/taskadapter";
 import { createRoot, Root } from 'react-dom/client';
-import { changeAffectsTasks } from 'utils/refresh';
-import { getSortComparator } from 'utils/sort';
-import * as TaskMapable from 'utils/taskmapable';
-import { TaskDataModel, TaskStatusMarkerMap } from "utils/tasks";
+import { changeAffectsTasks } from '../utils/refresh';
+import { getSortComparator } from '../utils/sort';
+import * as TaskMapable from '../utils/taskmapable';
+import { TaskDataModel, TaskStatusMarkerMap } from "../utils/tasks";
 import { defaultUserOptions, UserOption } from "./settings";
 
 

@@ -1,5 +1,5 @@
-import { getFileTitle } from "dataview-util/dataview";
-import { Link } from "dataview-util/markdown";
+import { getFileTitle } from "../dataview-util/dataview";
+import { Link } from "../dataview-util/markdown";
 import { moment } from "obsidian";
 import * as TasksUtil from "./tasks";
 

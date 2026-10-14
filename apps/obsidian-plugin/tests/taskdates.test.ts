@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 
 import moment from "moment";
 
-import { groupTasksByDate } from "../Obsidian-Tasks-Timeline/src/taskdates";
+import { groupTasksByDate } from "../timeline/src/taskdates";
 import * as TaskMapable from "../utils/taskmapable";
 import { innerDateFormat, TaskDataModel } from "../utils/tasks";
 import { parse } from "./helpers";

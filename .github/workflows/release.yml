@@ -19,8 +19,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - uses: pnpm/action-setup@v4
 
@@ -40,6 +38,7 @@ jobs:
         run: |
           pnpm run build
           cp ${{ env.JSPATH }} main.js
+          cp apps/obsidian-plugin/styles.css styles.css
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2

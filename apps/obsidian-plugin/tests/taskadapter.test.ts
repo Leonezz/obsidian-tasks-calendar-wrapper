@@ -3,7 +3,7 @@ import "./setup";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { ObsidianTaskAdapter } from "../Obsidian-Tasks-Timeline/src/taskadapter";
+import { ObsidianTaskAdapter } from "../timeline/src/taskadapter";
 
 const line = "- [ ] a task";
 

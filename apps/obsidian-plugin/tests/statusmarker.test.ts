@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { StripWithIcon } from "../Obsidian-Tasks-Timeline/src/components/statusmarker";
+import { StripWithIcon } from "../timeline/src/components/statusmarker";
 
 // Issue #138: an open task was shown with a ticked checkbox
 

@@ -1,0 +1,32 @@
+{
+	"name": "@tasks-calendar-wrapper/obsidian-plugin",
+	"version": "0.0.0",
+	"private": true,
+	"description": "The Obsidian plugin: entry point, view, settings and the timeline UI. Released from the repository root.",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc --noEmit && node esbuild.config.mjs production",
+		"typecheck": "tsc --noEmit",
+		"test": "node scripts/test.mjs"
+	},
+	"license": "MIT",
+	"dependencies": {
+		"backbone": "1.6.1",
+		"react": "18.3.1",
+		"react-dom": "18.3.1"
+	},
+	"devDependencies": {
+		"@types/backbone": "1.4.23",
+		"@types/luxon": "3.7.1",
+		"@types/node": "16.18.126",
+		"@types/parsimmon": "1.10.9",
+		"@types/react": "18.3.27",
+		"@types/react-dom": "18.3.7",
+		"esbuild": "0.17.3",
+		"luxon": "3.7.2",
+		"moment": "2.29.4",
+		"obsidian": "1.11.0",
+		"parsimmon": "1.18.1",
+		"typescript": "4.7.4"
+	}
+}

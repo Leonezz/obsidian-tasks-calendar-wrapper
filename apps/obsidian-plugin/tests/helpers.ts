@@ -3,7 +3,7 @@ import "./setup";
 import moment from "moment";
 
 import { Link } from "../dataview-util/markdown";
-import { ObsidianTaskAdapter } from "../Obsidian-Tasks-Timeline/src/taskadapter";
+import { ObsidianTaskAdapter } from "../timeline/src/taskadapter";
 import * as TaskMapable from "../utils/taskmapable";
 import { TaskDataModel } from "../utils/tasks";
 

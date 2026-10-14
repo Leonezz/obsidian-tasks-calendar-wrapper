@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 
 import moment from "moment";
 
-import { RowOptions, taskRowModel } from "../Obsidian-Tasks-Timeline/src/taskrow";
+import { RowOptions, taskRowModel } from "../timeline/src/taskrow";
 import { parse } from "./helpers";
 
 // Issue #63: every save re-rendered every row of the timeline. A row is now skipped when the data it
