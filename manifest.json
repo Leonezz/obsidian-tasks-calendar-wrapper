@@ -2,7 +2,7 @@
 	"id": "tasks-calendar-wrapper",
 	"name": "Tasks Calendar Wrapper",
 	"version": "0.3.7",
-	"minAppVersion": "1.11.0",
+	"minAppVersion": "1.7.2",
 	"description": "Shows the tasks in your vault on a timeline view, based on the Tasks Calendar and Tasks Timeline scripts.",
 	"author": "zhuwenq",
 	"authorUrl": "https://github.com/Leonezz",
