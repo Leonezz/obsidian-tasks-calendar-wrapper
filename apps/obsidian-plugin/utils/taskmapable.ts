@@ -1,5 +1,4 @@
 import { getFileTitle } from "../dataview-util/dataview";
-import { Link } from "../dataview-util/markdown";
 import { moment } from "obsidian";
 import * as TasksUtil from "./tasks";
 
@@ -299,59 +298,6 @@ export function dailyNoteTaskParser(dailyNoteFormat: string = TasksUtil.innerDat
         return itemValue;
     }
 }
-/**
- * !! NEED improvement
- * @param item 
- * @returns 
- */
-export function taskLinkParser(item: TasksUtil.TaskDataModel) {
-
-    item.outlinks = [];
-
-    let outerLinkMatch = TasksUtil.TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
-    let innerLinkMatch = TasksUtil.TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
-    let dataviewDateMatch = TasksUtil.TaskRegularExpressions.keyValueRegex.exec(item.visual!);
-
-    const buildLink = (text: string, display: string, path: string, index: number, inner: boolean) => {
-        item.visual = item.visual!.replace(text, display);
-
-        if (item.outlinks.some(l => l.path === path)) return;
-
-        const link = Link.file(path, inner, display);
-        link.subpath = index.toString();
-        item.outlinks.push(link);
-    };
-
-    while (!!outerLinkMatch || (!!innerLinkMatch && !dataviewDateMatch)) {
-        if (!!outerLinkMatch && (!!innerLinkMatch && !dataviewDateMatch)) {
-            if (outerLinkMatch.index < innerLinkMatch.index) {
-                buildLink(outerLinkMatch[0], outerLinkMatch[1], outerLinkMatch[2], outerLinkMatch.index, false);
-                innerLinkMatch = TasksUtil.TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
-                dataviewDateMatch = TasksUtil.TaskRegularExpressions.keyValueRegex.exec(item.visual!);
-                if (innerLinkMatch && !dataviewDateMatch)
-                    buildLink(innerLinkMatch[0], innerLinkMatch[1], innerLinkMatch[1], innerLinkMatch.index, true);
-            } else {
-                buildLink(innerLinkMatch[0], innerLinkMatch[1], innerLinkMatch[1], innerLinkMatch.index, true);
-                outerLinkMatch = TasksUtil.TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
-                if (outerLinkMatch)
-                    buildLink(outerLinkMatch[0], outerLinkMatch[1], outerLinkMatch[2], outerLinkMatch.index, false);
-            }
-            innerLinkMatch = TasksUtil.TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
-            dataviewDateMatch = TasksUtil.TaskRegularExpressions.keyValueRegex.exec(item.visual!);
-            outerLinkMatch = TasksUtil.TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
-        } else if (outerLinkMatch) {
-            buildLink(outerLinkMatch[0], outerLinkMatch[1], outerLinkMatch[2], outerLinkMatch.index, false);
-            outerLinkMatch = TasksUtil.TaskRegularExpressions.outerLinkRegex.exec(item.visual!);
-        } else if (!!innerLinkMatch && !dataviewDateMatch) {
-            buildLink(innerLinkMatch[0], innerLinkMatch[1], innerLinkMatch[1], innerLinkMatch.index, true);
-            innerLinkMatch = TasksUtil.TaskRegularExpressions.innerLinkRegex.exec(item.visual!);
-            dataviewDateMatch = TasksUtil.TaskRegularExpressions.keyValueRegex.exec(item.visual!);
-        }
-    }
-
-    return item;
-}
-
 export async function remainderParser(item: Promise<TasksUtil.TaskDataModel>): Promise<TasksUtil.TaskDataModel> {
     const itemValue = await item;
     const match = itemValue.text.match(TasksUtil.TaskRegularExpressions.remainderRegex);

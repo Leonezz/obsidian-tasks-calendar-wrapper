@@ -10,7 +10,6 @@ import { TaskDataModel, TaskStatusMarkerMap } from "../utils/tasks";
 import { defaultUserOptions, UserOption } from "./settings";
 
 
-export const CALENDAR_VIEW = "tasks_calendar_view";
 export const TIMELINE_VIEW = "tasks_timeline_view";
 
 /** Changes that arrive within this time of each other are applied in one reload. */
@@ -198,7 +197,6 @@ export class TasksTimelineView extends BaseTasksView {
             .map(TaskMapable.tagsParser)
             .map(TaskMapable.remainderParser)
             .map(TaskMapable.postProcessor)
-            //.map(TaskMapable.taskLinkParser)
 
             /**
              * Option Forward
