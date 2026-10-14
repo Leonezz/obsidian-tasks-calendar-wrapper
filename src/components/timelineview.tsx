@@ -3,6 +3,7 @@ import * as React from 'react';
 import { UserOption } from '../../../src/settings';
 import * as TaskMapable from '../../../utils/taskmapable';
 import { innerDateFormat, TaskDataModel, TaskStatus } from '../../../utils/tasks';
+import { counterClass } from '../counters';
 import { TaskListContext, TodayFocusEventHandlersContext, UserOptionContext } from './context';
 import { YearView } from './yearview';
 
@@ -114,9 +115,7 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
             quickEntryFiles.add(daileNoteFolder + dailyNoteFileName);
 
         const baseStyles = [...new Set(styles)].join(" ");
-        const counterFilter = this.state.filter.length === 0 ? "" :
-            this.state.filter + " " +
-            this.props.userOptions.counterBehavior;
+        const counterFilter = counterClass(this.state.filter, this.props.userOptions.counterBehavior);
         const todayFocus = this.state.todayFocus ? "todayFocus" : "";
         return (
             <div className={`taskido ${baseStyles} ${counterFilter} ${todayFocus}`}
