@@ -9,7 +9,8 @@ Obsidian-Tasks-Timeline and Obsidian-Tasks-Calendar by 702573N
   https://github.com/702573N/Obsidian-Tasks-Calendar
   The timeline in apps/obsidian-plugin/timeline is a TypeScript and React
   re-implementation of the Obsidian-Tasks-Timeline view designed by 702573N,
-  and keeps its history. The original repositories do not state a license.
+  and keeps its history. apps/obsidian-plugin/styles.css is adapted from that
+  view's view.css. The original repositories do not state a license.
 
 Obsidian Dataview
   https://github.com/blacksmithgu/obsidian-dataview
