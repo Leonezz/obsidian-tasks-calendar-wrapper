@@ -6,7 +6,6 @@ import { migrateSortOption } from '../utils/sort';
 import { notesSince, RELEASE_NOTES, shouldShowWhatsNew, SUPPORT_LINKS } from '../utils/whatsnew';
 import { WhatsNewModal } from './whatsnew-modal';
 import { defaultUserOptions, TasksCalendarSettingTab, UserOption } from './settings';
-// Remember to rename these classes and interfaces!
 
 
 export default class TasksCalendarWrapper extends Plugin {
@@ -26,9 +25,6 @@ export default class TasksCalendarWrapper extends Plugin {
 			this.app.workspace.onLayoutReady(
 				() => { this.activateView(TIMELINE_VIEW).catch(reportError); }
 			);
-		// this.app.workspace.onLayoutReady(async () => await this.initView(TIMELINE_VIEW))
-		// this.app.workspace.getActiveViewOfType(TasksTimelineView)?.onUpdateOptions({ ...this.userOptions })
-		// This adds a simple command that can be triggered anywhere
 
 		this.addCommand({
 			id: 'open-tasks-timeline-view',

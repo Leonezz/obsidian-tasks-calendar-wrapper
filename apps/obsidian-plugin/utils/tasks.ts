@@ -50,17 +50,6 @@ export const doneDateSymbol = '✅';
 
 export const innerDateFormat = "YYYY-MM-DD";
 
-//["overdue", "due", "scheduled", "start", "process", "unplanned","done","cancelled"]
-export type TaskStatusType =
-    | "due"
-    | "overdue"
-    | "scheduled"
-    | "start"
-    | "done"
-    | "unplanned"
-    | "process"
-    | "cancelled"
-
 export const enum TaskStatus {
     due = 'due',// to-do type
     scheduled = 'scheduled', // to-do type
@@ -72,7 +61,6 @@ export const enum TaskStatus {
     cancelled = 'cancelled',
 }
 
-export const TaskStatusCollection: string[] = [TaskStatus.due, TaskStatus.scheduled, TaskStatus.start, TaskStatus.done, TaskStatus.unplanned];
 export const TaskStatusMarkerMap = {
     '>': TaskStatus.overdue,
     '<': TaskStatus.scheduled,
@@ -110,22 +98,6 @@ export class TaskRegularExpressions {
         'u',
     );
 
-    // Used with the "Create or Edit Task" command to parse indentation and status if present
-    public static readonly nonTaskRegex = new RegExp(
-        TaskRegularExpressions.indentationRegex.source +
-        TaskRegularExpressions.listMarkerRegex.source +
-        '? *(' +
-        TaskRegularExpressions.checkboxRegex.source +
-        ')?' +
-        TaskRegularExpressions.afterCheckboxRegex.source,
-        'u',
-    );
-
-    // Used with "Toggle Done" command to detect a list item that can get a checkbox added to it.
-    public static readonly listItemRegex = new RegExp(
-        TaskRegularExpressions.indentationRegex.source + TaskRegularExpressions.listMarkerRegex.source,
-    );
-
     // Match on block link at end.
     public static readonly blockLinkRegex = / \^[a-zA-Z0-9-]+/u;
 
@@ -144,16 +116,11 @@ export class TaskRegularExpressions {
     public static readonly doneDateRegex = /✅ *(\d{4}-\d{2}-\d{2})/u;
     public static readonly recurrenceRegex = /🔁 ?([a-zA-Z0-9, !]+)/iu;
 
-    // regex from @702573N
-    public static readonly hexColorRegex = /([a-fA-F0-9]{6}|[a-fA-F0-9]{3})\/(.*)/;
-    public static readonly TasksPluginDateRegex = /[🛫|⏳|📅|✅] *(\d{4}-\d{2}-\d{2})/u;
-
     // [[a::b]] => a, b
     public static readonly keyValueRegex = /\[+([^\]]+)::([^\]]+)\]/g;
 
     /** Obsidian comments, e.g. `%% not shown %%`. */
     public static readonly commentRegex = /%%[\s\S]*?%%/g;
-    public static readonly highlightRegex = /==([^\]]+)==/g;
     public static readonly remainderRegex =
         /⏰ *(\d{4}-\d{2}-\d{2}) *(\d{2}:\d{2})|⏰ *(\d{4}-\d{2}-\d{2})|(\(@(\d{4}-\d{2}-\d{2}) *(\d{2}:\d{2})\))|(\(@(\d{4}-\d{2}-\d{2})\))/;
     // Regex to match all hash tags, basically hash followed by anything but the characters in the negation.
@@ -175,8 +142,6 @@ export class TaskRegularExpressions {
  * @export
  * @class Task
  */
-
-//const defaultSort = (t1: TaskDataModel, t2: TaskDataModel) => { return t1.order - t2.order; };
 export interface TaskDataModel extends STask {
     // 
     dailyNote: boolean,

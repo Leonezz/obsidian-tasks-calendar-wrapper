@@ -39,8 +39,6 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
         this.handleModifyTask = this.handleModifyTask.bind(this);
         this.handleFilterEnable = this.handleFilterEnable.bind(this);
 
-        //this.adapter = new ObsidianTaskAdapter(this.app);
-
         this.state = {
             userOptions: { ...(this.props.userOptionModel.pick(this.props.userOptionModel.keys()) as UserOption) },
             taskList: this.props.taskListModel.get("taskList"),
@@ -113,7 +111,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 
 
     handleTagClick(tag: string) {
-        //@ts-ignore
+        // @ts-expect-error internalPlugins is not part of the public API
         const searchPlugin = this.app.internalPlugins.getPluginById("global-search");
         const search = searchPlugin && searchPlugin.instance;
         search.openGlobalSearch('tag:' + tag)
@@ -140,7 +138,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
                         const editor = this.app.workspace.activeEditor?.editor;
                         if (editor) {
                             const view = this.app.workspace.getLeaf().view;
-                            //@ts-ignore commands is not part of the public API
+                            // @ts-expect-error commands is not part of the public API
                             tasksPluginCommand(this.app.commands.commands, 'obsidian-tasks-plugin:edit-task')
                                 .editorCheckCallback(false, editor, view);
                         }
@@ -172,7 +170,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
             const editor = this.app.workspace.activeEditor?.editor;
             if (editor) {
                 const view = this.app.workspace.getLeaf().view;
-                //@ts-ignore commands is not part of the public API
+                // @ts-expect-error commands is not part of the public API
                 tasksPluginCommand(this.app.commands.commands, 'obsidian-tasks-plugin:toggle-done')
                     .editorCheckCallback(false, editor, view);
             }
@@ -188,7 +186,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
      * change can skip rendering (issue #63). Modifying a task needs the Tasks plugin.
      */
     getTaskItemHandlers(): React.ContextType<typeof TaskItemEventHandlersContext> {
-        //@ts-ignore plugins is not part of the public API
+        // @ts-expect-error plugins is not part of the public API
         const handleModifyTask = this.app.plugins.plugins['obsidian-tasks-plugin'] === undefined ? undefined : this.handleModifyTask;
         if (!this.taskItemHandlers || this.taskItemHandlers.handleModifyTask !== handleModifyTask) {
             this.taskItemHandlers = {

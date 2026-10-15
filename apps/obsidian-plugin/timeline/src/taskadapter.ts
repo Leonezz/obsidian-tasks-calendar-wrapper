@@ -196,12 +196,10 @@ export class ObsidianTaskAdapter {
         const body = regexMatch[4].trim();
 
         let description = body;
-        //const indentation = regexMatch[1]; // before - [ ]
         const listMarker = regexMatch[2]; // - for - [ ]
 
         // Get the status of the task.
         const statusString = regexMatch[3]; // x for - [x]
-        //const status = statusString;// StatusRegistry.getInstance().bySymbolOrCreate(statusString);
 
         // Match for block link and remove if found. Always expected to be
         // at the end of the line.
