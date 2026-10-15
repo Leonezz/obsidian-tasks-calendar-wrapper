@@ -6,7 +6,7 @@ on:
       - "*"
 
 env:
-  JSPATH: ExampleVault/.obsidian/plugins/tasks-view/main.js
+  JSPATH: apps/obsidian-plugin/dist/main.js
 
 permissions:
   contents: write

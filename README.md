@@ -188,7 +188,7 @@ pnpm install
 pnpm run eslint     # lint
 pnpm run typecheck  # type-check every package
 pnpm test           # unit tests
-pnpm run build      # writes ExampleVault/.obsidian/plugins/tasks-view/main.js
+pnpm run build      # writes apps/obsidian-plugin/dist/main.js
 ```
 
 # Star History

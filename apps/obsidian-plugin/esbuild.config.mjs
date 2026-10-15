@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import { builtinModules } from "module";
+import { copyFileSync, mkdirSync, readFileSync } from "fs";
 
 const banner =
 `/*
@@ -10,6 +11,24 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = (process.argv[2] === "production");
+
+const manifestPath = "../../manifest.json";
+/** The release workflow uploads main.js from here. */
+const releaseDir = "dist";
+/** `pnpm dev` builds into the example vault, in the folder named after the plugin id, as Obsidian installs it. */
+const devPluginDir = `../../ExampleVault/.obsidian/plugins/${JSON.parse(readFileSync(manifestPath, "utf8")).id}`;
+
+/** Puts manifest.json and styles.css next to main.js in the example vault after every build. */
+const copyPluginFiles = {
+	name: "copy-plugin-files",
+	setup(build) {
+		build.onEnd(() => {
+			mkdirSync(devPluginDir, { recursive: true });
+			copyFileSync(manifestPath, `${devPluginDir}/manifest.json`);
+			copyFileSync("styles.css", `${devPluginDir}/styles.css`);
+		});
+	},
+};
 
 const context = await esbuild.context({
 	banner: {
@@ -36,7 +55,8 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: "../../ExampleVault/.obsidian/plugins/tasks-view/main.js",
+	outfile: `${prod ? releaseDir : devPluginDir}/main.js`,
+	plugins: prod ? [] : [copyPluginFiles],
 });
 
 if (prod) {
