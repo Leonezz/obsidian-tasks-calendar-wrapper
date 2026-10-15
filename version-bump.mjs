@@ -2,18 +2,27 @@ import { readFileSync, writeFileSync } from "fs";
 
 // Runs from `pnpm version <x.y.z>` for a release to the community store, which reads manifest.json on master.
 // Betas are not released this way: they are tagged off master with only manifest.json changed.
-const targetVersion = process.env.npm_package_version;
+// "preversion" runs it with `check` before npm writes package.json, so a refusal leaves the working tree as it was;
+// "version" runs it again to write manifest.json and versions.json.
+const checkOnly = process.argv[2] === "check";
+const targetVersion = checkOnly ? process.env.npm_new_version : process.env.npm_package_version;
+const exactVersion = /^\d+(\.\d+)*(-[0-9A-Za-z.-]+)?$/;
 
-if (!targetVersion) fail("npm_package_version is not set. Run this through `pnpm version <x.y.z>`.");
+if (!targetVersion) fail("the target version is not set. Run this through `pnpm version <x.y.z>`.");
 if (targetVersion.includes("-")) fail(`${targetVersion} is a pre-release. Tag betas off master instead, so the store keeps the released version.`);
 
 const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
 const { minAppVersion } = manifest;
 // The plugin is built against these typings, so an older Obsidian may lack an API the build uses.
 const typingsVersion = JSON.parse(readFileSync("apps/obsidian-plugin/package.json", "utf8")).devDependencies.obsidian;
+if (!exactVersion.test(minAppVersion)) fail(`minAppVersion "${minAppVersion}" in manifest.json is not a version number.`);
+if (!exactVersion.test(typingsVersion)) {
+	fail(`the obsidian typings in apps/obsidian-plugin/package.json are "${typingsVersion}", not an exact version, so minAppVersion cannot be checked against them. Pin an exact version.`);
+}
 if (compareVersions(minAppVersion, typingsVersion) < 0) {
 	fail(`minAppVersion ${minAppVersion} in manifest.json is older than the obsidian typings the plugin is built against (${typingsVersion}). Raise minAppVersion first.`);
 }
+if (checkOnly) process.exit(0);
 
 writeJson("manifest.json", { ...manifest, version: targetVersion });
 
