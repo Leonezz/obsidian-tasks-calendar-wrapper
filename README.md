@@ -173,6 +173,24 @@ Modification to the options will take effect after 5 secs.
 
 MIT.
 
+# Development
+
+The repository is a [pnpm](https://pnpm.io/) workspace:
+
+- `apps/obsidian-plugin`: the plugin, its settings and the timeline UI (formerly the Obsidian-Tasks-Timeline submodule, now in `apps/obsidian-plugin/timeline`).
+- `packages/core`: the task model, parsing and querying, which must not depend on Obsidian. Being filled in.
+- `packages/ui`: the timeline components. Being filled in.
+
+`manifest.json` and `versions.json` stay at the root, where Obsidian reads them.
+
+```sh
+pnpm install
+pnpm run eslint     # lint
+pnpm run typecheck  # type-check every package
+pnpm test           # unit tests
+pnpm run build      # writes ExampleVault/.obsidian/plugins/tasks-view/main.js
+```
+
 # Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=leonezz/obsidian-tasks-calendar-wrapper&type=Date)](https://star-history.com/#leonezz/obsidian-tasks-calendar-wrapper&Date)

@@ -1,0 +1,15 @@
+{
+	"name": "@tasks-calendar-wrapper/core",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Task model, parsing and querying. Plain TypeScript: it must not depend on obsidian.",
+	"main": "src/index.ts",
+	"types": "src/index.ts",
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"license": "MIT",
+	"devDependencies": {
+		"typescript": "6.0.3"
+	}
+}

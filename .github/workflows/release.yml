@@ -19,8 +19,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - uses: pnpm/action-setup@v4
 
@@ -40,6 +38,7 @@ jobs:
         run: |
           pnpm run build
           cp ${{ env.JSPATH }} main.js
+          cp apps/obsidian-plugin/styles.css styles.css
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
@@ -53,4 +52,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" main.js manifest.json styles.css --title "$TAG" --generate-notes
+        # A tag with a hyphen (0.4.0-beta.1) is a beta for BRAT testers, so publish it as a pre-release.
+        run: |
+          flags=""
+          case "$TAG" in *-*) flags="--prerelease" ;; esac
+          gh release create "$TAG" main.js manifest.json styles.css --title "$TAG" --generate-notes $flags

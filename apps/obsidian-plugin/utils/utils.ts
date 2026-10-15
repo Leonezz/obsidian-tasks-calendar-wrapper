@@ -1,0 +1,101 @@
+import { DateTime } from "luxon";
+import { moment } from "./moment";
+import type { Moment } from "moment";
+import { innerDateFormat, TaskRegularExpressions } from "./tasks";
+
+/**
+ * Describes a date relative to today, e.g. "Tomorrow" or "in 2 days", in the language
+ * the app is set to.
+ *
+ * Both sides are compared by day. Comparing the exact moments made every date two or more
+ * days away read as "in a day" from midday onwards, see issue #108.
+ */
+export function relativeDate(date: Moment, now: Moment = moment()): string {
+    const day = date.clone().startOf("day");
+    const today = now.clone().startOf("day");
+    const days = day.diff(today, "days");
+    const text = relativeDays(days, moment.locale()) ?? day.from(today);
+    // Today, tomorrow and yesterday stand on their own, so they read better capitalized.
+    return Math.abs(days) <= 1 ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+}
+
+/** Uses the platform formatter, which names the nearby days instead of counting them. */
+function relativeDays(days: number, locale: string): string | undefined {
+    try {
+        return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(days, "day");
+    } catch (error) {
+        console.warn(`Tasks Calendar Wrapper: no relative date format for locale ${locale}`, error);
+        return undefined;
+    }
+}
+
+export function momentToDateTime(m: Moment) {
+    return DateTime.fromFormat(m.format(innerDateFormat), innerDateFormat);
+}
+
+export function DateTimeToMoment(d: DateTime){
+    return d.toFormat(innerDateFormat);
+}
+
+type EditorCheckCallback = (checking: boolean, editor: unknown, view: unknown) => boolean | void;
+type EditorCommand = { editorCheckCallback?: EditorCheckCallback };
+
+/**
+ * Looks up an editor command of the Tasks plugin. When the plugin is disabled or missing the
+ * command is absent, which used to end in an uncaught TypeError with nothing shown to the user.
+ */
+export function tasksPluginCommand(
+    commands: Record<string, EditorCommand>,
+    commandId: string,
+): Required<EditorCommand> {
+    const command = commands[commandId];
+    if (!command?.editorCheckCallback) throw new Error(`the Tasks plugin is not enabled, so ${commandId} is not available`);
+    // The command object itself is returned, so the callback is still called as its method.
+    return command as Required<EditorCommand>;
+}
+
+/** A tag is hidden by an entry that names it, or by one of its parent tags, e.g. #work hides #work/admin. */
+export function isTagHidden(tag: string, hiddenTags: string[]): boolean {
+    return hiddenTags.some(hidden => tag === hidden || tag.startsWith(hidden + "/"));
+}
+
+export function removeHightlightMarker(text: string){
+    const match = TaskRegularExpressions.highlightRegex.exec(text);
+    while(match){
+        text = text.replace(match[0], match[1]);
+    }
+    return text;
+}
+/**
+ * @deprecated
+ * @param momentFormat 
+ * @returns 
+ */
+export function momentToRegex(momentFormat: string) : RegExp {
+	momentFormat = momentFormat.replaceAll(".", "\\.");
+	momentFormat = momentFormat.replaceAll(",", "\\,");
+	momentFormat = momentFormat.replaceAll("-", "\\-");
+	momentFormat = momentFormat.replaceAll(":", "\\:");
+	momentFormat = momentFormat.replaceAll(" ", "\\s");
+	
+	momentFormat = momentFormat.replace("dddd", "\\w{1,}");
+	momentFormat = momentFormat.replace("ddd", "\\w{1,3}");
+	momentFormat = momentFormat.replace("dd", "\\w{2}");
+	momentFormat = momentFormat.replace("d", "\\d{1}");
+	
+	momentFormat = momentFormat.replace("YYYY", "\\d{4}");
+	momentFormat = momentFormat.replace("YY", "\\d{2}");
+	
+	momentFormat = momentFormat.replace("MMMM", "\\w{1,}");
+	momentFormat = momentFormat.replace("MMM", "\\w{3}");
+	momentFormat = momentFormat.replace("MM", "\\d{2}");
+	
+	momentFormat = momentFormat.replace("DDDD", "\\d{3}");
+	momentFormat = momentFormat.replace("DDD", "\\d{1,3}");
+	momentFormat = momentFormat.replace("DD", "\\d{2}");
+	momentFormat = momentFormat.replace("D", "\\d{1,2}");
+	
+	momentFormat = momentFormat.replace("ww", "\\d{1,2}");
+	return new RegExp("/^(" + momentFormat + ")$/");
+}
+
