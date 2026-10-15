@@ -26,6 +26,12 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         ],
     },
     {
+        version: "0.3.8",
+        items: [
+            "The plugin loads again on iPhones and iPads with iOS 15 or 16, on older Android devices and with older Obsidian desktop installers. Since 0.3.3 it failed to load there.",
+        ],
+    },
+    {
         version: "0.3.7",
         items: [
             "The timeline no longer freezes Obsidian while you type. Saving a note without tasks no longer reloads it, and in a vault with 4,000 tasks the pause after saving a note with tasks went from about 2.5 seconds to about 0.3 seconds.",
