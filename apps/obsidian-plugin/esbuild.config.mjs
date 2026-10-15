@@ -1,7 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import { builtinModules } from "module";
-import { copyFileSync, mkdirSync, readFileSync } from "fs";
+import { copyFileSync, mkdirSync, readFileSync, watchFile } from "fs";
 
 const banner =
 `/*
@@ -18,15 +18,18 @@ const releaseDir = "dist";
 /** `pnpm dev` builds into the example vault, in the folder named after the plugin id, as Obsidian installs it. */
 const devPluginDir = `../../ExampleVault/.obsidian/plugins/${JSON.parse(readFileSync(manifestPath, "utf8")).id}`;
 
-/** Puts manifest.json and styles.css next to main.js in the example vault after every build. */
-const copyPluginFiles = {
+const pluginFiles = [manifestPath, "styles.css"];
+
+/** Puts manifest.json and styles.css next to main.js in the example vault. */
+function copyPluginFiles() {
+	mkdirSync(devPluginDir, { recursive: true });
+	for (const file of pluginFiles) copyFileSync(file, `${devPluginDir}/${file.split("/").pop()}`);
+}
+
+const copyPluginFilesAfterBuild = {
 	name: "copy-plugin-files",
 	setup(build) {
-		build.onEnd(() => {
-			mkdirSync(devPluginDir, { recursive: true });
-			copyFileSync(manifestPath, `${devPluginDir}/manifest.json`);
-			copyFileSync("styles.css", `${devPluginDir}/styles.css`);
-		});
+		build.onEnd(copyPluginFiles);
 	},
 };
 
@@ -56,7 +59,7 @@ const context = await esbuild.context({
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
 	outfile: `${prod ? releaseDir : devPluginDir}/main.js`,
-	plugins: prod ? [] : [copyPluginFiles],
+	plugins: prod ? [] : [copyPluginFilesAfterBuild],
 });
 
 if (prod) {
@@ -64,4 +67,6 @@ if (prod) {
 	process.exit(0);
 } else {
 	await context.watch();
+	// Neither file is part of the bundle, so esbuild does not rebuild when they change. Polling also survives editors that replace the file on save.
+	for (const file of pluginFiles) watchFile(file, { interval: 500 }, copyPluginFiles);
 }
