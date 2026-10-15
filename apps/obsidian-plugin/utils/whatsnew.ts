@@ -2,6 +2,8 @@
  * Release notes shown once after the plugin is updated, and the links shown with them.
  * When releasing a version, add its entry at the top of RELEASE_NOTES. A test checks that the
  * version in manifest.json has one, so the release workflow stops if it is missing.
+ * A pre-release such as 0.4.0-beta.1 gets its own entry for testers, but users of 0.4.0 only see the
+ * 0.4.0 entry, so that entry has to cover everything its betas changed.
  */
 
 export interface ReleaseNote {
@@ -15,6 +17,14 @@ export interface SupportLink {
 }
 
 export const RELEASE_NOTES: ReleaseNote[] = [
+    {
+        version: "0.4.0-beta.1",
+        items: [
+            "With the \"Focus\" counter behaviour, a counter, whether clicked or turned on by \"Activate Filter On Load\", now highlights its tasks and keeps the rest of the timeline visible, instead of hiding them like \"Filter\".",
+            "This version needs Obsidian 1.11.0 or later.",
+            "This beta rebuilds the plugin with newer tools, as groundwork for 0.4. Nothing else should look or work differently; if something does, please open an issue on GitHub.",
+        ],
+    },
     {
         version: "0.3.7",
         items: [
@@ -55,15 +65,58 @@ export const SUPPORT_LINKS: SupportLink[] = [
 /** Where the star button leads. */
 export const REPOSITORY_URL = "https://github.com/Leonezz/obsidian-tasks-calendar-wrapper";
 
-/** Compares dotted version numbers by value, so 0.3.10 comes after 0.3.9. Missing parts count as 0. */
+/**
+ * Compares version numbers by value, so 0.3.10 comes after 0.3.9. Missing parts count as 0.
+ * A pre-release such as 0.4.0-beta.1 comes after 0.3.x and before 0.4.0, as in semver.
+ */
 export function compareVersions(a: string, b: string): number {
-    const pa = a.split(".").map(Number);
-    const pb = b.split(".").map(Number);
-    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-        const diff = (pa[i] ?? 0) - (pb[i] ?? 0);
+    const va = splitVersion(a);
+    const vb = splitVersion(b);
+    const byRelease = compareReleaseParts(va.release, vb.release);
+    if (byRelease !== 0) return byRelease;
+    // A release comes after its pre-releases, so the side without a pre-release part is the later one.
+    if (va.preRelease.length === 0 || vb.preRelease.length === 0) return vb.preRelease.length - va.preRelease.length;
+    return comparePreReleases(va.preRelease, vb.preRelease);
+}
+
+/** Splits 0.4.0-beta.1 into its release parts, [0, 4, 0], and its pre-release parts, ["beta", "1"]. */
+function splitVersion(version: string): { release: number[]; preRelease: string[] } {
+    const dash = version.indexOf("-");
+    const release = dash === -1 ? version : version.slice(0, dash);
+    const preRelease = dash === -1 ? "" : version.slice(dash + 1);
+    return {
+        release: release.split(".").map(Number),
+        preRelease: preRelease === "" ? [] : preRelease.split("."),
+    };
+}
+
+function isPreRelease(version: string): boolean {
+    return splitVersion(version).preRelease.length > 0;
+}
+
+function compareReleaseParts(a: number[], b: number[]): number {
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+        const diff = (a[i] ?? 0) - (b[i] ?? 0);
         if (diff !== 0) return diff;
     }
     return 0;
+}
+
+/** Numbers compare by value and come before words, words compare as text, and a longer list comes later. */
+function comparePreReleases(a: string[], b: string[]): number {
+    for (let i = 0; i < Math.min(a.length, b.length); i++) {
+        const diff = comparePreReleasePart(a[i], b[i]);
+        if (diff !== 0) return diff;
+    }
+    return a.length - b.length;
+}
+
+function comparePreReleasePart(a: string, b: string): number {
+    const aIsNumber = /^\d+$/.test(a);
+    const bIsNumber = /^\d+$/.test(b);
+    if (aIsNumber && bIsNumber) return Number(a) - Number(b);
+    if (aIsNumber !== bIsNumber) return aIsNumber ? -1 : 1;
+    return a < b ? -1 : a > b ? 1 : 0;
 }
 
 export interface WhatsNewState {
@@ -79,10 +132,15 @@ export function shouldShowWhatsNew(state: WhatsNewState): boolean {
     return compareVersions(state.currentVersion, state.lastSeenVersion) > 0;
 }
 
-/** Notes newer than the last seen version, up to the running one, newest first. */
+/**
+ * Notes newer than the last seen version, up to the running one, newest first. A release leaves out
+ * the notes of pre-releases, so someone updating from 0.3.7 to 0.4.0 never sees the 0.4.0 betas' notes.
+ */
 export function notesSince(notes: ReleaseNote[], lastSeenVersion: string, currentVersion: string): ReleaseNote[] {
+    const runningRelease = !isPreRelease(currentVersion);
     return notes
         .filter(note => compareVersions(note.version, currentVersion) <= 0)
+        .filter(note => !(runningRelease && isPreRelease(note.version)))
         .filter(note => lastSeenVersion === ""
             ? compareVersions(note.version, currentVersion) === 0
             : compareVersions(note.version, lastSeenVersion) > 0)
