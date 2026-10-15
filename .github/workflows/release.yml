@@ -6,7 +6,7 @@ on:
       - "*"
 
 env:
-  JSPATH: ExampleVault/.obsidian/plugins/tasks-view/main.js
+  JSPATH: apps/obsidian-plugin/dist/main.js
 
 permissions:
   contents: write
@@ -25,11 +25,32 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
+          node-version: "22.x"
           cache: pnpm
+
+      # Obsidian and BRAT take the version from manifest.json, so a tag that does not match it would ship
+      # under the wrong version. A release also needs its versions.json entry, which tells older Obsidian
+      # versions which release they can still install.
+      - name: Check the tag against manifest.json and versions.json
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const fail = (message) => { console.error("::error::" + message); process.exit(1); };
+            const { version, minAppVersion } = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
+            if (process.env.TAG !== version) fail(`tag ${process.env.TAG} does not match version ${version} in manifest.json`);
+            if (!version.includes("-")) {
+              const versions = JSON.parse(fs.readFileSync("versions.json", "utf8"));
+              if (versions[version] !== minAppVersion) fail(`versions.json must map ${version} to minAppVersion ${minAppVersion}`);
+            }
+          '
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run eslint
 
       - name: Test
         run: pnpm test

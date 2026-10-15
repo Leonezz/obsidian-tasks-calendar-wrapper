@@ -18,7 +18,6 @@ export default tseslint.config(
 			// The class components declare `defaultXxxProps`-style values only to derive their prop types from.
 			"@typescript-eslint/no-unused-vars": ["error", { args: "none", varsIgnorePattern: "^default|Props$|States$" }],
 			"@typescript-eslint/no-unused-expressions": ["error", { allowShortCircuit: true }],
-			"@typescript-eslint/ban-ts-comment": "off",
 			"no-prototype-builtins": "off",
 			"@typescript-eslint/no-empty-function": "off",
 		},

@@ -65,7 +65,7 @@ export async function tasksPluginTaskParser(item: Promise<TasksUtil.TaskDataMode
     const itemValue = await item;
     /** Dates such as 2024-02-31 match the regex but are not real days, see issue #105 and #140. */
     const parseDate = (value: string) => {
-        const date = window.moment(value, TasksUtil.TaskRegularExpressions.dateFormat, true);
+        const date = moment(value, TasksUtil.TaskRegularExpressions.dateFormat, true);
         return date.isValid() ? date : undefined;
     };
     // Check the line to see if it is a markdown task.
@@ -77,11 +77,9 @@ export async function tasksPluginTaskParser(item: Promise<TasksUtil.TaskDataMode
     let priority: TasksUtil.PriorityLabel = "";
     let startDate: Moment | undefined = undefined;
     let scheduledDate: Moment | undefined = undefined;
-    //const scheduledDateIsInferred = false;
     let dueDate: Moment | undefined = undefined;
     let doneDate: Moment | undefined = undefined;
     let recurrenceRule = '';
-    //const recurrence: string | null = null;
     // Tags that are removed from the end while parsing, but we want to add them back for being part of the description.
     // In the original task description they are possibly mixed with other components
     // (e.g. #tag1 <due date> #tag2), they do not have to all trail all task components,

@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import { builtinModules } from "module";
+import { copyFileSync, mkdirSync, readFileSync, watchFile } from "fs";
 
 const banner =
 `/*
@@ -10,6 +11,27 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = (process.argv[2] === "production");
+
+const manifestPath = "../../manifest.json";
+/** The release workflow uploads main.js from here. */
+const releaseDir = "dist";
+/** `pnpm dev` builds into the example vault, in the folder named after the plugin id, as Obsidian installs it. */
+const devPluginDir = `../../ExampleVault/.obsidian/plugins/${JSON.parse(readFileSync(manifestPath, "utf8")).id}`;
+
+const pluginFiles = [manifestPath, "styles.css"];
+
+/** Puts manifest.json and styles.css next to main.js in the example vault. */
+function copyPluginFiles() {
+	mkdirSync(devPluginDir, { recursive: true });
+	for (const file of pluginFiles) copyFileSync(file, `${devPluginDir}/${file.split("/").pop()}`);
+}
+
+const copyPluginFilesAfterBuild = {
+	name: "copy-plugin-files",
+	setup(build) {
+		build.onEnd(copyPluginFiles);
+	},
+};
 
 const context = await esbuild.context({
 	banner: {
@@ -36,7 +58,8 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: "../../ExampleVault/.obsidian/plugins/tasks-view/main.js",
+	outfile: `${prod ? releaseDir : devPluginDir}/main.js`,
+	plugins: prod ? [] : [copyPluginFilesAfterBuild],
 });
 
 if (prod) {
@@ -44,4 +67,6 @@ if (prod) {
 	process.exit(0);
 } else {
 	await context.watch();
+	// Neither file is part of the bundle, so esbuild does not rebuild when they change. Polling also survives editors that replace the file on save.
+	for (const file of pluginFiles) watchFile(file, { interval: 500 }, copyPluginFiles);
 }

@@ -16,16 +16,8 @@ export const TIMELINE_VIEW = "tasks_timeline_view";
 /** Changes that arrive within this time of each other are applied in one reload. */
 const RELOAD_DELAY_MS = 500;
 
-export abstract class BaseTasksView extends ItemView {
-    protected root?: Root;
-    //protected dataAdapter: ObsidianTaskAdapter;
-    constructor(leaf: WorkspaceLeaf) {
-        super(leaf);
-        //this.dataAdapter = new ObsidianTaskAdapter(this.app);
-    }
-}
-
-export class TasksTimelineView extends BaseTasksView {
+export class TasksTimelineView extends ItemView {
+    private root?: Root;
     private taskListModel = new Model({
         taskList: [] as TaskDataModel[],
     });
@@ -42,7 +34,6 @@ export class TasksTimelineView extends BaseTasksView {
         super(leaf);
 
         TasksTimelineView.view = this;
-        //this.userOptionModel.set({ ...defaultUserOptions });
     }
 
     async onOpen(): Promise<void> {

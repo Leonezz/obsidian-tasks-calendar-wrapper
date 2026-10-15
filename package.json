@@ -4,10 +4,11 @@
 	"private": true,
 	"description": "Shows the tasks in your vault on a timeline view, based on the Tasks Calendar and Tasks Timeline scripts.",
 	"scripts": {
-		"dev": "cp manifest.json ExampleVault/.obsidian/plugins/tasks-view/ && pnpm --filter @tasks-calendar-wrapper/obsidian-plugin dev",
+		"dev": "pnpm --filter @tasks-calendar-wrapper/obsidian-plugin dev",
 		"build": "pnpm --filter @tasks-calendar-wrapper/obsidian-plugin build",
 		"typecheck": "pnpm -r typecheck",
 		"test": "pnpm -r test",
+		"preversion": "node version-bump.mjs check",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"eslint": "eslint \"apps/**/*.{ts,tsx}\" \"packages/**/*.{ts,tsx}\"",
 		"eslint:fix": "eslint --fix \"apps/**/*.{ts,tsx}\" \"packages/**/*.{ts,tsx}\""

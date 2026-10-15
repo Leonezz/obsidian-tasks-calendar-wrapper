@@ -10,7 +10,7 @@ import path from "path";
 
 const [nodeMajor] = process.versions.node.split(".").map(Number);
 if (nodeMajor < 18) {
-	console.error(`npm test needs Node 18 or newer for the built-in test runner (found ${process.versions.node}).`);
+	console.error(`pnpm test needs Node 18 or newer for the built-in test runner (found ${process.versions.node}).`);
 	process.exit(1);
 }
 
