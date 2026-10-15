@@ -1,13 +1,43 @@
 import * as P from "parsimmon";
 
+type RegExpFactory = (source: string, flags: string) => RegExp;
+
+/** One emoji, with an optional skin tone or emoji presentation selector, as the `u` flag can describe it. */
+const EMOJI_PART = "(?:\\p{Emoji_Modifier_Base}\\p{Emoji_Modifier}|\\p{Emoji_Presentation}|\\p{Extended_Pictographic}\\uFE0F)";
+
+/** The sequences `\p{RGI_Emoji}` matches, spelled out for engines without the `v` flag. */
+const FALLBACK_EMOJI_SOURCE = [
+    "\\u{1F3F4}[\\u{E0020}-\\u{E007E}]+\\u{E007F}", // subdivision flags, such as England
+    "\\p{Regional_Indicator}{2}", // country flags
+    "[0-9#*]\\uFE0F\\u20E3", // keycaps
+    `${EMOJI_PART}(?:\\u200D${EMOJI_PART})*`, // single emoji and ZWJ sequences
+].join("|");
+
 /**
- * Parses one RGI emoji, including multi-codepoint sequences such as flags and ZWJ sequences.
- * P.regex rejects the `v` flag that `\p{RGI_Emoji}` needs, so the match is done by hand.
+ * Matches one emoji at `lastIndex`, including multi-codepoint sequences such as flags and ZWJ sequences.
+ * `\p{RGI_Emoji}` needs the `v` flag, which iOS before 17 and Chromium before 112 reject with a SyntaxError.
+ * Those engines get a `u` flag pattern for the same sequences instead.
  */
-const EMOJI_AT_INDEX = new RegExp("\\p{RGI_Emoji}", "vy");
+export function createEmojiMatcher(createRegExp: RegExpFactory = (source, flags) => new RegExp(source, flags)): RegExp {
+    try {
+        return createRegExp("\\p{RGI_Emoji}", "vy");
+    } catch (error) {
+        if (!(error instanceof SyntaxError)) throw error;
+        return createRegExp(FALLBACK_EMOJI_SOURCE, "uy");
+    }
+}
+
+/**
+ * Built on first use, not when the module loads: building it at load time on an engine without the `v` flag
+ * threw while the plugin was loading, so the plugin did not load at all.
+ */
+let emojiAtIndex: RegExp | undefined;
+
+/** Parses one emoji. P.regex rejects the `v` flag, so the match is done by hand. */
 const EMOJI: P.Parser<string> = P.Parser((input, index) => {
-    EMOJI_AT_INDEX.lastIndex = index;
-    const match = EMOJI_AT_INDEX.exec(input);
+    emojiAtIndex ??= createEmojiMatcher();
+    emojiAtIndex.lastIndex = index;
+    const match = emojiAtIndex.exec(input);
     return match ? P.makeSuccess(index + match[0].length, match[0]) : P.makeFailure(index, "an emoji");
 });
 
