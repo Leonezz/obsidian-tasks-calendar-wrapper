@@ -1,5 +1,6 @@
 import { App, FrontMatterCache, LinkCache, ListItemCache, Notice, Pos, SectionCache, TagCache, TFile } from "obsidian";
 import { Link } from "../../dataview-util/markdown";
+import { matchesProperties, PropertyRules } from "../../utils/properties";
 import { TaskDataModel, TaskRegularExpressions } from "../../utils/tasks";
 
 export class ObsidianTaskAdapter {
@@ -61,7 +62,12 @@ export class ObsidianTaskAdapter {
         }
     }
 
-    async generateTasksList(includeFilter: string[], pathFilter: string[], includeTags: string[], excludeTags: string[]) {
+    fileExcludePropertiesFilter(rules: PropertyRules) {
+        return (file: TFile) => !matchesProperties(this.app.metadataCache.getFileCache(file)?.frontmatter, rules);
+    }
+
+    async generateTasksList(includeFilter: string[], pathFilter: string[], includeTags: string[], excludeTags: string[],
+        excludeProperties: PropertyRules = {}) {
         this.tasksList.length = 0;
         const files = this.app.vault.getMarkdownFiles()
         let filteredFiles = files;
@@ -73,6 +79,8 @@ export class ObsidianTaskAdapter {
             filteredFiles = filteredFiles.filter(this.fileIncludeTagsFilter(includeTags));
         if (excludeTags.length !== 0)
             filteredFiles = filteredFiles.filter(this.fileExcludeTagsFilter(excludeTags));
+        if (Object.keys(excludeProperties).length !== 0)
+            filteredFiles = filteredFiles.filter(this.fileExcludePropertiesFilter(excludeProperties));
 
         // Every read has to finish before the list is handed over. Without waiting, files that
         // were not in Obsidian's read cache yet were silently left out, see issue #80.
