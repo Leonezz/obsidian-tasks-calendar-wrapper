@@ -1,4 +1,14 @@
-import { innerDateFormat, TaskDataModel } from "../../utils/tasks";
+import { forwardedDateKey } from "../../utils/taskmapable";
+import { innerDateFormat, TaskDataModel, TaskStatus } from "../../utils/tasks";
+
+/**
+ * The tasks a day of the timeline lists. With forwarding on, overdue tasks and tasks forwarded to today
+ * are listed on today only, so they are not listed twice.
+ */
+export function tasksListedOnDay(tasksOfDay: TaskDataModel[], isToday: boolean, forward: boolean): TaskDataModel[] {
+    if (!forward || isToday) return tasksOfDay;
+    return tasksOfDay.filter(t => t.status !== TaskStatus.overdue && !t.dates.has(forwardedDateKey));
+}
 
 /**
  * Lists every task under each day it has a date on, keeping the order of the list.
