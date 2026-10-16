@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 
 import moment from "moment";
 
-import { groupTasksByDate } from "../timeline/src/taskdates";
+import { groupTasksByDate, inDisplayOrder } from "../timeline/src/taskdates";
 import * as TaskMapable from "../utils/taskmapable";
 import { innerDateFormat, TaskDataModel } from "../utils/tasks";
 import { parse } from "./helpers";
@@ -69,4 +69,16 @@ test("a task with dates in two years is listed on both days", async () => {
 
 test("an empty list has no days", () => {
     assert.equal(groupTasksByDate([]).size, 0);
+});
+
+// Issue #54: an option to show the latest dates on top
+
+test("days and years are shown from the earliest by default", () => {
+    assert.deepEqual(inDisplayOrder(["2023-08-01", "2023-02-01", "2023-05-01"], false), ["2023-02-01", "2023-05-01", "2023-08-01"]);
+    assert.deepEqual(inDisplayOrder([2025, 2023, 2026], false), [2023, 2025, 2026]);
+});
+
+test("days and years are shown from the latest with newest first", () => {
+    assert.deepEqual(inDisplayOrder(["2023-08-01", "2023-02-01", "2023-05-01"], true), ["2023-08-01", "2023-05-01", "2023-02-01"]);
+    assert.deepEqual(inDisplayOrder([2025, 2023, 2026], true), [2026, 2025, 2023]);
 });

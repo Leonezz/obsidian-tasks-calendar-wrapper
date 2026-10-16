@@ -5,6 +5,7 @@ import { UserOption } from '../../../src/settings';
 import * as TaskMapable from '../../../utils/taskmapable';
 import { innerDateFormat, TaskDataModel, TaskStatus } from '../../../utils/tasks';
 import { counterClass } from '../counters';
+import { inDisplayOrder } from '../taskdates';
 import { TaskListContext, TodayFocusEventHandlersContext, UserOptionContext } from './context';
 import { YearView } from './yearview';
 
@@ -71,9 +72,11 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
         const sortedDatas = [...involvedDates].sort();
         const earliestYear: number = +moment(sortedDatas.first()!.toString()).format("YYYY");
         const latestYear: number = +moment(sortedDatas.last()!.toString()).format("YYYY");
-        const years = Array.from({ length: latestYear - earliestYear + 1 }, (_, i) => i + earliestYear);
-        const firstDay = sortedDatas.first();
-        const lastDay = sortedDatas.last();
+        const newestFirst = this.props.userOptions.newestFirst;
+        const years = inDisplayOrder(Array.from({ length: latestYear - earliestYear + 1 }, (_, i) => i + earliestYear), newestFirst);
+        // The days at the top and the bottom of the view, so "top" and "bottom" entry positions follow the order.
+        const firstDay = newestFirst ? sortedDatas.last() : sortedDatas.first();
+        const lastDay = newestFirst ? sortedDatas.first() : sortedDatas.last();
 
         const overdueCount: number = taskList.filter(t => t.status === TaskStatus.overdue).length;
         const unplannedCount: number = taskList.filter(t => t.status === TaskStatus.unplanned).length;
@@ -160,7 +163,7 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
                                             this.props.userOptions.entryPosition === "bottom" ? lastDay! : moment().format(innerDateFormat),
                                     }
                                 } key={i}>
-                                    <YearView year={y} key={y} />
+                                    <YearView year={y} newestFirst={newestFirst} key={y} />
                                 </TaskListContext.Provider>
                             ))}
                         </span>

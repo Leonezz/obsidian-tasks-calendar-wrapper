@@ -1,11 +1,12 @@
 import { moment } from '../../../utils/moment';
 import * as React from 'react';
-import { groupTasksByDate } from '../taskdates';
+import { groupTasksByDate, inDisplayOrder } from '../taskdates';
 import { TaskListContext } from './context';
 import { DateView } from './dateview';
 
 const defaultYearViewProps = {
     year: 2023 as number,
+    newestFirst: false as boolean,
 };
 type YearViewProps = Readonly<typeof defaultYearViewProps>;
 export class YearView extends React.Component<YearViewProps> {
@@ -17,22 +18,20 @@ export class YearView extends React.Component<YearViewProps> {
                 const daysOfThisYear: Set<string> = new Set(tasksByDate.keys());
                 if (this.props.year === moment(entryOnDate).year() && !daysOfThisYear.has(entryOnDate))
                     daysOfThisYear.add(entryOnDate);
+                const days = inDisplayOrder([...daysOfThisYear].filter(d => moment(d).year() === this.props.year), this.props.newestFirst);
                 return (
                     <div>
                         {tasksOfThisYear.length > 0 &&
                             <YearHeader year={this.props.year} dataTypes={[...new Set(tasksOfThisYear.map(t => t.status))]} />}
-                        {[...daysOfThisYear]
-                            .filter(d => moment(d).year() === this.props.year)
-                            .sort()
-                            .map((d) => {
-                                const tasksOfThisDate = tasksByDate.get(d) ?? [];
-                                // Keyed by the day, so a day added above does not make React rebuild every day below it.
-                                return (
-                                    <TaskListContext.Provider value={{ taskList: tasksOfThisDate, entryOnDate: entryOnDate }} key={d}>
-                                        <DateView date={moment(d)} />
-                                    </TaskListContext.Provider>
-                                )
-                            })}
+                        {days.map((d) => {
+                            const tasksOfThisDate = tasksByDate.get(d) ?? [];
+                            // Keyed by the day, so a day added above does not make React rebuild every day below it.
+                            return (
+                                <TaskListContext.Provider value={{ taskList: tasksOfThisDate, entryOnDate: entryOnDate }} key={d}>
+                                    <DateView date={moment(d)} />
+                                </TaskListContext.Provider>
+                            )
+                        })}
                     </div>)
             }}
             </TaskListContext.Consumer>

@@ -20,3 +20,12 @@ export function groupTasksByDate(taskList: TaskDataModel[]): Map<string, TaskDat
     }
     return byDate;
 }
+
+/**
+ * Sorts days ("YYYY-MM-DD") or years in the order the timeline shows them:
+ * from the earliest, or from the latest with the newest first option (issue #54).
+ */
+export function inDisplayOrder<T extends string | number>(values: Iterable<T>, newestFirst: boolean): T[] {
+    const sorted = [...values].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+    return newestFirst ? sorted.reverse() : sorted;
+}
