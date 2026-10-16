@@ -6,10 +6,13 @@
 	"main": "src/index.ts",
 	"types": "src/index.ts",
 	"scripts": {
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
+		"test": "node scripts/test.mjs"
 	},
 	"license": "MIT",
 	"devDependencies": {
+		"@types/node": "20.19.43",
+		"esbuild": "0.28.2",
 		"typescript": "6.0.3"
 	}
 }

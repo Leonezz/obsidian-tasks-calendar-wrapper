@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { formatPropertyRules, matchesProperties, parsePropertyRules } from "../utils/properties";
+import { formatPropertyRules, matchesProperties, parsePropertyRules } from "../src/properties";
 
 // Issue #186: exclude the tasks of notes by a frontmatter property, e.g. status: archived
 

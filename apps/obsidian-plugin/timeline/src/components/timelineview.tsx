@@ -4,7 +4,7 @@ import * as React from 'react';
 import { UserOption } from '../../../src/settings';
 import * as TaskMapable from '../../../utils/taskmapable';
 import { innerDateFormat, TaskDataModel, TaskStatus } from '../../../utils/tasks';
-import { counterClass } from '../counters';
+import { counterClass } from '@tasks-calendar-wrapper/core';
 import { inDisplayOrder } from '../taskdates';
 import { TaskListContext, TodayFocusEventHandlersContext, UserOptionContext } from './context';
 import { YearView } from './yearview';

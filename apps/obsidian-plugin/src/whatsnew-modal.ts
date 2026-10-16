@@ -1,5 +1,6 @@
 import { App, ButtonComponent, Modal } from "obsidian";
-import { REPOSITORY_URL, ReleaseNote, SupportLink } from "../utils/whatsnew";
+import type { ReleaseNote } from "@tasks-calendar-wrapper/core";
+import { REPOSITORY_URL, SupportLink } from "../utils/whatsnew";
 
 /** Lists what changed in the versions since the user last looked, with links to support the plugin. */
 export class WhatsNewModal extends Modal {

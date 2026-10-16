@@ -1,0 +1,8 @@
+{
+  // The tests run in Node, so they get its types; the package itself does not (see tsconfig.json).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["src", "tests"]
+}

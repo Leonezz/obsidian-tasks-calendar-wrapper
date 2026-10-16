@@ -1,6 +1,6 @@
 import { App, FrontMatterCache, LinkCache, ListItemCache, Notice, Pos, SectionCache, TagCache, TFile } from "obsidian";
 import { Link } from "../../dataview-util/markdown";
-import { matchesProperties, PropertyRules } from "../../utils/properties";
+import { matchesProperties, PropertyRules } from "@tasks-calendar-wrapper/core";
 import { TaskDataModel, TaskRegularExpressions } from "../../utils/tasks";
 
 export class ObsidianTaskAdapter {
