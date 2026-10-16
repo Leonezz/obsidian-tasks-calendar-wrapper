@@ -11,6 +11,12 @@ export function normalizeNotePath(path: string): string {
     return /\.md$/i.test(trimmed) ? trimmed : `${trimmed}.md`;
 }
 
+/** The folder a note path is in, or "" for a note at the top of the vault. */
+export function parentFolder(path: string): string {
+    const slash = path.lastIndexOf("/");
+    return slash < 0 ? "" : path.substring(0, slash);
+}
+
 /**
  * Inserts a task line right below the section heading. When the heading is missing it is added
  * at the end of the note, rather than the task landing above the frontmatter. The note keeps
