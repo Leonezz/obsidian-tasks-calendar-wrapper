@@ -446,9 +446,9 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                         btn.setIcon("cross")
                             .setTooltip("Delete")
                             .onClick(async () => {
-                                delete this.plugin.userOptions.tagColorPalette[tag]
-
-                                await this.onOptionUpdate({}, true);
+                                await this.onOptionUpdate({
+                                    tagColorPalette: withoutTag(this.plugin.userOptions.tagColorPalette, tag)
+                                }, true);
                             })
 
                     })
@@ -459,10 +459,12 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                                 const modal = new TagColorPaletteModal(this.plugin, tag, color);
                                 modal.onClose = () => {
                                     if (!modal.valid) return;
-                                    delete this.plugin.userOptions.tagColorPalette[tag];
-                                    this.plugin.userOptions.tagColorPalette[modal.tagText] = modal.color;
-
-                                    this.saveOptionsInBackground({}, true);
+                                    this.saveOptionsInBackground({
+                                        tagColorPalette: {
+                                            ...withoutTag(this.plugin.userOptions.tagColorPalette, tag),
+                                            [modal.tagText]: modal.color,
+                                        }
+                                    }, true);
                                 }
                                 modal.open();
                             })
@@ -477,9 +479,9 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                             const modal = new TagColorPaletteModal(this.plugin)
                             modal.onClose = () => {
                                 if (!modal.valid) return;
-                                this.plugin.userOptions.tagColorPalette[modal.tagText] = modal.color;
-
-                                this.saveOptionsInBackground({}, true);
+                                this.saveOptionsInBackground({
+                                    tagColorPalette: { ...this.plugin.userOptions.tagColorPalette, [modal.tagText]: modal.color }
+                                }, true);
                             }
                             modal.open();
                         })
@@ -504,16 +506,14 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             this.plugin.userOptions.hideTags,
             (t: string) => {
                 return async () => {
-                    this.plugin.userOptions.hideTags.remove(t);
-                    await this.onOptionUpdate({}, true);
+                    await this.onOptionUpdate({ hideTags: this.plugin.userOptions.hideTags.filter(tag => tag !== t) }, true);
                 }
             },
             async (t: string) => {
                 if (this.plugin.userOptions.hideTags.includes(t)) {
                     new Notice(`Tag ${t} already exists.`, 5000);
                 } else {
-                    this.plugin.userOptions.hideTags.push(t);
-                    await this.onOptionUpdate({}, true);
+                    await this.onOptionUpdate({ hideTags: [...this.plugin.userOptions.hideTags, t] }, true);
                 }
             })
 
@@ -587,16 +587,14 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                 this.plugin.userOptions.taskIncludeTags,
                 (t: string) => {
                     return async () => {
-                        this.plugin.userOptions.taskIncludeTags.remove(t);
-                        await this.onOptionUpdate({}, true);
+                        await this.onOptionUpdate({ taskIncludeTags: this.plugin.userOptions.taskIncludeTags.filter(tag => tag !== t) }, true);
                     }
                 },
                 async (t: string) => {
                     if (this.plugin.userOptions.taskIncludeTags.contains(t)) {
                         new Notice(`Tag ${t} already exists.`, 5000);
                     } else {
-                        this.plugin.userOptions.taskIncludeTags.push(t);
-                        await this.onOptionUpdate({}, true);
+                        await this.onOptionUpdate({ taskIncludeTags: [...this.plugin.userOptions.taskIncludeTags, t] }, true);
                     }
                 });
 
@@ -605,16 +603,14 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                 this.plugin.userOptions.fileIncludeTags,
                 (t: string) => {
                     return async () => {
-                        this.plugin.userOptions.fileIncludeTags.remove(t);
-                        await this.onOptionUpdate({}, true);
+                        await this.onOptionUpdate({ fileIncludeTags: this.plugin.userOptions.fileIncludeTags.filter(tag => tag !== t) }, true);
                     }
                 },
                 async (t: string) => {
                     if (this.plugin.userOptions.fileIncludeTags.contains(t)) {
                         new Notice(`Tag ${t} already exists.`, 5000);
                     } else {
-                        this.plugin.userOptions.fileIncludeTags.push(t);
-                        await this.onOptionUpdate({}, true);
+                        await this.onOptionUpdate({ fileIncludeTags: [...this.plugin.userOptions.fileIncludeTags, t] }, true);
                     }
                 })
         }
@@ -635,16 +631,14 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                 this.plugin.userOptions.taskExcludeTags,
                 (t: string) => {
                     return async () => {
-                        this.plugin.userOptions.taskExcludeTags.remove(t);
-                        await this.onOptionUpdate({}, true);
+                        await this.onOptionUpdate({ taskExcludeTags: this.plugin.userOptions.taskExcludeTags.filter(tag => tag !== t) }, true);
                     }
                 },
                 async (t: string) => {
                     if (this.plugin.userOptions.taskExcludeTags.contains(t)) {
                         new Notice(`Tag ${t} already exists.`, 5000);
                     } else {
-                        this.plugin.userOptions.taskExcludeTags.push(t);
-                        await this.onOptionUpdate({}, true);
+                        await this.onOptionUpdate({ taskExcludeTags: [...this.plugin.userOptions.taskExcludeTags, t] }, true);
                     }
                 });
 
@@ -653,16 +647,14 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                 this.plugin.userOptions.fileExcludeTags,
                 (t: string) => {
                     return async () => {
-                        this.plugin.userOptions.fileExcludeTags.remove(t);
-                        await this.onOptionUpdate({}, true);
+                        await this.onOptionUpdate({ fileExcludeTags: this.plugin.userOptions.fileExcludeTags.filter(tag => tag !== t) }, true);
                     }
                 },
                 async (t: string) => {
                     if (this.plugin.userOptions.fileExcludeTags.contains(t)) {
                         new Notice(`Tag ${t} already exists.`, 5000);
                     } else {
-                        this.plugin.userOptions.fileExcludeTags.push(t);
-                        await this.onOptionUpdate({}, true);
+                        await this.onOptionUpdate({ fileExcludeTags: [...this.plugin.userOptions.fileExcludeTags, t] }, true);
                     }
                 })
         }
@@ -764,6 +756,10 @@ function descriptionWithWarning(description: string, warning: string): DocumentF
         fragment.appendText(description);
         fragment.createEl("p", { text: warning, cls: "tasks-calendar-wrapper-setting-warning" });
     });
+}
+
+function withoutTag(palette: Record<string, string>, tag: string): Record<string, string> {
+    return Object.fromEntries(Object.entries(palette).filter(([key]) => key !== tag));
 }
 
 function reportSaveError(error: unknown) {
