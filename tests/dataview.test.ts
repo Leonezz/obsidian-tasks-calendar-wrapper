@@ -1,54 +1,76 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { createEmojiMatcher, normalizeHeaderForLink } from "../dataview-util/dataview";
+import { createEmojiMatcher, createHeaderNormalizer, normalizeHeaderForLink, RegExpFactory } from "../dataview-util/dataview";
 
-/** Stands in for an engine without the regex `v` flag, such as iOS before 17 or Chromium before 112. */
-const withoutVFlag = (source: string, flags: string) => {
+/** Stands in for an engine without the `v` flag (before Chrome 112 and iOS 17), which throws a SyntaxError for it. */
+const withoutVFlag: RegExpFactory = (pattern, flags) => {
     if (flags.includes("v")) throw new SyntaxError(`Invalid flags supplied to RegExp constructor '${flags}'`);
-    return new RegExp(source, flags);
+    return new RegExp(pattern, flags);
 };
 
-const emojiSamples = [
-    "📅", "👍", "👍🏽", "☝🏽", "❤️", "❤️‍🔥", "👩‍💻", "🧑🏽‍💻", "🏃🏽‍♀️", "👨‍👩‍👧‍👦", "🏳️‍🌈", "🇨🇳", "🇺🇸", "1️⃣", "#️⃣",
-    "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+const normalizers = [
+    { engine: "with the v flag", normalize: normalizeHeaderForLink },
+    { engine: "without the v flag", normalize: createHeaderNormalizer(withoutVFlag) },
 ];
-const notEmojiSamples = ["a", "1", "#", "©", "❤", " ", "-", "中"];
 
-function matchAtStart(regex: RegExp, text: string): string | null {
-    regex.lastIndex = 0;
-    return regex.exec(text)?.[0] ?? null;
+for (const { engine, normalize } of normalizers) {
+    test(`header normalization keeps emoji, letters and digits (${engine})`, () => {
+        assert.equal(normalize("📅 Plan: week 38"), "📅 Plan week 38");
+    });
+
+    test(`header normalization keeps multi-codepoint emoji intact (${engine})`, () => {
+        assert.equal(normalize("👩‍💻 Work / 🇨🇳 Trip"), "👩‍💻 Work 🇨🇳 Trip");
+    });
+
+    test(`header normalization collapses whitespace and punctuation (${engine})`, () => {
+        assert.equal(normalize("  Tasks -- (done)  "), "Tasks -- done");
+    });
+
+    test(`header normalization drops symbols that are only emoji with U+FE0F (${engine})`, () => {
+        assert.equal(normalize("© 2026 ☀️ Plan"), "2026 ☀️ Plan");
+    });
 }
 
-test("header normalization keeps emoji, letters and digits", () => {
-    assert.equal(normalizeHeaderForLink("📅 Plan: week 38"), "📅 Plan week 38");
+test("the emoji regex uses the v flag where the engine has it", () => {
+    assert.equal(createEmojiMatcher().flags, "vy");
 });
 
-test("header normalization keeps multi-codepoint emoji intact", () => {
-    assert.equal(normalizeHeaderForLink("👩‍💻 Work / 🇨🇳 Trip"), "👩‍💻 Work 🇨🇳 Trip");
+test("the emoji regex falls back to the u flag where the engine lacks the v flag", () => {
+    assert.equal(createEmojiMatcher(withoutVFlag).flags, "uy");
 });
 
-test("header normalization collapses whitespace and punctuation", () => {
-    assert.equal(normalizeHeaderForLink("  Tasks -- (done)  "), "Tasks -- done");
+test("an error other than an unsupported flag is not hidden by the fallback", () => {
+    const broken: RegExpFactory = () => { throw new TypeError("not a flag problem"); };
+    assert.throws(() => createEmojiMatcher(broken), TypeError);
 });
 
-test("an engine without the v flag gets the fallback emoji matcher instead of an error", () => {
-    const matcher = createEmojiMatcher(withoutVFlag);
-    assert.equal(matcher.flags.includes("v"), false);
-    for (const emoji of emojiSamples) assert.equal(matchAtStart(matcher, emoji + " rest"), emoji, `fallback should match ${emoji}`);
-    for (const text of notEmojiSamples) assert.equal(matchAtStart(matcher, text), null, `fallback should not match ${text}`);
+test("the emoji regex is built on the first header, not when the normalizer is made", () => {
+    const flagsTried: string[] = [];
+    const normalize = createHeaderNormalizer((pattern, flags) => {
+        flagsTried.push(flags);
+        return withoutVFlag(pattern, flags);
+    });
+    assert.deepEqual(flagsTried, []);
+    assert.equal(normalize("🇨🇳 Trip"), "🇨🇳 Trip");
+    normalize("📅 Plan");
+    assert.deepEqual(flagsTried, ["vy", "uy"]);
 });
 
 test("the fallback matches the same emoji as \\p{RGI_Emoji}", () => {
     const rgi = createEmojiMatcher();
     const fallback = createEmojiMatcher(withoutVFlag);
-    assert.equal(rgi.flags.includes("v"), true, "this Node supports the v flag, so the RGI matcher is used");
-    for (const text of [...emojiSamples, ...notEmojiSamples]) {
-        assert.equal(matchAtStart(fallback, text), matchAtStart(rgi, text), `different match for ${text}`);
+    const matchAtStart = (regex: RegExp, text: string) => {
+        regex.lastIndex = 0;
+        return regex.exec(text)?.[0] ?? null;
+    };
+    const samples = [
+        "📅", "📅️", "🫨", "☀", "☀️", "©", "©️", "‼️", "🅰", "🅰️", "★", "a", "2026",
+        "👍🏽", "✌🏽", "✌", "🏻",
+        "🇨🇳", "🏴󠁧󠁢󠁳󠁣󠁴󠁿", "1️⃣", "1⃣", "#️⃣",
+        "👨‍👩‍👧‍👦", "👩🏽‍💻", "🏳️‍🌈", "❤️‍🔥", "🧑‍⚕️", "🧑‍⚕", "🐈‍⬛", "👁️‍🗨️", "🏃‍➡️", "🫱🏼‍🫲🏿", "🧑🏻‍❤️‍💋‍🧑🏼",
+    ];
+    for (const sample of samples) {
+        assert.equal(matchAtStart(fallback, sample), matchAtStart(rgi, sample), JSON.stringify(sample));
     }
-});
-
-test("errors other than an unsupported regex are not swallowed", () => {
-    const broken = () => { throw new TypeError("not a regex problem"); };
-    assert.throws(() => createEmojiMatcher(broken), TypeError);
 });
