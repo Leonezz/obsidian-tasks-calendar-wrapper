@@ -75,11 +75,12 @@
 		"Status.md:11 | start | scheduled=2026-01-08 | only scheduled in the past",
 		"Status.md:18 | start | scheduled=2026-01-08 start=2026-01-15 | scheduled earlier, starts today",
 		"中文 笔记.md:3 | start | scheduled=2026-01-14 | 混合 mixed 任务",
-		"Daily/2026, 一月 14 - 星期三.md:2 | process | scheduled=2026-01-14 start=2026-01-14 created=2026-01-14 | 中文日记里的任务",
+		"Daily/2026, January 14 - Wednesday.md:2 | process | scheduled=2026-01-14 start=2026-01-14 created=2026-01-14 | undated task in a daily note",
 		"Dataview fields.md:4 | process | start=2026-01-10 | start field",
 		"Emoji dates.md:9 | process | start=2026-01-05 | started earlier",
 		"Emoji dates.md:38 | process | due=2026-01-20 scheduled=2026-01-16 start=2026-01-14 | no space after the emojis",
 		"Markers.md:7 | process |  | In  Progress",
+		"Notes/2026, January 12 - Monday.md:2 | process | scheduled=2026-01-12 start=2026-01-12 created=2026-01-12 | task in a note named like a daily note",
 		"Status.md:5 | process |  | in progress without a date",
 		"Status.md:10 | process | due=2026-02-01 | in progress with a later due date",
 		"Status.md:12 | process | start=2026-01-08 | only started in the past",
@@ -90,7 +91,7 @@
 		"Comments.md:7 | unplanned |  | commented date",
 		"Comments.md:9 | unplanned |  | two comments  around visible text",
 		"Daily/2023-05-28.md:0 | unplanned |  | All men are created equal.",
-		"Daily/2026, January 14 - Wednesday.md:2 | unplanned |  | undated task in a daily note",
+		"Daily/2026, 一月 14 - 星期三.md:2 | unplanned |  | 中文日记里的任务",
 		"Daily/2026-01-15.md:0 | unplanned |  | parent on the first line",
 		"Daily/2026-01-15.md:1 | unplanned |  | child of the first line",
 		"Daily/2026-01-15.md:2 | unplanned |  | undated task in today's ISO daily note",
@@ -136,7 +137,6 @@
 		"Markers.md:26 | unplanned |  | Speech bubble 7",
 		"Markers.md:27 | unplanned |  | Speech bubble 8",
 		"Markers.md:28 | unplanned |  | Speech bubble 9",
-		"Notes/2026, January 12 - Monday.md:2 | unplanned |  | task in a note named like a daily note",
 		"Priorities.md:2 | unplanned |  | highest",
 		"Priorities.md:3 | unplanned |  | high",
 		"Priorities.md:4 | unplanned |  | medium",
@@ -213,7 +213,8 @@
 		"2026-01-12": [
 			"Emoji dates.md:21",
 			"Dataview fields.md:3",
-			"Emoji dates.md:11"
+			"Emoji dates.md:11",
+			"Notes/2026, January 12 - Monday.md:2"
 		],
 		"2026-01-13": [
 			"Emoji dates.md:31",
@@ -222,7 +223,7 @@
 		"2026-01-14": [
 			"Emoji dates.md:21",
 			"中文 笔记.md:3",
-			"Daily/2026, 一月 14 - 星期三.md:2",
+			"Daily/2026, January 14 - Wednesday.md:2",
 			"Emoji dates.md:38"
 		],
 		"2026-01-15": [

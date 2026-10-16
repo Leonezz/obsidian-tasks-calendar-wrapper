@@ -4,6 +4,9 @@
  * clock is fixed.
  */
 import moment from "moment";
+// For the test with Obsidian set to Chinese. Loading a locale also makes it moment's global locale,
+// so it is loaded here, before English is set.
+import "moment/locale/zh-cn";
 
 process.env.TZ = "UTC";
 moment.locale("en");

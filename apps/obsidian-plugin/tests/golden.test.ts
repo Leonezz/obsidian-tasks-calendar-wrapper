@@ -1,12 +1,11 @@
 // Must come first: it fixes the time zone, the locale and "now" before any date is computed.
 import "./golden-clock";
 import "./setup";
-import "moment/locale/zh-cn";
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Moment } from "moment";
 
@@ -101,13 +100,23 @@ function goldenApp(vault: CapturedVault, order: ReadOrder = {}) {
     } as never;
 }
 
-/** Reads, parses, sorts and filters the vault the way TasksTimelineView.onReloadTasks does. */
-async function taskList(vault: CapturedVault, options: UserOption, order: ReadOrder = {}): Promise<TaskDataModel[]> {
-    const adapter = new ObsidianTaskAdapter(goldenApp(vault, order));
-    await adapter.generateTasksList(options.includePaths, options.excludePaths, options.fileIncludeTags,
-        options.fileExcludeTags, options.excludeProperties);
-    const parsed = await parseTasks(adapter.getTaskList(), options, moment());
-    return filterTasks(parsed, options);
+/**
+ * Reads, parses, sorts and filters the vault the way TasksTimelineView.onReloadTasks does, with moment set to
+ * `locale` (Obsidian's moment follows the app's language). Every run sets the locale itself, so no test depends
+ * on what an earlier one left behind.
+ */
+async function taskList(vault: CapturedVault, options: UserOption, order: ReadOrder = {}, locale = "en"): Promise<TaskDataModel[]> {
+    const previous = moment.locale();
+    if (moment.locale(locale) !== locale) assert.fail(`moment has no "${locale}" locale loaded`);
+    try {
+        const adapter = new ObsidianTaskAdapter(goldenApp(vault, order));
+        await adapter.generateTasksList(options.includePaths, options.excludePaths, options.fileIncludeTags,
+            options.fileExcludeTags, options.excludeProperties);
+        const parsed = await parseTasks(adapter.getTaskList(), options, moment());
+        return filterTasks(parsed, options);
+    } finally {
+        moment.locale(previous);
+    }
 }
 
 const id = (task: TaskDataModel) => `${task.path}:${task.line}`;
@@ -167,7 +176,11 @@ function days(tasks: TaskDataModel[], options: UserOption): Record<string, strin
         [date, tasksListedOnDay(byDate.get(date)!, date === today, options.forward).map(id)]));
 }
 
+/** The snapshots the tests produce, so the last test can find files no test produces any more. */
+const snapshotNames = new Set<string>();
+
 function expectGolden(name: string, actual: unknown) {
+    snapshotNames.add(name);
     const file = path.join(GOLDEN, `${name}.json`);
     const text = JSON.stringify(actual, null, "\t") + "\n";
     if (UPDATE) {
@@ -234,13 +247,12 @@ for (const [name, options] of Object.entries(variants)) {
 
 // Obsidian sets its moment to the app's language, which decides which note names are daily notes.
 test("golden: tasks shown with Obsidian set to Chinese", async () => {
-    moment.locale("zh-cn");
-    try {
-        const tasks = await taskList(loadVault(), defaults());
-        expectGolden("variant-locale-zh-cn", { shown: tasks.map(summary), days: days(tasks, defaults()) });
-    } finally {
-        moment.locale("en");
-    }
+    const vault = loadVault();
+    const chinese = await taskList(vault, defaults(), {}, "zh-cn");
+    const english = await taskList(vault, defaults());
+    // A daily note named in Chinese is only recognised in Chinese, and one named in English only in English.
+    assert.notDeepEqual(chinese.map(summary), english.map(summary), "the app language changes which notes are daily notes");
+    expectGolden("variant-locale-zh-cn", { shown: chinese.map(summary), days: days(chinese, defaults()) });
 });
 
 test("golden: the order under every sort option", async () => {
@@ -257,4 +269,14 @@ test("golden: the result does not depend on the order or timing of the reads", a
     const usual = (await taskList(vault, everything)).map(details);
     const shuffled = (await taskList(vault, everything, { reversed: true, staggered: true })).map(details);
     assert.deepEqual(shuffled, usual);
+});
+
+// Declared last, so it runs after every test that produces a snapshot.
+test("golden: every snapshot file is one a test produces", () => {
+    const orphans = readdirSync(GOLDEN).filter(name => name.endsWith(".json") && !snapshotNames.has(name.slice(0, -5)));
+    if (UPDATE) {
+        for (const orphan of orphans) rmSync(path.join(GOLDEN, orphan));
+        return;
+    }
+    assert.deepEqual(orphans, [], "these snapshots belong to no test any more; `UPDATE_GOLDEN=1 pnpm test` removes them");
 });

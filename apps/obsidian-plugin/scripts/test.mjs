@@ -50,7 +50,8 @@ try {
 		// Where the golden tests find their fixtures, wherever the tests are started from.
 		GOLDEN_FIXTURES: path.resolve(root, "../../fixtures"),
 	};
-	const result = spawnSync(process.execPath, ["--test", ...bundles], { stdio: "inherit", env });
+	// From the package folder, where tests such as the release notes test find the manifest.
+	const result = spawnSync(process.execPath, ["--test", ...bundles], { stdio: "inherit", env, cwd: root });
 	process.exitCode = result.status ?? 1;
 } finally {
 	rmSync(outdir, { recursive: true, force: true });

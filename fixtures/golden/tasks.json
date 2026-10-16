@@ -1285,7 +1285,7 @@
 		"priority": "",
 		"recurrence": "",
 		"tags": [],
-		"dailyNote": false,
+		"dailyNote": true,
 		"order": 3,
 		"due": "2026-01-20",
 		"scheduled": null,
@@ -1328,7 +1328,7 @@
 		"priority": "",
 		"recurrence": "",
 		"tags": [],
-		"dailyNote": false,
+		"dailyNote": true,
 		"order": 3,
 		"due": null,
 		"scheduled": "2026-01-16",
@@ -1371,7 +1371,7 @@
 		"priority": "",
 		"recurrence": "",
 		"tags": [],
-		"dailyNote": true,
+		"dailyNote": false,
 		"order": 3,
 		"due": "2026-01-20",
 		"scheduled": null,
@@ -3471,22 +3471,22 @@
 		"frontmatter": {}
 	},
 	{
-		"id": "Daily/2026, 一月 14 - 星期三.md:2",
+		"id": "Daily/2026, January 14 - Wednesday.md:2",
 		"position": {
 			"end": {
-				"col": 14,
+				"col": 34,
 				"line": 2,
-				"offset": 53
+				"offset": 97
 			},
 			"start": {
 				"col": 0,
 				"line": 2,
-				"offset": 39
+				"offset": 63
 			}
 		},
 		"lineCount": 1,
-		"text": "- [ ] 中文日记里的任务",
-		"visual": "中文日记里的任务",
+		"text": "- [ ] undated task in a daily note",
+		"visual": "undated task in a daily note",
 		"symbol": "-",
 		"statusMarker": " ",
 		"status": "process",
@@ -3506,7 +3506,7 @@
 		"completion": null,
 		"dates": [],
 		"section": {
-			"path": "Daily/2026, 一月 14 - 星期三.md",
+			"path": "Daily/2026, January 14 - Wednesday.md",
 			"type": "file",
 			"embed": false
 		},
@@ -3687,6 +3687,49 @@
 		],
 		"section": {
 			"path": "Markers.md",
+			"type": "file",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Notes/2026, January 12 - Monday.md:2",
+		"position": {
+			"end": {
+				"col": 44,
+				"line": 2,
+				"offset": 105
+			},
+			"start": {
+				"col": 0,
+				"line": 2,
+				"offset": 61
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] task in a note named like a daily note",
+		"visual": "task in a note named like a daily note",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "process",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": true,
+		"order": 5,
+		"due": null,
+		"scheduled": "2026-01-12",
+		"start": "2026-01-12",
+		"created": "2026-01-12",
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Notes/2026, January 12 - Monday.md",
 			"type": "file",
 			"embed": false
 		},
@@ -4182,22 +4225,22 @@
 		"frontmatter": {}
 	},
 	{
-		"id": "Daily/2026, January 14 - Wednesday.md:2",
+		"id": "Daily/2026, 一月 14 - 星期三.md:2",
 		"position": {
 			"end": {
-				"col": 34,
+				"col": 14,
 				"line": 2,
-				"offset": 97
+				"offset": 53
 			},
 			"start": {
 				"col": 0,
 				"line": 2,
-				"offset": 63
+				"offset": 39
 			}
 		},
 		"lineCount": 1,
-		"text": "- [ ] undated task in a daily note",
-		"visual": "undated task in a daily note",
+		"text": "- [ ] 中文日记里的任务",
+		"visual": "中文日记里的任务",
 		"symbol": "-",
 		"statusMarker": " ",
 		"status": "unplanned",
@@ -4222,7 +4265,7 @@
 			]
 		],
 		"section": {
-			"path": "Daily/2026, January 14 - Wednesday.md",
+			"path": "Daily/2026, 一月 14 - 星期三.md",
 			"type": "file",
 			"embed": false
 		},
@@ -6412,54 +6455,6 @@
 		"frontmatter": {}
 	},
 	{
-		"id": "Notes/2026, January 12 - Monday.md:2",
-		"position": {
-			"end": {
-				"col": 44,
-				"line": 2,
-				"offset": 105
-			},
-			"start": {
-				"col": 0,
-				"line": 2,
-				"offset": 61
-			}
-		},
-		"lineCount": 1,
-		"text": "- [ ] task in a note named like a daily note",
-		"visual": "task in a note named like a daily note",
-		"symbol": "-",
-		"statusMarker": " ",
-		"status": "unplanned",
-		"completed": false,
-		"checked": true,
-		"fullyCompleted": false,
-		"isTasksTask": false,
-		"priority": "",
-		"recurrence": "",
-		"tags": [],
-		"dailyNote": false,
-		"order": 6,
-		"due": null,
-		"scheduled": null,
-		"start": null,
-		"created": null,
-		"completion": null,
-		"dates": [
-			[
-				"unplanned",
-				"2026-01-15T09:00"
-			]
-		],
-		"section": {
-			"path": "Notes/2026, January 12 - Monday.md",
-			"type": "file",
-			"embed": false
-		},
-		"outlinks": [],
-		"frontmatter": {}
-	},
-	{
 		"id": "Priorities.md:2",
 		"position": {
 			"end": {
@@ -8293,19 +8288,14 @@
 		"priority": "",
 		"recurrence": "",
 		"tags": [],
-		"dailyNote": false,
+		"dailyNote": true,
 		"order": 7,
 		"due": null,
-		"scheduled": null,
-		"start": null,
-		"created": null,
+		"scheduled": "2026-01-14",
+		"start": "2026-01-14",
+		"created": "2026-01-14",
 		"completion": null,
-		"dates": [
-			[
-				"done-unplanned",
-				"2026-01-15T09:00"
-			]
-		],
+		"dates": [],
 		"section": {
 			"path": "Daily/2026, January 14 - Wednesday.md",
 			"type": "file",
