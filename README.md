@@ -140,6 +140,7 @@ Modification to the options will take effect after 5 secs.
 - **Daily Note Folder**: Specify your daily note folder.
 - **Daily Note Format**: Specify in what format your daily note file are named. The input should be a valid moment format, please refer the [docs of moment.js](https://momentjs.com/docs/#/displaying/format/) for more details.
 - **Enable Year Header**: Show a year header before each year or not.
+- **Newest First**: Show the latest dates on top instead of the earliest.
 - **Hide Tasks of Specific Status**: If you would like not to see tasks with specific status in the view, list the markers separated by ',' here. All markers are available, but do note that if you would like to hide tasks of empty maker, use `[ ]` instead of ` `.
 - **Forward Tasks From Past**: If enabled, all unplanned and overdue tasks will be displayed on today's part, and removed form their original dates. If disabled, all overdue tasks will be on their original dates, but all unplanned tasks will disappear.
 - **Today Focus On Load**: Enable the Today Focus Button on load or not.

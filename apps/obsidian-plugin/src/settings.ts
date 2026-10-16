@@ -128,6 +128,10 @@ export const defaultUserOptions = {
      * Display which year it is or not.
      */
     useYearHeader: true as boolean,
+    /**
+     * Show the latest dates on top instead of the earliest.
+     */
+    newestFirst: false as boolean,
 
     /**
      * USE INFO BEGIN
@@ -348,6 +352,14 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
             .addToggle(tg => {
                 tg.setValue(this.plugin.userOptions.useYearHeader);
                 tg.onChange(async v => await this.onOptionUpdate({ useYearHeader: v }));
+            })
+
+        new Setting(containerEl)
+            .setName("Newest First")
+            .setDesc("Show the latest dates on top instead of the earliest.")
+            .addToggle(tg => {
+                tg.setValue(this.plugin.userOptions.newestFirst);
+                tg.onChange(async v => await this.onOptionUpdate({ newestFirst: v }));
             })
 
         new Setting(containerEl)
