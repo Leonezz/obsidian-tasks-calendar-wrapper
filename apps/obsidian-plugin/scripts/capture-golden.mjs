@@ -8,11 +8,13 @@
  * golden-vault, after checking that its notes are exactly the fixture notes, byte for byte.
  */
 import { spawnSync } from "child_process";
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "fs";
+import { createHash } from "crypto";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
 const VAULT_NAME = "golden-vault";
-const scriptDir = path.dirname(new URL(import.meta.url).pathname);
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "../../..");
 const vaultDir = path.join(repoRoot, "fixtures", VAULT_NAME);
 const outputFile = path.join(repoRoot, "fixtures", `${VAULT_NAME}.metadata.json`);
@@ -36,6 +38,8 @@ function cli(...args) {
 	if (result.status !== 0) fail(`the Obsidian CLI failed for "${args[0]}": ${(result.stderr || result.stdout).trim()}`);
 	return result.stdout.trim();
 }
+
+const sha256 = file => createHash("sha256").update(readFileSync(file)).digest("hex");
 
 function markdownFiles(dir, prefix = "") {
 	return readdirSync(dir).sort().flatMap(name => {
@@ -68,10 +72,18 @@ if (differing.length) {
 const obsidianVersion = cli("version");
 if (!/^\d+\.\d+/.test(obsidianVersion)) fail(`unexpected output of "obsidian-cli version": ${obsidianVersion}`);
 
+// Besides the metadata, ask for the vault's folder and, per note, the SHA-256 of the content Obsidian computed
+// that metadata from (kept in metadataCache.fileCache, which is not public API). Both are checked below, so the
+// metadata is known to come from this vault and from the fixture notes as they are now, not from an older version
+// Obsidian has not re-indexed yet.
 const code = `JSON.stringify((() => {
 	const files = {};
-	for (const file of app.vault.getMarkdownFiles()) files[file.path] = app.metadataCache.getFileCache(file);
-	return { files };
+	const hashes = {};
+	for (const file of app.vault.getMarkdownFiles()) {
+		files[file.path] = app.metadataCache.getFileCache(file);
+		hashes[file.path] = app.metadataCache.fileCache?.[file.path]?.hash ?? null;
+	}
+	return { base: app.vault.adapter.getBasePath?.() ?? null, files, hashes };
 })())`;
 const raw = cli("eval", `code=${code}`);
 const json = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
@@ -91,6 +103,18 @@ if (missing.length || extra.length) {
 const unindexed = got.filter(file => !captured.files[file]);
 if (unindexed.length) fail(`Obsidian has not indexed ${JSON.stringify(unindexed)} yet. Wait a moment and run this again.`);
 
+if (!captured.base || realpathSync(captured.base) !== realpathSync(openVaultPath)) {
+	fail(`the metadata came from the vault at ${captured.base}, not ${openVaultPath}. Is more than one vault named ${VAULT_NAME}?`);
+}
+const notes = Object.fromEntries(expected.map(file => [file, sha256(path.join(vaultDir, file))]));
+if (got.some(file => captured.hashes[file] === null)) {
+	fail("this Obsidian version does not expose the content hashes the capture checks (metadataCache.fileCache). Update capture-golden.mjs.");
+}
+const outdated = got.filter(file => captured.hashes[file] !== notes[file]);
+if (outdated.length) {
+	fail(`Obsidian's metadata for ${JSON.stringify(outdated)} was computed from other content than the fixture notes. Wait until Obsidian has re-indexed them, then run this again.`);
+}
+
 /** Sorts object keys so the file only changes when the metadata does. */
 function sorted(value) {
 	if (Array.isArray(value)) return value.map(sorted);
@@ -103,6 +127,8 @@ function sorted(value) {
 const output = {
 	note: "Captured from Obsidian by apps/obsidian-plugin/scripts/capture-golden.mjs. Do not edit by hand.",
 	obsidianVersion,
+	// The golden tests check these against the fixture notes, so they fail when the metadata is out of date.
+	notes,
 	files: sorted(Object.fromEntries(got.map(file => [file, captured.files[file]]))),
 };
 writeFileSync(outputFile, JSON.stringify(output, null, "\t") + "\n");

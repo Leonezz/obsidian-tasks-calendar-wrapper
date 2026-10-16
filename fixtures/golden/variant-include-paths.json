@@ -2,23 +2,35 @@
 	"shown": [
 		"Daily/2026, January 14 - Wednesday.md:3 | scheduled | due=2026-01-20 | dated task in a daily note",
 		"Daily/2026, January 14 - Wednesday.md:5 | scheduled | scheduled=2026-01-16 | scheduled task in a daily note",
-		"Frontmatter/Active.md:6 | scheduled | due=2026-01-16 | task in an active note",
-		"Daily/2026, January 14 - Wednesday.md:2 | process | scheduled=2026-01-14 start=2026-01-14 created=2026-01-14 | undated task in a daily note",
-		"Daily/2023-05-28.md:0 | unplanned | unplanned=2026-01-15T09:00 | All men are created equal."
+		"Daily/2026, 一月 14 - 星期三.md:3 | scheduled | due=2026-01-20 | 中文日记里有日期的任务",
+		"Frontmatter/Active.md:7 | scheduled | due=2026-01-16 | task in an active note",
+		"Daily/2026, 一月 14 - 星期三.md:2 | process | scheduled=2026-01-14 start=2026-01-14 created=2026-01-14 | 中文日记里的任务",
+		"Daily/2023-05-28.md:0 | unplanned | unplanned=2026-01-15T09:00 | All men are created equal.",
+		"Daily/2026, January 14 - Wednesday.md:2 | unplanned | unplanned=2026-01-15T09:00 | undated task in a daily note",
+		"Daily/2026-01-15.md:0 | unplanned | unplanned=2026-01-15T09:00 | parent on the first line",
+		"Daily/2026-01-15.md:1 | unplanned | unplanned=2026-01-15T09:00 | child of the first line",
+		"Daily/2026-01-15.md:2 | unplanned | unplanned=2026-01-15T09:00 | undated task in today's ISO daily note",
+		"Daily/2026/Jan/3rd/Wed.md:0 | unplanned | unplanned=2026-01-15T09:00 | task in a week-format daily note"
 	],
 	"days": {
 		"2026-01-14": [
-			"Daily/2026, January 14 - Wednesday.md:2"
+			"Daily/2026, 一月 14 - 星期三.md:2"
 		],
 		"2026-01-15": [
-			"Daily/2023-05-28.md:0"
+			"Daily/2023-05-28.md:0",
+			"Daily/2026, January 14 - Wednesday.md:2",
+			"Daily/2026-01-15.md:0",
+			"Daily/2026-01-15.md:1",
+			"Daily/2026-01-15.md:2",
+			"Daily/2026/Jan/3rd/Wed.md:0"
 		],
 		"2026-01-16": [
 			"Daily/2026, January 14 - Wednesday.md:5",
-			"Frontmatter/Active.md:6"
+			"Frontmatter/Active.md:7"
 		],
 		"2026-01-20": [
-			"Daily/2026, January 14 - Wednesday.md:3"
+			"Daily/2026, January 14 - Wednesday.md:3",
+			"Daily/2026, 一月 14 - 星期三.md:3"
 		]
 	}
 }

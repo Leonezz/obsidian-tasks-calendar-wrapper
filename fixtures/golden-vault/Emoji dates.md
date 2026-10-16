@@ -30,3 +30,12 @@ Today in the golden tests is 2026-01-15.
 - [ ] 13:30 standup 📅 2026-01-15
 - [ ] 7:05 not a full time prefix 📅 2026-01-15
 - [ ] write the report #work #home ⏫ 🔁 every week ⏳ 2026-01-11 📅 2026-01-13
+- [X] uppercase done but scheduled in the future ⏳ 2026-02-01
+- [-] cancelled on a day 📅 2026-01-20 ❌ 2026-01-14
+- [-] cancelled with only a cancelled date ❌ 2026-01-14
+- [ ] task with an id 🆔 abc123 📅 2026-01-20
+- [ ] blocked task ⛔ abc123 📅 2026-01-21
+- [ ] delete when done 🏁 delete 🔁 every day when done 📅 2026-01-20
+- [ ] no space after the emojis 📅2026-01-20 ⏳2026-01-16 🛫2026-01-14
+- [ ] 09:00-10:00 meeting 📅 2026-01-15
+- [ ] 24:00 midnight 📅 2026-01-15

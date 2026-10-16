@@ -26,5 +26,6 @@
 - [6] Speech bubble 6
 - [7] Speech bubble 7
 - [8] Speech bubble 8
-- [9] Speech bubble 9- [X] uppercase done 📅 2026-01-10
+- [9] Speech bubble 9
+- [X] uppercase done 📅 2026-01-10
 - [x] lowercase done 📅 2026-01-10 ✅ 2026-01-11

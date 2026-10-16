@@ -1,7 +1,18 @@
 [
 	{
 		"id": "Emoji dates.md:5",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 27,
+				"line": 5,
+				"offset": 114
+			},
+			"start": {
+				"col": 0,
+				"line": 5,
+				"offset": 87
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] overdue 📅 2026-01-10",
 		"visual": "overdue",
@@ -39,7 +50,18 @@
 	},
 	{
 		"id": "Emoji dates.md:12",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 75,
+				"line": 12,
+				"offset": 424
+			},
+			"start": {
+				"col": 0,
+				"line": 12,
+				"offset": 349
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] starts in one year and is due in the next 🛫 2025-12-31 📅 2026-01-02",
 		"visual": "starts in one year and is due in the next",
@@ -77,7 +99,18 @@
 	},
 	{
 		"id": "Emoji dates.md:18",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 28,
+				"line": 18,
+				"offset": 700
+			},
+			"start": {
+				"col": 0,
+				"line": 18,
+				"offset": 672
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] leap day 📅 2024-02-29",
 		"visual": "leap day",
@@ -115,7 +148,18 @@
 	},
 	{
 		"id": "Emoji dates.md:21",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 56,
+				"line": 21,
+				"offset": 850
+			},
+			"start": {
+				"col": 0,
+				"line": 21,
+				"offset": 794
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] recurring 🔁 every week ⏳ 2026-01-12 📅 2026-01-14",
 		"visual": "recurring",
@@ -153,7 +197,18 @@
 	},
 	{
 		"id": "Emoji dates.md:31",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 77,
+				"line": 31,
+				"offset": 1302
+			},
+			"start": {
+				"col": 0,
+				"line": 31,
+				"offset": 1225
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] write the report #work #home ⏫ 🔁 every week ⏳ 2026-01-11 📅 2026-01-13",
 		"visual": "write the report",
@@ -196,7 +251,18 @@
 	},
 	{
 		"id": "Inbox.md:12",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 89,
+				"line": 12,
+				"offset": 366
+			},
+			"start": {
+				"col": 0,
+				"line": 12,
+				"offset": 277
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] Ten, Nine, Eight, Seven, Six, Five, Four, Three , Two, One, Liftoff 📅 2023-05-26  ",
 		"visual": "Ten, Nine, Eight, Seven, Six, Five, Four, Three , Two, One, Liftoff",
@@ -233,7 +299,18 @@
 	},
 	{
 		"id": "Inbox.md:13",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 54,
+				"line": 13,
+				"offset": 421
+			},
+			"start": {
+				"col": 0,
+				"line": 13,
+				"offset": 367
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] This is Ground Control to Major Tom📅 2023-05-26",
 		"visual": "This is Ground Control to Major Tom",
@@ -270,7 +347,18 @@
 	},
 	{
 		"id": "Inbox.md:14",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 47,
+				"line": 14,
+				"offset": 469
+			},
+			"start": {
+				"col": 0,
+				"line": 14,
+				"offset": 422
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] You've really made the grade📅 2023-05-26",
 		"visual": "You've really made the grade",
@@ -307,7 +395,18 @@
 	},
 	{
 		"id": "Inbox.md:15",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 69,
+				"line": 15,
+				"offset": 539
+			},
+			"start": {
+				"col": 0,
+				"line": 15,
+				"offset": 470
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] And the papers want to know whose shirts you wear📅 2023-05-26 ",
 		"visual": "And the papers want to know whose shirts you wear",
@@ -344,7 +443,18 @@
 	},
 	{
 		"id": "Inbox.md:16",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 69,
+				"line": 16,
+				"offset": 609
+			},
+			"start": {
+				"col": 0,
+				"line": 16,
+				"offset": 540
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] Now it's time to leave the capsule if you dare  📅 2023-05-26  ",
 		"visual": "Now it's time to leave the capsule if you dare",
@@ -381,7 +491,18 @@
 	},
 	{
 		"id": "Inbox.md:17",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 57,
+				"line": 17,
+				"offset": 667
+			},
+			"start": {
+				"col": 0,
+				"line": 17,
+				"offset": 610
+			}
+		},
 		"lineCount": 1,
 		"text": "- [>] This is Major Tom to Ground Control  📅 2023-05-26 ",
 		"visual": "This is Major Tom to Ground Control",
@@ -418,7 +539,18 @@
 	},
 	{
 		"id": "Markers.md:3",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 17,
+				"line": 3,
+				"offset": 48
+			},
+			"start": {
+				"col": 0,
+				"line": 3,
+				"offset": 31
+			}
+		},
 		"lineCount": 1,
 		"text": "- [>] Rescheduled",
 		"visual": "Rescheduled",
@@ -454,13 +586,24 @@
 		"frontmatter": {}
 	},
 	{
-		"id": "Markers.md:28",
-		"col": 0,
+		"id": "Markers.md:29",
+		"position": {
+			"end": {
+				"col": 34,
+				"line": 29,
+				"offset": 511
+			},
+			"start": {
+				"col": 0,
+				"line": 29,
+				"offset": 477
+			}
+		},
 		"lineCount": 1,
-		"text": "- [9] Speech bubble 9- [X] uppercase done 📅 2026-01-10",
-		"visual": "Speech bubble 9- [X] uppercase done",
+		"text": "- [X] uppercase done 📅 2026-01-10",
+		"visual": "uppercase done",
 		"symbol": "-",
-		"statusMarker": "9",
+		"statusMarker": "X",
 		"status": "overdue",
 		"completed": false,
 		"checked": true,
@@ -492,7 +635,18 @@
 	},
 	{
 		"id": "Status.md:7",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 37,
+				"line": 7,
+				"offset": 231
+			},
+			"start": {
+				"col": 0,
+				"line": 7,
+				"offset": 194
+			}
+		},
 		"lineCount": 1,
 		"text": "- [>] forwarded marker without a date",
 		"visual": "forwarded marker without a date",
@@ -529,8 +683,244 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "Status.md:13",
+		"position": {
+			"end": {
+				"col": 46,
+				"line": 13,
+				"offset": 480
+			},
+			"start": {
+				"col": 0,
+				"line": 13,
+				"offset": 434
+			}
+		},
+		"lineCount": 1,
+		"text": "- [>] forwarded marker due today 📅 2026-01-15",
+		"visual": "forwarded marker due today",
+		"symbol": "-",
+		"statusMarker": ">",
+		"status": "overdue",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": true,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 1,
+		"due": "2026-01-15",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Status.md",
+			"type": "header",
+			"subpath": "Status without dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Status.md:14",
+		"position": {
+			"end": {
+				"col": 60,
+				"line": 14,
+				"offset": 541
+			},
+			"start": {
+				"col": 0,
+				"line": 14,
+				"offset": 481
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] overdue but scheduled today ⏳ 2026-01-15 📅 2026-01-10",
+		"visual": "overdue but scheduled today",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "overdue",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 1,
+		"due": "2026-01-10",
+		"scheduled": "2026-01-15",
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Status.md",
+			"type": "header",
+			"subpath": "Status without dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Status.md:15",
+		"position": {
+			"end": {
+				"col": 57,
+				"line": 15,
+				"offset": 599
+			},
+			"start": {
+				"col": 0,
+				"line": 15,
+				"offset": 542
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] reopened, done date kept 📅 2026-01-10 ✅ 2026-01-15",
+		"visual": "reopened, done date kept",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "overdue",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 1,
+		"due": "2026-01-10",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": "2026-01-15",
+		"dates": [],
+		"section": {
+			"path": "Status.md",
+			"type": "header",
+			"subpath": "Status without dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Status.md:16",
+		"position": {
+			"end": {
+				"col": 55,
+				"line": 16,
+				"offset": 655
+			},
+			"start": {
+				"col": 0,
+				"line": 16,
+				"offset": 600
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] overdue, starts today 🛫 2026-01-15 📅 2026-01-10",
+		"visual": "overdue, starts today",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "overdue",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 1,
+		"due": "2026-01-10",
+		"scheduled": null,
+		"start": "2026-01-15",
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Status.md",
+			"type": "header",
+			"subpath": "Status without dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Status.md:17",
+		"position": {
+			"end": {
+				"col": 80,
+				"line": 17,
+				"offset": 736
+			},
+			"start": {
+				"col": 0,
+				"line": 17,
+				"offset": 656
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] overdue, unplanned field today [due:: 2026-01-10] [unplanned:: 2026-01-15]",
+		"visual": "overdue, unplanned field today",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "overdue",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 1,
+		"due": "2026-01-10",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15"
+			]
+		],
+		"section": {
+			"path": "Status.md",
+			"type": "header",
+			"subpath": "Status without dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
 		"id": "Emoji dates.md:4",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 29,
+				"line": 4,
+				"offset": 86
+			},
+			"start": {
+				"col": 0,
+				"line": 4,
+				"offset": 57
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] due today 📅 2026-01-15",
 		"visual": "due today",
@@ -563,7 +953,18 @@
 	},
 	{
 		"id": "Emoji dates.md:29",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 33,
+				"line": 29,
+				"offset": 1176
+			},
+			"start": {
+				"col": 0,
+				"line": 29,
+				"offset": 1143
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] 13:30 standup 📅 2026-01-15",
 		"visual": "13:30 standup",
@@ -596,7 +997,18 @@
 	},
 	{
 		"id": "Emoji dates.md:30",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 47,
+				"line": 30,
+				"offset": 1224
+			},
+			"start": {
+				"col": 0,
+				"line": 30,
+				"offset": 1177
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] 7:05 not a full time prefix 📅 2026-01-15",
 		"visual": "7:05 not a full time prefix",
@@ -628,8 +1040,107 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "Emoji dates.md:39",
+		"position": {
+			"end": {
+				"col": 39,
+				"line": 39,
+				"offset": 1740
+			},
+			"start": {
+				"col": 0,
+				"line": 39,
+				"offset": 1701
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] 09:00-10:00 meeting 📅 2026-01-15",
+		"visual": "09:00-10:00 meeting",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "due",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 2,
+		"due": "2026-01-15",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Emoji dates.md",
+			"type": "header",
+			"subpath": "Emoji dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Emoji dates.md:40",
+		"position": {
+			"end": {
+				"col": 34,
+				"line": 40,
+				"offset": 1775
+			},
+			"start": {
+				"col": 0,
+				"line": 40,
+				"offset": 1741
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] 24:00 midnight 📅 2026-01-15",
+		"visual": "24:00 midnight",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "due",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 2,
+		"due": "2026-01-15",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Emoji dates.md",
+			"type": "header",
+			"subpath": "Emoji dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
 		"id": "Big note.md:1507",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 50,
+				"line": 1507,
+				"offset": 111170
+			},
+			"start": {
+				"col": 0,
+				"line": 1507,
+				"offset": 111120
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] task at the end of a long note 📅 2026-01-19",
 		"visual": "task at the end of a long note",
@@ -661,8 +1172,62 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "CRLF note.md:0",
+		"position": {
+			"end": {
+				"col": 39,
+				"line": 0,
+				"offset": 39
+			},
+			"start": {
+				"col": 0,
+				"line": 0,
+				"offset": 0
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] task in a CRLF note 📅 2026-01-20",
+		"visual": "task in a CRLF note",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 3,
+		"due": "2026-01-20",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "CRLF note.md",
+			"type": "file",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
 		"id": "Comments.md:8",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 53,
+				"line": 8,
+				"offset": 310
+			},
+			"start": {
+				"col": 0,
+				"line": 8,
+				"offset": 257
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] field and comment [due:: 2026-01-22] %%hidden%%",
 		"visual": "field and comment",
@@ -695,10 +1260,107 @@
 	},
 	{
 		"id": "Daily/2026, January 14 - Wednesday.md:3",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 46,
+				"line": 3,
+				"offset": 144
+			},
+			"start": {
+				"col": 0,
+				"line": 3,
+				"offset": 98
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] dated task in a daily note 📅 2026-01-20",
 		"visual": "dated task in a daily note",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 3,
+		"due": "2026-01-20",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Daily/2026, January 14 - Wednesday.md",
+			"type": "file",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Daily/2026, January 14 - Wednesday.md:5",
+		"position": {
+			"end": {
+				"col": 49,
+				"line": 5,
+				"offset": 221
+			},
+			"start": {
+				"col": 0,
+				"line": 5,
+				"offset": 172
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] scheduled task in a daily note ⏳ 2026-01-16",
+		"visual": "scheduled task in a daily note",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 3,
+		"due": null,
+		"scheduled": "2026-01-16",
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Daily/2026, January 14 - Wednesday.md",
+			"type": "file",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Daily/2026, 一月 14 - 星期三.md:3",
+		"position": {
+			"end": {
+				"col": 31,
+				"line": 3,
+				"offset": 85
+			},
+			"start": {
+				"col": 0,
+				"line": 3,
+				"offset": 54
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] 中文日记里有日期的任务 📅 2026-01-20",
+		"visual": "中文日记里有日期的任务",
 		"symbol": "-",
 		"statusMarker": " ",
 		"status": "scheduled",
@@ -718,39 +1380,7 @@
 		"completion": null,
 		"dates": [],
 		"section": {
-			"path": "Daily/2026, January 14 - Wednesday.md",
-			"type": "file",
-			"embed": false
-		},
-		"outlinks": [],
-		"frontmatter": {}
-	},
-	{
-		"id": "Daily/2026, January 14 - Wednesday.md:5",
-		"col": 0,
-		"lineCount": 1,
-		"text": "- [ ] scheduled task in a daily note ⏳ 2026-01-16",
-		"visual": "scheduled task in a daily note",
-		"symbol": "-",
-		"statusMarker": " ",
-		"status": "scheduled",
-		"completed": false,
-		"checked": true,
-		"fullyCompleted": false,
-		"isTasksTask": true,
-		"priority": "",
-		"recurrence": "",
-		"tags": [],
-		"dailyNote": true,
-		"order": 3,
-		"due": null,
-		"scheduled": "2026-01-16",
-		"start": null,
-		"created": null,
-		"completion": null,
-		"dates": [],
-		"section": {
-			"path": "Daily/2026, January 14 - Wednesday.md",
+			"path": "Daily/2026, 一月 14 - 星期三.md",
 			"type": "file",
 			"embed": false
 		},
@@ -759,7 +1389,18 @@
 	},
 	{
 		"id": "Dataview fields.md:2",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 34,
+				"line": 2,
+				"offset": 53
+			},
+			"start": {
+				"col": 0,
+				"line": 2,
+				"offset": 19
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] due field [due:: 2026-01-20]",
 		"visual": "due field",
@@ -792,7 +1433,18 @@
 	},
 	{
 		"id": "Dataview fields.md:9",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 46,
+				"line": 9,
+				"offset": 360
+			},
+			"start": {
+				"col": 0,
+				"line": 9,
+				"offset": 314
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] unplanned field [unplanned:: 2026-01-18]",
 		"visual": "unplanned field",
@@ -830,7 +1482,18 @@
 	},
 	{
 		"id": "Dataview fields.md:12",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 42,
+				"line": 12,
+				"offset": 485
+			},
+			"start": {
+				"col": 0,
+				"line": 12,
+				"offset": 443
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] double brackets [[due:: 2026-01-21]]",
 		"visual": "double brackets ]",
@@ -870,7 +1533,18 @@
 	},
 	{
 		"id": "Dataview fields.md:13",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 48,
+				"line": 13,
+				"offset": 534
+			},
+			"start": {
+				"col": 0,
+				"line": 13,
+				"offset": 486
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] time in the field [due:: 2026-01-20T14:30]",
 		"visual": "time in the field",
@@ -903,7 +1577,18 @@
 	},
 	{
 		"id": "Dataview fields.md:14",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 60,
+				"line": 14,
+				"offset": 595
+			},
+			"start": {
+				"col": 0,
+				"line": 14,
+				"offset": 535
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] two fields [scheduled:: 2026-01-16] [due:: 2026-01-19]",
 		"visual": "two fields",
@@ -935,8 +1620,151 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "Dataview fields.md:19",
+		"position": {
+			"end": {
+				"col": 49,
+				"line": 19,
+				"offset": 870
+			},
+			"start": {
+				"col": 0,
+				"line": 19,
+				"offset": 821
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] no space after the colons [due::2026-01-20]",
+		"visual": "no space after the colons",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 3,
+		"due": "2026-01-20",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Dataview fields.md",
+			"type": "header",
+			"subpath": "Dataview fields",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Dataview fields.md:22",
+		"position": {
+			"end": {
+				"col": 61,
+				"line": 22,
+				"offset": 1015
+			},
+			"start": {
+				"col": 0,
+				"line": 22,
+				"offset": 954
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] nested brackets in text [see [this]] [due:: 2026-01-20]",
+		"visual": "nested brackets in text [see [this]]",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 3,
+		"due": "2026-01-20",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Dataview fields.md",
+			"type": "header",
+			"subpath": "Dataview fields",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Dataview fields.md:23",
+		"position": {
+			"end": {
+				"col": 65,
+				"line": 23,
+				"offset": 1081
+			},
+			"start": {
+				"col": 0,
+				"line": 23,
+				"offset": 1016
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] emoji due and dataview due 📅 2026-01-25 [due:: 2026-01-26]",
+		"visual": "emoji due and dataview due",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 3,
+		"due": "2026-01-26",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Dataview fields.md",
+			"type": "header",
+			"subpath": "Dataview fields",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
 		"id": "Emoji dates.md:6",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 29,
+				"line": 6,
+				"offset": 144
+			},
+			"start": {
+				"col": 0,
+				"line": 6,
+				"offset": 115
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] due later 📅 2026-02-01",
 		"visual": "due later",
@@ -969,7 +1797,18 @@
 	},
 	{
 		"id": "Emoji dates.md:8",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 34,
+				"line": 8,
+				"offset": 216
+			},
+			"start": {
+				"col": 0,
+				"line": 8,
+				"offset": 182
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] scheduled later ⏳ 2026-01-25",
 		"visual": "scheduled later",
@@ -1002,7 +1841,18 @@
 	},
 	{
 		"id": "Emoji dates.md:10",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 32,
+				"line": 10,
+				"offset": 285
+			},
+			"start": {
+				"col": 0,
+				"line": 10,
+				"offset": 253
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] starts later 🛫 2026-03-01",
 		"visual": "starts later",
@@ -1035,7 +1885,18 @@
 	},
 	{
 		"id": "Emoji dates.md:22",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 41,
+				"line": 22,
+				"offset": 892
+			},
+			"start": {
+				"col": 0,
+				"line": 22,
+				"offset": 851
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] alternative due emoji 📆 2026-01-19",
 		"visual": "alternative due emoji",
@@ -1068,7 +1929,18 @@
 	},
 	{
 		"id": "Emoji dates.md:23",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 49,
+				"line": 23,
+				"offset": 942
+			},
+			"start": {
+				"col": 0,
+				"line": 23,
+				"offset": 893
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] another alternative due emoji 🗓 2026-01-19",
 		"visual": "another alternative due emoji",
@@ -1101,7 +1973,18 @@
 	},
 	{
 		"id": "Emoji dates.md:24",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 46,
+				"line": 24,
+				"offset": 989
+			},
+			"start": {
+				"col": 0,
+				"line": 24,
+				"offset": 943
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] alternative scheduled emoji ⌛ 2026-01-19",
 		"visual": "alternative scheduled emoji",
@@ -1134,7 +2017,18 @@
 	},
 	{
 		"id": "Emoji dates.md:28",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 42,
+				"line": 28,
+				"offset": 1142
+			},
+			"start": {
+				"col": 0,
+				"line": 28,
+				"offset": 1100
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] block link 📅 2026-01-20 ^block-id-1",
 		"visual": "block link",
@@ -1166,8 +2060,195 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "Emoji dates.md:32",
+		"position": {
+			"end": {
+				"col": 61,
+				"line": 32,
+				"offset": 1364
+			},
+			"start": {
+				"col": 0,
+				"line": 32,
+				"offset": 1303
+			}
+		},
+		"lineCount": 1,
+		"text": "- [X] uppercase done but scheduled in the future ⏳ 2026-02-01",
+		"visual": "uppercase done but scheduled in the future",
+		"symbol": "-",
+		"statusMarker": "X",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": true,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 3,
+		"due": null,
+		"scheduled": "2026-02-01",
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Emoji dates.md",
+			"type": "header",
+			"subpath": "Emoji dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Emoji dates.md:35",
+		"position": {
+			"end": {
+				"col": 45,
+				"line": 35,
+				"offset": 1518
+			},
+			"start": {
+				"col": 0,
+				"line": 35,
+				"offset": 1473
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] task with an id 🆔 abc123 📅 2026-01-20",
+		"visual": "task with an id 🆔 abc123",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 3,
+		"due": "2026-01-20",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Emoji dates.md",
+			"type": "header",
+			"subpath": "Emoji dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Emoji dates.md:36",
+		"position": {
+			"end": {
+				"col": 41,
+				"line": 36,
+				"offset": 1560
+			},
+			"start": {
+				"col": 0,
+				"line": 36,
+				"offset": 1519
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] blocked task ⛔ abc123 📅 2026-01-21",
+		"visual": "blocked task ⛔ abc123",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 3,
+		"due": "2026-01-21",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Emoji dates.md",
+			"type": "header",
+			"subpath": "Emoji dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Emoji dates.md:37",
+		"position": {
+			"end": {
+				"col": 69,
+				"line": 37,
+				"offset": 1630
+			},
+			"start": {
+				"col": 0,
+				"line": 37,
+				"offset": 1561
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] delete when done 🏁 delete 🔁 every day when done 📅 2026-01-20",
+		"visual": "delete when done 🏁 delete",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "every day when done",
+		"tags": [],
+		"dailyNote": false,
+		"order": 3,
+		"due": "2026-01-20",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Emoji dates.md",
+			"type": "header",
+			"subpath": "Emoji dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
 		"id": "Excluded/Secret.md:0",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 61,
+				"line": 0,
+				"offset": 61
+			},
+			"start": {
+				"col": 0,
+				"line": 0,
+				"offset": 0
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] task in a folder the path filters exclude 📅 2026-01-16",
 		"visual": "task in a folder the path filters exclude",
@@ -1198,8 +2279,19 @@
 		"frontmatter": {}
 	},
 	{
-		"id": "Frontmatter/Active.md:6",
-		"col": 0,
+		"id": "Frontmatter/Active.md:7",
+		"position": {
+			"end": {
+				"col": 42,
+				"line": 7,
+				"offset": 115
+			},
+			"start": {
+				"col": 0,
+				"line": 7,
+				"offset": 73
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] task in an active note 📅 2026-01-16",
 		"visual": "task in an active note",
@@ -1231,13 +2323,25 @@
 			"aliases": [
 				"Active note"
 			],
+			"pinned": true,
 			"priority": 2,
 			"status": "active"
 		}
 	},
 	{
 		"id": "Frontmatter/Archived.md:4",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 44,
+				"line": 4,
+				"offset": 83
+			},
+			"start": {
+				"col": 0,
+				"line": 4,
+				"offset": 39
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] task in an archived note 📅 2026-01-16",
 		"visual": "task in an archived note",
@@ -1271,8 +2375,66 @@
 		}
 	},
 	{
+		"id": "Frontmatter/Hash tag.md:3",
+		"position": {
+			"end": {
+				"col": 63,
+				"line": 3,
+				"offset": 86
+			},
+			"start": {
+				"col": 0,
+				"line": 3,
+				"offset": 23
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] task in a note with a prefixed tag property 📅 2026-01-16",
+		"visual": "task in a note with a prefixed tag property",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [
+			"#urgent"
+		],
+		"dailyNote": false,
+		"order": 3,
+		"due": "2026-01-16",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Frontmatter/Hash tag.md",
+			"type": "file",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {
+			"tag": "#urgent"
+		}
+	},
+	{
 		"id": "Inbox.md:18",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 66,
+				"line": 18,
+				"offset": 734
+			},
+			"start": {
+				"col": 0,
+				"line": 18,
+				"offset": 668
+			}
+		},
 		"lineCount": 1,
 		"text": "- [<] I'm stepping through the door 🔁 every 2 weeks 📅 2023-05-26",
 		"visual": "I'm stepping through the door",
@@ -1304,7 +2466,18 @@
 	},
 	{
 		"id": "Journal/2026/01/13.md:3",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 60,
+				"line": 3,
+				"offset": 172
+			},
+			"start": {
+				"col": 0,
+				"line": 3,
+				"offset": 112
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] dated task in a folder-format daily note 📅 2026-01-22",
 		"visual": "dated task in a folder-format daily note",
@@ -1336,7 +2509,18 @@
 	},
 	{
 		"id": "Markers.md:4",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 15,
+				"line": 4,
+				"offset": 64
+			},
+			"start": {
+				"col": 0,
+				"line": 4,
+				"offset": 49
+			}
+		},
 		"lineCount": 1,
 		"text": "- [<] Scheduled",
 		"visual": "Scheduled",
@@ -1373,7 +2557,18 @@
 	},
 	{
 		"id": "Priorities.md:11",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 57,
+				"line": 11,
+				"offset": 323
+			},
+			"start": {
+				"col": 0,
+				"line": 11,
+				"offset": 266
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] text after the due date ⏫ 📅 2026-01-20 to continue",
 		"visual": "text after the due date   to continue",
@@ -1406,7 +2601,18 @@
 	},
 	{
 		"id": "Priorities.md:12",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 51,
+				"line": 12,
+				"offset": 375
+			},
+			"start": {
+				"col": 0,
+				"line": 12,
+				"offset": 324
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] due date before the priority 📅 2026-01-20 🔼",
 		"visual": "due date before the priority",
@@ -1438,8 +2644,63 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "Priorities.md:14",
+		"position": {
+			"end": {
+				"col": 48,
+				"line": 14,
+				"offset": 454
+			},
+			"start": {
+				"col": 0,
+				"line": 14,
+				"offset": 406
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] fix 🔺 the bug in the middle 📅 2026-01-20",
+		"visual": "fix  the bug in the middle",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "Highest",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 3,
+		"due": "2026-01-20",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Priorities.md",
+			"type": "header",
+			"subpath": "Priorities",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
 		"id": "Status.md:6",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 37,
+				"line": 6,
+				"offset": 193
+			},
+			"start": {
+				"col": 0,
+				"line": 6,
+				"offset": 156
+			}
+		},
 		"lineCount": 1,
 		"text": "- [<] scheduled marker without a date",
 		"visual": "scheduled marker without a date",
@@ -1477,7 +2738,18 @@
 	},
 	{
 		"id": "Structure.md:28",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 66,
+				"line": 28,
+				"offset": 541
+			},
+			"start": {
+				"col": 0,
+				"line": 28,
+				"offset": 475
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] task with #work and #work/admin and #home tags 📅 2026-01-20",
 		"visual": "task with and and tags",
@@ -1525,8 +2797,19 @@
 		}
 	},
 	{
-		"id": "Structure.md:48",
-		"col": 2,
+		"id": "Structure.md:49",
+		"position": {
+			"end": {
+				"col": 39,
+				"line": 49,
+				"offset": 876
+			},
+			"start": {
+				"col": 2,
+				"line": 49,
+				"offset": 839
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] task in a callout 📅 2026-01-21",
 		"visual": "task in a callout",
@@ -1568,8 +2851,241 @@
 		}
 	},
 	{
+		"id": "Structure.md:60",
+		"position": {
+			"end": {
+				"col": 44,
+				"line": 60,
+				"offset": 1052
+			},
+			"start": {
+				"col": 0,
+				"line": 60,
+				"offset": 1008
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] task with a footnote[^1] 📅 2026-01-20",
+		"visual": "task with a footnote[^1]",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [
+			"#single",
+			"#project",
+			""
+		],
+		"dailyNote": false,
+		"order": 3,
+		"due": "2026-01-20",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Structure.md",
+			"type": "header",
+			"subpath": "More syntax",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {
+			"tag": "single",
+			"tags": [
+				"project",
+				"#already-prefixed"
+			]
+		}
+	},
+	{
+		"id": "Structure.md:72",
+		"position": {
+			"end": {
+				"col": 41,
+				"line": 72,
+				"offset": 1292
+			},
+			"start": {
+				"col": 0,
+				"line": 72,
+				"offset": 1251
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] call about issue #123 📅 2026-01-20",
+		"visual": "call about issue",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [
+			"#single",
+			"#project",
+			"",
+			"#123"
+		],
+		"dailyNote": false,
+		"order": 3,
+		"due": "2026-01-20",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Structure.md",
+			"type": "header",
+			"subpath": "Tags and markers",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {
+			"tag": "single",
+			"tags": [
+				"project",
+				"#already-prefixed"
+			]
+		}
+	},
+	{
+		"id": "Structure.md:73",
+		"position": {
+			"end": {
+				"col": 62,
+				"line": 73,
+				"offset": 1355
+			},
+			"start": {
+				"col": 0,
+				"line": 73,
+				"offset": 1293
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] plan #2026 goals with #Q1-2026 and #日本語/タグ 📅 2026-01-20",
+		"visual": "plan goals with and",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [
+			"#Q1-2026",
+			"#日本語/タグ",
+			"#single",
+			"#project",
+			"",
+			"#2026",
+			"#Q1-2026",
+			"#日本語/タグ"
+		],
+		"dailyNote": false,
+		"order": 3,
+		"due": "2026-01-20",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Structure.md",
+			"type": "header",
+			"subpath": "Tags and markers",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {
+			"tag": "single",
+			"tags": [
+				"project",
+				"#already-prefixed"
+			]
+		}
+	},
+	{
+		"id": "Structure.md:74",
+		"position": {
+			"end": {
+				"col": 88,
+				"line": 74,
+				"offset": 1444
+			},
+			"start": {
+				"col": 0,
+				"line": 74,
+				"offset": 1356
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] url anchor [docs](https://example.com/page#section) and word#notatag 📅 2026-01-20",
+		"visual": "url anchor [docs](https://example.com/page#section) and word#notatag",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "scheduled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [
+			"#single",
+			"#project",
+			""
+		],
+		"dailyNote": false,
+		"order": 3,
+		"due": "2026-01-20",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Structure.md",
+			"type": "header",
+			"subpath": "Tags and markers",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {
+			"tag": "single",
+			"tags": [
+				"project",
+				"#already-prefixed"
+			]
+		}
+	},
+	{
 		"id": "Tagged/Project note.md:2",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 53,
+				"line": 2,
+				"offset": 107
+			},
+			"start": {
+				"col": 0,
+				"line": 2,
+				"offset": 54
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] task in a note tagged in its text 📅 2026-01-17",
 		"visual": "task in a note tagged in its text",
@@ -1601,7 +3117,18 @@
 	},
 	{
 		"id": "中文 笔记.md:2",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 28,
+				"line": 2,
+				"offset": 36
+			},
+			"start": {
+				"col": 0,
+				"line": 2,
+				"offset": 8
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] 中文任务 #标签 📅 2026-01-16",
 		"visual": "中文任务",
@@ -1637,7 +3164,18 @@
 	},
 	{
 		"id": "Big note.md:1508",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 45,
+				"line": 1508,
+				"offset": 111216
+			},
+			"start": {
+				"col": 0,
+				"line": 1508,
+				"offset": 111171
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] last task of the long note ⏳ 2026-01-13",
 		"visual": "last task of the long note",
@@ -1670,7 +3208,18 @@
 	},
 	{
 		"id": "Dataview fields.md:3",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 46,
+				"line": 3,
+				"offset": 100
+			},
+			"start": {
+				"col": 0,
+				"line": 3,
+				"offset": 54
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] scheduled field [scheduled:: 2026-01-12]",
 		"visual": "scheduled field",
@@ -1703,7 +3252,18 @@
 	},
 	{
 		"id": "Emoji dates.md:7",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 36,
+				"line": 7,
+				"offset": 181
+			},
+			"start": {
+				"col": 0,
+				"line": 7,
+				"offset": 145
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] scheduled earlier ⏳ 2026-01-05",
 		"visual": "scheduled earlier",
@@ -1736,7 +3296,18 @@
 	},
 	{
 		"id": "Emoji dates.md:11",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 62,
+				"line": 11,
+				"offset": 348
+			},
+			"start": {
+				"col": 0,
+				"line": 11,
+				"offset": 286
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] scheduled before its due date ⏳ 2026-01-12 📅 2026-01-18",
 		"visual": "scheduled before its due date",
@@ -1769,7 +3340,18 @@
 	},
 	{
 		"id": "Status.md:11",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 45,
+				"line": 11,
+				"offset": 388
+			},
+			"start": {
+				"col": 0,
+				"line": 11,
+				"offset": 343
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] only scheduled in the past ⏳ 2026-01-08",
 		"visual": "only scheduled in the past",
@@ -1801,8 +3383,63 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "Status.md:18",
+		"position": {
+			"end": {
+				"col": 64,
+				"line": 18,
+				"offset": 801
+			},
+			"start": {
+				"col": 0,
+				"line": 18,
+				"offset": 737
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] scheduled earlier, starts today ⏳ 2026-01-08 🛫 2026-01-15",
+		"visual": "scheduled earlier, starts today",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "start",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 4,
+		"due": null,
+		"scheduled": "2026-01-08",
+		"start": "2026-01-15",
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Status.md",
+			"type": "header",
+			"subpath": "Status without dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
 		"id": "中文 笔记.md:3",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 32,
+				"line": 3,
+				"offset": 69
+			},
+			"start": {
+				"col": 0,
+				"line": 3,
+				"offset": 37
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] 混合 mixed 任务 ⏫ ⏳ 2026-01-14",
 		"visual": "混合 mixed 任务",
@@ -1834,11 +3471,22 @@
 		"frontmatter": {}
 	},
 	{
-		"id": "Daily/2026, January 14 - Wednesday.md:2",
-		"col": 0,
+		"id": "Daily/2026, 一月 14 - 星期三.md:2",
+		"position": {
+			"end": {
+				"col": 14,
+				"line": 2,
+				"offset": 53
+			},
+			"start": {
+				"col": 0,
+				"line": 2,
+				"offset": 39
+			}
+		},
 		"lineCount": 1,
-		"text": "- [ ] undated task in a daily note",
-		"visual": "undated task in a daily note",
+		"text": "- [ ] 中文日记里的任务",
+		"visual": "中文日记里的任务",
 		"symbol": "-",
 		"statusMarker": " ",
 		"status": "process",
@@ -1858,7 +3506,7 @@
 		"completion": null,
 		"dates": [],
 		"section": {
-			"path": "Daily/2026, January 14 - Wednesday.md",
+			"path": "Daily/2026, 一月 14 - 星期三.md",
 			"type": "file",
 			"embed": false
 		},
@@ -1867,7 +3515,18 @@
 	},
 	{
 		"id": "Dataview fields.md:4",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 38,
+				"line": 4,
+				"offset": 139
+			},
+			"start": {
+				"col": 0,
+				"line": 4,
+				"offset": 101
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] start field [start:: 2026-01-10]",
 		"visual": "start field",
@@ -1900,7 +3559,18 @@
 	},
 	{
 		"id": "Emoji dates.md:9",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 35,
+				"line": 9,
+				"offset": 252
+			},
+			"start": {
+				"col": 0,
+				"line": 9,
+				"offset": 217
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] started earlier 🛫 2026-01-05",
 		"visual": "started earlier",
@@ -1932,8 +3602,63 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "Emoji dates.md:38",
+		"position": {
+			"end": {
+				"col": 69,
+				"line": 38,
+				"offset": 1700
+			},
+			"start": {
+				"col": 0,
+				"line": 38,
+				"offset": 1631
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] no space after the emojis 📅2026-01-20 ⏳2026-01-16 🛫2026-01-14",
+		"visual": "no space after the emojis",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "process",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 5,
+		"due": "2026-01-20",
+		"scheduled": "2026-01-16",
+		"start": "2026-01-14",
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Emoji dates.md",
+			"type": "header",
+			"subpath": "Emoji dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
 		"id": "Markers.md:7",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 18,
+				"line": 7,
+				"offset": 115
+			},
+			"start": {
+				"col": 0,
+				"line": 7,
+				"offset": 97
+			}
+		},
 		"lineCount": 1,
 		"text": "- [/] In  Progress",
 		"visual": "In  Progress",
@@ -1969,40 +3694,19 @@
 		"frontmatter": {}
 	},
 	{
-		"id": "Notes/2026, January 12 - Monday.md:2",
-		"col": 0,
-		"lineCount": 1,
-		"text": "- [ ] task in a note named like a daily note",
-		"visual": "task in a note named like a daily note",
-		"symbol": "-",
-		"statusMarker": " ",
-		"status": "process",
-		"completed": false,
-		"checked": true,
-		"fullyCompleted": false,
-		"isTasksTask": false,
-		"priority": "",
-		"recurrence": "",
-		"tags": [],
-		"dailyNote": true,
-		"order": 5,
-		"due": null,
-		"scheduled": "2026-01-12",
-		"start": "2026-01-12",
-		"created": "2026-01-12",
-		"completion": null,
-		"dates": [],
-		"section": {
-			"path": "Notes/2026, January 12 - Monday.md",
-			"type": "file",
-			"embed": false
-		},
-		"outlinks": [],
-		"frontmatter": {}
-	},
-	{
 		"id": "Status.md:5",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 32,
+				"line": 5,
+				"offset": 155
+			},
+			"start": {
+				"col": 0,
+				"line": 5,
+				"offset": 123
+			}
+		},
 		"lineCount": 1,
 		"text": "- [/] in progress without a date",
 		"visual": "in progress without a date",
@@ -2040,7 +3744,18 @@
 	},
 	{
 		"id": "Status.md:10",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 53,
+				"line": 10,
+				"offset": 342
+			},
+			"start": {
+				"col": 0,
+				"line": 10,
+				"offset": 289
+			}
+		},
 		"lineCount": 1,
 		"text": "- [/] in progress with a later due date 📅 2026-02-01",
 		"visual": "in progress with a later due date",
@@ -2073,7 +3788,18 @@
 	},
 	{
 		"id": "Status.md:12",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 44,
+				"line": 12,
+				"offset": 433
+			},
+			"start": {
+				"col": 0,
+				"line": 12,
+				"offset": 389
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] only started in the past 🛫 2026-01-08",
 		"visual": "only started in the past",
@@ -2105,8 +3831,70 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "CRLF note.md:1",
+		"position": {
+			"end": {
+				"col": 38,
+				"line": 1,
+				"offset": 79
+			},
+			"start": {
+				"col": 0,
+				"line": 1,
+				"offset": 41
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] second task in a CRLF note #work",
+		"visual": "second task in a CRLF note",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [
+			"#work",
+			"#work"
+		],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "CRLF note.md",
+			"type": "file",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
 		"id": "Comments.md:4",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 27,
+				"line": 4,
+				"offset": 110
+			},
+			"start": {
+				"col": 0,
+				"line": 4,
+				"offset": 83
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] test1 %%testcomment%%",
 		"visual": "test1",
@@ -2144,7 +3932,18 @@
 	},
 	{
 		"id": "Comments.md:5",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 37,
+				"line": 5,
+				"offset": 148
+			},
+			"start": {
+				"col": 0,
+				"line": 5,
+				"offset": 111
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] test2 %%[[testcomment2:: 11]]%%",
 		"visual": "test2",
@@ -2189,7 +3988,18 @@
 	},
 	{
 		"id": "Comments.md:6",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 68,
+				"line": 6,
+				"offset": 217
+			},
+			"start": {
+				"col": 0,
+				"line": 6,
+				"offset": 149
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] TickTickSync task %%[ticktick_id:: 665850a0d37ddf00000001f9]%%",
 		"visual": "TickTickSync task",
@@ -2227,7 +4037,18 @@
 	},
 	{
 		"id": "Comments.md:7",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 38,
+				"line": 7,
+				"offset": 256
+			},
+			"start": {
+				"col": 0,
+				"line": 7,
+				"offset": 218
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] commented date %%📅 2026-01-20%%",
 		"visual": "commented date",
@@ -2265,7 +4086,18 @@
 	},
 	{
 		"id": "Comments.md:9",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 54,
+				"line": 9,
+				"offset": 365
+			},
+			"start": {
+				"col": 0,
+				"line": 9,
+				"offset": 311
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] two comments %%one%% around visible text %%two%%",
 		"visual": "two comments  around visible text",
@@ -2303,7 +4135,18 @@
 	},
 	{
 		"id": "Daily/2023-05-28.md:0",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 32,
+				"line": 0,
+				"offset": 32
+			},
+			"start": {
+				"col": 0,
+				"line": 0,
+				"offset": 0
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] All men are created equal.",
 		"visual": "All men are created equal.",
@@ -2339,8 +4182,259 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "Daily/2026, January 14 - Wednesday.md:2",
+		"position": {
+			"end": {
+				"col": 34,
+				"line": 2,
+				"offset": 97
+			},
+			"start": {
+				"col": 0,
+				"line": 2,
+				"offset": 63
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] undated task in a daily note",
+		"visual": "undated task in a daily note",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Daily/2026, January 14 - Wednesday.md",
+			"type": "file",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Daily/2026-01-15.md:0",
+		"position": {
+			"end": {
+				"col": 30,
+				"line": 0,
+				"offset": 30
+			},
+			"start": {
+				"col": 0,
+				"line": 0,
+				"offset": 0
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] parent on the first line",
+		"visual": "parent on the first line",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Daily/2026-01-15.md",
+			"type": "file",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Daily/2026-01-15.md:1",
+		"position": {
+			"end": {
+				"col": 33,
+				"line": 1,
+				"offset": 64
+			},
+			"start": {
+				"col": 2,
+				"line": 1,
+				"offset": 33
+			}
+		},
+		"lineCount": 1,
+		"text": "  - [ ] child of the first line",
+		"visual": "child of the first line",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Daily/2026-01-15.md",
+			"type": "file",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Daily/2026-01-15.md:2",
+		"position": {
+			"end": {
+				"col": 44,
+				"line": 2,
+				"offset": 109
+			},
+			"start": {
+				"col": 0,
+				"line": 2,
+				"offset": 65
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] undated task in today's ISO daily note",
+		"visual": "undated task in today's ISO daily note",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Daily/2026-01-15.md",
+			"type": "file",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Daily/2026/Jan/3rd/Wed.md:0",
+		"position": {
+			"end": {
+				"col": 38,
+				"line": 0,
+				"offset": 38
+			},
+			"start": {
+				"col": 0,
+				"line": 0,
+				"offset": 0
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] task in a week-format daily note",
+		"visual": "task in a week-format daily note",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Daily/2026/Jan/3rd/Wed.md",
+			"type": "file",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
 		"id": "Dataview fields.md:8",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 42,
+				"line": 8,
+				"offset": 313
+			},
+			"start": {
+				"col": 0,
+				"line": 8,
+				"offset": 271
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] created field [created:: 2026-01-01]",
 		"visual": "created field",
@@ -2378,7 +4472,18 @@
 	},
 	{
 		"id": "Dataview fields.md:10",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 37,
+				"line": 10,
+				"offset": 398
+			},
+			"start": {
+				"col": 0,
+				"line": 10,
+				"offset": 361
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] unknown field [owner:: someone]",
 		"visual": "unknown field",
@@ -2416,7 +4521,18 @@
 	},
 	{
 		"id": "Dataview fields.md:11",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 43,
+				"line": 11,
+				"offset": 442
+			},
+			"start": {
+				"col": 0,
+				"line": 11,
+				"offset": 399
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] invalid field date [due:: 2026-02-31]",
 		"visual": "invalid field date",
@@ -2453,8 +4569,222 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "Dataview fields.md:17",
+		"position": {
+			"end": {
+				"col": 42,
+				"line": 17,
+				"offset": 773
+			},
+			"start": {
+				"col": 0,
+				"line": 17,
+				"offset": 731
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] capitalised field [Due:: 2026-01-20]",
+		"visual": "capitalised field",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Dataview fields.md",
+			"type": "header",
+			"subpath": "Dataview fields",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Dataview fields.md:18",
+		"position": {
+			"end": {
+				"col": 46,
+				"line": 18,
+				"offset": 820
+			},
+			"start": {
+				"col": 0,
+				"line": 18,
+				"offset": 774
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] key with a space [due date:: 2026-01-20]",
+		"visual": "key with a space",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Dataview fields.md",
+			"type": "header",
+			"subpath": "Dataview fields",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Dataview fields.md:20",
+		"position": {
+			"end": {
+				"col": 42,
+				"line": 20,
+				"offset": 913
+			},
+			"start": {
+				"col": 0,
+				"line": 20,
+				"offset": 871
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] parenthesis field (due:: 2026-01-20)",
+		"visual": "parenthesis field (due:: 2026-01-20)",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Dataview fields.md",
+			"type": "header",
+			"subpath": "Dataview fields",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Dataview fields.md:21",
+		"position": {
+			"end": {
+				"col": 39,
+				"line": 21,
+				"offset": 953
+			},
+			"start": {
+				"col": 0,
+				"line": 21,
+				"offset": 914
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] link value [due:: [[2026-01-20]]]",
+		"visual": "link value ]]",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Dataview fields.md",
+			"type": "header",
+			"subpath": "Dataview fields",
+			"embed": false
+		},
+		"outlinks": [
+			{
+				"path": "2026-01-20",
+				"type": "file",
+				"display": "2026-01-20",
+				"embed": false
+			}
+		],
+		"frontmatter": {}
+	},
+	{
 		"id": "Emoji dates.md:17",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 36,
+				"line": 17,
+				"offset": 671
+			},
+			"start": {
+				"col": 0,
+				"line": 17,
+				"offset": 635
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] created date only ➕ 2026-01-03",
 		"visual": "created date only",
@@ -2492,7 +4822,18 @@
 	},
 	{
 		"id": "Emoji dates.md:19",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 35,
+				"line": 19,
+				"offset": 736
+			},
+			"start": {
+				"col": 0,
+				"line": 19,
+				"offset": 701
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] broken due date 📅 2024-02-31",
 		"visual": "broken due date",
@@ -2530,7 +4871,18 @@
 	},
 	{
 		"id": "Emoji dates.md:25",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 33,
+				"line": 25,
+				"offset": 1023
+			},
+			"start": {
+				"col": 0,
+				"line": 25,
+				"offset": 990
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] reminder ",
 		"visual": "reminder ⏰ 2026-01-16 10:00",
@@ -2568,7 +4920,18 @@
 	},
 	{
 		"id": "Emoji dates.md:26",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 37,
+				"line": 26,
+				"offset": 1061
+			},
+			"start": {
+				"col": 0,
+				"line": 26,
+				"offset": 1024
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] reminder at ",
 		"visual": "reminder at (@2026-01-17 09:30)",
@@ -2606,7 +4969,18 @@
 	},
 	{
 		"id": "Emoji dates.md:27",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 37,
+				"line": 27,
+				"offset": 1099
+			},
+			"start": {
+				"col": 0,
+				"line": 27,
+				"offset": 1062
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] reminder on a day ",
 		"visual": "reminder on a day (@2026-01-18)",
@@ -2644,7 +5018,18 @@
 	},
 	{
 		"id": "Inbox.md:3",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 39,
+				"line": 3,
+				"offset": 42
+			},
+			"start": {
+				"col": 0,
+				"line": 3,
+				"offset": 3
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] Ground Control to Major Tom #TODO",
 		"visual": "Ground Control to Major Tom",
@@ -2684,7 +5069,18 @@
 	},
 	{
 		"id": "Inbox.md:4",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 34,
+				"line": 4,
+				"offset": 77
+			},
+			"start": {
+				"col": 0,
+				"line": 4,
+				"offset": 43
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] Ground Control to Major Tom ",
 		"visual": "Ground Control to Major Tom",
@@ -2721,7 +5117,18 @@
 	},
 	{
 		"id": "Inbox.md:5",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 0,
+				"line": 6,
+				"offset": 133
+			},
+			"start": {
+				"col": 0,
+				"line": 5,
+				"offset": 78
+			}
+		},
 		"lineCount": 2,
 		"text": "- [ ] Take your protein pills and put your helmet on  \n",
 		"visual": "Take your protein pills and put your helmet on",
@@ -2758,7 +5165,18 @@
 	},
 	{
 		"id": "Inbox.md:7",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 33,
+				"line": 7,
+				"offset": 167
+			},
+			"start": {
+				"col": 0,
+				"line": 7,
+				"offset": 134
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] Ground Control to Major Tom",
 		"visual": "Ground Control to Major Tom",
@@ -2795,7 +5213,18 @@
 	},
 	{
 		"id": "Inbox.md:8",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 41,
+				"line": 8,
+				"offset": 209
+			},
+			"start": {
+				"col": 0,
+				"line": 8,
+				"offset": 168
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] Commencing countdown, engines on   ",
 		"visual": "Commencing countdown, engines on",
@@ -2832,7 +5261,18 @@
 	},
 	{
 		"id": "Inbox.md:9",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 2,
+				"line": 10,
+				"offset": 264
+			},
+			"start": {
+				"col": 0,
+				"line": 9,
+				"offset": 210
+			}
+		},
 		"lineCount": 2,
 		"text": "- [ ] Check ignition and may God's love be with you\n  ",
 		"visual": "Check ignition and may God's love be with you",
@@ -2869,7 +5309,18 @@
 	},
 	{
 		"id": "Journal/2026/01/13.md:2",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 40,
+				"line": 2,
+				"offset": 111
+			},
+			"start": {
+				"col": 0,
+				"line": 2,
+				"offset": 71
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] task in a folder-format daily note",
 		"visual": "task in a folder-format daily note",
@@ -2906,7 +5357,18 @@
 	},
 	{
 		"id": "Markers.md:1",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 15,
+				"line": 1,
+				"offset": 16
+			},
+			"start": {
+				"col": 0,
+				"line": 1,
+				"offset": 1
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] Unchecked",
 		"visual": "Unchecked",
@@ -2943,7 +5405,18 @@
 	},
 	{
 		"id": "Markers.md:5",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 15,
+				"line": 5,
+				"offset": 80
+			},
+			"start": {
+				"col": 0,
+				"line": 5,
+				"offset": 65
+			}
+		},
 		"lineCount": 1,
 		"text": "- [!] Important",
 		"visual": "Important",
@@ -2980,7 +5453,18 @@
 	},
 	{
 		"id": "Markers.md:8",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 14,
+				"line": 8,
+				"offset": 130
+			},
+			"start": {
+				"col": 0,
+				"line": 8,
+				"offset": 116
+			}
+		},
 		"lineCount": 1,
 		"text": "- [?] Question",
 		"visual": "Question",
@@ -3017,7 +5501,18 @@
 	},
 	{
 		"id": "Markers.md:9",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 10,
+				"line": 9,
+				"offset": 141
+			},
+			"start": {
+				"col": 0,
+				"line": 9,
+				"offset": 131
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] Star",
 		"visual": "Star",
@@ -3054,7 +5549,18 @@
 	},
 	{
 		"id": "Markers.md:11",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 14,
+				"line": 11,
+				"offset": 167
+			},
+			"start": {
+				"col": 0,
+				"line": 11,
+				"offset": 153
+			}
+		},
 		"lineCount": 1,
 		"text": "- [l] Location",
 		"visual": "Location",
@@ -3091,7 +5597,18 @@
 	},
 	{
 		"id": "Markers.md:12",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 17,
+				"line": 12,
+				"offset": 185
+			},
+			"start": {
+				"col": 0,
+				"line": 12,
+				"offset": 168
+			}
+		},
 		"lineCount": 1,
 		"text": "- [i] Information",
 		"visual": "Information",
@@ -3128,7 +5645,18 @@
 	},
 	{
 		"id": "Markers.md:13",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 10,
+				"line": 13,
+				"offset": 196
+			},
+			"start": {
+				"col": 0,
+				"line": 13,
+				"offset": 186
+			}
+		},
 		"lineCount": 1,
 		"text": "- [I] Idea",
 		"visual": "Idea",
@@ -3165,7 +5693,18 @@
 	},
 	{
 		"id": "Markers.md:14",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 12,
+				"line": 14,
+				"offset": 209
+			},
+			"start": {
+				"col": 0,
+				"line": 14,
+				"offset": 197
+			}
+		},
 		"lineCount": 1,
 		"text": "- [S] Amount",
 		"visual": "Amount",
@@ -3202,7 +5741,18 @@
 	},
 	{
 		"id": "Markers.md:15",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 9,
+				"line": 15,
+				"offset": 219
+			},
+			"start": {
+				"col": 0,
+				"line": 15,
+				"offset": 210
+			}
+		},
 		"lineCount": 1,
 		"text": "- [p] Pro",
 		"visual": "Pro",
@@ -3239,7 +5789,18 @@
 	},
 	{
 		"id": "Markers.md:16",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 9,
+				"line": 16,
+				"offset": 229
+			},
+			"start": {
+				"col": 0,
+				"line": 16,
+				"offset": 220
+			}
+		},
 		"lineCount": 1,
 		"text": "- [c] Con",
 		"visual": "Con",
@@ -3276,7 +5837,18 @@
 	},
 	{
 		"id": "Markers.md:17",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 14,
+				"line": 17,
+				"offset": 244
+			},
+			"start": {
+				"col": 0,
+				"line": 17,
+				"offset": 230
+			}
+		},
 		"lineCount": 1,
 		"text": "- [b] Bookmark",
 		"visual": "Bookmark",
@@ -3313,7 +5885,18 @@
 	},
 	{
 		"id": "Markers.md:18",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 11,
+				"line": 18,
+				"offset": 256
+			},
+			"start": {
+				"col": 0,
+				"line": 18,
+				"offset": 245
+			}
+		},
 		"lineCount": 1,
 		"text": "- [\"] Quote",
 		"visual": "Quote",
@@ -3350,7 +5933,18 @@
 	},
 	{
 		"id": "Markers.md:19",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 21,
+				"line": 19,
+				"offset": 278
+			},
+			"start": {
+				"col": 0,
+				"line": 19,
+				"offset": 257
+			}
+		},
 		"lineCount": 1,
 		"text": "- [0] Speech bubble 0",
 		"visual": "Speech bubble 0",
@@ -3387,7 +5981,18 @@
 	},
 	{
 		"id": "Markers.md:20",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 21,
+				"line": 20,
+				"offset": 300
+			},
+			"start": {
+				"col": 0,
+				"line": 20,
+				"offset": 279
+			}
+		},
 		"lineCount": 1,
 		"text": "- [1] Speech bubble 1",
 		"visual": "Speech bubble 1",
@@ -3424,7 +6029,18 @@
 	},
 	{
 		"id": "Markers.md:21",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 21,
+				"line": 21,
+				"offset": 322
+			},
+			"start": {
+				"col": 0,
+				"line": 21,
+				"offset": 301
+			}
+		},
 		"lineCount": 1,
 		"text": "- [2] Speech bubble 2",
 		"visual": "Speech bubble 2",
@@ -3461,7 +6077,18 @@
 	},
 	{
 		"id": "Markers.md:22",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 21,
+				"line": 22,
+				"offset": 344
+			},
+			"start": {
+				"col": 0,
+				"line": 22,
+				"offset": 323
+			}
+		},
 		"lineCount": 1,
 		"text": "- [3] Speech bubble 3",
 		"visual": "Speech bubble 3",
@@ -3498,7 +6125,18 @@
 	},
 	{
 		"id": "Markers.md:23",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 21,
+				"line": 23,
+				"offset": 366
+			},
+			"start": {
+				"col": 0,
+				"line": 23,
+				"offset": 345
+			}
+		},
 		"lineCount": 1,
 		"text": "- [4] Speech bubble 4",
 		"visual": "Speech bubble 4",
@@ -3535,7 +6173,18 @@
 	},
 	{
 		"id": "Markers.md:24",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 21,
+				"line": 24,
+				"offset": 388
+			},
+			"start": {
+				"col": 0,
+				"line": 24,
+				"offset": 367
+			}
+		},
 		"lineCount": 1,
 		"text": "- [5] Speech bubble 5",
 		"visual": "Speech bubble 5",
@@ -3572,7 +6221,18 @@
 	},
 	{
 		"id": "Markers.md:25",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 21,
+				"line": 25,
+				"offset": 410
+			},
+			"start": {
+				"col": 0,
+				"line": 25,
+				"offset": 389
+			}
+		},
 		"lineCount": 1,
 		"text": "- [6] Speech bubble 6",
 		"visual": "Speech bubble 6",
@@ -3609,7 +6269,18 @@
 	},
 	{
 		"id": "Markers.md:26",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 21,
+				"line": 26,
+				"offset": 432
+			},
+			"start": {
+				"col": 0,
+				"line": 26,
+				"offset": 411
+			}
+		},
 		"lineCount": 1,
 		"text": "- [7] Speech bubble 7",
 		"visual": "Speech bubble 7",
@@ -3646,7 +6317,18 @@
 	},
 	{
 		"id": "Markers.md:27",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 21,
+				"line": 27,
+				"offset": 454
+			},
+			"start": {
+				"col": 0,
+				"line": 27,
+				"offset": 433
+			}
+		},
 		"lineCount": 1,
 		"text": "- [8] Speech bubble 8",
 		"visual": "Speech bubble 8",
@@ -3682,8 +6364,115 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "Markers.md:28",
+		"position": {
+			"end": {
+				"col": 21,
+				"line": 28,
+				"offset": 476
+			},
+			"start": {
+				"col": 0,
+				"line": 28,
+				"offset": 455
+			}
+		},
+		"lineCount": 1,
+		"text": "- [9] Speech bubble 9",
+		"visual": "Speech bubble 9",
+		"symbol": "-",
+		"statusMarker": "9",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": true,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Markers.md",
+			"type": "file",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Notes/2026, January 12 - Monday.md:2",
+		"position": {
+			"end": {
+				"col": 44,
+				"line": 2,
+				"offset": 105
+			},
+			"start": {
+				"col": 0,
+				"line": 2,
+				"offset": 61
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] task in a note named like a daily note",
+		"visual": "task in a note named like a daily note",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Notes/2026, January 12 - Monday.md",
+			"type": "file",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
 		"id": "Priorities.md:2",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 16,
+				"line": 2,
+				"offset": 30
+			},
+			"start": {
+				"col": 0,
+				"line": 2,
+				"offset": 14
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] highest 🔺",
 		"visual": "highest",
@@ -3721,7 +6510,18 @@
 	},
 	{
 		"id": "Priorities.md:3",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 12,
+				"line": 3,
+				"offset": 43
+			},
+			"start": {
+				"col": 0,
+				"line": 3,
+				"offset": 31
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] high ⏫",
 		"visual": "high",
@@ -3759,7 +6559,18 @@
 	},
 	{
 		"id": "Priorities.md:4",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 15,
+				"line": 4,
+				"offset": 59
+			},
+			"start": {
+				"col": 0,
+				"line": 4,
+				"offset": 44
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] medium 🔼",
 		"visual": "medium",
@@ -3797,7 +6608,18 @@
 	},
 	{
 		"id": "Priorities.md:5",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 12,
+				"line": 5,
+				"offset": 72
+			},
+			"start": {
+				"col": 0,
+				"line": 5,
+				"offset": 60
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] low 🔽",
 		"visual": "low",
@@ -3835,7 +6657,18 @@
 	},
 	{
 		"id": "Priorities.md:6",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 14,
+				"line": 6,
+				"offset": 87
+			},
+			"start": {
+				"col": 0,
+				"line": 6,
+				"offset": 73
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] lowest ⏬",
 		"visual": "lowest",
@@ -3873,7 +6706,18 @@
 	},
 	{
 		"id": "Priorities.md:7",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 17,
+				"line": 7,
+				"offset": 105
+			},
+			"start": {
+				"col": 0,
+				"line": 7,
+				"offset": 88
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] no priority",
 		"visual": "no priority",
@@ -3911,7 +6755,18 @@
 	},
 	{
 		"id": "Priorities.md:8",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 41,
+				"line": 8,
+				"offset": 147
+			},
+			"start": {
+				"col": 0,
+				"line": 8,
+				"offset": 106
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] dataview priority [priority:: high]",
 		"visual": "dataview priority",
@@ -3949,7 +6804,18 @@
 	},
 	{
 		"id": "Priorities.md:9",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 64,
+				"line": 9,
+				"offset": 212
+			},
+			"start": {
+				"col": 0,
+				"line": 9,
+				"offset": 148
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] dataview priority with an unknown name [priority:: urgent]",
 		"visual": "dataview priority with an unknown name",
@@ -3987,7 +6853,18 @@
 	},
 	{
 		"id": "Priorities.md:10",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 52,
+				"line": 10,
+				"offset": 265
+			},
+			"start": {
+				"col": 0,
+				"line": 10,
+				"offset": 213
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] unknown text after the priority ⏫ ➕ 2026-01-02",
 		"visual": "unknown text after the priority",
@@ -4024,8 +6901,222 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "Priorities.md:13",
+		"position": {
+			"end": {
+				"col": 29,
+				"line": 13,
+				"offset": 405
+			},
+			"start": {
+				"col": 0,
+				"line": 13,
+				"offset": 376
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] ⏫ priority at the start",
+		"visual": "priority at the start",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "High",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Priorities.md",
+			"type": "header",
+			"subpath": "Priorities",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Priorities.md:15",
+		"position": {
+			"end": {
+				"col": 25,
+				"line": 15,
+				"offset": 480
+			},
+			"start": {
+				"col": 0,
+				"line": 15,
+				"offset": 455
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] two priorities 🔼 ⏫",
+		"visual": "two priorities",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "High",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Priorities.md",
+			"type": "header",
+			"subpath": "Priorities",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Priorities.md:16",
+		"position": {
+			"end": {
+				"col": 30,
+				"line": 16,
+				"offset": 511
+			},
+			"start": {
+				"col": 0,
+				"line": 16,
+				"offset": 481
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] 🔼medium without a space",
+		"visual": "medium without a space",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "Medium",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Priorities.md",
+			"type": "header",
+			"subpath": "Priorities",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Priorities.md:17",
+		"position": {
+			"end": {
+				"col": 25,
+				"line": 17,
+				"offset": 537
+			},
+			"start": {
+				"col": 0,
+				"line": 17,
+				"offset": 512
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] see [[⏫ Plan]] note",
+		"visual": "see [[ Plan]] note",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "High",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Priorities.md",
+			"type": "header",
+			"subpath": "Priorities",
+			"embed": false
+		},
+		"outlinks": [
+			{
+				"path": "⏫ Plan",
+				"type": "file",
+				"display": "⏫ Plan",
+				"embed": false
+			}
+		],
+		"frontmatter": {}
+	},
+	{
 		"id": "Status.md:4",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 25,
+				"line": 4,
+				"offset": 122
+			},
+			"start": {
+				"col": 0,
+				"line": 4,
+				"offset": 97
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] open without a date",
 		"visual": "open without a date",
@@ -4063,7 +7154,18 @@
 	},
 	{
 		"id": "Structure.md:12",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 15,
+				"line": 12,
+				"offset": 136
+			},
+			"start": {
+				"col": 0,
+				"line": 12,
+				"offset": 121
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] top level",
 		"visual": "top level",
@@ -4111,7 +7213,18 @@
 	},
 	{
 		"id": "Structure.md:13",
-		"col": 2,
+		"position": {
+			"end": {
+				"col": 34,
+				"line": 13,
+				"offset": 171
+			},
+			"start": {
+				"col": 2,
+				"line": 13,
+				"offset": 139
+			}
+		},
 		"lineCount": 1,
 		"text": "  - [ ] subtask with four spaces",
 		"visual": "subtask with four spaces",
@@ -4158,7 +7271,18 @@
 	},
 	{
 		"id": "Structure.md:14",
-		"col": 6,
+		"position": {
+			"end": {
+				"col": 25,
+				"line": 14,
+				"offset": 197
+			},
+			"start": {
+				"col": 6,
+				"line": 14,
+				"offset": 178
+			}
+		},
 		"lineCount": 1,
 		"text": "  - [ ] sub-subtask",
 		"visual": "sub-subtask",
@@ -4205,7 +7329,18 @@
 	},
 	{
 		"id": "Structure.md:15",
-		"col": 2,
+		"position": {
+			"end": {
+				"col": 31,
+				"line": 15,
+				"offset": 229
+			},
+			"start": {
+				"col": 2,
+				"line": 15,
+				"offset": 200
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] subtask with two spaces",
 		"visual": "subtask with two spaces",
@@ -4252,7 +7387,18 @@
 	},
 	{
 		"id": "Structure.md:16",
-		"col": 1,
+		"position": {
+			"end": {
+				"col": 25,
+				"line": 16,
+				"offset": 255
+			},
+			"start": {
+				"col": 1,
+				"line": 16,
+				"offset": 231
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] subtask with a tab",
 		"visual": "subtask with a tab",
@@ -4299,7 +7445,18 @@
 	},
 	{
 		"id": "Structure.md:18",
-		"col": 2,
+		"position": {
+			"end": {
+				"col": 33,
+				"line": 18,
+				"offset": 309
+			},
+			"start": {
+				"col": 2,
+				"line": 18,
+				"offset": 278
+			}
+		},
 		"lineCount": 1,
 		"text": "  - [ ] task under a plain item",
 		"visual": "task under a plain item",
@@ -4346,7 +7503,18 @@
 	},
 	{
 		"id": "Structure.md:20",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 20,
+				"line": 20,
+				"offset": 331
+			},
+			"start": {
+				"col": 0,
+				"line": 20,
+				"offset": 311
+			}
+		},
 		"lineCount": 1,
 		"text": "1. [ ] numbered task",
 		"visual": "numbered task",
@@ -4394,7 +7562,18 @@
 	},
 	{
 		"id": "Structure.md:22",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 15,
+				"line": 22,
+				"offset": 382
+			},
+			"start": {
+				"col": 0,
+				"line": 22,
+				"offset": 367
+			}
+		},
 		"lineCount": 1,
 		"text": "* [ ] star task",
 		"visual": "star task",
@@ -4442,7 +7621,18 @@
 	},
 	{
 		"id": "Structure.md:27",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 65,
+				"line": 27,
+				"offset": 474
+			},
+			"start": {
+				"col": 0,
+				"line": 27,
+				"offset": 409
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] task with a [[Inbox]] link and [a url](https://example.com)",
 		"visual": "task with a [[Inbox]] link and [a url](https://example.com)",
@@ -4497,7 +7687,18 @@
 	},
 	{
 		"id": "Structure.md:29",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 33,
+				"line": 30,
+				"offset": 597
+			},
+			"start": {
+				"col": 0,
+				"line": 29,
+				"offset": 542
+			}
+		},
 		"lineCount": 2,
 		"text": "- [ ] multi-line task\n  that continues on the next line",
 		"visual": "multi-line task",
@@ -4545,7 +7746,18 @@
 	},
 	{
 		"id": "Structure.md:32",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 8,
+				"line": 32,
+				"offset": 612
+			},
+			"start": {
+				"col": 0,
+				"line": 32,
+				"offset": 604
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ]   ",
 		"visual": "",
@@ -4593,7 +7805,18 @@
 	},
 	{
 		"id": "Structure.md:43",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 28,
+				"line": 43,
+				"offset": 769
+			},
+			"start": {
+				"col": 0,
+				"line": 43,
+				"offset": 741
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] under an emoji heading",
 		"visual": "under an emoji heading",
@@ -4641,7 +7864,18 @@
 	},
 	{
 		"id": "Structure.md:45",
-		"col": 2,
+		"position": {
+			"end": {
+				"col": 19,
+				"line": 45,
+				"offset": 790
+			},
+			"start": {
+				"col": 2,
+				"line": 45,
+				"offset": 773
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] quoted task",
 		"visual": "quoted task",
@@ -4688,8 +7922,77 @@
 		}
 	},
 	{
-		"id": "Structure.md:51",
-		"col": 0,
+		"id": "Structure.md:46",
+		"position": {
+			"end": {
+				"col": 24,
+				"line": 46,
+				"offset": 815
+			},
+			"start": {
+				"col": 4,
+				"line": 46,
+				"offset": 795
+			}
+		},
+		"lineCount": 1,
+		"text": "  - [ ] quoted child",
+		"visual": "quoted child",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [
+			"#single",
+			"#project",
+			""
+		],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Structure.md",
+			"type": "file",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {
+			"tag": "single",
+			"tags": [
+				"project",
+				"#already-prefixed"
+			]
+		}
+	},
+	{
+		"id": "Structure.md:52",
+		"position": {
+			"end": {
+				"col": 27,
+				"line": 52,
+				"offset": 922
+			},
+			"start": {
+				"col": 0,
+				"line": 52,
+				"offset": 895
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] right under a heading",
 		"visual": "right under a heading",
@@ -4736,8 +8039,196 @@
 		}
 	},
 	{
+		"id": "Structure.md:62",
+		"position": {
+			"end": {
+				"col": 45,
+				"line": 62,
+				"offset": 1099
+			},
+			"start": {
+				"col": 6,
+				"line": 62,
+				"offset": 1060
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] task inside a footnote definition",
+		"visual": "task inside a footnote definition",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [
+			"#single",
+			"#project",
+			""
+		],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Structure.md",
+			"type": "header",
+			"subpath": "More syntax",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {
+			"tag": "single",
+			"tags": [
+				"project",
+				"#already-prefixed"
+			]
+		}
+	},
+	{
+		"id": "Structure.md:65",
+		"position": {
+			"end": {
+				"col": 33,
+				"line": 65,
+				"offset": 1157
+			},
+			"start": {
+				"col": 0,
+				"line": 65,
+				"offset": 1124
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] under a heading with a link",
+		"visual": "under a heading with a link",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [
+			"#single",
+			"#project",
+			""
+		],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Structure.md",
+			"type": "header",
+			"subpath": "Tasks for Inbox",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {
+			"tag": "single",
+			"tags": [
+				"project",
+				"#already-prefixed"
+			]
+		}
+	},
+	{
+		"id": "Structure.md:68",
+		"position": {
+			"end": {
+				"col": 42,
+				"line": 68,
+				"offset": 1228
+			},
+			"start": {
+				"col": 0,
+				"line": 68,
+				"offset": 1186
+			}
+		},
+		"lineCount": 1,
+		"text": "- [ ] under a heading with an aliased link",
+		"visual": "under a heading with an aliased link",
+		"symbol": "-",
+		"statusMarker": " ",
+		"status": "unplanned",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": false,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [
+			"#single",
+			"#project",
+			""
+		],
+		"dailyNote": false,
+		"order": 6,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Structure.md",
+			"type": "header",
+			"subpath": "Inbox Alias heading",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {
+			"tag": "single",
+			"tags": [
+				"project",
+				"#already-prefixed"
+			]
+		}
+	},
+	{
 		"id": "Tagged/Project note.md:3",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 43,
+				"line": 3,
+				"offset": 151
+			},
+			"start": {
+				"col": 0,
+				"line": 3,
+				"offset": 108
+			}
+		},
 		"lineCount": 1,
 		"text": "- [ ] another task in the tagged note #work",
 		"visual": "another task in the tagged note",
@@ -4777,7 +8268,18 @@
 	},
 	{
 		"id": "Daily/2026, January 14 - Wednesday.md:4",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 26,
+				"line": 4,
+				"offset": 171
+			},
+			"start": {
+				"col": 0,
+				"line": 4,
+				"offset": 145
+			}
+		},
 		"lineCount": 1,
 		"text": "- [x] done in a daily note",
 		"visual": "done in a daily note",
@@ -4791,14 +8293,19 @@
 		"priority": "",
 		"recurrence": "",
 		"tags": [],
-		"dailyNote": true,
+		"dailyNote": false,
 		"order": 7,
 		"due": null,
-		"scheduled": "2026-01-14",
-		"start": "2026-01-14",
-		"created": "2026-01-14",
+		"scheduled": null,
+		"start": null,
+		"created": null,
 		"completion": null,
-		"dates": [],
+		"dates": [
+			[
+				"done-unplanned",
+				"2026-01-15T09:00"
+			]
+		],
 		"section": {
 			"path": "Daily/2026, January 14 - Wednesday.md",
 			"type": "file",
@@ -4809,7 +8316,18 @@
 	},
 	{
 		"id": "Dataview fields.md:5",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 48,
+				"line": 5,
+				"offset": 188
+			},
+			"start": {
+				"col": 0,
+				"line": 5,
+				"offset": 140
+			}
+		},
 		"lineCount": 1,
 		"text": "- [x] completion field [completion:: 2026-01-14]",
 		"visual": "completion field",
@@ -4842,7 +8360,18 @@
 	},
 	{
 		"id": "Dataview fields.md:6",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 36,
+				"line": 6,
+				"offset": 225
+			},
+			"start": {
+				"col": 0,
+				"line": 6,
+				"offset": 189
+			}
+		},
 		"lineCount": 1,
 		"text": "- [x] done field [done:: 2026-01-13]",
 		"visual": "done field",
@@ -4875,7 +8404,18 @@
 	},
 	{
 		"id": "Dataview fields.md:7",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 44,
+				"line": 7,
+				"offset": 270
+			},
+			"start": {
+				"col": 0,
+				"line": 7,
+				"offset": 226
+			}
+		},
 		"lineCount": 1,
 		"text": "- [x] complete field [complete:: 2026-01-12]",
 		"visual": "complete field",
@@ -4907,8 +8447,72 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "Dataview fields.md:15",
+		"position": {
+			"end": {
+				"col": 64,
+				"line": 15,
+				"offset": 660
+			},
+			"start": {
+				"col": 0,
+				"line": 15,
+				"offset": 596
+			}
+		},
+		"lineCount": 1,
+		"text": "- [x] done with only an unplanned field [unplanned:: 2026-01-18]",
+		"visual": "done with only an unplanned field",
+		"symbol": "-",
+		"statusMarker": "x",
+		"status": "done",
+		"completed": true,
+		"checked": true,
+		"fullyCompleted": true,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 7,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-18"
+			],
+			[
+				"done-unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Dataview fields.md",
+			"type": "header",
+			"subpath": "Dataview fields",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
 		"id": "Emoji dates.md:13",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 53,
+				"line": 13,
+				"offset": 478
+			},
+			"start": {
+				"col": 0,
+				"line": 13,
+				"offset": 425
+			}
+		},
 		"lineCount": 1,
 		"text": "- [x] done on its due date 📅 2026-01-14 ✅ 2026-01-14",
 		"visual": "done on its due date",
@@ -4941,7 +8545,18 @@
 	},
 	{
 		"id": "Emoji dates.md:14",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 56,
+				"line": 14,
+				"offset": 535
+			},
+			"start": {
+				"col": 0,
+				"line": 14,
+				"offset": 479
+			}
+		},
 		"lineCount": 1,
 		"text": "- [x] done after its due date 📅 2026-01-10 ✅ 2026-01-12",
 		"visual": "done after its due date",
@@ -4974,7 +8589,18 @@
 	},
 	{
 		"id": "Emoji dates.md:15",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 56,
+				"line": 15,
+				"offset": 592
+			},
+			"start": {
+				"col": 0,
+				"line": 15,
+				"offset": 536
+			}
+		},
 		"lineCount": 1,
 		"text": "- [x] completed but scheduled in the future ⏳ 2026-02-01",
 		"visual": "completed but scheduled in the future",
@@ -5007,7 +8633,18 @@
 	},
 	{
 		"id": "Emoji dates.md:20",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 56,
+				"line": 20,
+				"offset": 793
+			},
+			"start": {
+				"col": 0,
+				"line": 20,
+				"offset": 737
+			}
+		},
 		"lineCount": 1,
 		"text": "- [x] all broken 🛫 2024-13-01 ⏳ 2024-04-31 ✅ 2024-02-30",
 		"visual": "all broken",
@@ -5045,7 +8682,18 @@
 	},
 	{
 		"id": "Inbox.md:20",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 72,
+				"line": 20,
+				"offset": 868
+			},
+			"start": {
+				"col": 0,
+				"line": 20,
+				"offset": 796
+			}
+		},
 		"lineCount": 1,
 		"text": "- [x] And the stars look very different today 📅 2023-05-26 ✅ 2023-05-27",
 		"visual": "And the stars look very different today",
@@ -5077,7 +8725,18 @@
 	},
 	{
 		"id": "Markers.md:2",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 13,
+				"line": 2,
+				"offset": 30
+			},
+			"start": {
+				"col": 0,
+				"line": 2,
+				"offset": 17
+			}
+		},
 		"lineCount": 1,
 		"text": "- [x] Checked",
 		"visual": "Checked",
@@ -5114,7 +8773,18 @@
 	},
 	{
 		"id": "Markers.md:10",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 10,
+				"line": 10,
+				"offset": 152
+			},
+			"start": {
+				"col": 0,
+				"line": 10,
+				"offset": 142
+			}
+		},
 		"lineCount": 1,
 		"text": "- [x] Note",
 		"visual": "Note",
@@ -5150,8 +8820,19 @@
 		"frontmatter": {}
 	},
 	{
-		"id": "Markers.md:29",
-		"col": 0,
+		"id": "Markers.md:30",
+		"position": {
+			"end": {
+				"col": 47,
+				"line": 30,
+				"offset": 559
+			},
+			"start": {
+				"col": 0,
+				"line": 30,
+				"offset": 512
+			}
+		},
 		"lineCount": 1,
 		"text": "- [x] lowercase done 📅 2026-01-10 ✅ 2026-01-11",
 		"visual": "lowercase done",
@@ -5183,7 +8864,18 @@
 	},
 	{
 		"id": "Status.md:9",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 25,
+				"line": 9,
+				"offset": 288
+			},
+			"start": {
+				"col": 0,
+				"line": 9,
+				"offset": 263
+			}
+		},
 		"lineCount": 1,
 		"text": "- [x] done without a date",
 		"visual": "done without a date",
@@ -5221,7 +8913,18 @@
 	},
 	{
 		"id": "Structure.md:21",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 34,
+				"line": 21,
+				"offset": 366
+			},
+			"start": {
+				"col": 0,
+				"line": 21,
+				"offset": 332
+			}
+		},
 		"lineCount": 1,
 		"text": "2. [x] numbered done 📅 2026-01-14",
 		"visual": "numbered done",
@@ -5263,8 +8966,68 @@
 		}
 	},
 	{
+		"id": "Dataview fields.md:16",
+		"position": {
+			"end": {
+				"col": 69,
+				"line": 16,
+				"offset": 730
+			},
+			"start": {
+				"col": 0,
+				"line": 16,
+				"offset": 661
+			}
+		},
+		"lineCount": 1,
+		"text": "- [-] cancelled with only an unplanned field [unplanned:: 2026-01-18]",
+		"visual": "cancelled with only an unplanned field",
+		"symbol": "-",
+		"statusMarker": "-",
+		"status": "cancelled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": true,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 8,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"unplanned",
+				"2026-01-18"
+			]
+		],
+		"section": {
+			"path": "Dataview fields.md",
+			"type": "header",
+			"subpath": "Dataview fields",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
 		"id": "Emoji dates.md:16",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 41,
+				"line": 16,
+				"offset": 634
+			},
+			"start": {
+				"col": 0,
+				"line": 16,
+				"offset": 593
+			}
+		},
 		"lineCount": 1,
 		"text": "- [-] cancelled with a date 📅 2026-01-11",
 		"visual": "cancelled with a date",
@@ -5296,8 +9059,112 @@
 		"frontmatter": {}
 	},
 	{
+		"id": "Emoji dates.md:33",
+		"position": {
+			"end": {
+				"col": 51,
+				"line": 33,
+				"offset": 1416
+			},
+			"start": {
+				"col": 0,
+				"line": 33,
+				"offset": 1365
+			}
+		},
+		"lineCount": 1,
+		"text": "- [-] cancelled on a day 📅 2026-01-20 ❌ 2026-01-14",
+		"visual": "cancelled on a day  ❌ 2026-01-14",
+		"symbol": "-",
+		"statusMarker": "-",
+		"status": "cancelled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": true,
+		"isTasksTask": true,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 8,
+		"due": "2026-01-20",
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [],
+		"section": {
+			"path": "Emoji dates.md",
+			"type": "header",
+			"subpath": "Emoji dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
+		"id": "Emoji dates.md:34",
+		"position": {
+			"end": {
+				"col": 55,
+				"line": 34,
+				"offset": 1472
+			},
+			"start": {
+				"col": 0,
+				"line": 34,
+				"offset": 1417
+			}
+		},
+		"lineCount": 1,
+		"text": "- [-] cancelled with only a cancelled date ❌ 2026-01-14",
+		"visual": "cancelled with only a cancelled date ❌ 2026-01-14",
+		"symbol": "-",
+		"statusMarker": "-",
+		"status": "cancelled",
+		"completed": false,
+		"checked": true,
+		"fullyCompleted": true,
+		"isTasksTask": false,
+		"priority": "",
+		"recurrence": "",
+		"tags": [],
+		"dailyNote": false,
+		"order": 8,
+		"due": null,
+		"scheduled": null,
+		"start": null,
+		"created": null,
+		"completion": null,
+		"dates": [
+			[
+				"cancelled-unplanned",
+				"2026-01-15T09:00"
+			]
+		],
+		"section": {
+			"path": "Emoji dates.md",
+			"type": "header",
+			"subpath": "Emoji dates",
+			"embed": false
+		},
+		"outlinks": [],
+		"frontmatter": {}
+	},
+	{
 		"id": "Inbox.md:19",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 60,
+				"line": 19,
+				"offset": 795
+			},
+			"start": {
+				"col": 0,
+				"line": 19,
+				"offset": 735
+			}
+		},
 		"lineCount": 1,
 		"text": "- [-] And I'm floating in a most peculiar way  📅 2023-05-26",
 		"visual": "And I'm floating in a most peculiar way",
@@ -5329,7 +9196,18 @@
 	},
 	{
 		"id": "Markers.md:6",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 15,
+				"line": 6,
+				"offset": 96
+			},
+			"start": {
+				"col": 0,
+				"line": 6,
+				"offset": 81
+			}
+		},
 		"lineCount": 1,
 		"text": "- [-] Cancelled",
 		"visual": "Cancelled",
@@ -5366,7 +9244,18 @@
 	},
 	{
 		"id": "Status.md:8",
-		"col": 0,
+		"position": {
+			"end": {
+				"col": 30,
+				"line": 8,
+				"offset": 262
+			},
+			"start": {
+				"col": 0,
+				"line": 8,
+				"offset": 232
+			}
+		},
 		"lineCount": 1,
 		"text": "- [-] cancelled without a date",
 		"visual": "cancelled without a date",

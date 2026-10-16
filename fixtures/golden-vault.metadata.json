@@ -1,6 +1,32 @@
 {
 	"note": "Captured from Obsidian by apps/obsidian-plugin/scripts/capture-golden.mjs. Do not edit by hand.",
 	"obsidianVersion": "1.14.4 (installer 1.13.7)",
+	"notes": {
+		"Big note.md": "28bed7c23fea94eae28628350c4d0cb79e7c76628c2b7e10cf19e5d1eb2b5e08",
+		"CRLF note.md": "2c5a59a19a019884f36c4c0ca1aabc6e33657e100adf568a57f248cbe19142a4",
+		"Comments.md": "381a3cf18937f4ea48afb9bcc932be2fc8eacb51b731fec12a2b6ec0e1a4c303",
+		"Daily/2023-05-28.md": "6781d4bd4c7c66e9836cc6c77c186ab1111f080ad2a1bab35ee6d3a97b39154d",
+		"Daily/2026/Jan/3rd/Wed.md": "350b9fcdae19029aef63e6122fbc20f8035f7bd9213d458653eacc6a1492ca2c",
+		"Daily/2026, January 14 - Wednesday.md": "7db0975b2c110b310097e826775e4d422b41a8aa1b973acb7b8cd81148030d84",
+		"Daily/2026, 一月 14 - 星期三.md": "215f599fbe2a3b7933e32997477d0d1e3d1a7c45760203570b14553a10763b67",
+		"Daily/2026-01-15.md": "cdea9f0f29cc6d7fd521a633a758e1ef9e67625bb3ee077b6a531862227d01c3",
+		"Dataview fields.md": "34230b470cc6bed944e63ca7a0f95e14fe2832a5f8816d1429030c9073271cfa",
+		"Emoji dates.md": "332201a10b977b15ad09cf80b19aa253b3916adb8b2dffeca83d40f0868aab40",
+		"Excluded/Secret.md": "8ac304644b5b81e5385beb1a8781718a55719db6984dc0e80b0c6cbb801b95f3",
+		"Frontmatter/Active.md": "1715cb6d5f188c3bf234528f138f788c83d780e2d4c9692500994b30f12236e3",
+		"Frontmatter/Archived.md": "9e35b0111365e010611e8d8c5ccd29e84f6885ce84dd94b3e7a3ad3cd7e58e71",
+		"Frontmatter/Hash tag.md": "dc8de3f68cfedb93bb05b4747c9c3895a33e2d478293eacdb4dd7566a1752944",
+		"Inbox.md": "ab0559d270ae73158b67d8a84e0a6e373766a4d2f1a8dc145eb81c38ffae29e3",
+		"Journal/2026/01/13.md": "cd4fb2619311aaacd6847709c649bc9f6ba64be43d80817f3d6a619c8b05b96f",
+		"Markers.md": "8b5ffa862b5c0e3984a5ac164c9684fe139e7d02213a0a22e23270a6b9400e9f",
+		"No tasks.md": "217158fb648c37a042ebb22dd1b152a6c0f7e9f3b733ce3f87fe5e8e0d23ad67",
+		"Notes/2026, January 12 - Monday.md": "748b468df072b1049a827b171ed7c6cb7b83cb2c5cf97923cc3d092f65aaad44",
+		"Priorities.md": "96174065c50d1025a984b33860a2a83ae2df4725153d097ac603966f01945b0b",
+		"Status.md": "a412f7e7928f0151ddde94f8ba7f9a8d44905d32aa9ec0ffeeccb1aec1165d25",
+		"Structure.md": "06ccc16ea1eb0afd4f1c3b22d84bca35d815604a98b7ed56cea1fffdb29a0a71",
+		"Tagged/Project note.md": "3333cdc2244c5e9271320e19a45d396b77c4c8e6566fb21ef8a164fd3c39cf15",
+		"中文 笔记.md": "17d0b2e6bd5971e134b1a1bc82d1f166b34fb917cdc30a6aefa8f7b5b0ff8985"
+	},
 	"files": {
 		"Big note.md": {
 			"headings": [
@@ -146,6 +172,76 @@
 						}
 					},
 					"type": "list"
+				}
+			]
+		},
+		"CRLF note.md": {
+			"listItems": [
+				{
+					"parent": -1,
+					"position": {
+						"end": {
+							"col": 39,
+							"line": 0,
+							"offset": 39
+						},
+						"start": {
+							"col": 0,
+							"line": 0,
+							"offset": 0
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -1,
+					"position": {
+						"end": {
+							"col": 38,
+							"line": 1,
+							"offset": 79
+						},
+						"start": {
+							"col": 0,
+							"line": 1,
+							"offset": 41
+						}
+					},
+					"task": " "
+				}
+			],
+			"sections": [
+				{
+					"position": {
+						"end": {
+							"col": 38,
+							"line": 1,
+							"offset": 79
+						},
+						"start": {
+							"col": 0,
+							"line": 0,
+							"offset": 0
+						}
+					},
+					"type": "list"
+				}
+			],
+			"tags": [
+				{
+					"position": {
+						"end": {
+							"col": 38,
+							"line": 1,
+							"offset": 79
+						},
+						"start": {
+							"col": 33,
+							"line": 1,
+							"offset": 74
+						}
+					},
+					"tag": "#work"
 				}
 			]
 		},
@@ -330,6 +426,21 @@
 						}
 					},
 					"type": "list"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 2,
+							"line": 13,
+							"offset": 406
+						},
+						"start": {
+							"col": 0,
+							"line": 11,
+							"offset": 367
+						}
+					},
+					"type": "comment"
 				}
 			]
 		},
@@ -470,6 +581,180 @@
 				}
 			]
 		},
+		"Daily/2026, 一月 14 - 星期三.md": {
+			"listItems": [
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 14,
+							"line": 2,
+							"offset": 53
+						},
+						"start": {
+							"col": 0,
+							"line": 2,
+							"offset": 39
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 31,
+							"line": 3,
+							"offset": 85
+						},
+						"start": {
+							"col": 0,
+							"line": 3,
+							"offset": 54
+						}
+					},
+					"task": " "
+				}
+			],
+			"sections": [
+				{
+					"position": {
+						"end": {
+							"col": 37,
+							"line": 0,
+							"offset": 37
+						},
+						"start": {
+							"col": 0,
+							"line": 0,
+							"offset": 0
+						}
+					},
+					"type": "paragraph"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 31,
+							"line": 3,
+							"offset": 85
+						},
+						"start": {
+							"col": 0,
+							"line": 2,
+							"offset": 39
+						}
+					},
+					"type": "list"
+				}
+			]
+		},
+		"Daily/2026-01-15.md": {
+			"listItems": [
+				{
+					"parent": -1,
+					"position": {
+						"end": {
+							"col": 30,
+							"line": 0,
+							"offset": 30
+						},
+						"start": {
+							"col": 0,
+							"line": 0,
+							"offset": 0
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": 0,
+					"position": {
+						"end": {
+							"col": 33,
+							"line": 1,
+							"offset": 64
+						},
+						"start": {
+							"col": 2,
+							"line": 1,
+							"offset": 33
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -1,
+					"position": {
+						"end": {
+							"col": 44,
+							"line": 2,
+							"offset": 109
+						},
+						"start": {
+							"col": 0,
+							"line": 2,
+							"offset": 65
+						}
+					},
+					"task": " "
+				}
+			],
+			"sections": [
+				{
+					"position": {
+						"end": {
+							"col": 44,
+							"line": 2,
+							"offset": 109
+						},
+						"start": {
+							"col": 0,
+							"line": 0,
+							"offset": 0
+						}
+					},
+					"type": "list"
+				}
+			]
+		},
+		"Daily/2026/Jan/3rd/Wed.md": {
+			"listItems": [
+				{
+					"parent": -1,
+					"position": {
+						"end": {
+							"col": 38,
+							"line": 0,
+							"offset": 38
+						},
+						"start": {
+							"col": 0,
+							"line": 0,
+							"offset": 0
+						}
+					},
+					"task": " "
+				}
+			],
+			"sections": [
+				{
+					"position": {
+						"end": {
+							"col": 38,
+							"line": 0,
+							"offset": 38
+						},
+						"start": {
+							"col": 0,
+							"line": 0,
+							"offset": 0
+						}
+					},
+					"type": "list"
+				}
+			]
+		},
 		"Dataview fields.md": {
 			"headings": [
 				{
@@ -504,6 +789,23 @@
 							"col": 22,
 							"line": 12,
 							"offset": 465
+						}
+					}
+				},
+				{
+					"displayText": "2026-01-20",
+					"link": "2026-01-20",
+					"original": "[[2026-01-20]]",
+					"position": {
+						"end": {
+							"col": 38,
+							"line": 21,
+							"offset": 952
+						},
+						"start": {
+							"col": 24,
+							"line": 21,
+							"offset": 938
 						}
 					}
 				}
@@ -716,6 +1018,150 @@
 						}
 					},
 					"task": " "
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 64,
+							"line": 15,
+							"offset": 660
+						},
+						"start": {
+							"col": 0,
+							"line": 15,
+							"offset": 596
+						}
+					},
+					"task": "x"
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 69,
+							"line": 16,
+							"offset": 730
+						},
+						"start": {
+							"col": 0,
+							"line": 16,
+							"offset": 661
+						}
+					},
+					"task": "-"
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 42,
+							"line": 17,
+							"offset": 773
+						},
+						"start": {
+							"col": 0,
+							"line": 17,
+							"offset": 731
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 46,
+							"line": 18,
+							"offset": 820
+						},
+						"start": {
+							"col": 0,
+							"line": 18,
+							"offset": 774
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 49,
+							"line": 19,
+							"offset": 870
+						},
+						"start": {
+							"col": 0,
+							"line": 19,
+							"offset": 821
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 42,
+							"line": 20,
+							"offset": 913
+						},
+						"start": {
+							"col": 0,
+							"line": 20,
+							"offset": 871
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 39,
+							"line": 21,
+							"offset": 953
+						},
+						"start": {
+							"col": 0,
+							"line": 21,
+							"offset": 914
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 61,
+							"line": 22,
+							"offset": 1015
+						},
+						"start": {
+							"col": 0,
+							"line": 22,
+							"offset": 954
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 65,
+							"line": 23,
+							"offset": 1081
+						},
+						"start": {
+							"col": 0,
+							"line": 23,
+							"offset": 1016
+						}
+					},
+					"task": " "
 				}
 			],
 			"sections": [
@@ -737,9 +1183,9 @@
 				{
 					"position": {
 						"end": {
-							"col": 60,
-							"line": 14,
-							"offset": 595
+							"col": 65,
+							"line": 23,
+							"offset": 1081
 						},
 						"start": {
 							"col": 0,
@@ -1236,6 +1682,150 @@
 						}
 					},
 					"task": " "
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 61,
+							"line": 32,
+							"offset": 1364
+						},
+						"start": {
+							"col": 0,
+							"line": 32,
+							"offset": 1303
+						}
+					},
+					"task": "X"
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 51,
+							"line": 33,
+							"offset": 1416
+						},
+						"start": {
+							"col": 0,
+							"line": 33,
+							"offset": 1365
+						}
+					},
+					"task": "-"
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 55,
+							"line": 34,
+							"offset": 1472
+						},
+						"start": {
+							"col": 0,
+							"line": 34,
+							"offset": 1417
+						}
+					},
+					"task": "-"
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 45,
+							"line": 35,
+							"offset": 1518
+						},
+						"start": {
+							"col": 0,
+							"line": 35,
+							"offset": 1473
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 41,
+							"line": 36,
+							"offset": 1560
+						},
+						"start": {
+							"col": 0,
+							"line": 36,
+							"offset": 1519
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 69,
+							"line": 37,
+							"offset": 1630
+						},
+						"start": {
+							"col": 0,
+							"line": 37,
+							"offset": 1561
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 69,
+							"line": 38,
+							"offset": 1700
+						},
+						"start": {
+							"col": 0,
+							"line": 38,
+							"offset": 1631
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 39,
+							"line": 39,
+							"offset": 1740
+						},
+						"start": {
+							"col": 0,
+							"line": 39,
+							"offset": 1701
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 34,
+							"line": 40,
+							"offset": 1775
+						},
+						"start": {
+							"col": 0,
+							"line": 40,
+							"offset": 1741
+						}
+					},
+					"task": " "
 				}
 			],
 			"sections": [
@@ -1272,9 +1862,9 @@
 				{
 					"position": {
 						"end": {
-							"col": 77,
-							"line": 31,
-							"offset": 1302
+							"col": 34,
+							"line": 40,
+							"offset": 1775
 						},
 						"start": {
 							"col": 0,
@@ -1360,6 +1950,7 @@
 				"aliases": [
 					"Active note"
 				],
+				"pinned": true,
 				"priority": 2,
 				"status": "active"
 			},
@@ -1367,8 +1958,8 @@
 			"frontmatterPosition": {
 				"end": {
 					"col": 3,
-					"line": 5,
-					"offset": 59
+					"line": 6,
+					"offset": 72
 				},
 				"start": {
 					"col": 0,
@@ -1378,17 +1969,17 @@
 			},
 			"listItems": [
 				{
-					"parent": -6,
+					"parent": -7,
 					"position": {
 						"end": {
 							"col": 42,
-							"line": 6,
-							"offset": 102
+							"line": 7,
+							"offset": 115
 						},
 						"start": {
 							"col": 0,
-							"line": 6,
-							"offset": 60
+							"line": 7,
+							"offset": 73
 						}
 					},
 					"task": " "
@@ -1399,8 +1990,8 @@
 					"position": {
 						"end": {
 							"col": 3,
-							"line": 5,
-							"offset": 59
+							"line": 6,
+							"offset": 72
 						},
 						"start": {
 							"col": 0,
@@ -1414,13 +2005,13 @@
 					"position": {
 						"end": {
 							"col": 42,
-							"line": 6,
-							"offset": 102
+							"line": 7,
+							"offset": 115
 						},
 						"start": {
 							"col": 0,
-							"line": 6,
-							"offset": 60
+							"line": 7,
+							"offset": 73
 						}
 					},
 					"type": "list"
@@ -1490,6 +2081,74 @@
 							"col": 0,
 							"line": 4,
 							"offset": 39
+						}
+					},
+					"type": "list"
+				}
+			]
+		},
+		"Frontmatter/Hash tag.md": {
+			"frontmatter": {
+				"tag": "#urgent"
+			},
+			"frontmatterLinks": [],
+			"frontmatterPosition": {
+				"end": {
+					"col": 3,
+					"line": 2,
+					"offset": 22
+				},
+				"start": {
+					"col": 0,
+					"line": 0,
+					"offset": 0
+				}
+			},
+			"listItems": [
+				{
+					"parent": -3,
+					"position": {
+						"end": {
+							"col": 63,
+							"line": 3,
+							"offset": 86
+						},
+						"start": {
+							"col": 0,
+							"line": 3,
+							"offset": 23
+						}
+					},
+					"task": " "
+				}
+			],
+			"sections": [
+				{
+					"position": {
+						"end": {
+							"col": 3,
+							"line": 2,
+							"offset": 22
+						},
+						"start": {
+							"col": 0,
+							"line": 0,
+							"offset": 0
+						}
+					},
+					"type": "yaml"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 63,
+							"line": 3,
+							"offset": 86
+						},
+						"start": {
+							"col": 0,
+							"line": 3,
+							"offset": 23
 						}
 					},
 					"type": "list"
@@ -2325,9 +2984,9 @@
 					"parent": -1,
 					"position": {
 						"end": {
-							"col": 55,
+							"col": 21,
 							"line": 28,
-							"offset": 510
+							"offset": 476
 						},
 						"start": {
 							"col": 0,
@@ -2341,14 +3000,30 @@
 					"parent": -1,
 					"position": {
 						"end": {
-							"col": 47,
+							"col": 34,
 							"line": 29,
-							"offset": 558
+							"offset": 511
 						},
 						"start": {
 							"col": 0,
 							"line": 29,
-							"offset": 511
+							"offset": 477
+						}
+					},
+					"task": "X"
+				},
+				{
+					"parent": -1,
+					"position": {
+						"end": {
+							"col": 47,
+							"line": 30,
+							"offset": 559
+						},
+						"start": {
+							"col": 0,
+							"line": 30,
+							"offset": 512
 						}
 					},
 					"task": "x"
@@ -2359,8 +3034,8 @@
 					"position": {
 						"end": {
 							"col": 47,
-							"line": 29,
-							"offset": 558
+							"line": 30,
+							"offset": 559
 						},
 						"start": {
 							"col": 0,
@@ -2542,6 +3217,25 @@
 					}
 				}
 			],
+			"links": [
+				{
+					"displayText": "⏫ Plan",
+					"link": "⏫ Plan",
+					"original": "[[⏫ Plan]]",
+					"position": {
+						"end": {
+							"col": 20,
+							"line": 17,
+							"offset": 532
+						},
+						"start": {
+							"col": 10,
+							"line": 17,
+							"offset": 522
+						}
+					}
+				}
+			],
 			"listItems": [
 				{
 					"parent": -2,
@@ -2718,6 +3412,86 @@
 						}
 					},
 					"task": " "
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 29,
+							"line": 13,
+							"offset": 405
+						},
+						"start": {
+							"col": 0,
+							"line": 13,
+							"offset": 376
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 48,
+							"line": 14,
+							"offset": 454
+						},
+						"start": {
+							"col": 0,
+							"line": 14,
+							"offset": 406
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 25,
+							"line": 15,
+							"offset": 480
+						},
+						"start": {
+							"col": 0,
+							"line": 15,
+							"offset": 455
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 30,
+							"line": 16,
+							"offset": 511
+						},
+						"start": {
+							"col": 0,
+							"line": 16,
+							"offset": 481
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -2,
+					"position": {
+						"end": {
+							"col": 25,
+							"line": 17,
+							"offset": 537
+						},
+						"start": {
+							"col": 0,
+							"line": 17,
+							"offset": 512
+						}
+					},
+					"task": " "
 				}
 			],
 			"sections": [
@@ -2739,9 +3513,9 @@
 				{
 					"position": {
 						"end": {
-							"col": 51,
-							"line": 12,
-							"offset": 375
+							"col": 25,
+							"line": 17,
+							"offset": 537
 						},
 						"start": {
 							"col": 0,
@@ -2916,6 +3690,102 @@
 						}
 					},
 					"task": " "
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 46,
+							"line": 13,
+							"offset": 480
+						},
+						"start": {
+							"col": 0,
+							"line": 13,
+							"offset": 434
+						}
+					},
+					"task": ">"
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 60,
+							"line": 14,
+							"offset": 541
+						},
+						"start": {
+							"col": 0,
+							"line": 14,
+							"offset": 481
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 57,
+							"line": 15,
+							"offset": 599
+						},
+						"start": {
+							"col": 0,
+							"line": 15,
+							"offset": 542
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 55,
+							"line": 16,
+							"offset": 655
+						},
+						"start": {
+							"col": 0,
+							"line": 16,
+							"offset": 600
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 80,
+							"line": 17,
+							"offset": 736
+						},
+						"start": {
+							"col": 0,
+							"line": 17,
+							"offset": 656
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -4,
+					"position": {
+						"end": {
+							"col": 64,
+							"line": 18,
+							"offset": 801
+						},
+						"start": {
+							"col": 0,
+							"line": 18,
+							"offset": 737
+						}
+					},
+					"task": " "
 				}
 			],
 			"sections": [
@@ -2952,9 +3822,9 @@
 				{
 					"position": {
 						"end": {
-							"col": 44,
-							"line": 12,
-							"offset": 433
+							"col": 64,
+							"line": 18,
+							"offset": 801
 						},
 						"start": {
 							"col": 0,
@@ -2967,6 +3837,40 @@
 			]
 		},
 		"Structure.md": {
+			"footnoteRefs": [
+				{
+					"id": "1",
+					"position": {
+						"end": {
+							"col": 30,
+							"line": 60,
+							"offset": 1038
+						},
+						"start": {
+							"col": 26,
+							"line": 60,
+							"offset": 1034
+						}
+					}
+				}
+			],
+			"footnotes": [
+				{
+					"id": "1",
+					"position": {
+						"end": {
+							"col": 45,
+							"line": 62,
+							"offset": 1099
+						},
+						"start": {
+							"col": 0,
+							"line": 62,
+							"offset": 1054
+						}
+					}
+				}
+			],
 			"frontmatter": {
 				"tag": "single",
 				"tags": [
@@ -3058,13 +3962,77 @@
 					"position": {
 						"end": {
 							"col": 16,
-							"line": 50,
-							"offset": 869
+							"line": 51,
+							"offset": 894
 						},
 						"start": {
 							"col": 0,
-							"line": 50,
-							"offset": 853
+							"line": 51,
+							"offset": 878
+						}
+					}
+				},
+				{
+					"heading": "More syntax",
+					"level": 2,
+					"position": {
+						"end": {
+							"col": 14,
+							"line": 54,
+							"offset": 938
+						},
+						"start": {
+							"col": 0,
+							"line": 54,
+							"offset": 924
+						}
+					}
+				},
+				{
+					"heading": "Tasks for [[Inbox]]",
+					"level": 2,
+					"position": {
+						"end": {
+							"col": 22,
+							"line": 64,
+							"offset": 1123
+						},
+						"start": {
+							"col": 0,
+							"line": 64,
+							"offset": 1101
+						}
+					}
+				},
+				{
+					"heading": "[[Inbox|Alias]] heading",
+					"level": 2,
+					"position": {
+						"end": {
+							"col": 26,
+							"line": 67,
+							"offset": 1185
+						},
+						"start": {
+							"col": 0,
+							"line": 67,
+							"offset": 1159
+						}
+					}
+				},
+				{
+					"heading": "Tags and markers",
+					"level": 2,
+					"position": {
+						"end": {
+							"col": 19,
+							"line": 70,
+							"offset": 1249
+						},
+						"start": {
+							"col": 0,
+							"line": 70,
+							"offset": 1230
 						}
 					}
 				}
@@ -3084,6 +4052,40 @@
 							"col": 18,
 							"line": 27,
 							"offset": 427
+						}
+					}
+				},
+				{
+					"displayText": "Inbox",
+					"link": "Inbox",
+					"original": "[[Inbox]]",
+					"position": {
+						"end": {
+							"col": 22,
+							"line": 64,
+							"offset": 1123
+						},
+						"start": {
+							"col": 13,
+							"line": 64,
+							"offset": 1114
+						}
+					}
+				},
+				{
+					"displayText": "Alias",
+					"link": "Inbox",
+					"original": "[[Inbox|Alias]]",
+					"position": {
+						"end": {
+							"col": 18,
+							"line": 67,
+							"offset": 1177
+						},
+						"start": {
+							"col": 3,
+							"line": 67,
+							"offset": 1162
 						}
 					}
 				}
@@ -3406,33 +4408,193 @@
 					"task": " "
 				},
 				{
-					"parent": -48,
+					"parent": 45,
 					"position": {
 						"end": {
-							"col": 39,
-							"line": 48,
-							"offset": 851
+							"col": 24,
+							"line": 46,
+							"offset": 815
 						},
 						"start": {
-							"col": 2,
-							"line": 48,
-							"offset": 814
+							"col": 4,
+							"line": 46,
+							"offset": 795
 						}
 					},
 					"task": " "
 				},
 				{
-					"parent": -51,
+					"parent": -49,
+					"position": {
+						"end": {
+							"col": 39,
+							"line": 49,
+							"offset": 876
+						},
+						"start": {
+							"col": 2,
+							"line": 49,
+							"offset": 839
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -52,
 					"position": {
 						"end": {
 							"col": 27,
-							"line": 51,
-							"offset": 897
+							"line": 52,
+							"offset": 922
 						},
 						"start": {
 							"col": 0,
-							"line": 51,
-							"offset": 870
+							"line": 52,
+							"offset": 895
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -60,
+					"position": {
+						"end": {
+							"col": 44,
+							"line": 60,
+							"offset": 1052
+						},
+						"start": {
+							"col": 0,
+							"line": 60,
+							"offset": 1008
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -62,
+					"position": {
+						"end": {
+							"col": 45,
+							"line": 62,
+							"offset": 1099
+						},
+						"start": {
+							"col": 6,
+							"line": 62,
+							"offset": 1060
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -65,
+					"position": {
+						"end": {
+							"col": 33,
+							"line": 65,
+							"offset": 1157
+						},
+						"start": {
+							"col": 0,
+							"line": 65,
+							"offset": 1124
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -68,
+					"position": {
+						"end": {
+							"col": 42,
+							"line": 68,
+							"offset": 1228
+						},
+						"start": {
+							"col": 0,
+							"line": 68,
+							"offset": 1186
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -72,
+					"position": {
+						"end": {
+							"col": 41,
+							"line": 72,
+							"offset": 1292
+						},
+						"start": {
+							"col": 0,
+							"line": 72,
+							"offset": 1251
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -72,
+					"position": {
+						"end": {
+							"col": 62,
+							"line": 73,
+							"offset": 1355
+						},
+						"start": {
+							"col": 0,
+							"line": 73,
+							"offset": 1293
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -72,
+					"position": {
+						"end": {
+							"col": 88,
+							"line": 74,
+							"offset": 1444
+						},
+						"start": {
+							"col": 0,
+							"line": 74,
+							"offset": 1356
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -72,
+					"position": {
+						"end": {
+							"col": 31,
+							"line": 75,
+							"offset": 1476
+						},
+						"start": {
+							"col": 0,
+							"line": 75,
+							"offset": 1445
+						}
+					},
+					"task": " "
+				},
+				{
+					"parent": -76,
+					"position": {
+						"end": {
+							"col": 34,
+							"line": 76,
+							"offset": 1511
+						},
+						"start": {
+							"col": 0,
+							"line": 76,
+							"offset": 1477
 						}
 					},
 					"task": " "
@@ -3637,9 +4799,9 @@
 				{
 					"position": {
 						"end": {
-							"col": 19,
-							"line": 45,
-							"offset": 790
+							"col": 24,
+							"line": 46,
+							"offset": 815
 						},
 						"start": {
 							"col": 0,
@@ -3653,13 +4815,13 @@
 					"position": {
 						"end": {
 							"col": 39,
-							"line": 48,
-							"offset": 851
+							"line": 49,
+							"offset": 876
 						},
 						"start": {
 							"col": 0,
-							"line": 47,
-							"offset": 792
+							"line": 48,
+							"offset": 817
 						}
 					},
 					"type": "callout"
@@ -3668,13 +4830,13 @@
 					"position": {
 						"end": {
 							"col": 16,
-							"line": 50,
-							"offset": 869
+							"line": 51,
+							"offset": 894
 						},
 						"start": {
 							"col": 0,
-							"line": 50,
-							"offset": 853
+							"line": 51,
+							"offset": 878
 						}
 					},
 					"type": "heading"
@@ -3683,16 +4845,211 @@
 					"position": {
 						"end": {
 							"col": 27,
-							"line": 51,
-							"offset": 897
+							"line": 52,
+							"offset": 922
 						},
 						"start": {
 							"col": 0,
-							"line": 51,
-							"offset": 870
+							"line": 52,
+							"offset": 895
 						}
 					},
 					"type": "list"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 14,
+							"line": 54,
+							"offset": 938
+						},
+						"start": {
+							"col": 0,
+							"line": 54,
+							"offset": 924
+						}
+					},
+					"type": "heading"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 35,
+							"line": 58,
+							"offset": 1006
+						},
+						"start": {
+							"col": 0,
+							"line": 56,
+							"offset": 940
+						}
+					},
+					"type": "table"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 44,
+							"line": 60,
+							"offset": 1052
+						},
+						"start": {
+							"col": 0,
+							"line": 60,
+							"offset": 1008
+						}
+					},
+					"type": "list"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 45,
+							"line": 62,
+							"offset": 1099
+						},
+						"start": {
+							"col": 0,
+							"line": 62,
+							"offset": 1054
+						}
+					},
+					"type": "footnoteDefinition"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 22,
+							"line": 64,
+							"offset": 1123
+						},
+						"start": {
+							"col": 0,
+							"line": 64,
+							"offset": 1101
+						}
+					},
+					"type": "heading"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 33,
+							"line": 65,
+							"offset": 1157
+						},
+						"start": {
+							"col": 0,
+							"line": 65,
+							"offset": 1124
+						}
+					},
+					"type": "list"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 26,
+							"line": 67,
+							"offset": 1185
+						},
+						"start": {
+							"col": 0,
+							"line": 67,
+							"offset": 1159
+						}
+					},
+					"type": "heading"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 42,
+							"line": 68,
+							"offset": 1228
+						},
+						"start": {
+							"col": 0,
+							"line": 68,
+							"offset": 1186
+						}
+					},
+					"type": "list"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 19,
+							"line": 70,
+							"offset": 1249
+						},
+						"start": {
+							"col": 0,
+							"line": 70,
+							"offset": 1230
+						}
+					},
+					"type": "heading"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 31,
+							"line": 75,
+							"offset": 1476
+						},
+						"start": {
+							"col": 0,
+							"line": 72,
+							"offset": 1251
+						}
+					},
+					"type": "list"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 34,
+							"line": 76,
+							"offset": 1511
+						},
+						"start": {
+							"col": 0,
+							"line": 76,
+							"offset": 1477
+						}
+					},
+					"type": "list"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 0,
+							"line": 77,
+							"offset": 1511
+						},
+						"start": {
+							"col": 0,
+							"line": 77,
+							"offset": 1511
+						}
+					},
+					"type": "text"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 0,
+							"line": 77,
+							"offset": 1511
+						},
+						"start": {
+							"col": 0,
+							"line": 77,
+							"offset": 1511
+						}
+					},
+					"type": "element"
 				}
 			],
 			"tags": [
@@ -3740,6 +5097,36 @@
 						}
 					},
 					"tag": "#home"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 36,
+							"line": 73,
+							"offset": 1329
+						},
+						"start": {
+							"col": 28,
+							"line": 73,
+							"offset": 1321
+						}
+					},
+					"tag": "#Q1-2026"
+				},
+				{
+					"position": {
+						"end": {
+							"col": 48,
+							"line": 73,
+							"offset": 1341
+						},
+						"start": {
+							"col": 41,
+							"line": 73,
+							"offset": 1334
+						}
+					},
+					"tag": "#日本語/タグ"
 				}
 			]
 		},

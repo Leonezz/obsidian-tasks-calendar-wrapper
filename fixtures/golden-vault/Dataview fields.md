@@ -13,3 +13,12 @@
 - [ ] double brackets [[due:: 2026-01-21]]
 - [ ] time in the field [due:: 2026-01-20T14:30]
 - [ ] two fields [scheduled:: 2026-01-16] [due:: 2026-01-19]
+- [x] done with only an unplanned field [unplanned:: 2026-01-18]
+- [-] cancelled with only an unplanned field [unplanned:: 2026-01-18]
+- [ ] capitalised field [Due:: 2026-01-20]
+- [ ] key with a space [due date:: 2026-01-20]
+- [ ] no space after the colons [due::2026-01-20]
+- [ ] parenthesis field (due:: 2026-01-20)
+- [ ] link value [due:: [[2026-01-20]]]
+- [ ] nested brackets in text [see [this]] [due:: 2026-01-20]
+- [ ] emoji due and dataview due 📅 2026-01-25 [due:: 2026-01-26]

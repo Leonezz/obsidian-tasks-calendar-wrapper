@@ -44,9 +44,34 @@ A paragraph before the first list.
 - [ ] under an emoji heading
 
 > - [ ] quoted task
+>     - [ ] quoted child
 
 > [!note] A callout
 > - [ ] task in a callout 📅 2026-01-21
 
 ### Deep heading
 - [ ] right under a heading
+
+## More syntax
+
+| Task | Owner |
+| --- | --- |
+| - [ ] task in a table cell | me |
+
+- [ ] task with a footnote[^1] 📅 2026-01-20
+
+[^1]: - [ ] task inside a footnote definition
+
+## Tasks for [[Inbox]]
+- [ ] under a heading with a link
+
+## [[Inbox|Alias]] heading
+- [ ] under a heading with an aliased link
+
+## Tags and markers
+
+- [ ] call about issue #123 📅 2026-01-20
+- [ ] plan #2026 goals with #Q1-2026 and #日本語/タグ 📅 2026-01-20
+- [ ] url anchor [docs](https://example.com/page#section) and word#notatag 📅 2026-01-20
+-	[ ] tab after the list marker
+1) [ ] numbered with a parenthesis

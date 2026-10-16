@@ -1,0 +1,2 @@
+- [ ] task in a CRLF note 📅 2026-01-20
+- [ ] second task in a CRLF note #work
