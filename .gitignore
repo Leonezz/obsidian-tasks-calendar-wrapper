@@ -26,6 +26,8 @@ data.json
 yarn-error.log
 
 ExampleVault/.obsidian
+# Obsidian's own settings for the golden fixture vault, created when it is opened to capture metadata.
+fixtures/golden-vault/.obsidian/
 
 *.lock
 package-lock.json

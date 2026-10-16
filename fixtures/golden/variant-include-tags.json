@@ -1,0 +1,22 @@
+{
+	"shown": [
+		"Emoji dates.md:31 | overdue | due=2026-01-13 scheduled=2026-01-11 overdue=2026-01-15T09:00 | write the report",
+		"Structure.md:28 | scheduled | due=2026-01-20 | task with and and tags",
+		"Tagged/Project note.md:3 | unplanned | unplanned=2026-01-15T09:00 | another task in the tagged note"
+	],
+	"days": {
+		"2026-01-11": [
+			"Emoji dates.md:31"
+		],
+		"2026-01-13": [
+			"Emoji dates.md:31"
+		],
+		"2026-01-15": [
+			"Emoji dates.md:31",
+			"Tagged/Project note.md:3"
+		],
+		"2026-01-20": [
+			"Structure.md:28"
+		]
+	}
+}

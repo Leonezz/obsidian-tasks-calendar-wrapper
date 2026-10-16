@@ -1,0 +1,1 @@
+- [ ] task in a folder the path filters exclude 📅 2026-01-16

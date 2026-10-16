@@ -1,0 +1,15 @@
+# Dataview fields
+
+- [ ] due field [due:: 2026-01-20]
+- [ ] scheduled field [scheduled:: 2026-01-12]
+- [ ] start field [start:: 2026-01-10]
+- [x] completion field [completion:: 2026-01-14]
+- [x] done field [done:: 2026-01-13]
+- [x] complete field [complete:: 2026-01-12]
+- [ ] created field [created:: 2026-01-01]
+- [ ] unplanned field [unplanned:: 2026-01-18]
+- [ ] unknown field [owner:: someone]
+- [ ] invalid field date [due:: 2026-02-31]
+- [ ] double brackets [[due:: 2026-01-21]]
+- [ ] time in the field [due:: 2026-01-20T14:30]
+- [ ] two fields [scheduled:: 2026-01-16] [due:: 2026-01-19]
