@@ -88,6 +88,14 @@ export default class TasksCalendarWrapper extends Plugin {
 		this.updateOptions(this.userOptions);
 	}
 
+	/**
+	 * Obsidian calls this when data.json changes on disk while the plugin runs (Sync, git, a hand edit).
+	 * Without reloading, the next save wrote the old settings back over the change, see issue #187.
+	 */
+	async onExternalSettingsChange(): Promise<void> {
+		await this.loadOptions();
+	}
+
 	async writeOptions(
 		changedOpts: Partial<UserOption>
 	): Promise<void> {
