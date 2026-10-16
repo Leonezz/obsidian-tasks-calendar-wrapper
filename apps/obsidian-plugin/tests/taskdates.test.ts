@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 
 import moment from "moment";
 
-import { groupTasksByDate, inDisplayOrder } from "../timeline/src/taskdates";
+import { groupTasksByDate, inDisplayOrder, tasksListedOnDay } from "../timeline/src/taskdates";
 import * as TaskMapable from "../utils/taskmapable";
 import { innerDateFormat, TaskDataModel } from "../utils/tasks";
 import { parse } from "./helpers";
@@ -81,4 +81,24 @@ test("days and years are shown from the earliest by default", () => {
 test("days and years are shown from the latest with newest first", () => {
     assert.deepEqual(inDisplayOrder(["2023-08-01", "2023-02-01", "2023-05-01"], true), ["2023-08-01", "2023-05-01", "2023-02-01"]);
     assert.deepEqual(inDisplayOrder([2025, 2023, 2026], true), [2026, 2025, 2023]);
+});
+
+// With forwarding on, overdue tasks and tasks forwarded to today are listed on today only, not twice.
+
+test("with forwarding on, a day other than today leaves out overdue and forwarded tasks", async () => {
+    const tasks = await Promise.all([
+        parse("- [ ] overdue 📅 2026-10-01", today),
+        parse("- [ ] started earlier 🛫 2026-10-01", today, { pastStartAndScheduled: true }),
+        parse("- [ ] due later 📅 2026-10-20", today),
+    ]);
+    assert.deepEqual(tasksListedOnDay(tasks, false, true).map(t => t.visual), ["due later"]);
+});
+
+test("today, or any day with forwarding off, lists every task of the day", async () => {
+    const tasks = await Promise.all([
+        parse("- [ ] overdue 📅 2026-10-01", today),
+        parse("- [ ] started earlier 🛫 2026-10-01", today, { pastStartAndScheduled: true }),
+    ]);
+    assert.equal(tasksListedOnDay(tasks, true, true).length, 2);
+    assert.equal(tasksListedOnDay(tasks, false, false).length, 2);
 });

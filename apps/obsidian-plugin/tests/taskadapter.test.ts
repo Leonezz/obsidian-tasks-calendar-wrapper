@@ -47,6 +47,13 @@ test("a file that cannot be read does not drop the other files", async () => {
     assert.deepEqual(adapter.getTaskList().map(t => t.path), ["good.md"]);
 });
 
+test("tasks come in path order, whatever order the files are listed and read in", async () => {
+    // Listed out of order; the first file listed is read last.
+    const adapter = new ObsidianTaskAdapter(fakeApp({ "c.md": 30, "a.md": 15, "b.md": 0 }));
+    await adapter.generateTasksList([], [], [], []);
+    assert.deepEqual(adapter.getTaskList().map(t => t.path), ["a.md", "b.md", "c.md"]);
+});
+
 test("reloading does not pile up the tasks of earlier runs", async () => {
     const adapter = new ObsidianTaskAdapter(fakeApp({ "one.md": 5, "two.md": 0 }));
     await adapter.generateTasksList([], [], [], []);

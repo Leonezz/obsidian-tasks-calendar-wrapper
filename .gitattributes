@@ -1,0 +1,5 @@
+# The golden fixtures are compared byte for byte with metadata Obsidian computed from them, so git must
+# never change their line endings (CRLF note.md is CRLF on purpose).
+fixtures/golden-vault/** -text
+fixtures/golden-vault.metadata.json -text
+fixtures/golden/** -text

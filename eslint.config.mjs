@@ -24,10 +24,23 @@ export default tseslint.config(
 	},
 	{
 		files: ["apps/**/*.{ts,tsx}"],
-		ignores: ["apps/obsidian-plugin/utils/moment.ts"],
+		// The tests run without Obsidian and use the npm moment, which the obsidian stub hands out too.
+		ignores: ["apps/obsidian-plugin/utils/moment.ts", "apps/obsidian-plugin/tests/**"],
 		rules: {
 			"no-restricted-imports": ["error", {
-				paths: [{ name: "obsidian", importNames: ["moment"], message: "Import moment from utils/moment, which types it as callable." }],
+				paths: [
+					{ name: "obsidian", importNames: ["moment"], message: "Import moment from utils/moment, which types it as callable." },
+					{
+						name: "moment",
+						allowTypeImports: true,
+						message: "Import moment from utils/moment. The npm package would bundle a second moment, set to English instead of the user's Obsidian language.",
+					},
+				],
+				patterns: [{
+					group: ["moment/*"],
+					allowTypeImports: true,
+					message: "Obsidian's moment already has its locales; importing one from the npm package bundles a second moment.",
+				}],
 			}],
 		},
 	},

@@ -1,0 +1,1 @@
+- [ ] task in a week-format daily note

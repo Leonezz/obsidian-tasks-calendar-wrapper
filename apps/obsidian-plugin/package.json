@@ -7,7 +7,8 @@
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc --noEmit && node esbuild.config.mjs production",
 		"typecheck": "tsc --noEmit",
-		"test": "node scripts/test.mjs"
+		"test": "node scripts/test.mjs",
+		"capture:golden": "node scripts/capture-golden.mjs"
 	},
 	"license": "MIT",
 	"dependencies": {

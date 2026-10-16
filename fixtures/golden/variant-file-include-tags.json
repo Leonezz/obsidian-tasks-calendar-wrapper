@@ -1,0 +1,14 @@
+{
+	"shown": [
+		"Tagged/Project note.md:2 | scheduled | due=2026-01-17 | task in a note tagged in its text",
+		"Tagged/Project note.md:3 | unplanned | unplanned=2026-01-15T09:00 | another task in the tagged note"
+	],
+	"days": {
+		"2026-01-15": [
+			"Tagged/Project note.md:3"
+		],
+		"2026-01-17": [
+			"Tagged/Project note.md:2"
+		]
+	}
+}

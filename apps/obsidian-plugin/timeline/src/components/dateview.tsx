@@ -2,8 +2,8 @@ import { moment } from '../../../utils/moment';
 import type { Moment, unitOfTime } from 'moment';
 import * as React from 'react';
 import { getFileTitle } from '../../../dataview-util/dataview';
-import { TaskStatus, doneDateSymbol, dueDateSymbol, recurrenceSymbol, scheduledDateSymbol, startDateSymbol } from '../../../utils/tasks';
-import { forwardedDateKey } from '../../../utils/taskmapable';
+import { doneDateSymbol, dueDateSymbol, recurrenceSymbol, scheduledDateSymbol, startDateSymbol } from '../../../utils/tasks';
+import { tasksListedOnDay } from '../taskdates';
 import * as Icons from './asserts/icons';
 import { QuickEntryHandlerContext, TaskListContext, TodayFocusEventHandlersContext, UserOptionContext } from './context';
 import { TaskItemView } from './taskitemview';
@@ -22,10 +22,7 @@ export class DateView extends React.Component<DateViewProps> {
                     const entryOnDateMoment = moment(entryOnDate);
                     const isEntryDate = this.props.date.format("YYYYMMDD") === entryOnDateMoment.format("YYYYMMDD");
                     const isToday = this.props.date.isSame(moment(), 'date');
-                    if (forward && !isToday) {
-                        // Tasks pulled onto today are shown there only, so they are not listed twice.
-                        taskList = taskList.filter(t => t.status !== TaskStatus.overdue && !t.dates.has(forwardedDateKey))
-                    }
+                    taskList = tasksListedOnDay(taskList, isToday, forward);
                     return (
                         <div>
                             {isEntryDate && <TodayFocus visual={"Focus On Today"} />}
