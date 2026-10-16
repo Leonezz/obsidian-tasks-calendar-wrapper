@@ -84,13 +84,21 @@ export class ObsidianTaskAdapter {
 
         // Every read has to finish before the list is handed over. Without waiting, files that
         // were not in Obsidian's read cache yet were silently left out, see issue #80.
-        const reads = await Promise.allSettled(filteredFiles.map(async (file: TFile) => {
+        // The tasks are collected in path order rather than in the order the reads finish, so tasks
+        // that the sort ranks equal stay in the same order on every reload.
+        const inPathOrder = [...filteredFiles].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+        const reads = await Promise.allSettled(inPathOrder.map(async (file: TFile) => {
             const content = await this.app.vault.cachedRead(file);
             const cache = this.app.metadataCache.getFileCache(file);
+            const tasks: TaskDataModel[] = [];
             cache?.listItems?.forEach(
-                this.fromItemCache(Link.file(file.path), file.path, content, cache.sections, cache.links, cache.frontmatter, cache.tags)
+                this.fromItemCache(Link.file(file.path), file.path, content, tasks, cache.sections, cache.links, cache.frontmatter, cache.tags)
             );
+            return tasks;
         }));
+        for (const read of reads) {
+            if (read.status === "fulfilled") this.tasksList.push(...read.value);
+        }
 
         const failed = reads.filter((read): read is PromiseRejectedResult => read.status === "rejected");
         if (failed.length > 0) {
@@ -106,13 +114,14 @@ export class ObsidianTaskAdapter {
      * @param filePath The path of the file where the list item belongs.
      * @param fileContent The file content for extracting the raw texts for list items. The reason this is an augment is to avoiding
      * reading one same file for every item.
+     * @param into The list the file's tasks are added to.
      * @param sections The section cache from Obsidian.
      * @param links The link cache from Obsidian.
      * @param fontmatter The fontmatter cache from Obsidian.
      * @param tags The tag cache from Obsidian.
-     * @returns This funcion directly modify this.taskList. 
+     * @returns This funcion adds the task of each list item to `into`.
      */
-    private fromItemCache(link: Link, filePath: string, fileContent: string,
+    private fromItemCache(link: Link, filePath: string, fileContent: string, into: TaskDataModel[],
         sections?: SectionCache[], links?: LinkCache[], fontmatter?: FrontMatterCache, tagsCache?: TagCache[]) {
         return (item: ListItemCache) => {
             if (!(item.task)) return null;
@@ -164,7 +173,7 @@ export class ObsidianTaskAdapter {
 
             const taskItem = this.fromLine(itemText, filePath, parentLink, itemPos, outLinkLinks, fontmatter, tags || []);
             if (taskItem) {
-                this.tasksList.push(taskItem);
+                into.push(taskItem);
             }
         }
     }
