@@ -1,4 +1,5 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { formatPropertyRules, parsePropertyRules, PropertyRules } from "../utils/properties";
 import { defaultSortKey, sortOptionLabels } from "../utils/sort";
 import { TaskRegularExpressions } from "../utils/tasks";
 import TasksCalendarWrapper from "./main";
@@ -50,6 +51,11 @@ export const defaultUserOptions = {
      * Filter tasks in specific files which **does not** contains any of these tags to be displayed.
      */
     fileExcludeTags: [] as string[],
+    /**
+     * Exclude tasks of files whose frontmatter property has one of these values,
+     * e.g. { status: ["archived"] } hides the tasks of notes with `status: archived`.
+     */
+    excludeProperties: {} as PropertyRules,
     /**
      * optional options to customize the look */
     styles: ['style1'] as string[],
@@ -683,6 +689,18 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                     const values = v.split(',');
                     const valuesTrimed = values.map(p => p.trim()).filter(p => p.length > 0);
                     await this.onOptionUpdate({ excludePaths: valuesTrimed });
+                })
+            })
+
+        new Setting(containerEl)
+            .setName("Exclude Properties")
+            .setDesc("Exclude tasks of files whose frontmatter property has one of these values. "
+                + "One property per line, values separated by commas.")
+            .addTextArea(ta => {
+                ta.setPlaceholder("status: archived, done");
+                ta.setValue(formatPropertyRules(this.plugin.userOptions.excludeProperties));
+                ta.onChange(async v => {
+                    await this.onOptionUpdate({ excludeProperties: parsePropertyRules(v) });
                 })
             })
 

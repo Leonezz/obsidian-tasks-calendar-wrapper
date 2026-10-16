@@ -167,6 +167,9 @@ Modification to the options will take effect after 5 secs.
   - **Task Exclude Tags**: Tasks with any of these tags should not be displayed.
   - **File Exclude Tags**: Tasks of files which have any of these tags should not be displayed.
 - **Exclude Paths**: Specify items of which paths should not be counted as tasks. In most of the time your template folder path should be included here.
+- **Exclude Properties**: Tasks of files whose frontmatter property has one of these values should not be displayed. One property per line, values separated by commas, e.g. `status: archived, done`.
+  - Values are compared as trimmed text and are case-sensitive, like the tag filters. A number or boolean matches its text (`priority: 2`, `pinned: true`), and a link matches as written (`project: [[Home]]`).
+  - A list property matches if any of its items does. Empty values never match.
 - **Include Paths**: Specify items of which paths should be counted as tasks.
 - **Filter Empty**: If enabled, tasks with empty content will not be displayed. If disabled, the raw text of the empty content tasks will be displayed.
 

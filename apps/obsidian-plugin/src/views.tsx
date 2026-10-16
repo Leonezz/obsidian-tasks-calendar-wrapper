@@ -96,8 +96,9 @@ export class TasksTimelineView extends ItemView {
         const fileIncludeFilter = this.userOptionModel.get("includePaths") || [];
         const fileIncludeTagsFilter = this.userOptionModel.get("fileIncludeTags") || [];
         const fileExcludeTagsFilter = this.userOptionModel.get("fileExcludeTags") || [];
+        const excludeProperties = this.userOptionModel.get("excludeProperties") || {};
         const adapter = new ObsidianTaskAdapter(this.app);
-        adapter.generateTasksList(fileIncludeFilter, fileExcludeFilter, fileIncludeTagsFilter, fileExcludeTagsFilter)
+        adapter.generateTasksList(fileIncludeFilter, fileExcludeFilter, fileIncludeTagsFilter, fileExcludeTagsFilter, excludeProperties)
             .catch(reason => { new Notice("Error when generating tasks from files: " + reason, 5000); throw reason; })
             .then(() => {
                 const taskList = adapter.getTaskList();
