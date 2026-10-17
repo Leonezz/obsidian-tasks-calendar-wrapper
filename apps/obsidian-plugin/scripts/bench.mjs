@@ -418,6 +418,10 @@ await runScript("bench", async () => {
 	}
 	const baseline = JSON.parse(readFileSync(baselineFile, "utf8"));
 	console.log(`bench: 1-minute load average ${env.loadAverage.before} before and ${env.loadAverage.after} after the run (${env.loadAverage.cores} cores); the baseline had ${baseline.loadAverage?.before} and ${baseline.loadAverage?.after}.`);
+	const baselineLoad = Math.max(baseline.loadAverage?.before ?? 0, baseline.loadAverage?.after ?? 0, 1);
+	if (Math.max(env.loadAverage.before, env.loadAverage.after) > 2 * baselineLoad) {
+		console.warn("bench: warning: the machine was more than twice as busy as when the baseline was measured, which alone makes the numbers slower. Run again when it is idle.");
+	}
 	for (const key of ["obsidianVersion", "machine", "viewport", "today"]) {
 		if (JSON.stringify(baseline[key]) !== JSON.stringify(env[key])) {
 			console.warn(`bench: warning: the baseline was measured with ${key} ${JSON.stringify(baseline[key])}, this run has ${JSON.stringify(env[key])}; the numbers are not comparable.`);
