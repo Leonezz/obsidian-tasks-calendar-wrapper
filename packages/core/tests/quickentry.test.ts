@@ -80,6 +80,17 @@ test("the daily note is named with its format, as the daily notes plugin names i
     assert.equal(quickEntryTargets(options, thursday).at(-1), "Daily/2026, January 15 - Thursday.md");
 });
 
+test("the daily note is named after the day it is where now is, not in UTC", () => {
+    // 01:00 on the 16th at UTC+8 is still the 15th in UTC.
+    const earlyMorningInShanghai = moment.parseZone("2026-01-16T01:00:00+08:00");
+    assert.equal(quickEntryTargets(targetOptions, earlyMorningInShanghai).at(-1), "Daily/2026-01-16.md");
+});
+
+test("the inbox and the task files are offered as they are configured", () => {
+    assert.deepEqual(quickEntryTargets({ ...targetOptions, taskFiles: ["Projects"], inbox: "Inbox" }, thursday),
+        ["Projects", "Inbox", "Daily/2026-01-15.md"]);
+});
+
 test("an empty inbox or daily note format is left out, and a note offered twice is listed once", () => {
     assert.deepEqual(quickEntryTargets({ ...targetOptions, inbox: "", dailyNoteFormat: "" }, thursday), ["Projects.md"]);
     assert.deepEqual(quickEntryTargets({ ...targetOptions, taskFiles: ["Inbox.md", "Projects.md"] }, thursday),
