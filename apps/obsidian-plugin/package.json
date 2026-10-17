@@ -17,14 +17,12 @@
 	"dependencies": {
 		"@tasks-calendar-wrapper/core": "workspace:*",
 		"backbone": "1.6.1",
-		"parsimmon": "1.18.1",
 		"react": "18.3.1",
 		"react-dom": "18.3.1"
 	},
 	"devDependencies": {
 		"@types/backbone": "1.4.23",
 		"@types/node": "20.19.43",
-		"@types/parsimmon": "1.10.9",
 		"@types/react": "18.3.27",
 		"@types/react-dom": "18.3.7",
 		"esbuild": "0.28.2",

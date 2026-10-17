@@ -32,9 +32,6 @@ importers:
       backbone:
         specifier: 1.6.1
         version: 1.6.1
-      parsimmon:
-        specifier: 1.18.1
-        version: 1.18.1
       react:
         specifier: 18.3.1
         version: 18.3.1
@@ -48,9 +45,6 @@ importers:
       '@types/node':
         specifier: 20.19.43
         version: 20.19.43
-      '@types/parsimmon':
-        specifier: 1.10.9
-        version: 1.10.9
       '@types/react':
         specifier: 18.3.27
         version: 18.3.27
@@ -75,12 +69,18 @@ importers:
       '@types/node':
         specifier: 20.19.43
         version: 20.19.43
+      '@types/parsimmon':
+        specifier: 1.10.9
+        version: 1.10.9
       esbuild:
         specifier: 0.28.2
         version: 0.28.2
       moment:
         specifier: 2.29.4
         version: 2.29.4
+      parsimmon:
+        specifier: 1.18.1
+        version: 1.18.1
       typescript:
         specifier: 6.0.3
         version: 6.0.3
