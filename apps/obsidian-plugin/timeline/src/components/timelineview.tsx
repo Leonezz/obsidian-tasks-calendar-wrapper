@@ -1,11 +1,10 @@
 import { moment } from '../../../utils/moment';
-import type { Moment } from 'moment';
 import * as React from 'react';
 import { UserOption } from '../../../src/settings';
 import * as TaskMapable from '../../../utils/taskmapable';
-import { innerDateFormat, TaskDataModel, TaskStatus } from '../../../utils/tasks';
-import { counterClass } from '@tasks-calendar-wrapper/core';
-import { inDisplayOrder } from '../taskdates';
+import { TaskDataModel, TaskStatus } from '../../../utils/tasks';
+import { counterClass, dayKey } from '@tasks-calendar-wrapper/core';
+import { timelineSpan } from '../taskdates';
 import { TaskListContext, TodayFocusEventHandlersContext, UserOptionContext } from './context';
 import { YearView } from './yearview';
 
@@ -53,30 +52,9 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
     }
 
     render(): React.ReactNode {
-        const involvedDates: Set<string> = new Set();
         const taskList = this.props.taskList;
-        taskList.forEach((t: TaskDataModel) => {
-            t.due && involvedDates.add(t.due.format(innerDateFormat));
-            t.scheduled && involvedDates.add(t.scheduled.format(innerDateFormat));
-            t.created && involvedDates.add(t.created.format(innerDateFormat));
-            t.start && involvedDates.add(t.start.format(innerDateFormat));
-            t.completion && involvedDates.add(t.completion.format(innerDateFormat));
-            t.dates.forEach((d: Moment, k: string) => {
-                involvedDates.add(d.format(innerDateFormat));
-            });
-        })
-
-        if (!involvedDates.has(moment().format(innerDateFormat)))
-            involvedDates.add(moment().format(innerDateFormat))
-
-        const sortedDatas = [...involvedDates].sort();
-        const earliestYear: number = +moment(sortedDatas.first()!.toString()).format("YYYY");
-        const latestYear: number = +moment(sortedDatas.last()!.toString()).format("YYYY");
         const newestFirst = this.props.userOptions.newestFirst;
-        const years = inDisplayOrder(Array.from({ length: latestYear - earliestYear + 1 }, (_, i) => i + earliestYear), newestFirst);
-        // The days at the top and the bottom of the view, so "top" and "bottom" entry positions follow the order.
-        const firstDay = newestFirst ? sortedDatas.last() : sortedDatas.first();
-        const lastDay = newestFirst ? sortedDatas.first() : sortedDatas.last();
+        const { years, entryDay } = timelineSpan(taskList, dayKey(moment()), this.props.userOptions.entryPosition, newestFirst);
 
         const overdueCount: number = taskList.filter(t => t.status === TaskStatus.overdue).length;
         const unplannedCount: number = taskList.filter(t => t.status === TaskStatus.unplanned).length;
@@ -159,8 +137,7 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
                                 <TaskListContext.Provider value={
                                     {
                                         taskList: taskList.filter(TaskMapable.filterYear(moment().year(y))),
-                                        entryOnDate: this.props.userOptions.entryPosition === "top" ? firstDay! :
-                                            this.props.userOptions.entryPosition === "bottom" ? lastDay! : moment().format(innerDateFormat),
+                                        entryOnDate: entryDay,
                                     }
                                 } key={i}>
                                     <YearView year={y} newestFirst={newestFirst} key={y} />

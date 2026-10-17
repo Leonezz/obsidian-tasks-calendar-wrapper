@@ -15,6 +15,12 @@ export interface SupportLink {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
     {
+        version: "0.4.0-beta.2",
+        items: [
+            "The timeline is no longer empty when Obsidian is set to a language that writes numbers in its own digits, such as Arabic or Persian.",
+        ],
+    },
+    {
         version: "0.4.0-beta.1",
         items: [
             "With the \"Focus\" counter behaviour, a counter, whether clicked or turned on by \"Activate Filter On Load\", now highlights its tasks and keeps the rest of the timeline visible, instead of hiding them like \"Filter\".",
