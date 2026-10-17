@@ -47,7 +47,18 @@ const pad = (value: number, length: number) => String(value).padStart(length, "0
  * back from those.
  */
 export function dayKey(date: DateValue): DayKey {
-    return `${pad(date.year(), 4)}-${pad(date.month() + 1, 2)}-${pad(date.date(), 2)}`;
+    const year = date.year();
+    const yearText = year < 0 ? "-" + pad(-year, 4) : pad(year, 4);
+    return `${yearText}-${pad(date.month() + 1, 2)}-${pad(date.date(), 2)}`;
+}
+
+const dayKeyPattern = /^(-?\d{4,})-\d\d-\d\d$/;
+
+/** The year a day key names, read from the key without parsing it. */
+export function yearOfDay(key: DayKey): number {
+    const match = dayKeyPattern.exec(key);
+    if (!match) throw new Error(`"${key}" is not a day key; day keys are written as YYYY-MM-DD`);
+    return Number(match[1]);
 }
 
 /** The start of the day a key names. Labels formatted from it use the locale's own digits again. */

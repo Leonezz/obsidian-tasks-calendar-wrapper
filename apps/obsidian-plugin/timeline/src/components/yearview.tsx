@@ -1,3 +1,4 @@
+import { yearOfDay } from '@tasks-calendar-wrapper/core';
 import { moment } from '../../../utils/moment';
 import * as React from 'react';
 import { groupTasksByDate, inDisplayOrder } from '../taskdates';
@@ -16,9 +17,9 @@ export class YearView extends React.Component<YearViewProps> {
                 const tasksOfThisYear = taskList;
                 const tasksByDate = groupTasksByDate(tasksOfThisYear);
                 const daysOfThisYear: Set<string> = new Set(tasksByDate.keys());
-                if (this.props.year === moment(entryOnDate).year() && !daysOfThisYear.has(entryOnDate))
+                if (this.props.year === yearOfDay(entryOnDate) && !daysOfThisYear.has(entryOnDate))
                     daysOfThisYear.add(entryOnDate);
-                const days = inDisplayOrder([...daysOfThisYear].filter(d => moment(d).year() === this.props.year), this.props.newestFirst);
+                const days = inDisplayOrder([...daysOfThisYear].filter(d => yearOfDay(d) === this.props.year), this.props.newestFirst);
                 return (
                     <div>
                         {tasksOfThisYear.length > 0 &&

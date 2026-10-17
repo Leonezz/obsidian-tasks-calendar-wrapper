@@ -19,6 +19,7 @@ import {
     relativeDate,
     sameDay,
     sameYear,
+    yearOfDay,
 } from "../src/dates";
 
 // Loading a locale file switches moment over to it, so the default is set back here.
@@ -83,6 +84,26 @@ test("a day key is written in ASCII digits whatever the locale", () => {
         assert.notEqual(date.format("YYYY-MM-DD"), "2026-01-15");
         assert.equal(dayKey(date), "2026-01-15");
     });
+});
+
+test("a day key of a year outside 0000-9999 still names its year", () => {
+    assert.equal(dayKey(moment.utc("+012026-01-15")), "12026-01-15");
+    assert.equal(dayKey(moment.utc("-000001-12-31")), "-0001-12-31");
+});
+
+test("the year of a day key is read from the key itself", () => {
+    assert.equal(yearOfDay("2026-01-15"), 2026);
+    assert.equal(yearOfDay("0987-03-04"), 987);
+    assert.equal(yearOfDay("12026-01-15"), 12026);
+    assert.equal(yearOfDay("-0001-12-31"), -1);
+    inLocale("ar", () => assert.equal(yearOfDay(dayKey(day("2026-01-15"))), 2026));
+});
+
+test("text that is not a day key has no year", () => {
+    // Arabic digits are what the timeline used to key its days with, which gave it no years at all.
+    for (const text of ["٢٠٢٦-٠١-١٥", "2026-1-15", "15.01.2026", ""]) {
+        assert.throws(() => yearOfDay(text), /is not a day key/, text);
+    }
 });
 
 test("a day key turns back into its day, labelled in the locale's own digits", () => {

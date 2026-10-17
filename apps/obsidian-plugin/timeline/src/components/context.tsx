@@ -1,3 +1,4 @@
+import { dayKey, type DayKey } from '@tasks-calendar-wrapper/core';
 import { Pos } from 'obsidian';
 import { moment } from '../../../utils/moment';
 import * as React from 'react';
@@ -6,7 +7,8 @@ import { CounterProps } from './dateview';
 
 export const TaskListContext = React.createContext({
     taskList: [] as TaskDataModel[],
-    entryOnDate: moment().toString() as string,
+    /** The day the entry (focus toggle, counters, quick entry) sits on. */
+    entryOnDate: dayKey(moment()) as DayKey,
 })
 
 export const UserOptionContext = React.createContext({

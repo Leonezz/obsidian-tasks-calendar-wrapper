@@ -4,11 +4,26 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import moment from "moment";
+import "moment/locale/ar";
 
-import { groupTasksByDate, inDisplayOrder, tasksListedOnDay } from "../timeline/src/taskdates";
+import { groupTasksByDate, inDisplayOrder, tasksListedOnDay, timelineSpan } from "../timeline/src/taskdates";
 import * as TaskMapable from "../utils/taskmapable";
 import { innerDateFormat, TaskDataModel } from "../utils/tasks";
 import { parse } from "./helpers";
+
+// Loading a locale file switches moment over to it, so the default is set back here.
+moment.locale("en");
+
+/** Runs with moment switched to a locale, as Obsidian does when the app language is changed. */
+async function inLocale<T>(locale: string, run: () => Promise<T>): Promise<T> {
+    const previous = moment.locale();
+    try {
+        assert.equal(moment.locale(locale), locale, `moment locale ${locale} is not loaded`);
+        return await run();
+    } finally {
+        moment.locale(previous);
+    }
+}
 
 // Issue #63: the timeline compared every day against every task, which froze Obsidian for seconds
 // in large vaults. Grouping the tasks by day once must list exactly the tasks the old filter did.
@@ -69,6 +84,47 @@ test("a task with dates in two years is listed on both days", async () => {
 
 test("an empty list has no days", () => {
     assert.equal(groupTasksByDate([]).size, 0);
+});
+
+test("the timeline spans every year from its earliest day to its latest, today included", async () => {
+    const list = await tasks();
+    assert.deepEqual(timelineSpan(list, "2026-10-12", "today", false).years, [2025, 2026]);
+    assert.deepEqual(timelineSpan(list, "2028-03-01", "today", false).years, [2025, 2026, 2027, 2028]);
+    assert.deepEqual(timelineSpan([], "2026-10-12", "today", false).years, [2026]);
+});
+
+test("the years are listed newest first with the newest first option", async () => {
+    assert.deepEqual(timelineSpan(await tasks(), "2026-10-12", "today", true).years, [2026, 2025]);
+});
+
+test("the entry sits on today, or on the day at the top or the bottom of the view", async () => {
+    const list = await tasks();
+    assert.equal(timelineSpan(list, "2026-10-12", "today", false).entryDay, "2026-10-12");
+    assert.equal(timelineSpan(list, "2026-10-12", "top", false).entryDay, "2025-12-31");
+    assert.equal(timelineSpan(list, "2026-10-12", "bottom", false).entryDay, "2026-10-12");
+    // Newest first turns the view around, so the top is the latest day.
+    assert.equal(timelineSpan(list, "2026-11-20", "top", true).entryDay, "2026-11-20");
+    assert.equal(timelineSpan(list, "2026-11-20", "bottom", true).entryDay, "2025-12-31");
+    assert.equal(timelineSpan([], "2026-10-12", "top", false).entryDay, "2026-10-12");
+});
+
+// In 16 moment locales, among them Arabic, Persian and Hindi, moment writes dates in the locale's own
+// digits. The timeline read its years back from such text, got NaN, and showed no year at all.
+
+test("days are keyed in ASCII digits whatever the locale", async () => {
+    const inEnglish = [...groupTasksByDate(await tasks()).keys()];
+    const inArabic = await inLocale("ar", async () => {
+        const list = await tasks();
+        assert.notEqual(list[0].due?.format(innerDateFormat), "2026-10-12", "Arabic should write its own digits");
+        return [...groupTasksByDate(list).keys()];
+    });
+    assert.ok(inEnglish.includes("2026-10-12"));
+    assert.deepEqual(inArabic, inEnglish);
+});
+
+test("the timeline has its years in a locale with digits of its own", async () => {
+    const span = await inLocale("ar", async () => timelineSpan(await tasks(), "2026-10-12", "top", false));
+    assert.deepEqual(span, { years: [2025, 2026], entryDay: "2025-12-31" });
 });
 
 // Issue #54: an option to show the latest dates on top
