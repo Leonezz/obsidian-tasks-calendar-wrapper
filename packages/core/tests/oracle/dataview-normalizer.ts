@@ -1,7 +1,7 @@
 /**
- * The header normalizer as it was before phase 1 step 5, built on parsimmon, copied unchanged from
- * apps/obsidian-plugin/dataview-util/dataview.ts (adapted from Obsidian Dataview, see NOTICE). It is kept only as the
- * oracle that links.test.ts compares core's normalizer with, and goes with parsimmon in step 9.
+ * The header normalizer as it was before phase 1 step 5, built on parsimmon, with its normalizer code copied
+ * unchanged from apps/obsidian-plugin/dataview-util/dataview.ts (adapted from Obsidian Dataview, see NOTICE). It is kept
+ * only as the oracle that normalizer-oracle.test.ts compares core's normalizer with, and goes with parsimmon in step 9.
  */
 import * as P from "parsimmon";
 

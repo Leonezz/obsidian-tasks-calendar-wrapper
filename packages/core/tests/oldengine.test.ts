@@ -8,15 +8,23 @@ import assert from "node:assert/strict";
 const NativeRegExp = RegExp;
 const rejectedFlags: string[] = [];
 
-/** A RegExp constructor that throws for the `v` flag, as engines without it do. */
+function rejectVFlag(args: [string | RegExp, string?]) {
+    const flags = args[1] ?? "";
+    if (flags.includes("v")) {
+        rejectedFlags.push(flags);
+        throw new SyntaxError(`Invalid flags supplied to RegExp constructor '${flags}'`);
+    }
+}
+
+/** A RegExp constructor that throws for the `v` flag, as engines without it do, called with or without `new`. */
 const RegExpWithoutVFlag = new Proxy(NativeRegExp, {
     construct(target, args: [string | RegExp, string?], newTarget) {
-        const flags = args[1] ?? "";
-        if (flags.includes("v")) {
-            rejectedFlags.push(flags);
-            throw new SyntaxError(`Invalid flags supplied to RegExp constructor '${flags}'`);
-        }
+        rejectVFlag(args);
         return Reflect.construct(target, args, newTarget);
+    },
+    apply(target, thisArg, args: [string | RegExp, string?]) {
+        rejectVFlag(args);
+        return Reflect.apply(target, thisArg, args);
     },
 });
 
