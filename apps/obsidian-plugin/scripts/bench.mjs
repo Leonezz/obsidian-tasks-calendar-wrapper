@@ -51,6 +51,8 @@ const SLOWER_MS = 50;
 /** Runs in Obsidian: one measurement. Times are milliseconds from the start of the measured action. */
 async function measure({ action, viewType, pluginId, command, path, content, token, quietMs, windowMs, settleMs, burstGapMs }) {
 	const leafSelector = `.workspace-leaf-content[data-type="${viewType}"]`;
+	// The timeline itself, without the view header, whose buttons Obsidian updates on its own.
+	const contentSelector = `${leafSelector} > .view-content`;
 	const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 	async function until(condition, timeoutMs, what) {
 		const start = performance.now();
@@ -65,8 +67,9 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 		longTasks: tasks.length,
 	});
 	/**
-	 * Records the long tasks, and the changes to the timeline's DOM: their times, when task rows first show up, and when
-	 * the token does.
+	 * Records the long tasks, and the changes to the timeline's DOM: their times, when task rows first show up, when the
+	 * token does, and the frames that showed them. A change is on screen once the browser has laid out and painted the
+	 * frame after it, which for thousands of new rows takes longer than the change itself.
 	 */
 	function record(root) {
 		const longTasks = [];
@@ -74,9 +77,21 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 			for (const entry of list.getEntries()) longTasks.push({ start: entry.startTime, duration: entry.duration });
 		});
 		performanceObserver.observe({ type: "longtask" });
-		const seen = { first: null, last: null, token: null, times: [], rowsAt: null };
+		const seen = { first: null, last: null, token: null, times: [], rowsAt: null, frames: [] };
 		const liveRows = document.getElementsByClassName("task");
-		const inView = node => (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement)?.closest(leafSelector);
+		const inView = node => (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement)?.closest(contentSelector);
+		let framePending = false;
+		// The frame's animation callbacks run before it is laid out and painted, a timer after; changes made before the
+		// callbacks are in that frame.
+		const watchFrame = () => {
+			if (framePending) return;
+			framePending = true;
+			requestAnimationFrame(() => {
+				framePending = false;
+				const startedAt = performance.now();
+				setTimeout(() => seen.frames.push({ startedAt, paintedAt: performance.now() }), 0);
+			});
+		};
 		const text = change => change.type === "characterData" ? change.target.data : [...change.addedNodes].map(node => node.textContent).join(" ");
 		const mutationObserver = new MutationObserver(changes => {
 			const now = performance.now();
@@ -85,7 +100,8 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 			seen.first ??= now;
 			seen.last = now;
 			seen.times.push(now);
-			if (seen.rowsAt === null && [...liveRows].some(row => row.closest(leafSelector))) seen.rowsAt = now;
+			watchFrame();
+			if (seen.rowsAt === null && [...liveRows].some(row => row.closest(contentSelector))) seen.rowsAt = now;
 			if (token && seen.token === null && relevant.some(change => text(change).includes(token))) seen.token = now;
 		});
 		mutationObserver.observe(root, { subtree: true, childList: true, characterData: true, attributes: true });
@@ -125,6 +141,12 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 		};
 	}
 	const quietFor = (seen, ms) => () => seen.last !== null && performance.now() - seen.last >= ms;
+	/** When the frame that shows the changes made up to `time` was painted. */
+	function paintedAfter(seen, time) {
+		const frame = seen.frames.find(candidate => candidate.startedAt >= time);
+		if (!frame) throw new Error("no frame was painted after the timeline changed");
+		return frame.paintedAt;
+	}
 	const rows = () => document.querySelectorAll(`${leafSelector} .task`).length;
 
 	switch (action) {
@@ -152,17 +174,18 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 					if (time - end >= burstGapMs) break;
 					end = time;
 				}
-				const later = seen.times.filter(time => time > end);
+				const painted = paintedAfter(seen, end);
+				const later = seen.times.filter(time => time > painted);
 				const { tasks } = recorder.stop(start);
-				const first = sum(tasks.filter(task => task.start >= start && task.start <= end));
+				const first = sum(tasks.filter(task => task.start >= start && task.start < painted));
 				return {
-					renderedMs: end - start,
+					renderedMs: painted - start,
 					rows: rows(),
 					// The plugin's reload 5 s after loading starts while the first render is still going on.
-					reachedSettingsTimer: end - start >= settleMs - 1_500,
+					reachedSettingsTimer: painted - start >= settleMs - 1_500,
 					...first,
 					laterRenders: later.filter((time, i) => i === 0 || time - later[i - 1] >= burstGapMs).length,
-					laterBlockedMs: sum(tasks.filter(task => task.start > end)).blockedMs,
+					laterBlockedMs: sum(tasks.filter(task => task.start >= painted)).blockedMs,
 				};
 			} finally {
 				recorder.stop(start);
@@ -204,7 +227,7 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 				return {
 					savedMs: saved - start,
 					indexedMs: changed - start,
-					renderedMs: recorder.seen.token === null ? null : recorder.seen.token - start,
+					renderedMs: recorder.seen.token === null ? null : paintedAfter(recorder.seen, recorder.seen.token) - start,
 					reloadCalls: calls,
 					reloaded: recorder.seen.first !== null || calls > 0,
 					...work,

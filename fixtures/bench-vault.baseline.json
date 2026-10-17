@@ -20,8 +20,8 @@
 	"today": "2026-01-15 Thursday",
 	"windowVisibility": "visible",
 	"loadAverage": {
-		"before": 7.6,
-		"after": 9.1,
+		"before": 2,
+		"after": 1.8,
 		"cores": 14
 	},
 	"plugin": {
@@ -46,129 +46,129 @@
 			"rows": 3486,
 			"reachedSettingsTimer": 0,
 			"renderedMs": {
-				"medianMs": 1349.5,
-				"minMs": 1326,
-				"maxMs": 2455.8,
+				"medianMs": 1905.5,
+				"minMs": 1886.1,
+				"maxMs": 1918.3,
 				"samplesMs": [
-					1326,
-					1331.1,
-					1349.5,
-					1425.4,
-					2455.8
+					1912.1,
+					1905.5,
+					1918.3,
+					1898.1,
+					1886.1
 				]
 			},
 			"blockedMs": {
-				"medianMs": 1345,
-				"minMs": 1316,
-				"maxMs": 2440,
+				"medianMs": 1894,
+				"minMs": 1874,
+				"maxMs": 1907,
 				"samplesMs": [
-					1316,
-					1326,
-					1345,
-					1420,
-					2440
+					1897,
+					1894,
+					1907,
+					1886,
+					1874
 				]
 			},
 			"longestTaskMs": {
-				"medianMs": 1345,
-				"minMs": 1316,
-				"maxMs": 2440,
+				"medianMs": 1212,
+				"minMs": 1203,
+				"maxMs": 1280,
 				"samplesMs": [
-					1316,
-					1326,
-					1345,
-					1420,
-					2440
+					1280,
+					1204,
+					1222,
+					1212,
+					1203
 				]
 			},
 			"laterRenders": [
-				2,
-				2,
-				2,
-				2,
-				2
+				1,
+				1,
+				1,
+				1,
+				1
 			],
 			"laterBlockedMs": {
-				"medianMs": 1009,
-				"minMs": 985,
-				"maxMs": 1425,
+				"medianMs": 290,
+				"minMs": 287,
+				"maxMs": 293,
 				"samplesMs": [
-					988,
-					985,
-					1013,
-					1009,
-					1425
+					293,
+					288,
+					287,
+					290,
+					290
 				]
 			}
 		},
 		"saveWithTasks": {
 			"runs": 10,
 			"indexedMs": {
-				"medianMs": 3.6,
-				"minMs": 2.9,
-				"maxMs": 17.7,
+				"medianMs": 2.8,
+				"minMs": 2.6,
+				"maxMs": 3,
 				"samplesMs": [
-					4,
-					5.9,
-					4.4,
-					17.7,
-					5.2,
-					3.2,
-					3.3,
-					3,
+					2.6,
 					2.9,
-					2.9
+					2.6,
+					2.9,
+					2.7,
+					2.9,
+					2.8,
+					2.6,
+					3,
+					2.6
 				]
 			},
 			"renderedMs": {
-				"medianMs": 833.6,
-				"minMs": 772.3,
-				"maxMs": 930.3,
+				"medianMs": 780.6,
+				"minMs": 779.8,
+				"maxMs": 792.2,
 				"samplesMs": [
-					910.7,
-					884.9,
-					929.9,
-					920.9,
-					930.3,
-					782.4,
-					772.3,
-					773.5,
+					785.7,
+					781.7,
+					784.3,
+					792.2,
+					780.3,
+					779.8,
 					780.1,
-					774.7
+					780.7,
+					780.2,
+					780.6
 				]
 			},
 			"blockedMs": {
-				"medianMs": 327.5,
-				"minMs": 271,
-				"maxMs": 487,
+				"medianMs": 255,
+				"minMs": 253,
+				"maxMs": 260,
 				"samplesMs": [
-					405,
-					377,
-					487,
-					408,
-					426,
-					277,
-					273,
-					271,
-					278,
-					272
+					260,
+					255,
+					253,
+					259,
+					255,
+					256,
+					254,
+					255,
+					254,
+					255
 				]
 			},
 			"longestTaskMs": {
-				"medianMs": 212.5,
-				"minMs": 174,
-				"maxMs": 273,
+				"medianMs": 163,
+				"minMs": 161,
+				"maxMs": 164,
 				"samplesMs": [
-					264,
-					246,
-					267,
-					253,
-					273,
-					179,
-					175,
-					175,
-					178,
-					174
+					163,
+					164,
+					162,
+					164,
+					161,
+					163,
+					163,
+					163,
+					163,
+					164
 				]
 			}
 		},
@@ -176,20 +176,20 @@
 			"runs": 10,
 			"reloads": 0,
 			"indexedMs": {
-				"medianMs": 3.1,
-				"minMs": 2.9,
-				"maxMs": 3.5,
+				"medianMs": 2.6,
+				"minMs": 2.1,
+				"maxMs": 3.2,
 				"samplesMs": [
+					2.1,
+					2.3,
+					2.7,
+					2.6,
+					2.5,
 					2.9,
+					2.5,
 					3.2,
-					3,
-					3.1,
-					3.5,
-					3.2,
-					3.1,
-					3.1,
-					3,
-					3.2
+					2.6,
+					2.7
 				]
 			},
 			"blockedMs": {
