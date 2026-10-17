@@ -3,6 +3,9 @@
     "module": "ESNext",
     "target": "ES2018",
     "moduleResolution": "bundler",
+    // No DOM and no Node types: core runs in Obsidian on desktop and mobile, so it may only use the language.
+    "lib": ["ES2021"],
+    "types": [],
     "strict": true,
     "isolatedModules": true,
     "noEmit": true

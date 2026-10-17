@@ -49,7 +49,32 @@ export default tseslint.config(
 		files: ["packages/**/*.{ts,tsx}"],
 		rules: {
 			"no-restricted-imports": ["error", {
-				paths: [{ name: "obsidian", message: "Shared packages must not depend on Obsidian; pass what they need in from apps/obsidian-plugin." }],
+				paths: [
+					{ name: "obsidian", message: "Shared packages must not depend on Obsidian; pass what they need in from apps/obsidian-plugin." },
+					{ name: "moment", allowTypeImports: true, message: "Shared packages get Obsidian's moment passed in; importing the npm package bundles a second moment in English." },
+				],
+				patterns: [
+					{ group: ["moment/*"], allowTypeImports: true, message: "Shared packages get Obsidian's moment passed in; importing the npm package bundles a second moment in English." },
+					{ group: ["**/apps/**", "**/obsidian-plugin/**"], message: "Shared packages must not reach into the plugin; the dependency only goes the other way." },
+				],
+			}],
+		},
+	},
+	{
+		// core is the bottom layer: no UI, no other workspace package.
+		files: ["packages/core/**/*.{ts,tsx}"],
+		rules: {
+			"no-restricted-imports": ["error", {
+				paths: [
+					{ name: "obsidian", message: "core must not depend on Obsidian; pass what it needs in from apps/obsidian-plugin." },
+					{ name: "moment", allowTypeImports: true, message: "core gets Obsidian's moment passed in; importing the npm package bundles a second moment in English." },
+					{ name: "react", message: "core has no UI; components belong in packages/ui." },
+					{ name: "react-dom", message: "core has no UI; components belong in packages/ui." },
+				],
+				patterns: [
+					{ group: ["moment/*"], allowTypeImports: true, message: "core gets Obsidian's moment passed in; importing the npm package bundles a second moment in English." },
+					{ group: ["**/apps/**", "**/obsidian-plugin/**", "@tasks-calendar-wrapper/*", "**/packages/ui/**"], message: "core is the bottom layer and imports no other workspace package." },
+				],
 			}],
 		},
 	},

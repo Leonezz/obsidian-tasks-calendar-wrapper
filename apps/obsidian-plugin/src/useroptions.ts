@@ -1,4 +1,4 @@
-import type { PropertyRules } from "../utils/properties";
+import type { PropertyRules } from "@tasks-calendar-wrapper/core";
 import { defaultSortKey } from "../utils/sort";
 
 /*

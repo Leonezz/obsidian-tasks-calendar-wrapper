@@ -4,7 +4,8 @@ import { TasksTimelineView, TIMELINE_VIEW } from './views';
 
 import { mergeOptions } from '../utils/options';
 import { migrateSortOption } from '../utils/sort';
-import { notesSince, RELEASE_NOTES, shouldShowWhatsNew, SUPPORT_LINKS } from '../utils/whatsnew';
+import { notesSince, shouldShowWhatsNew } from '@tasks-calendar-wrapper/core';
+import { RELEASE_NOTES, SUPPORT_LINKS } from '../utils/whatsnew';
 import { WhatsNewModal } from './whatsnew-modal';
 import { defaultUserOptions, TasksCalendarSettingTab, UserOption } from './settings';
 
