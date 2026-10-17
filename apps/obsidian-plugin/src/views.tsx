@@ -58,7 +58,9 @@ export class TasksTimelineView extends ItemView {
         this.root.render(
             <ObsidianBridge plugin={this} userOptionModel={this.userOptionModel} taskListModel={this.taskListModel} />
         )
-
+        // The view loads its list when it opens, without waiting for the options' debounce.
+        this.requestReload.cancel();
+        this.onReloadTasks();
     }
 
     async onClose(): Promise<void> {
@@ -78,10 +80,11 @@ export class TasksTimelineView extends ItemView {
         if (changeAffectsTasks(paths, cache, this.filesWithTasks)) this.requestReload();
     }
 
+    /** The options show at once, the tasks are read again once the options stop changing. */
     onUpdateOptions(opt: UserOption) {
         this.userOptionModel.clear();
         this.userOptionModel.set({ ...opt });
-        this.onReloadTasks();
+        this.requestReload();
     }
 
     onReloadTasks(): void {
