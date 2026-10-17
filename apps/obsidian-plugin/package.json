@@ -8,7 +8,10 @@
 		"build": "tsc --noEmit && node esbuild.config.mjs production",
 		"typecheck": "tsc --noEmit",
 		"test": "node scripts/test.mjs",
-		"capture:golden": "node scripts/capture-golden.mjs"
+		"capture:golden": "node scripts/capture-golden.mjs",
+		"bench:vault": "node scripts/bench-vault.mjs",
+		"bench": "pnpm build && node scripts/bench.mjs",
+		"screenshots": "pnpm build && node scripts/screenshots.mjs"
 	},
 	"license": "MIT",
 	"dependencies": {

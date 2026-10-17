@@ -3,3 +3,5 @@
 fixtures/golden-vault/** -text
 fixtures/golden-vault.metadata.json -text
 fixtures/golden/** -text
+# Screenshot baselines are compared pixel by pixel, see apps/obsidian-plugin/scripts/screenshots.mjs.
+fixtures/screenshots/*.png binary
