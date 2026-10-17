@@ -295,6 +295,34 @@ export async function restoreApp({ pluginId }) {
 }
 
 /**
+ * Prepares the vault's window for a run (prepareApp) and gives the undo steps that put the window and the plugin folder
+ * back, for runAndUndo. Once prepareApp was asked to run, a window that lost what it saved, because it was reloaded or
+ * closed and reopened during the run, makes the undo steps fail and name what was not put back, rather than do nothing.
+ */
+export function fixtureWindow(cli, vaultName, plugin) {
+	let prepared = false;
+	const undo = (fn, what) => () => {
+		if (!prepared) return;
+		if (cli.evaluate(fn, { pluginId: manifest.id, viewType: TIMELINE_VIEW }) === false) {
+			throw new ScriptError(`the window of ${vaultName} no longer has what it saved before the run (was it reloaded, or closed and reopened?), so ${what} were not put back; check them in Obsidian`);
+		}
+	};
+	return {
+		prepare() {
+			prepared = true;
+			const result = cli.evaluate(prepareApp, { pluginId: manifest.id, today: PINNED_TODAY });
+			if (result.today !== "2026-01-15 Thursday") throw new ScriptError(`pinning today failed: Obsidian says it is ${result.today}.`);
+			return result;
+		},
+		undoSteps: [
+			["unload the plugin", undo(unloadApp, "the clock, the language of dates, the throttling and the loaded plugin")],
+			["restore the plugin folder", () => plugin.restore()],
+			["restore the app", undo(restoreApp, `restricted mode, the theme setting and the layout of ${vaultName}`)],
+		],
+	};
+}
+
+/**
  * Runs `work`, then every undo step, each one even when an earlier one failed. Throws the error of `work` together with
  * any failed undo step, so a failure to put things back is never lost and never hides the original error.
  * @param undoSteps [description, function] pairs, in the order they run.

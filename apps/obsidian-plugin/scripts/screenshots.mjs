@@ -25,8 +25,8 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync,
 import os from "os";
 import path from "path";
 import {
-	buildInfo, fixtureCli, fixtureVaultPath, installPlugin, machineInfo, manifest, notesOf, PINNED_TODAY, prepareApp,
-	quietSettings, repoRoot, restoreApp, runAndUndo, runScript, ScriptError, TIMELINE_VIEW, unloadApp,
+	buildInfo, fixtureCli, fixtureVaultPath, fixtureWindow, installPlugin, machineInfo, manifest, notesOf, quietSettings,
+	repoRoot, runAndUndo, runScript, ScriptError, TIMELINE_VIEW,
 } from "./fixture-app.mjs";
 import { comparePngs, decodePng, encodePng } from "./png.mjs";
 
@@ -358,17 +358,15 @@ await runScript("screenshots", async () => {
 	mkdirSync(outDir, { recursive: true });
 
 	const plugin = installPlugin(vaultPath, quietSettings());
+	const fixture = fixtureWindow(cli, VAULT_NAME, plugin);
 	const { shots, env } = runAndUndo(() => {
-		const prepared = cli.evaluate(prepareApp, { pluginId: manifest.id, today: PINNED_TODAY });
-		if (prepared.today !== "2026-01-15 Thursday") throw new ScriptError(`pinning today failed: Obsidian says it is ${prepared.today}.`);
+		const prepared = fixture.prepare();
 		const env = environment(cli, prepared);
 		return { env, shots: takeScreenshots(cli, plugin, outDir, only) };
 	}, [
 		["clear the page size", () => cli.cdp("Emulation.clearDeviceMetricsOverride")],
 		["remove the style that hides the status bar", () => cli.evaluate(timeline, { action: "cleanup" })],
-		["unload the plugin", () => cli.evaluate(unloadApp, { pluginId: manifest.id, viewType: TIMELINE_VIEW })],
-		["restore the plugin folder", () => plugin.restore()],
-		["restore the app", () => cli.evaluate(restoreApp, { pluginId: manifest.id })],
+		...fixture.undoSteps,
 	]);
 
 	if (update) {

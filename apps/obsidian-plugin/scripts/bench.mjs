@@ -23,8 +23,8 @@ import os from "os";
 import path from "path";
 import { BENCH_TARGETS, BENCH_VAULT_NAME, benchVaultNotes } from "./bench-vault.mjs";
 import {
-	buildInfo, fixtureCli, fixtureVaultPath, installPlugin, machineInfo, manifest, PINNED_TODAY, prepareApp, quietSettings,
-	repoRoot, restoreApp, runAndUndo, runScript, ScriptError, TIMELINE_VIEW, unloadApp,
+	buildInfo, fixtureCli, fixtureVaultPath, fixtureWindow, installPlugin, machineInfo, manifest, quietSettings, repoRoot,
+	runAndUndo, runScript, ScriptError, TIMELINE_VIEW,
 } from "./fixture-app.mjs";
 
 const baselineFile = path.join(repoRoot, "fixtures", `${BENCH_VAULT_NAME}.baseline.json`);
@@ -373,9 +373,9 @@ await runScript("bench", async () => {
 		`Generate it with \`pnpm bench:vault <folder named ${BENCH_VAULT_NAME}>\`, open the folder with "Open folder as vault", then run this again.`);
 
 	const plugin = installPlugin(vaultPath, quietSettings());
+	const fixture = fixtureWindow(cli, BENCH_VAULT_NAME, plugin);
 	const { env, results } = runAndUndo(() => {
-		const prepared = cli.evaluate(prepareApp, { pluginId: manifest.id, today: PINNED_TODAY });
-		if (prepared.today !== "2026-01-15 Thursday") throw new ScriptError(`pinning today failed: Obsidian says it is ${prepared.today}.`);
+		const prepared = fixture.prepare();
 		cli.cdp("Emulation.setDeviceMetricsOverride", VIEWPORT);
 		const env = {
 			obsidianVersion: cli.run("version"),
@@ -395,9 +395,7 @@ await runScript("bench", async () => {
 		...Object.values(BENCH_TARGETS).map(target =>
 			[`restore ${target}`, () => cli.evaluate(measure, { action: "restore", path: target, content: notes.get(target) })]),
 		["clear the page size", () => cli.cdp("Emulation.clearDeviceMetricsOverride")],
-		["unload the plugin", () => cli.evaluate(unloadApp, { pluginId: manifest.id, viewType: TIMELINE_VIEW })],
-		["restore the plugin folder", () => plugin.restore()],
-		["restore the app", () => cli.evaluate(restoreApp, { pluginId: manifest.id })],
+		...fixture.undoSteps,
 	]);
 
 	const record = {
