@@ -3,11 +3,11 @@
  * dataview fields, daily notes, nested tasks, CRLF notes), placed around 2026-01-15, the "today" the benchmark pins.
  * The notes are the same on every run, so `pnpm bench` can check that the vault it measures is this one.
  *
- * Run `pnpm bench:vault <folder>`, with a folder named bench-vault that is empty or was made by this script,
- * e.g. ~/Documents/projects/tcw-fixtures/bench-vault. Then open that folder in Obsidian once ("Open folder as vault").
+ * Run `pnpm bench:vault <folder>`, with a folder named bench-vault that is empty or was made by this script, and is not
+ * inside another vault, e.g. ~/Documents/projects/tcw-fixtures/bench-vault. Then open that folder in Obsidian once ("Open folder as vault").
  * The notes are not committed: this script is their source.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { markdownFiles } from "./fixture-app.mjs";
@@ -156,11 +156,32 @@ export function benchVaultNotes() {
 	return files;
 }
 
+/**
+ * The vaults a folder is in or is: the folder and each folder above it, up to the root, that has a .obsidian folder.
+ * Symbolic links are resolved, from the nearest folder that exists.
+ */
+function vaultsAround(dir) {
+	let existing = dir;
+	while (!existsSync(existing)) existing = path.dirname(existing);
+	const vaults = [];
+	for (let current = realpathSync(existing); ; current = path.dirname(current)) {
+		if (existsSync(path.join(current, ".obsidian"))) vaults.push(current);
+		if (path.dirname(current) === current) return vaults;
+	}
+}
+
 function writeVault(target) {
 	// pnpm runs the script in the package folder; a relative folder means one relative to where pnpm was started.
 	const dir = path.resolve(process.env.INIT_CWD ?? process.cwd(), target);
 	if (path.basename(dir) !== BENCH_VAULT_NAME) {
 		throw new Error(`the folder must be named ${BENCH_VAULT_NAME}, which is the vault name pnpm bench looks for; got ${dir}.`);
+	}
+	// Only the benchmark vault itself may have a .obsidian folder, once it was made here and opened in Obsidian.
+	const ours = existsSync(path.join(dir, MARKER)) ? realpathSync(dir) : null;
+	const vault = vaultsAround(dir).find(found => found !== ours);
+	if (vault) {
+		const where = existsSync(dir) && realpathSync(dir) === vault ? "is" : "is inside";
+		throw new Error(`${dir} ${where} the Obsidian vault at ${vault}, which this script did not make. Pick a folder outside every vault.`);
 	}
 	const notes = benchVaultNotes();
 	if (existsSync(dir)) {
