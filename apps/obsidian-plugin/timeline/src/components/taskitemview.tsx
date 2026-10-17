@@ -1,6 +1,6 @@
 import { MarkdownRenderer } from "obsidian";
 import * as React from "react";
-import { getFileTitle } from "../../../dataview-util/dataview";
+import { getFileTitle } from "@tasks-calendar-wrapper/core";
 import { TasksTimelineView } from "../../../src/views";
 import { TaskDataModel } from "../../../utils/tasks";
 import { BadgeKind, TaskRowModel, taskRowModel } from "../taskrow";

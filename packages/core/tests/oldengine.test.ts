@@ -23,7 +23,7 @@ const RegExpWithoutVFlag = new Proxy(NativeRegExp, {
 test("header normalization loads and keeps emoji on an engine without the v flag", async () => {
     globalThis.RegExp = RegExpWithoutVFlag;
     try {
-        const { normalizeHeaderForLink } = await import("../dataview-util/dataview");
+        const { normalizeHeaderForLink } = await import("../src/index");
         assert.equal(normalizeHeaderForLink("👩‍💻 Work / 🇨🇳 Trip"), "👩‍💻 Work 🇨🇳 Trip");
         assert.equal(normalizeHeaderForLink("📅 Plan: week 38"), "📅 Plan week 38");
     } finally {
