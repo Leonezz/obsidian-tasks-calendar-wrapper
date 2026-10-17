@@ -12,6 +12,24 @@
 	},
 	"viewportWidth": 600,
 	"today": "2026-01-15 Thursday",
+	"appearance": {
+		"accentColor": "",
+		"baseFontSize": null,
+		"interfaceFontFamily": "",
+		"textFontFamily": "",
+		"monospaceFontFamily": "",
+		"cssTheme": "",
+		"enabledCssSnippets": [],
+		"showRibbon": true,
+		"zoom": 1,
+		"timelineFont": "\"??\", \"??\", \"??\", ui-sans-serif, -apple-system, \"system-ui\", system-ui, \"Segoe UI\", \"Google Sans Flex\", Roboto, \"Inter Variable\", Inter, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", sans-serif",
+		"display": {
+			"name": "内建视网膜显示器",
+			"internal": true,
+			"colorSpace": "{primaries:P3, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
+			"scaleFactor": 2
+		}
+	},
 	"takenAt": "2026-10-17",
 	"plugin": {
 		"version": "0.3.7",

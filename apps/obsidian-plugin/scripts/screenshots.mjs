@@ -13,9 +13,12 @@
  * pixel, writes what it took and a diff image of each screenshot that differs to a folder it names, and fails if anything
  * differs. `pnpm screenshots --update` writes to fixtures/screenshots instead what no longer matches it, and keeps the
  * rest, so re-recording changes no file that only differs by rendering noise. `--only=<text>` takes only the states whose
- * name contains the text, e.g. `--only=dark-today`, and cannot be combined with --update. Pixels and colours depend on the
- * machine, the Obsidian version and the fonts, which fixtures/screenshots/screenshots.json records; compare on the same
- * setup.
+ * name contains the text, e.g. `--only=dark-today`, and cannot be combined with --update.
+ *
+ * Pixels and colours depend on the machine, the Obsidian version, the golden vault's appearance settings (accent colour,
+ * font size and fonts, community theme, CSS snippets, ribbon, zoom), the font the timeline ends up with, and the display
+ * the window is on, whose colour space Chrome converts screenshots into. fixtures/screenshots/screenshots.json records
+ * all of them, and the script warns, naming each one, when this run's differ; compare on the same setup.
  *
  * Needs Obsidian running with the vault named golden-vault open, as for `pnpm capture:golden`. The script only talks to
  * that vault, after checking its notes are exactly fixtures/golden-vault. It installs the build into the vault, turns
@@ -48,6 +51,22 @@ const NOISE_PIXELS = 500;
 const NOISE_DELTA = 24;
 /** The plugin applies its settings to open views 5 s after it loads, which renders the timeline again. */
 const SETTLE_AFTER_LOAD_MS = 6_000;
+
+/** The appearance settings recorded in screenshots.json, with their names in Obsidian's settings for the warnings. */
+const APPEARANCE = {
+	accentColor: "accent colour",
+	baseFontSize: "font size",
+	interfaceFontFamily: "interface font",
+	textFontFamily: "text font",
+	monospaceFontFamily: "monospace font",
+	cssTheme: "community theme",
+	enabledCssSnippets: "CSS snippets",
+	showRibbon: "ribbon",
+	zoom: "zoom level",
+	timelineFont: "font of the timeline, as the browser computes it",
+	// Chrome converts screenshots into the colour space of the display the window is on.
+	display: "display the window is on",
+};
 
 const THEMES = { light: "moonstone", dark: "obsidian" };
 const POSITIONS = ["top", "today", "bottom"];
@@ -135,8 +154,13 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 			app.workspace.leftSplit.collapse();
 			app.workspace.rightSplit.collapse();
 			if (!document.getElementById("tcw-screenshots")) {
-				// The status bar floats over the bottom of the view.
-				document.head.createEl("style", { attr: { id: "tcw-screenshots" }, text: ".status-bar { display: none !important; }" });
+				// The status bar floats over the bottom of the view. The page grows until nothing scrolls, so a scroll bar
+				// would only take room, and whether it does depends on the system: macOS reserves room for one only
+				// when it shows scroll bars always, e.g. with a mouse connected.
+				document.head.createEl("style", {
+					attr: { id: "tcw-screenshots" },
+					text: `.status-bar { display: none !important; } .workspace-leaf-content[data-type="${viewType}"] > .view-content { scrollbar-width: none !important; }`,
+				});
 			}
 			await new Promise(resolve => setTimeout(resolve, settleMs));
 			await quiet(500);
@@ -192,6 +216,18 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 			}
 			return lines;
 		}
+		case "appearance": {
+			const root = content()?.querySelector(".taskido");
+			if (!root) throw new Error("the timeline has no .taskido element");
+			const settings = ["accentColor", "baseFontSize", "interfaceFontFamily", "textFontFamily", "monospaceFontFamily", "cssTheme", "enabledCssSnippets", "showRibbon"];
+			const display = require("@electron/remote").screen.getDisplayMatching(electronWindow.getBounds());
+			return {
+				...Object.fromEntries(settings.map(key => [key, app.vault.getConfig(key) ?? null])),
+				zoom: require("electron").webFrame.getZoomFactor(),
+				timelineFont: getComputedStyle(root).fontFamily,
+				display: { name: display.label, internal: display.internal, colorSpace: display.colorSpace, scaleFactor: display.scaleFactor },
+			};
+		}
 		case "cleanup":
 			document.getElementById("tcw-screenshots")?.remove();
 			return true;
@@ -221,6 +257,11 @@ function capture(cli) {
 		const height = Math.ceil(box.y + box.scrollHeight + box.below);
 		if (height > MAX_HEIGHT) throw new ScriptError(`the timeline is ${box.scrollHeight} px high, more than the ${MAX_HEIGHT} px a screenshot can take.`);
 		box = setViewport(cli, height);
+	}
+	// Once, right after a change of the page size, the timeline measured 0 px wide; it is measured again then.
+	for (let attempt = 0; !(box.width >= 1 && box.height >= 1); attempt++) {
+		if (attempt === 3) throw new ScriptError(`the timeline has no size to take a screenshot of: ${JSON.stringify(box)}`);
+		box = cli.evaluate(timeline, { action: "measure", viewType: TIMELINE_VIEW });
 	}
 	const clip = { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height), scale: 1 };
 	const { data } = cli.cdp("Page.captureScreenshot", { format: "png", clip, captureBeyondViewport: false });
@@ -310,6 +351,22 @@ function comparePng(outDir, name) {
 	return summary;
 }
 
+/** Warns about each thing that decides the pixels and differs between the baselines and this run. */
+function warnAboutSetup(baseline, env) {
+	for (const key of ["obsidianVersion", "electron", "machine", "viewportWidth", "today"]) {
+		if (JSON.stringify(baseline[key]) !== JSON.stringify(env[key])) {
+			console.warn(`screenshots: warning: the baselines were taken with ${key} ${JSON.stringify(baseline[key])}, this run has ${JSON.stringify(env[key])}; pixels may differ for that reason alone.`);
+		}
+	}
+	for (const [key, setting] of Object.entries(APPEARANCE)) {
+		const before = baseline.appearance?.[key];
+		if (JSON.stringify(before) !== JSON.stringify(env.appearance[key])) {
+			const was = before === undefined ? `the baselines do not record the ${setting} (${key})` : `the baselines were taken with the ${setting} (${key}) ${JSON.stringify(before)}`;
+			console.warn(`screenshots: warning: ${was}, this run has ${JSON.stringify(env.appearance[key])}; pixels may differ for that reason alone.`);
+		}
+	}
+}
+
 function compare(outDir, shots, only) {
 	const baseline = JSON.parse(readFileSync(manifestFile, "utf8"));
 	const names = new Set([...Object.keys(shots), ...Object.keys(baseline.shots).filter(name => name.includes(only))]);
@@ -363,7 +420,10 @@ await runScript("screenshots", async () => {
 	const { shots, env } = runAndUndo(() => {
 		const prepared = fixture.prepare();
 		const env = environment(cli, prepared);
-		return { env, shots: takeScreenshots(cli, plugin, outDir, only) };
+		const shots = takeScreenshots(cli, plugin, outDir, only);
+		// The last timeline is still open.
+		env.appearance = cli.evaluate(timeline, { action: "appearance", viewType: TIMELINE_VIEW });
+		return { env, shots };
 	}, [
 		["clear the page size", () => cli.cdp("Emulation.clearDeviceMetricsOverride")],
 		["remove the style that hides the status bar", () => cli.evaluate(timeline, { action: "cleanup" })],
@@ -371,6 +431,7 @@ await runScript("screenshots", async () => {
 	]);
 
 	if (update) {
+		if (existsSync(manifestFile)) warnAboutSetup(JSON.parse(readFileSync(manifestFile, "utf8")), env);
 		// A baseline that still matches, rendering noise included, is kept as it is, so re-recording adds to the git
 		// history only what really changed.
 		const visibleDir = path.join(baselineDir, VISIBLE);
@@ -415,11 +476,7 @@ await runScript("screenshots", async () => {
 	}
 
 	const { baseline, results } = compare(outDir, shots, only);
-	for (const key of ["obsidianVersion", "electron", "machine", "viewportWidth", "today"]) {
-		if (JSON.stringify(baseline[key]) !== JSON.stringify(env[key])) {
-			console.warn(`screenshots: warning: the baselines were taken with ${key} ${JSON.stringify(baseline[key])}, this run has ${JSON.stringify(env[key])}; pixels may differ for that reason alone.`);
-		}
-	}
+	warnAboutSetup(baseline, env);
 	if (results.length === 0) {
 		console.log(`screenshots: all ${Object.keys(shots).length} states match ${path.relative(repoRoot, baselineDir)}.`);
 		return 0;
