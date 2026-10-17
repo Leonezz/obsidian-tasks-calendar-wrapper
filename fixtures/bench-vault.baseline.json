@@ -1,0 +1,231 @@
+{
+	"note": "Measured by apps/obsidian-plugin/scripts/bench.mjs (`pnpm bench --update`). Do not edit by hand.",
+	"measuredAt": "2026-10-17",
+	"obsidianVersion": "1.14.4 (installer 1.13.7)",
+	"electron": "43.3.0",
+	"chrome": "150.0.7871.212",
+	"machine": {
+		"cpu": "Apple M4 Pro",
+		"cores": 14,
+		"memoryGB": 48,
+		"os": "macOS 26.4 (Darwin 25.4.0)",
+		"arch": "arm64"
+	},
+	"viewport": {
+		"width": 1280,
+		"height": 800,
+		"deviceScaleFactor": 2,
+		"mobile": false
+	},
+	"today": "2026-01-15 Thursday",
+	"windowVisibility": "visible",
+	"loadAverage": {
+		"before": 2,
+		"after": 1.8,
+		"cores": 14
+	},
+	"plugin": {
+		"version": "0.3.7",
+		"commit": "fa6c961",
+		"uncommittedChanges": false
+	},
+	"vault": {
+		"notes": 2000,
+		"tasks": 4000,
+		"withTasks": "Projects/Work/Project 0010.md",
+		"withoutTasks": "Reference/Note 0001.md"
+	},
+	"settings": {
+		"quietMs": 1000,
+		"noReloadWindowMs": 3000,
+		"warmupSaves": 2
+	},
+	"results": {
+		"initialLoad": {
+			"runs": 5,
+			"rows": 3486,
+			"reachedSettingsTimer": 0,
+			"renderedMs": {
+				"medianMs": 1905.5,
+				"minMs": 1886.1,
+				"maxMs": 1918.3,
+				"samplesMs": [
+					1912.1,
+					1905.5,
+					1918.3,
+					1898.1,
+					1886.1
+				]
+			},
+			"blockedMs": {
+				"medianMs": 1894,
+				"minMs": 1874,
+				"maxMs": 1907,
+				"samplesMs": [
+					1897,
+					1894,
+					1907,
+					1886,
+					1874
+				]
+			},
+			"longestTaskMs": {
+				"medianMs": 1212,
+				"minMs": 1203,
+				"maxMs": 1280,
+				"samplesMs": [
+					1280,
+					1204,
+					1222,
+					1212,
+					1203
+				]
+			},
+			"laterRenders": [
+				1,
+				1,
+				1,
+				1,
+				1
+			],
+			"laterBlockedMs": {
+				"medianMs": 290,
+				"minMs": 287,
+				"maxMs": 293,
+				"samplesMs": [
+					293,
+					288,
+					287,
+					290,
+					290
+				]
+			}
+		},
+		"saveWithTasks": {
+			"runs": 10,
+			"indexedMs": {
+				"medianMs": 2.8,
+				"minMs": 2.6,
+				"maxMs": 3,
+				"samplesMs": [
+					2.6,
+					2.9,
+					2.6,
+					2.9,
+					2.7,
+					2.9,
+					2.8,
+					2.6,
+					3,
+					2.6
+				]
+			},
+			"renderedMs": {
+				"medianMs": 780.6,
+				"minMs": 779.8,
+				"maxMs": 792.2,
+				"samplesMs": [
+					785.7,
+					781.7,
+					784.3,
+					792.2,
+					780.3,
+					779.8,
+					780.1,
+					780.7,
+					780.2,
+					780.6
+				]
+			},
+			"blockedMs": {
+				"medianMs": 255,
+				"minMs": 253,
+				"maxMs": 260,
+				"samplesMs": [
+					260,
+					255,
+					253,
+					259,
+					255,
+					256,
+					254,
+					255,
+					254,
+					255
+				]
+			},
+			"longestTaskMs": {
+				"medianMs": 163,
+				"minMs": 161,
+				"maxMs": 164,
+				"samplesMs": [
+					163,
+					164,
+					162,
+					164,
+					161,
+					163,
+					163,
+					163,
+					163,
+					164
+				]
+			}
+		},
+		"saveWithoutTasks": {
+			"runs": 10,
+			"reloads": 0,
+			"indexedMs": {
+				"medianMs": 2.6,
+				"minMs": 2.1,
+				"maxMs": 3.2,
+				"samplesMs": [
+					2.1,
+					2.3,
+					2.7,
+					2.6,
+					2.5,
+					2.9,
+					2.5,
+					3.2,
+					2.6,
+					2.7
+				]
+			},
+			"blockedMs": {
+				"medianMs": 0,
+				"minMs": 0,
+				"maxMs": 0,
+				"samplesMs": [
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				]
+			},
+			"longestTaskMs": {
+				"medianMs": 0,
+				"minMs": 0,
+				"maxMs": 0,
+				"samplesMs": [
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				]
+			}
+		}
+	}
+}
