@@ -19,6 +19,12 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         items: [
             "The timeline is no longer empty when Obsidian is set to a language that writes numbers in its own digits, such as Arabic or Persian.",
             "In those languages, quick entry words such as \"tomorrow\" or \"in 3 days\" now give the new task a date that this plugin and Tasks can read, instead of leaving it unplanned.",
+            "The plugin loads again on iPhones and iPads with iOS 15 or 16, on older Android devices and with older Obsidian desktop installers. 0.4.0-beta.1 failed to load there.",
+            "New option \"Newest First\" shows the latest dates at the top of the timeline.",
+            "New option \"Exclude Properties\" hides the tasks of notes whose frontmatter has a value you list, for example a \"status\" of \"archived\" or \"done\".",
+            "Settings changed outside the settings tab, for example by Obsidian Sync or a git pull, now take effect right away. Before, the timeline kept the old settings, and the next change in the settings tab overwrote the new ones.",
+            "Quick entry asks in an Obsidian dialog, instead of the browser's, before it creates a missing note, and adding a task no longer loses an edit made to the note at the same moment. On Linux, a note path that differs from an existing note only in letter case now adds the task to that note instead of creating a second one.",
+            "Clicking a tag opens the search through Obsidian's search link instead of an internal call that could fail. On Obsidian 1.13.0 to 1.13.5, Obsidian asks before opening it.",
         ],
     },
     {
