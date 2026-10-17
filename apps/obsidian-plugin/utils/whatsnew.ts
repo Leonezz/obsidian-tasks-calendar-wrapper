@@ -18,6 +18,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         version: "0.4.0-beta.2",
         items: [
             "The timeline is no longer empty when Obsidian is set to a language that writes numbers in its own digits, such as Arabic or Persian.",
+            "In those languages, quick entry words such as \"tomorrow\" or \"in 3 days\" now give the new task a date that this plugin and Tasks can read, instead of leaving it unplanned.",
         ],
     },
     {
