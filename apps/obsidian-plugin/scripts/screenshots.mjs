@@ -11,7 +11,8 @@
  *
  * `pnpm screenshots` builds the plugin, takes both and compares them with fixtures/screenshots, the screenshots pixel by
  * pixel, writes what it took and a diff image of each screenshot that differs to a folder it names, and fails if anything
- * differs. `pnpm screenshots --update` replaces fixtures/screenshots instead. `--only=<text>` takes only the states whose
+ * differs. `pnpm screenshots --update` writes to fixtures/screenshots instead what no longer matches it, and keeps the
+ * rest, so re-recording changes no file that only differs by rendering noise. `--only=<text>` takes only the states whose
  * name contains the text, e.g. `--only=dark-today`, and cannot be combined with --update. Pixels and colours depend on the
  * machine, the Obsidian version and the fonts, which fixtures/screenshots/screenshots.json records; compare on the same
  * setup.
@@ -370,14 +371,34 @@ await runScript("screenshots", async () => {
 	]);
 
 	if (update) {
-		rmSync(path.join(baselineDir, VISIBLE), { recursive: true, force: true });
-		mkdirSync(path.join(baselineDir, VISIBLE), { recursive: true });
-		for (const file of readdirSync(baselineDir)) {
-			if (file.endsWith(".png")) rmSync(path.join(baselineDir, file));
-		}
+		// A baseline that still matches, rendering noise included, is kept as it is, so re-recording adds to the git
+		// history only what really changed.
+		const visibleDir = path.join(baselineDir, VISIBLE);
+		mkdirSync(visibleDir, { recursive: true });
+		const changed = [];
 		for (const [name, shot] of Object.entries(shots)) {
-			if (shot.png) copyFileSync(path.join(outDir, `${name}.png`), path.join(baselineDir, `${name}.png`));
-			if (shot.visibleLines !== null) copyFileSync(path.join(outDir, VISIBLE, `${name}.txt`), path.join(baselineDir, VISIBLE, `${name}.txt`));
+			if (shot.png && comparePng(outDir, name) !== null) {
+				copyFileSync(path.join(outDir, `${name}.png`), path.join(baselineDir, `${name}.png`));
+				changed.push(`${name}.png`);
+			}
+			if (shot.visibleLines !== null && compareVisible(outDir, name) !== null) {
+				copyFileSync(path.join(outDir, VISIBLE, `${name}.txt`), path.join(visibleDir, `${name}.txt`));
+				changed.push(`${VISIBLE}/${name}.txt`);
+			}
+		}
+		const removed = [];
+		for (const file of readdirSync(baselineDir).filter(file => file.endsWith(".png"))) {
+			if (!shots[file.slice(0, -".png".length)]?.png) {
+				rmSync(path.join(baselineDir, file));
+				removed.push(file);
+			}
+		}
+		for (const file of readdirSync(visibleDir).filter(file => file.endsWith(".txt"))) {
+			const shot = shots[file.slice(0, -".txt".length)];
+			if (!shot || shot.visibleLines === null) {
+				rmSync(path.join(visibleDir, file));
+				removed.push(`${VISIBLE}/${file}`);
+			}
 		}
 		const record = {
 			note: "Taken by apps/obsidian-plugin/scripts/screenshots.mjs (`pnpm screenshots --update`). Do not edit by hand.",
@@ -387,7 +408,9 @@ await runScript("screenshots", async () => {
 			shots,
 		};
 		writeFileSync(manifestFile, JSON.stringify(record, null, "\t") + "\n");
-		console.log(`screenshots: wrote ${Object.keys(shots).length} states to ${path.relative(repoRoot, baselineDir)}`);
+		for (const file of changed) console.log(`screenshots: changed ${file}`);
+		for (const file of removed) console.log(`screenshots: removed ${file}, a state no longer taken`);
+		console.log(`screenshots: took ${Object.keys(shots).length} states; ${changed.length} baseline files changed and ${removed.length} were removed in ${path.relative(repoRoot, baselineDir)}, the others still match and were kept.`);
 		return 0;
 	}
 
