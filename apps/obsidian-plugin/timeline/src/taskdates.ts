@@ -1,7 +1,10 @@
-import { dayKey, yearOfDay, type DayKey } from "@tasks-calendar-wrapper/core";
+import { dayKey, inDisplayOrder, yearOfDay, type DayKey } from "@tasks-calendar-wrapper/core";
 import type { UserOption } from "../../src/useroptions";
 import { forwardedDateKey } from "../../utils/taskmapable";
 import { TaskDataModel, TaskStatus } from "../../utils/tasks";
+
+// inDisplayOrder moved to packages/core; re-exported for the modules that import it from here.
+export { inDisplayOrder };
 
 /**
  * The tasks a day of the timeline lists. With forwarding on, overdue tasks and tasks forwarded to today
@@ -71,13 +74,4 @@ export function timelineSpan(
     // Newest first turns the view around, so the latest day is at the top.
     const [top, bottom] = newestFirst ? [latest, earliest] : [earliest, latest];
     return { years, entryDay: entryPosition === "top" ? top : entryPosition === "bottom" ? bottom : today };
-}
-
-/**
- * Sorts days ("YYYY-MM-DD") or years in the order the timeline shows them:
- * from the earliest, or from the latest with the newest first option (issue #54).
- */
-export function inDisplayOrder<T extends string | number>(values: Iterable<T>, newestFirst: boolean): T[] {
-    const sorted = [...values].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
-    return newestFirst ? sorted.reverse() : sorted;
 }

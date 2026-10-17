@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import moment from "moment";
 
 import { makeTask, parse as parseChain } from "./helpers";
-import { defaultSortKey, getSortComparator, migrateSortOption, sortOptionLabels } from "../utils/sort";
+import { getSortComparator, sortOptionLabels } from "../utils/sort";
 import { TaskDataModel } from "../utils/tasks";
 
 const TODAY = moment("2026-09-18", "YYYY-MM-DD");
@@ -13,13 +13,6 @@ const sortedTexts = async (key: string, lines: string[]) => {
     for (const line of lines) tasks.push(await parseChain(line, TODAY));
     return tasks.sort(getSortComparator(key)).map(t => t.visual);
 };
-
-test("every offered option has a comparator", () => {
-    for (const key of Object.keys(sortOptionLabels)) {
-        assert.equal(typeof getSortComparator(key), "function", key);
-    }
-    assert.ok(Object.keys(sortOptionLabels).includes(defaultSortKey));
-});
 
 test("text sorting orders by task text in both directions", async () => {
     const lines = ["- [ ] cherry", "- [ ] apple", "- [ ] banana"];
@@ -65,17 +58,3 @@ test("a task without text does not break text sorting", () => {
     assert.doesNotThrow(() => [empty, other].sort(getSortComparator("text-asc")));
 });
 
-test("saved lambda settings are migrated to the new keys", () => {
-    assert.equal(migrateSortOption("(t1, t2) => t1.order <= t2.order ? -1 : 1"), "status-asc");
-    assert.equal(migrateSortOption("(t1, t2) => t1.visual.trim() >= t2.visual.trim() ? -1 : 1"), "text-desc");
-    assert.equal(migrateSortOption("(t1, t2) => t1.due <= t2.due ? -1 : 1"), "due-asc");
-    assert.equal(migrateSortOption("priority-desc"), "priority-desc");
-    assert.equal(migrateSortOption("something else"), defaultSortKey);
-    assert.equal(migrateSortOption(undefined), defaultSortKey);
-});
-
-test("a saved value that names a built-in object property is not treated as an option", () => {
-    assert.equal(migrateSortOption("constructor"), defaultSortKey);
-    assert.equal(migrateSortOption("toString"), defaultSortKey);
-    assert.equal(getSortComparator("constructor"), getSortComparator(defaultSortKey));
-});

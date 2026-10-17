@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import moment from "moment";
 
-import { insertTaskUnderSection, normalizeNotePath, parentFolder } from "../utils/quickentry";
+import { insertTaskUnderSection, normalizeNotePath, parentFolder, quickEntryTargets } from "../src/quickentry";
 
 // Issue #48: a path without an extension created a file the timeline never reads
 
@@ -60,4 +61,27 @@ test("an empty note gets the section and the task", () => {
 
 test("with no section configured the task is appended at the end", () => {
     assert.equal(insertTaskUnderSection("# Inbox\n- [ ] older\n", "", "- [ ] new"), "# Inbox\n- [ ] older\n- [ ] new\n");
+});
+
+const targetOptions = { taskFiles: ["Projects.md"], inbox: "Inbox.md", dailyNoteFormat: "YYYY-MM-DD", dailyNoteFolder: "Daily" };
+const thursday = moment.utc("2026-01-15T09:00:00Z");
+
+test("quick entry offers the task files, then the inbox, then today's daily note in its folder", () => {
+    assert.deepEqual(quickEntryTargets(targetOptions, thursday), ["Projects.md", "Inbox.md", "Daily/2026-01-15.md"]);
+});
+
+test("the daily note folder gets one slash, and no folder means the top of the vault", () => {
+    assert.deepEqual(quickEntryTargets({ ...targetOptions, dailyNoteFolder: "Daily/" }, thursday).at(-1), "Daily/2026-01-15.md");
+    assert.deepEqual(quickEntryTargets({ ...targetOptions, dailyNoteFolder: "" }, thursday).at(-1), "2026-01-15.md");
+});
+
+test("the daily note is named with its format, as the daily notes plugin names it", () => {
+    const options = { ...targetOptions, dailyNoteFormat: "YYYY, MMMM DD - dddd" };
+    assert.equal(quickEntryTargets(options, thursday).at(-1), "Daily/2026, January 15 - Thursday.md");
+});
+
+test("an empty inbox or daily note format is left out, and a note offered twice is listed once", () => {
+    assert.deepEqual(quickEntryTargets({ ...targetOptions, inbox: "", dailyNoteFormat: "" }, thursday), ["Projects.md"]);
+    assert.deepEqual(quickEntryTargets({ ...targetOptions, taskFiles: ["Inbox.md", "Projects.md"] }, thursday),
+        ["Inbox.md", "Projects.md", "Daily/2026-01-15.md"]);
 });

@@ -3,7 +3,7 @@ import * as React from 'react';
 import { UserOption } from '../../../src/settings';
 import * as TaskMapable from '../../../utils/taskmapable';
 import { TaskDataModel, TaskStatus } from '../../../utils/tasks';
-import { counterClass, dayKey } from '@tasks-calendar-wrapper/core';
+import { counterClass, dayKey, quickEntryTargets } from '@tasks-calendar-wrapper/core';
 import { timelineSpan } from '../taskdates';
 import { TaskListContext, TodayFocusEventHandlersContext, UserOptionContext } from './context';
 import { YearView } from './yearview';
@@ -83,17 +83,6 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
             if (!this.props.userOptions.useModifyBadge) styles.push("noModify");
         }
 
-        const quickEntryFiles = new Set(this.props.userOptions.taskFiles);
-        if (this.props.userOptions.inbox && this.props.userOptions.inbox !== '')
-            quickEntryFiles.add(this.props.userOptions.inbox);
-        const dailyNoteFileName = moment().format(this.props.userOptions.dailyNoteFormat) + ".md";
-        const daileNoteFolder =
-            this.props.userOptions.dailyNoteFolder === '' ?
-                '' : this.props.userOptions.dailyNoteFolder.endsWith('/') ?
-                    this.props.userOptions.dailyNoteFolder : this.props.userOptions.dailyNoteFolder + '/';
-        if (this.props.userOptions.dailyNoteFormat && this.props.userOptions.dailyNoteFormat !== '')
-            quickEntryFiles.add(daileNoteFolder + dailyNoteFileName);
-
         const baseStyles = [...new Set(styles)].join(" ");
         const counterFilter = counterClass(this.state.filter, this.props.userOptions.counterBehavior);
         const todayFocus = this.state.todayFocus ? "todayFocus" : "";
@@ -106,7 +95,7 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
                         hideTags: this.props.userOptions.hideTags,
                         tagPalette: this.props.userOptions.tagColorPalette,
                         dateFormat: this.props.userOptions.dateFormat,
-                        taskFiles: [...quickEntryFiles],
+                        taskFiles: quickEntryTargets(this.props.userOptions, moment()),
                         select: this.props.userOptions.inbox,
                         forward: this.props.userOptions.forward,
                         useBuiltinStyle: this.props.userOptions.useBuiltinStyle,

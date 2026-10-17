@@ -4,6 +4,12 @@
  */
 export * from "./counters";
 export * from "./dates";
+export * from "./options";
 export * from "./paths";
 export * from "./properties";
+export * from "./quickentry";
+export * from "./sort";
+export * from "./status";
+export * from "./syntax";
+export * from "./tags";
 export * from "./whatsnew";
