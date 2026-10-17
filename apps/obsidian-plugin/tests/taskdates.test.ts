@@ -86,26 +86,53 @@ test("an empty list has no days", () => {
     assert.equal(groupTasksByDate([]).size, 0);
 });
 
+// The tasks have days from 2025-12-31 to 2026-10-12.
+
 test("the timeline spans every year from its earliest day to its latest, today included", async () => {
     const list = await tasks();
-    assert.deepEqual(timelineSpan(list, "2026-10-12", "today", false).years, [2025, 2026]);
+    assert.deepEqual(timelineSpan(list, "2026-06-01", "today", false).years, [2025, 2026]);
+    assert.deepEqual(timelineSpan(list, "2024-05-01", "today", false).years, [2024, 2025, 2026]);
     assert.deepEqual(timelineSpan(list, "2028-03-01", "today", false).years, [2025, 2026, 2027, 2028]);
     assert.deepEqual(timelineSpan([], "2026-10-12", "today", false).years, [2026]);
 });
 
 test("the years are listed newest first with the newest first option", async () => {
-    assert.deepEqual(timelineSpan(await tasks(), "2026-10-12", "today", true).years, [2026, 2025]);
+    assert.deepEqual(timelineSpan(await tasks(), "2026-06-01", "today", true).years, [2026, 2025]);
 });
 
 test("the entry sits on today, or on the day at the top or the bottom of the view", async () => {
     const list = await tasks();
-    assert.equal(timelineSpan(list, "2026-10-12", "today", false).entryDay, "2026-10-12");
-    assert.equal(timelineSpan(list, "2026-10-12", "top", false).entryDay, "2025-12-31");
-    assert.equal(timelineSpan(list, "2026-10-12", "bottom", false).entryDay, "2026-10-12");
+    // Today lies between the earliest and the latest day, so each position gives another day.
+    const entryDay = (position: "today" | "top" | "bottom", newestFirst: boolean) =>
+        timelineSpan(list, "2026-06-01", position, newestFirst).entryDay;
+    assert.equal(entryDay("today", false), "2026-06-01");
+    assert.equal(entryDay("today", true), "2026-06-01");
+    assert.equal(entryDay("top", false), "2025-12-31");
+    assert.equal(entryDay("bottom", false), "2026-10-12");
     // Newest first turns the view around, so the top is the latest day.
+    assert.equal(entryDay("top", true), "2026-10-12");
+    assert.equal(entryDay("bottom", true), "2025-12-31");
+});
+
+test("today is the top or the bottom of the view when it lies outside the days with tasks", async () => {
+    const list = await tasks();
+    assert.equal(timelineSpan(list, "2026-11-20", "bottom", false).entryDay, "2026-11-20");
     assert.equal(timelineSpan(list, "2026-11-20", "top", true).entryDay, "2026-11-20");
-    assert.equal(timelineSpan(list, "2026-11-20", "bottom", true).entryDay, "2025-12-31");
+    assert.equal(timelineSpan(list, "2025-01-01", "top", false).entryDay, "2025-01-01");
     assert.equal(timelineSpan([], "2026-10-12", "top", false).entryDay, "2026-10-12");
+});
+
+test("days in years before 0000 or after 9999 are placed by their year", async () => {
+    // moment reads extended ISO years in dataview fields, so a typo can give one.
+    const list = await Promise.all([
+        parse("- [ ] far ahead [due:: +012026-01-15]", today),
+        parse("- [ ] far back [due:: -000001-12-31]", today),
+    ]);
+    // As text, "12026-01-15" would sort before "2026-10-12".
+    const span = timelineSpan(list, "2026-10-12", "bottom", false);
+    assert.equal(span.entryDay, "12026-01-15");
+    assert.deepEqual([span.years[0], span.years[span.years.length - 1], span.years.length], [-1, 12026, 12028]);
+    assert.equal(timelineSpan(list, "2026-10-12", "top", false).entryDay, "-0001-12-31");
 });
 
 // In 16 moment locales, among them Arabic, Persian and Hindi, moment writes dates in the locale's own
