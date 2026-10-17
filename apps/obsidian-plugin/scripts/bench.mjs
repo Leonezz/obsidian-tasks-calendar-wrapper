@@ -6,10 +6,11 @@
  * Besides the time until the timeline shows the change, it sums the long tasks (main-thread work over 50 ms, when
  * Obsidian does not respond to input) and records the longest one, which is what a user feels as a freeze.
  *
- * `pnpm bench` builds the plugin, measures, and compares the medians with fixtures/bench-vault.baseline.json; it fails
- * when a time grew by more than 25 % and 50 ms, or a save without tasks reloads the timeline. `pnpm bench --update`
+ * `pnpm bench` builds the plugin, measures, and compares with fixtures/bench-vault.baseline.json; it fails when the
+ * fastest run of a measurement got slower by more than 25 % and 50 ms, or a save without tasks reloads the timeline. `pnpm bench --update`
  * records the new numbers as the baseline. Numbers depend on the machine and the Obsidian version, which the baseline
- * records; compare on the same setup.
+ * records; compare on the same setup. Other work on the machine moves the medians a lot and the fastest runs little, so
+ * the fastest runs are compared, and the load average before and after the run is recorded and printed.
  *
  * Needs Obsidian running with the vault named bench-vault open: generate it with `pnpm bench:vault <folder>`, open the
  * folder in Obsidian once, and keep its window open. The script only talks to that vault, after checking its notes are
@@ -18,6 +19,7 @@
  * of that and the edited notes back at the end.
  */
 import { existsSync, readFileSync, writeFileSync } from "fs";
+import os from "os";
 import path from "path";
 import { BENCH_TARGETS, BENCH_VAULT_NAME, benchVaultNotes } from "./bench-vault.mjs";
 import {
@@ -28,21 +30,26 @@ import {
 const baselineFile = path.join(repoRoot, "fixtures", `${BENCH_VAULT_NAME}.baseline.json`);
 const OPEN_COMMAND = `${manifest.id}:open-tasks-timeline-view`;
 const VIEWPORT = { width: 1280, height: 800, deviceScaleFactor: 2, mobile: false };
-const LOADS = 3;
+const LOADS = 5;
 const WARMUP_SAVES = 2;
 const SAVES = 10;
 /** A change is rendered once the timeline's DOM has not changed for this long. */
 const QUIET_MS = 1_000;
+/** Changes to the DOM less than this far apart belong to one render. */
+const BURST_GAP_MS = 500;
 /** How long after Obsidian reports a save without tasks the timeline is watched for a reload. */
 const NO_RELOAD_WINDOW_MS = 3_000;
-/** The plugin applies its settings to open views 5 s after it loads, which reloads the timeline. */
+/**
+ * The plugin applies its settings to open views 5 s after it loads, which renders the timeline again. A load is watched
+ * this long, so that render is seen and kept apart from the first one.
+ */
 const SETTLE_AFTER_LOAD_MS = 6_000;
-/** A median counts as slower when it grew by more than both of these. */
+/** A measurement counts as slower when its fastest run grew by more than both of these. */
 const SLOWER_RATIO = 1.25;
 const SLOWER_MS = 50;
 
 /** Runs in Obsidian: one measurement. Times are milliseconds from the start of the measured action. */
-async function measure({ action, viewType, pluginId, command, path, content, token, quietMs, windowMs, settleMs }) {
+async function measure({ action, viewType, pluginId, command, path, content, token, quietMs, windowMs, settleMs, burstGapMs }) {
 	const leafSelector = `.workspace-leaf-content[data-type="${viewType}"]`;
 	const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 	async function until(condition, timeoutMs, what) {
@@ -52,14 +59,23 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 			await sleep(20);
 		}
 	}
-	/** Records the long tasks, and the changes to the timeline's DOM with the time the token first shows up. */
+	const sum = tasks => ({
+		blockedMs: tasks.reduce((total, task) => total + task.duration, 0),
+		longestMs: Math.max(0, ...tasks.map(task => task.duration)),
+		longTasks: tasks.length,
+	});
+	/**
+	 * Records the long tasks, and the changes to the timeline's DOM: their times, when task rows first show up, and when
+	 * the token does.
+	 */
 	function record(root) {
 		const longTasks = [];
 		const performanceObserver = new PerformanceObserver(list => {
 			for (const entry of list.getEntries()) longTasks.push({ start: entry.startTime, duration: entry.duration });
 		});
 		performanceObserver.observe({ type: "longtask" });
-		const seen = { first: null, last: null, token: null };
+		const seen = { first: null, last: null, token: null, times: [], rowsAt: null };
+		const liveRows = document.getElementsByClassName("task");
 		const inView = node => (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement)?.closest(leafSelector);
 		const text = change => change.type === "characterData" ? change.target.data : [...change.addedNodes].map(node => node.textContent).join(" ");
 		const mutationObserver = new MutationObserver(changes => {
@@ -68,6 +84,8 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 			if (relevant.length === 0) return;
 			seen.first ??= now;
 			seen.last = now;
+			seen.times.push(now);
+			if (seen.rowsAt === null && [...liveRows].some(row => row.closest(leafSelector))) seen.rowsAt = now;
 			if (token && seen.token === null && relevant.some(change => text(change).includes(token))) seen.token = now;
 		});
 		mutationObserver.observe(root, { subtree: true, childList: true, characterData: true, attributes: true });
@@ -80,12 +98,8 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 				for (const entry of performanceObserver.takeRecords()) longTasks.push({ start: entry.startTime, duration: entry.duration });
 				performanceObserver.disconnect();
 				mutationObserver.disconnect();
-				const counted = longTasks.filter(task => task.start >= from);
-				work = {
-					blockedMs: counted.reduce((sum, task) => sum + task.duration, 0),
-					longestMs: Math.max(0, ...counted.map(task => task.duration)),
-					longTasks: counted.length,
-				};
+				work = sum(longTasks.filter(task => task.start >= from));
+				work.tasks = longTasks;
 				return work;
 			},
 		};
@@ -117,8 +131,7 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 		case "unload": {
 			app.workspace.detachLeavesOfType(viewType);
 			if (app.plugins.plugins[pluginId]) await app.plugins.disablePlugin(pluginId);
-			// A timer the unloaded plugin left would otherwise reload the next load's timeline.
-			await sleep(settleMs);
+			await sleep(1_000);
 			return true;
 		}
 		case "load": {
@@ -129,13 +142,27 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 			try {
 				if (!await app.plugins.enablePlugin(pluginId)) throw new Error(`Obsidian could not load the plugin ${pluginId}`);
 				if (!app.commands.executeCommandById(command)) throw new Error(`the command ${command} did not run`);
-				await until(() => rows() > 0 && quietFor(recorder.seen, quietMs)(), 60_000, "the timeline to render its task rows (.task)");
+				await until(() => performance.now() - start >= settleMs && quietFor(recorder.seen, quietMs)(), 60_000, "the timeline to stop changing");
+				const { seen } = recorder;
+				if (seen.rowsAt === null) throw new Error("the timeline rendered no task rows (.task)");
+				// The first render with rows ends at the first pause of burstGapMs; what comes later is another render.
+				let end = seen.rowsAt;
+				for (const time of seen.times) {
+					if (time <= end) continue;
+					if (time - end >= burstGapMs) break;
+					end = time;
+				}
+				const later = seen.times.filter(time => time > end);
+				const { tasks } = recorder.stop(start);
+				const first = sum(tasks.filter(task => task.start >= start && task.start <= end));
 				return {
-					renderedMs: recorder.seen.last - start,
+					renderedMs: end - start,
 					rows: rows(),
-					// The plugin reloads its views 5 s after it loads; a measurement that lasted that long may include it.
-					reachedSettingsTimer: performance.now() - start >= settleMs - 1_000,
-					...recorder.stop(start),
+					// The plugin's reload 5 s after loading starts while the first render is still going on.
+					reachedSettingsTimer: end - start >= settleMs - 1_500,
+					...first,
+					laterRenders: later.filter((time, i) => i === 0 || time - later[i - 1] >= burstGapMs).length,
+					laterBlockedMs: sum(tasks.filter(task => task.start > end)).blockedMs,
 				};
 			} finally {
 				recorder.stop(start);
@@ -172,7 +199,7 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 				} else {
 					await sleep(windowMs);
 				}
-				const work = recorder.stop(start);
+				const { tasks, ...work } = recorder.stop(start);
 				const calls = reloadCalls();
 				return {
 					savedMs: saved - start,
@@ -219,9 +246,9 @@ function measureAll(cli, notes) {
 	const args = { viewType: TIMELINE_VIEW, pluginId: manifest.id, command: OPEN_COMMAND, quietMs: QUIET_MS };
 	const loads = [];
 	for (let run = 0; run < LOADS; run++) {
-		cli.evaluate(measure, { ...args, action: "unload", settleMs: SETTLE_AFTER_LOAD_MS });
-		const load = cli.evaluate(measure, { ...args, action: "load", settleMs: SETTLE_AFTER_LOAD_MS });
-		console.log(`bench: initial load ${run + 1}: rendered ${round(load.renderedMs)} ms, ${load.rows} rows, longest task ${round(load.longestMs)} ms`);
+		cli.evaluate(measure, { ...args, action: "unload" });
+		const load = cli.evaluate(measure, { ...args, action: "load", settleMs: SETTLE_AFTER_LOAD_MS, burstGapMs: BURST_GAP_MS });
+		console.log(`bench: initial load ${run + 1}: rendered ${round(load.renderedMs)} ms, ${load.rows} rows, longest task ${round(load.longestMs)} ms; ${load.laterRenders} later render(s) blocking ${round(load.laterBlockedMs)} ms`);
 		if (load.reachedSettingsTimer) console.warn("bench: warning: this load took so long that the reload the plugin does 5 s after loading may be part of it.");
 		loads.push(load);
 	}
@@ -253,6 +280,9 @@ function measureAll(cli, notes) {
 			renderedMs: summary(loads.map(load => load.renderedMs)),
 			blockedMs: summary(loads.map(load => load.blockedMs)),
 			longestTaskMs: summary(loads.map(load => load.longestMs)),
+			// Renders within 6 s after the first one, such as the plugin's reload 5 s after loading.
+			laterRenders: loads.map(load => load.laterRenders),
+			laterBlockedMs: summary(loads.map(load => load.laterBlockedMs)),
 		},
 		saveWithTasks: {
 			runs: withTasks.length,
@@ -271,24 +301,29 @@ function measureAll(cli, notes) {
 	};
 }
 
-/** Prints the medians next to the baseline's and returns how many got slower. */
+/**
+ * Prints the fastest and the median run next to the baseline's and returns how many got slower. Judged by the fastest
+ * run: other work on the machine only adds time, and moved the medians of the same build by up to 25 % between runs,
+ * the fastest runs by under 5 %.
+ */
 function compare(baseline, results) {
 	let slower = 0;
-	console.log("bench: median (ms)                       baseline       now    change");
+	const cell = value => String(value ?? "-").padStart(8);
+	console.log(`bench: ${"(ms)".padEnd(32)} ${"fastest: baseline".padStart(17)} ${"now".padStart(8)} ${"change".padStart(7)}   median: baseline      now`);
 	for (const [scenario, metrics] of Object.entries(results)) {
 		for (const [metric, value] of Object.entries(metrics)) {
-			if (typeof value !== "object") continue;
-			const before = baseline.results[scenario]?.[metric]?.medianMs;
-			const now = value.medianMs;
+			if (typeof value !== "object" || Array.isArray(value)) continue;
+			const before = baseline.results[scenario]?.[metric];
+			const name = `${scenario}.${metric}`.padEnd(32);
 			if (before === undefined) {
-				console.log(`bench: ${`${scenario}.${metric}`.padEnd(36)} ${"-".padStart(9)} ${String(now).padStart(9)}`);
+				console.log(`bench: ${name} ${cell(null).padStart(17)} ${cell(value.minMs)}                ${cell(null)} ${cell(value.medianMs)}`);
 				continue;
 			}
 			// How long Obsidian takes to read a note is not up to the plugin, so it is shown but not judged.
-			const isSlower = metric !== "indexedMs" && now > before * SLOWER_RATIO && now - before > SLOWER_MS;
+			const isSlower = metric !== "indexedMs" && value.minMs > before.minMs * SLOWER_RATIO && value.minMs - before.minMs > SLOWER_MS;
 			if (isSlower) slower++;
-			const change = before === 0 ? "" : `${now >= before ? "+" : ""}${Math.round(100 * (now - before) / before)} %`;
-			console.log(`bench: ${`${scenario}.${metric}`.padEnd(36)} ${String(before).padStart(9)} ${String(now).padStart(9)} ${change.padStart(9)}${isSlower ? "  SLOWER" : ""}`);
+			const change = before.minMs === 0 ? "" : `${value.minMs >= before.minMs ? "+" : ""}${Math.round(100 * (value.minMs - before.minMs) / before.minMs)} %`;
+			console.log(`bench: ${name} ${cell(before.minMs).padStart(17)} ${cell(value.minMs)} ${change.padStart(7)}   ${cell(before.medianMs).padStart(16)} ${cell(value.medianMs)}${isSlower ? "  SLOWER" : ""}`);
 		}
 	}
 	if (results.initialLoad.rows !== baseline.results.initialLoad?.rows) {
@@ -328,7 +363,11 @@ await runScript("bench", async () => {
 			today: prepared.today,
 			windowVisibility: prepared.visibility,
 		};
-		return { env, results: measureAll(cli, notes) };
+		// Other work on the machine slows the timeline down as much as a change could; the load average shows it.
+		const loadBefore = os.loadavg()[0];
+		const results = measureAll(cli, notes);
+		env.loadAverage = { before: Math.round(loadBefore * 10) / 10, after: Math.round(os.loadavg()[0] * 10) / 10, cores: os.cpus().length };
+		return { env, results };
 	}, [
 		...Object.values(BENCH_TARGETS).map(target =>
 			[`restore ${target}`, () => cli.evaluate(measure, { action: "restore", path: target, content: notes.get(target) })]),
@@ -357,6 +396,7 @@ await runScript("bench", async () => {
 		return 0;
 	}
 	const baseline = JSON.parse(readFileSync(baselineFile, "utf8"));
+	console.log(`bench: 1-minute load average ${env.loadAverage.before} before and ${env.loadAverage.after} after the run (${env.loadAverage.cores} cores); the baseline had ${baseline.loadAverage?.before} and ${baseline.loadAverage?.after}.`);
 	for (const key of ["obsidianVersion", "machine", "viewport", "today"]) {
 		if (JSON.stringify(baseline[key]) !== JSON.stringify(env[key])) {
 			console.warn(`bench: warning: the baseline was measured with ${key} ${JSON.stringify(baseline[key])}, this run has ${JSON.stringify(env[key])}; the numbers are not comparable.`);
