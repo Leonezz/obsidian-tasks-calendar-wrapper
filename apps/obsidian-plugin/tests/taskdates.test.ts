@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import moment from "moment";
 import "moment/locale/ar";
 
-import { groupTasksByDate, inDisplayOrder, tasksListedOnDay, timelineSpan } from "../timeline/src/taskdates";
+import { groupTasksByDate, tasksListedOnDay, timelineSpan } from "../timeline/src/taskdates";
 import * as TaskMapable from "../utils/taskmapable";
 import { innerDateFormat, TaskDataModel } from "../utils/tasks";
 import { parse } from "./helpers";
@@ -152,18 +152,6 @@ test("days are keyed in ASCII digits whatever the locale", async () => {
 test("the timeline has its years in a locale with digits of its own", async () => {
     const span = await inLocale("ar", async () => timelineSpan(await tasks(), "2026-10-12", "top", false));
     assert.deepEqual(span, { years: [2025, 2026], entryDay: "2025-12-31" });
-});
-
-// Issue #54: an option to show the latest dates on top
-
-test("days and years are shown from the earliest by default", () => {
-    assert.deepEqual(inDisplayOrder(["2023-08-01", "2023-02-01", "2023-05-01"], false), ["2023-02-01", "2023-05-01", "2023-08-01"]);
-    assert.deepEqual(inDisplayOrder([2025, 2023, 2026], false), [2023, 2025, 2026]);
-});
-
-test("days and years are shown from the latest with newest first", () => {
-    assert.deepEqual(inDisplayOrder(["2023-08-01", "2023-02-01", "2023-05-01"], true), ["2023-08-01", "2023-05-01", "2023-02-01"]);
-    assert.deepEqual(inDisplayOrder([2025, 2023, 2026], true), [2026, 2025, 2023]);
 });
 
 // With forwarding on, overdue tasks and tasks forwarded to today are listed on today only, not twice.

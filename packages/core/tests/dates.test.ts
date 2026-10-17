@@ -12,6 +12,7 @@ import {
     DateValue,
     dateOfDay,
     dayKey,
+    inDisplayOrder,
     MomentFactory,
     parseDailyNoteName,
     parseLooseDate,
@@ -280,4 +281,16 @@ test("between leaves out both end days, as moment's isBetween does by default", 
     assert.ok(betweenDaysExclusive(at("2026-01-15 12:00"), from, to));
     assert.ok(!betweenDaysExclusive(at("2026-01-14 12:00"), from, to));
     assert.ok(!betweenDaysExclusive(at("2026-01-16 00:00"), from, to));
+});
+
+// Issue #54: an option to show the latest dates on top
+
+test("days and years are shown from the earliest by default", () => {
+    assert.deepEqual(inDisplayOrder(["2023-08-01", "2023-02-01", "2023-05-01"], false), ["2023-02-01", "2023-05-01", "2023-08-01"]);
+    assert.deepEqual(inDisplayOrder([2025, 2023, 2026], false), [2023, 2025, 2026]);
+});
+
+test("days and years are shown from the latest with newest first", () => {
+    assert.deepEqual(inDisplayOrder(["2023-08-01", "2023-02-01", "2023-05-01"], true), ["2023-08-01", "2023-05-01", "2023-02-01"]);
+    assert.deepEqual(inDisplayOrder([2025, 2023, 2026], true), [2026, 2025, 2023]);
 });

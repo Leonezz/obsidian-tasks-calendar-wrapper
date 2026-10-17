@@ -61,6 +61,15 @@ export function yearOfDay(key: DayKey): number {
     return Number(match[1]);
 }
 
+/**
+ * Sorts days ("YYYY-MM-DD") or years in the order the timeline shows them:
+ * from the earliest, or from the latest with the newest first option (issue #54).
+ */
+export function inDisplayOrder<T extends string | number>(values: Iterable<T>, newestFirst: boolean): T[] {
+    const sorted = [...values].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
+    return newestFirst ? sorted.reverse() : sorted;
+}
+
 /** The start of the day a key names. Labels formatted from it use the locale's own digits again. */
 export function dateOfDay(m: MomentFactory, key: DayKey): Moment {
     const date = m(key, "YYYY-MM-DD", true);

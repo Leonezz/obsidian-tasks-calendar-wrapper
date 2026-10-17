@@ -1,6 +1,9 @@
 import { relativeDate as relativeDateIn, type DateValue } from "@tasks-calendar-wrapper/core";
 import { moment } from "./moment";
 
+// isTagHidden moved to packages/core; re-exported for the modules that import it from here.
+export { isTagHidden } from "@tasks-calendar-wrapper/core";
+
 /**
  * Describes a date relative to today, e.g. "Tomorrow" or "in 2 days", in the language
  * the app is set to.
@@ -24,11 +27,6 @@ export function tasksPluginCommand(
     if (!command?.editorCheckCallback) throw new Error(`the Tasks plugin is not enabled, so ${commandId} is not available`);
     // The command object itself is returned, so the callback is still called as its method.
     return command as Required<EditorCommand>;
-}
-
-/** A tag is hidden by an entry that names it, or by one of its parent tags, e.g. #work hides #work/admin. */
-export function isTagHidden(tag: string, hiddenTags: string[]): boolean {
-    return hiddenTags.some(hidden => tag === hidden || tag.startsWith(hidden + "/"));
 }
 
 /** The documented URI that opens the search pane of the vault on a tag, e.g. #work. */

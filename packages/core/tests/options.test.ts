@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { mergeOptions } from "../utils/options";
+import { mergeOptions } from "../src/options";
 
 /** The same kinds of values as defaultUserOptions in src/settings.ts, which cannot load without Obsidian. */
 const makeDefaults = () => ({
