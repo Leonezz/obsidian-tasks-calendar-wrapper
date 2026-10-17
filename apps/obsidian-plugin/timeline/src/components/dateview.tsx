@@ -1,8 +1,8 @@
 import { moment } from '../../../utils/moment';
-import type { Moment, unitOfTime } from 'moment';
+import type { Moment } from 'moment';
 import * as React from 'react';
 import { getFileTitle } from '../../../dataview-util/dataview';
-import { doneDateSymbol, dueDateSymbol, recurrenceSymbol, scheduledDateSymbol, startDateSymbol } from '../../../utils/tasks';
+import { expandShortcuts } from '../../../utils/quickentry';
 import { tasksListedOnDay } from '../taskdates';
 import * as Icons from './asserts/icons';
 import { QuickEntryHandlerContext, TaskListContext, TodayFocusEventHandlersContext, UserOptionContext } from './context';
@@ -141,41 +141,9 @@ class QuickEntry extends React.Component<Record<string, unknown>, QuickEntryStat
     onQuickEntryNewTaskInput() {
         const input = this.textInput.current;
         if (!input) return;
-        const newTask = input.value;
-        // Icons
-        if (newTask.includes("due ")) { input.value = newTask.replace("due", dueDateSymbol) }
-        if (newTask.includes("start ")) { input.value = newTask.replace("start", startDateSymbol) }
-        if (newTask.includes("scheduled ")) { input.value = newTask.replace("scheduled", scheduledDateSymbol) }
-        if (newTask.includes("done ")) { input.value = newTask.replace("done", doneDateSymbol) }
-        if (newTask.includes("repeat ")) { input.value = newTask.replace("repeat", recurrenceSymbol) }
-        if (newTask.includes("recurring ")) { input.value = newTask.replace("recurring", recurrenceSymbol) }
-
-        // Dates
-        if (newTask.includes("today ")) { input.value = newTask.replace("today", moment().format("YYYY-MM-DD")) }
-        if (newTask.includes("tomorrow ")) { input.value = newTask.replace("tomorrow", moment().add(1, "days").format("YYYY-MM-DD")) }
-        if (newTask.includes("yesterday ")) { input.value = newTask.replace("yesterday", moment().subtract(1, "days").format("YYYY-MM-DD")) }
-
-        // In X days/weeks/month/years
-        const futureDate = newTask.match(/(in)\W(\d{1,3})\W(days|day|weeks|week|month|years|year) /);
-        if (futureDate && futureDate.length > 3) {
-            const value: number = parseInt(futureDate[2]);
-            const unit = futureDate[3] as unitOfTime.Base;
-            const date = moment().add(value, unit).format("YYYY-MM-DD[ ]")
-            input.value = newTask.replace(futureDate[0], date);
-        }
-
-        // Next Weekday
-        const weekday = newTask.match(/(monday|tuesday|wednesday|thursday|friday|saturday|sunday) /);
-        if (weekday) {
-            const weekdays = ["", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-            const dayINeed = weekdays.indexOf(weekday[1]);
-            if (moment().isoWeekday() < dayINeed) {
-                input.value = newTask.replace(weekday[1], moment().isoWeekday(dayINeed).format("YYYY-MM-DD"));
-            } else {
-                input.value = newTask.replace(weekday[1], moment().add(1, 'weeks').isoWeekday(dayINeed).format("YYYY-MM-DD"));
-            }
-        }
-
+        const expanded = expandShortcuts(input.value, moment());
+        // The input is left alone when there was nothing to replace.
+        if (expanded !== input.value) input.value = expanded;
         input.focus();
     }
 
