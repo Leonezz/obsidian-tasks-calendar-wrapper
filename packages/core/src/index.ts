@@ -3,5 +3,7 @@
  * of the restructuring. Nothing in this package may import obsidian.
  */
 export * from "./counters";
+export * from "./dates";
+export * from "./paths";
 export * from "./properties";
 export * from "./whatsnew";
