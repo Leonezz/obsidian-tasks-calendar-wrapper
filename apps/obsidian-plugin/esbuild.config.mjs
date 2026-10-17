@@ -33,6 +33,19 @@ const copyPluginFilesAfterBuild = {
 	},
 };
 
+/**
+ * Fails the build if anything would bundle the npm moment. The plugin uses the moment Obsidian ships,
+ * which follows the app language; a bundled copy adds its size and writes every date in English.
+ */
+const forbidNpmMoment = {
+	name: "forbid-npm-moment",
+	setup(build) {
+		build.onResolve({ filter: /^moment(\/|$)/ }, (args) => ({
+			errors: [{ text: `${args.importer} imports "${args.path}" at runtime; use utils/moment, which is Obsidian's moment, or pass it in to core.` }],
+		}));
+	},
+};
+
 const context = await esbuild.context({
 	banner: {
 		js: banner,
@@ -59,7 +72,7 @@ const context = await esbuild.context({
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
 	outfile: `${prod ? releaseDir : devPluginDir}/main.js`,
-	plugins: prod ? [] : [copyPluginFilesAfterBuild],
+	plugins: prod ? [forbidNpmMoment] : [forbidNpmMoment, copyPluginFilesAfterBuild],
 });
 
 if (prod) {

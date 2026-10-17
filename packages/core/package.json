@@ -13,6 +13,7 @@
 	"devDependencies": {
 		"@types/node": "20.19.43",
 		"esbuild": "0.28.2",
+		"moment": "2.29.4",
 		"typescript": "6.0.3"
 	}
 }

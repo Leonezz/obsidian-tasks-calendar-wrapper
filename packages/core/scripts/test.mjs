@@ -1,6 +1,10 @@
 /**
  * Bundles every tests/*.test.ts file with esbuild and runs the bundles with the built-in Node test runner,
  * like the plugin's scripts/test.mjs, but without the obsidian stub: core never imports obsidian.
+ *
+ * First it bundles src/index.ts on its own and fails if anything in it would load moment or obsidian.
+ * core gets Obsidian's moment passed in, so a value import of either would bundle a second copy or break
+ * outside Obsidian. ESLint catches direct imports; this also catches ones that slip past it.
  */
 import esbuild from "esbuild";
 import { spawnSync } from "child_process";
@@ -20,6 +24,35 @@ if (entries.length === 0) {
 	process.exit(1);
 }
 
+const forbiddenAtRuntime = {
+	name: "forbid-moment-and-obsidian",
+	setup(build) {
+		build.onResolve({ filter: /^(moment|obsidian)(\/|$)/ }, (args) => ({
+			errors: [{ text: `${args.importer} loads "${args.path}" at runtime; core must get moment passed in and must not use obsidian.` }],
+		}));
+	},
+};
+
+try {
+	// Bundled for the browser, as the plugin's esbuild.config.mjs bundles core into main.js.
+	await esbuild.build({
+		entryPoints: [path.join(root, "src", "index.ts")],
+		bundle: true,
+		write: false,
+		platform: "browser",
+		format: "esm",
+		logLevel: "error",
+		plugins: [forbiddenAtRuntime],
+	});
+} catch (error) {
+	// esbuild has already printed each error with its file and line.
+	if (!error.errors) throw error;
+	if (error.errors.some((message) => message.pluginName === forbiddenAtRuntime.name)) {
+		console.error("packages/core must bundle without moment or obsidian.");
+	}
+	process.exit(1);
+}
+
 const outdir = mkdtempSync(path.join(tmpdir(), "tasks-calendar-core-tests-"));
 try {
 	await esbuild.build({
@@ -34,8 +67,9 @@ try {
 	const bundles = readdirSync(outdir)
 		.filter((name) => name.endsWith(".js"))
 		.map((name) => path.join(outdir, name));
-	// A fixed locale, so localeCompare collates the same everywhere (see the plugin's scripts/test.mjs).
-	const env = { ...process.env, LC_ALL: "en_US.UTF-8", LANG: "en_US.UTF-8" };
+	// A fixed locale, so localeCompare collates the same everywhere (see the plugin's scripts/test.mjs),
+	// and a fixed time zone, so the date tests give the same days on every machine.
+	const env = { ...process.env, LC_ALL: "en_US.UTF-8", LANG: "en_US.UTF-8", TZ: "UTC" };
 	const result = spawnSync(process.execPath, ["--test", ...bundles], { stdio: "inherit", env, cwd: root });
 	process.exitCode = result.status ?? 1;
 } finally {

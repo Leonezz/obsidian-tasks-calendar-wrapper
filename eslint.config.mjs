@@ -2,6 +2,44 @@ import js from "@eslint/js";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
+const clockMessage = "core gets the current time passed in as `now`; it never reads the clock.";
+
+/** core gets the time passed in, and has to load on the older engines Obsidian runs on. */
+const coreSyntaxRules = [
+	{ selector: "MemberExpression[object.name='Date'][property.name='now'], MemberExpression[object.name='Date'][property.value='now']", message: clockMessage },
+	{ selector: "NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.name='Date'], MemberExpression[object.name='globalThis'][property.name='Date']", message: clockMessage },
+	{ selector: "Literal[regex.pattern=/\\(\\?<[=!]/]", message: "Regex lookbehind is missing before Safari 16.4, so older iOS devices could not load the plugin." },
+	{ selector: "Literal[regex.flags=/v/]", message: "The v flag is missing before Safari 17 and stopped the plugin from loading (#184); build the RegExp with a fallback, as createEmojiMatcher does." },
+];
+
+const onlyDatesNamesMoment = "Only core/dates.ts uses moment's types. Elsewhere core sees dates as DateValue, which cannot be changed: compare with the helpers in dates.ts, or call clone() for a moment of your own.";
+
+/** Outside core/dates.ts, core never names Moment, so it cannot cast a DateValue back to something it could change. */
+const momentTypeRule = {
+	selector: "TSTypeReference[typeName.name='Moment'], TSQualifiedName[right.name='Moment'], TSImportType[qualifier.name='Moment']",
+	message: onlyDatesNamesMoment,
+};
+
+/** What core may not import. The plugin passes Obsidian's moment in; dates.ts imports only moment's types. */
+const coreImportRules = {
+	paths: [
+		{ name: "obsidian", message: "core must not depend on Obsidian; pass what it needs in from apps/obsidian-plugin." },
+		{ name: "moment", allowTypeImports: true, message: "core gets Obsidian's moment passed in; importing the npm package bundles a second moment in English." },
+		{ name: "react", message: "core has no UI; components belong in packages/ui." },
+		{ name: "react-dom", message: "core has no UI; components belong in packages/ui." },
+	],
+	patterns: [
+		{ group: ["moment/*"], allowTypeImports: true, message: "core gets Obsidian's moment passed in; importing the npm package bundles a second moment in English." },
+		{ group: ["**/apps/**", "**/obsidian-plugin/**", "@tasks-calendar-wrapper/*", "**/packages/ui/**"], message: "core is the bottom layer and imports no other workspace package." },
+	],
+};
+
+/** The same, but outside dates.ts not even moment's types may be imported, which would let a module alias Moment. */
+const coreImportRulesOutsideDates = {
+	paths: coreImportRules.paths.map((rule) => rule.name === "moment" ? { name: "moment", message: onlyDatesNamesMoment } : rule),
+	patterns: coreImportRules.patterns.map((rule) => rule.group.includes("moment/*") ? { group: ["moment/*"], message: onlyDatesNamesMoment } : rule),
+};
+
 export default tseslint.config(
 	{
 		ignores: ["**/node_modules/", "**/main.js", "ExampleVault/"],
@@ -64,18 +102,37 @@ export default tseslint.config(
 		// core is the bottom layer: no UI, no other workspace package.
 		files: ["packages/core/**/*.{ts,tsx}"],
 		rules: {
+			"no-restricted-imports": ["error", coreImportRules],
+		},
+	},
+	{
+		// core's tests run in Node, where the npm moment stands in for Obsidian's.
+		files: ["packages/core/tests/**/*.{ts,tsx}"],
+		rules: {
 			"no-restricted-imports": ["error", {
 				paths: [
-					{ name: "obsidian", message: "core must not depend on Obsidian; pass what it needs in from apps/obsidian-plugin." },
-					{ name: "moment", allowTypeImports: true, message: "core gets Obsidian's moment passed in; importing the npm package bundles a second moment in English." },
+					{ name: "obsidian", message: "core's tests run without Obsidian, like core itself." },
 					{ name: "react", message: "core has no UI; components belong in packages/ui." },
 					{ name: "react-dom", message: "core has no UI; components belong in packages/ui." },
 				],
 				patterns: [
-					{ group: ["moment/*"], allowTypeImports: true, message: "core gets Obsidian's moment passed in; importing the npm package bundles a second moment in English." },
-					{ group: ["**/apps/**", "**/obsidian-plugin/**", "@tasks-calendar-wrapper/*", "**/packages/ui/**"], message: "core is the bottom layer and imports no other workspace package." },
+					{ group: ["**/apps/**", "**/obsidian-plugin/**", "@tasks-calendar-wrapper/*", "**/packages/ui/**"], message: "core's tests test core alone." },
 				],
 			}],
+		},
+	},
+	{
+		files: ["packages/core/src/**/*.{ts,tsx}"],
+		ignores: ["packages/core/src/dates.ts"],
+		rules: {
+			"no-restricted-imports": ["error", coreImportRulesOutsideDates],
+			"no-restricted-syntax": ["error", ...coreSyntaxRules, momentTypeRule],
+		},
+	},
+	{
+		files: ["packages/core/src/dates.ts"],
+		rules: {
+			"no-restricted-syntax": ["error", ...coreSyntaxRules],
 		},
 	},
 );

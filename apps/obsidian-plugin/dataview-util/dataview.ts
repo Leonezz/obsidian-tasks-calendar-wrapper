@@ -34,12 +34,8 @@ export function createEmojiMatcher(createRegExp: RegExpFactory = nativeRegExp): 
     }
 }
 
-/** Get the "title" for a file, by stripping other parts of the path as well as the extension. */
-export function getFileTitle(path: string): string {
-    if (path.includes("/")) path = path.substring(path.lastIndexOf("/") + 1);
-    if (path.endsWith(".md")) path = path.substring(0, path.length - 3);
-    return path;
-}
+/** Moved to packages/core, which reads daily note names with it; re-exported for the modules that import it from here. */
+export { getFileTitle } from "@tasks-calendar-wrapper/core";
 
 /**
  * Builds a header normalizer. The emoji regex is built on the first header rather than when the module loads,

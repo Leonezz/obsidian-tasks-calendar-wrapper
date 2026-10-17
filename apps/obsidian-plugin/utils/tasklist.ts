@@ -1,3 +1,4 @@
+import { convert24HourPrefix } from "@tasks-calendar-wrapper/core";
 import type { Moment } from "moment";
 import { moment } from "./moment";
 import { getSortComparator } from "./sort";
@@ -64,10 +65,7 @@ export async function parseTasks(taskList: TaskDataModel[], options: TaskListOpt
     if (options.convert24HourTimePrefix) {
         taskListPromise = taskListPromise.map(async (task: Promise<TaskDataModel>) => {
             const t = await task;
-            if (!t.visual || t.visual.length < 5) return t;
-            const timePrefix = moment(t.visual.substring(0, 5), "HH:mm", true);
-            if (!timePrefix.isValid()) return t;
-            t.visual = timePrefix.format("h:mm a") + t.visual.substring(5);
+            if (t.visual) t.visual = convert24HourPrefix(moment, t.visual);
             return t;
         });
     }
