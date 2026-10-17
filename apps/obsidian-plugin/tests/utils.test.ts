@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import moment from "moment";
 import "moment/locale/zh-cn";
 
-import { isTagHidden, relativeDate, tasksPluginCommand } from "../utils/utils";
+import { isTagHidden, relativeDate, tagSearchUri, tasksPluginCommand } from "../utils/utils";
 
 // Loading a locale file switches moment over to it, so the default is set back here.
 moment.locale("en");
@@ -87,4 +87,17 @@ test("a missing Tasks command raises an error that says what to do", () => {
         /Tasks plugin is not enabled/);
     assert.throws(() => tasksPluginCommand({ "obsidian-tasks-plugin:toggle-done": {} }, "obsidian-tasks-plugin:toggle-done"),
         /Tasks plugin is not enabled/);
+});
+
+// Clicking a tag searches for it through the documented search URI, not the private search plugin
+
+test("a tag search opens the search URI of the vault", () => {
+    assert.equal(tagSearchUri("Notes", "#work"), "obsidian://search?vault=Notes&query=tag%3A%23work");
+});
+
+test("the vault name and the tag are encoded, so spaces, ampersands and nested tags survive", () => {
+    assert.equal(tagSearchUri("My Vault & Co", "#work/admin"),
+        "obsidian://search?vault=My%20Vault%20%26%20Co&query=tag%3A%23work%2Fadmin");
+    assert.equal(new URL(tagSearchUri("笔记", "#项目")).searchParams.get("vault"), "笔记");
+    assert.equal(new URL(tagSearchUri("笔记", "#项目")).searchParams.get("query"), "tag:#项目");
 });

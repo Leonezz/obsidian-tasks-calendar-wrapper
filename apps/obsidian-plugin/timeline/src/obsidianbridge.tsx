@@ -1,12 +1,14 @@
 import { Model } from 'backbone';
-import { App, ItemView, Notice, Pos } from 'obsidian';
+import { App, ItemView, Notice, normalizePath, Pos } from 'obsidian';
 import { moment } from '../../utils/moment';
 import * as React from 'react';
 import { UserOption, defaultUserOptions } from '../../src/settings';
 import * as TaskMapable from '../../utils/taskmapable';
-import { insertTaskUnderSection, normalizeNotePath } from '../../utils/quickentry';
+import { ConfirmModal } from '../../src/confirm-modal';
+import { normalizeNotePath } from '../../utils/quickentry';
 import { TaskDataModel } from '../../utils/tasks';
-import { tasksPluginCommand } from '../../utils/utils';
+import { tagSearchUri, tasksPluginCommand } from '../../utils/utils';
+import { appendTaskToNote } from './appendtask';
 import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from './components/context';
 import { TimelineView } from './components/timelineview';
 
@@ -32,6 +34,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 
         this.handleCreateNewTask = this.handleCreateNewTask.bind(this);
         this.handleTagClick = this.handleTagClick.bind(this);
+        this.confirmCreateNote = this.confirmCreateNote.bind(this);
         this.handleOpenFile = this.handleOpenFile.bind(this);
         this.handleCompleteTask = this.handleCompleteTask.bind(this);
         this.onUpdateTasks = this.onUpdateTasks.bind(this);
@@ -85,8 +88,8 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
     }
 
     handleCreateNewTask(path: string, append: string) {
-        const notePath = normalizeNotePath(path);
-        this.appendTask(notePath, "- [ ] " + append)
+        const notePath = normalizePath(normalizeNotePath(path));
+        appendTaskToNote(this.app.vault, notePath, this.state.userOptions.sectionForNewTasks, "- [ ] " + append, this.confirmCreateNote)
             .then(added => { if (added) this.onUpdateTasks(); })
             .catch(reason => {
                 console.error("Tasks Calendar Wrapper: adding a task failed", reason);
@@ -94,27 +97,17 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
             });
     }
 
-    /** Appends a task to a note, creating the note and its folder on request. Resolves to false when the user declines. */
-    private async appendTask(path: string, taskStr: string): Promise<boolean> {
-        const section = this.state.userOptions.sectionForNewTasks;
-        if (!(await this.app.vault.adapter.exists(path))) {
-            if (!confirm("No such file: " + path + ". Would you like to create it?")) return false;
-            const folder = path.includes("/") ? path.substring(0, path.lastIndexOf("/")) : "";
-            if (folder !== "" && !(await this.app.vault.adapter.exists(folder))) await this.app.vault.createFolder(folder);
-            await this.app.vault.create(path, insertTaskUnderSection("", section, taskStr));
-            return true;
-        }
-        const content = await this.app.vault.adapter.read(path);
-        await this.app.vault.adapter.write(path, insertTaskUnderSection(content, section, taskStr));
-        return true;
+    private confirmCreateNote(path: string): Promise<boolean> {
+        return new ConfirmModal(this.app, {
+            title: "Create note",
+            message: "No such file: " + path + ". Would you like to create it?",
+            confirmText: "Create",
+        }).ask();
     }
 
-
+    /** Searches for the tag through the documented obsidian://search URI, not the private API of the search plugin. */
     handleTagClick(tag: string) {
-        // @ts-expect-error internalPlugins is not part of the public API
-        const searchPlugin = this.app.internalPlugins.getPluginById("global-search");
-        const search = searchPlugin && searchPlugin.instance;
-        search.openGlobalSearch('tag:' + tag)
+        window.open(tagSearchUri(this.app.vault.getName(), tag));
     }
 
     handleOpenFile(path: string, position: Pos, openTaskEdit = false) {

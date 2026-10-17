@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { insertTaskUnderSection, normalizeNotePath } from "../utils/quickentry";
+import { insertTaskUnderSection, normalizeNotePath, parentFolder } from "../utils/quickentry";
 
 // Issue #48: a path without an extension created a file the timeline never reads
 
@@ -21,6 +21,17 @@ test("surrounding spaces and a leading slash are removed", () => {
 
 test("a dot inside a folder name does not count as an extension", () => {
     assert.equal(normalizeNotePath("v1.2/Inbox"), "v1.2/Inbox.md");
+});
+
+// A new note in a folder that does not exist yet needs that folder first
+
+test("the folder of a note is the path up to its last slash", () => {
+    assert.equal(parentFolder("01 Tasks/Inbox.md"), "01 Tasks");
+    assert.equal(parentFolder("a/b.c/Inbox.md"), "a/b.c");
+});
+
+test("a note at the top of the vault has no folder", () => {
+    assert.equal(parentFolder("Inbox.md"), "");
 });
 
 // The task goes under the configured section, or under a new one at the end, never above the frontmatter
