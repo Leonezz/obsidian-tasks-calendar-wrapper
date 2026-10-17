@@ -1,0 +1,1031 @@
+{
+	"note": "Taken by apps/obsidian-plugin/scripts/screenshots.mjs (`pnpm screenshots --update`). Do not edit by hand.",
+	"obsidianVersion": "1.14.4 (installer 1.13.7)",
+	"electron": "43.3.0",
+	"chrome": "150.0.7871.212",
+	"machine": {
+		"cpu": "Apple M4 Pro",
+		"cores": 14,
+		"memoryGB": 48,
+		"os": "macOS 26.4 (Darwin 25.4.0)",
+		"arch": "arm64"
+	},
+	"viewportWidth": 600,
+	"today": "2026-01-15 Thursday",
+	"takenAt": "2026-10-17",
+	"plugin": {
+		"version": "0.3.7",
+		"commit": "fa6c961",
+		"uncommittedChanges": false
+	},
+	"shots": {
+		"light-top-all-days-no-counter": {
+			"theme": "light",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": 202
+		},
+		"light-top-all-days-todo-filter": {
+			"theme": "light",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4279
+			},
+			"visibleLines": 96
+		},
+		"light-top-all-days-overdue-filter": {
+			"theme": "light",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1449
+			},
+			"visibleLines": 29
+		},
+		"light-top-all-days-unplanned-filter": {
+			"theme": "light",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4081
+			},
+			"visibleLines": 92
+		},
+		"light-top-today-focus-no-counter": {
+			"theme": "light",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": 120
+		},
+		"light-top-today-focus-todo-filter": {
+			"theme": "light",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 797
+			},
+			"visibleLines": 16
+		},
+		"light-top-today-focus-overdue-filter": {
+			"theme": "light",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1203
+			},
+			"visibleLines": 25
+		},
+		"light-top-today-focus-unplanned-filter": {
+			"theme": "light",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4022
+			},
+			"visibleLines": 91
+		},
+		"dark-top-all-days-no-counter": {
+			"theme": "dark",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": null
+		},
+		"dark-top-all-days-todo-filter": {
+			"theme": "dark",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4279
+			},
+			"visibleLines": null
+		},
+		"dark-top-all-days-overdue-filter": {
+			"theme": "dark",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1449
+			},
+			"visibleLines": null
+		},
+		"dark-top-all-days-unplanned-filter": {
+			"theme": "dark",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4081
+			},
+			"visibleLines": null
+		},
+		"dark-top-today-focus-no-counter": {
+			"theme": "dark",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"dark-top-today-focus-todo-filter": {
+			"theme": "dark",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 797
+			},
+			"visibleLines": null
+		},
+		"dark-top-today-focus-overdue-filter": {
+			"theme": "dark",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1203
+			},
+			"visibleLines": null
+		},
+		"dark-top-today-focus-unplanned-filter": {
+			"theme": "dark",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4022
+			},
+			"visibleLines": null
+		},
+		"light-top-all-days-todo-focus": {
+			"theme": "light",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": 202
+		},
+		"light-top-all-days-overdue-focus": {
+			"theme": "light",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": 202
+		},
+		"light-top-all-days-unplanned-focus": {
+			"theme": "light",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": 202
+		},
+		"light-top-today-focus-todo-focus": {
+			"theme": "light",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": 120
+		},
+		"light-top-today-focus-overdue-focus": {
+			"theme": "light",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": 120
+		},
+		"light-top-today-focus-unplanned-focus": {
+			"theme": "light",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": 120
+		},
+		"dark-top-all-days-todo-focus": {
+			"theme": "dark",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": null
+		},
+		"dark-top-all-days-overdue-focus": {
+			"theme": "dark",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": null
+		},
+		"dark-top-all-days-unplanned-focus": {
+			"theme": "dark",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": null
+		},
+		"dark-top-today-focus-todo-focus": {
+			"theme": "dark",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"dark-top-today-focus-overdue-focus": {
+			"theme": "dark",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"dark-top-today-focus-unplanned-focus": {
+			"theme": "dark",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"light-today-all-days-no-counter": {
+			"theme": "light",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": 202
+		},
+		"light-today-all-days-todo-filter": {
+			"theme": "light",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4289
+			},
+			"visibleLines": 96
+		},
+		"light-today-all-days-overdue-filter": {
+			"theme": "light",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1449
+			},
+			"visibleLines": 29
+		},
+		"light-today-all-days-unplanned-filter": {
+			"theme": "light",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4091
+			},
+			"visibleLines": 92
+		},
+		"light-today-today-focus-no-counter": {
+			"theme": "light",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": 120
+		},
+		"light-today-today-focus-todo-filter": {
+			"theme": "light",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 797
+			},
+			"visibleLines": 16
+		},
+		"light-today-today-focus-overdue-filter": {
+			"theme": "light",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1203
+			},
+			"visibleLines": 25
+		},
+		"light-today-today-focus-unplanned-filter": {
+			"theme": "light",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4022
+			},
+			"visibleLines": 91
+		},
+		"dark-today-all-days-no-counter": {
+			"theme": "dark",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"dark-today-all-days-todo-filter": {
+			"theme": "dark",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4289
+			},
+			"visibleLines": null
+		},
+		"dark-today-all-days-overdue-filter": {
+			"theme": "dark",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1449
+			},
+			"visibleLines": null
+		},
+		"dark-today-all-days-unplanned-filter": {
+			"theme": "dark",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4091
+			},
+			"visibleLines": null
+		},
+		"dark-today-today-focus-no-counter": {
+			"theme": "dark",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"dark-today-today-focus-todo-filter": {
+			"theme": "dark",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 797
+			},
+			"visibleLines": null
+		},
+		"dark-today-today-focus-overdue-filter": {
+			"theme": "dark",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1203
+			},
+			"visibleLines": null
+		},
+		"dark-today-today-focus-unplanned-filter": {
+			"theme": "dark",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4022
+			},
+			"visibleLines": null
+		},
+		"light-today-all-days-todo-focus": {
+			"theme": "light",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": 202
+		},
+		"light-today-all-days-overdue-focus": {
+			"theme": "light",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": 202
+		},
+		"light-today-all-days-unplanned-focus": {
+			"theme": "light",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": 202
+		},
+		"light-today-today-focus-todo-focus": {
+			"theme": "light",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": 120
+		},
+		"light-today-today-focus-overdue-focus": {
+			"theme": "light",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": 120
+		},
+		"light-today-today-focus-unplanned-focus": {
+			"theme": "light",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": 120
+		},
+		"dark-today-all-days-todo-focus": {
+			"theme": "dark",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"dark-today-all-days-overdue-focus": {
+			"theme": "dark",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"dark-today-all-days-unplanned-focus": {
+			"theme": "dark",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"dark-today-today-focus-todo-focus": {
+			"theme": "dark",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"dark-today-today-focus-overdue-focus": {
+			"theme": "dark",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"dark-today-today-focus-unplanned-focus": {
+			"theme": "dark",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"light-bottom-all-days-no-counter": {
+			"theme": "light",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": 202
+		},
+		"light-bottom-all-days-todo-filter": {
+			"theme": "light",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4289
+			},
+			"visibleLines": 96
+		},
+		"light-bottom-all-days-overdue-filter": {
+			"theme": "light",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1439
+			},
+			"visibleLines": 29
+		},
+		"light-bottom-all-days-unplanned-filter": {
+			"theme": "light",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4081
+			},
+			"visibleLines": 92
+		},
+		"light-bottom-today-focus-no-counter": {
+			"theme": "light",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": 120
+		},
+		"light-bottom-today-focus-todo-filter": {
+			"theme": "light",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 777
+			},
+			"visibleLines": 16
+		},
+		"light-bottom-today-focus-overdue-filter": {
+			"theme": "light",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1183
+			},
+			"visibleLines": 25
+		},
+		"light-bottom-today-focus-unplanned-filter": {
+			"theme": "light",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4002
+			},
+			"visibleLines": 91
+		},
+		"dark-bottom-all-days-no-counter": {
+			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"dark-bottom-all-days-todo-filter": {
+			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4289
+			},
+			"visibleLines": null
+		},
+		"dark-bottom-all-days-overdue-filter": {
+			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1439
+			},
+			"visibleLines": null
+		},
+		"dark-bottom-all-days-unplanned-filter": {
+			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4081
+			},
+			"visibleLines": null
+		},
+		"dark-bottom-today-focus-no-counter": {
+			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": null
+		},
+		"dark-bottom-today-focus-todo-filter": {
+			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 777
+			},
+			"visibleLines": null
+		},
+		"dark-bottom-today-focus-overdue-filter": {
+			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1183
+			},
+			"visibleLines": null
+		},
+		"dark-bottom-today-focus-unplanned-filter": {
+			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4002
+			},
+			"visibleLines": null
+		},
+		"light-bottom-all-days-todo-focus": {
+			"theme": "light",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": 202
+		},
+		"light-bottom-all-days-overdue-focus": {
+			"theme": "light",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": 202
+		},
+		"light-bottom-all-days-unplanned-focus": {
+			"theme": "light",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": 202
+		},
+		"light-bottom-today-focus-todo-focus": {
+			"theme": "light",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": 120
+		},
+		"light-bottom-today-focus-overdue-focus": {
+			"theme": "light",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": 120
+		},
+		"light-bottom-today-focus-unplanned-focus": {
+			"theme": "light",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": 120
+		},
+		"dark-bottom-all-days-todo-focus": {
+			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"dark-bottom-all-days-overdue-focus": {
+			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"dark-bottom-all-days-unplanned-focus": {
+			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"dark-bottom-today-focus-todo-focus": {
+			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": null
+		},
+		"dark-bottom-today-focus-overdue-focus": {
+			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": null
+		},
+		"dark-bottom-today-focus-unplanned-focus": {
+			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": null
+		}
+	}
+}

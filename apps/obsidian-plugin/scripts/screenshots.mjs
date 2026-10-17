@@ -6,8 +6,8 @@
  * - visible/<state>.txt, for every light state: one line per year, date, counter and task that is displayed, in order,
  *   with the task's status, whether the Focus behaviour highlights it, and its text. Exact, small and diffable, and the
  *   same whether a hidden task is left out of the DOM or hidden with CSS.
- * - <state>.png, a screenshot of the whole timeline, for the 38 states `takesPng` picks: about 780 KB for one without a
- *   filter, which is why not every state has one.
+ * - <state>.png, a screenshot of the whole timeline, for all 84 states: about 780 KB for one without a filter, 36 MB
+ *   in all.
  *
  * `pnpm screenshots` builds the plugin, takes both and compares them with fixtures/screenshots, the screenshots pixel by
  * pixel, writes what it took and a diff image of each screenshot that differs to a folder it names, and fails if anything
@@ -39,12 +39,12 @@ const VIEWPORT_WIDTH = 600;
 const MIN_HEIGHT = 600;
 const MAX_HEIGHT = 16_000;
 /**
- * Chrome draws a few pixels of the status icons slightly differently from run to run (up to 10 levels, a few dozen
- * pixels). A screenshot counts as the same when no more pixels differ, by no more; any real change, such as a row
- * shown or hidden or a highlight, changes far more pixels.
+ * Chrome draws some pixels of the status icons slightly differently from run to run: in 84 states up to 132 pixels,
+ * by up to 13 levels. A screenshot counts as the same when no more than NOISE_PIXELS differ, by no more than
+ * NOISE_DELTA. Real changes are far larger: a highlighted row is about 22,000 pixels, a changed digit differs by over 100.
  */
-const NOISE_PIXELS = 200;
-const NOISE_DELTA = 16;
+const NOISE_PIXELS = 500;
+const NOISE_DELTA = 24;
 /** The plugin applies its settings to open views 5 s after it loads, which renders the timeline again. */
 const SETTLE_AFTER_LOAD_MS = 6_000;
 
@@ -53,14 +53,8 @@ const POSITIONS = ["top", "today", "bottom"];
 const COUNTERS = { todo: "Todo Tasks", overdue: "Overdue Tasks", unplanned: "Unplanned Tasks" };
 const TODAY_FOCUS = "Focus today";
 
-/**
- * The 38 states with a screenshot: light at each position with no counter or a Filter counter; light at position today
- * with a Focus counter; dark at position today with no counter or a Filter counter. All with "Focus on today" off and on.
- */
-function takesPng({ theme, position, behavior }) {
-	if (theme === "dark") return position === "today" && behavior !== "Focus";
-	return position === "today" || behavior !== "Focus";
-}
+/** Every state has a screenshot. A smaller set would keep fewer megabytes in git; this is the place to pick one. */
+const takesPng = () => true;
 
 /** Which elements are displayed does not depend on the theme, so only light states get a visible/<state>.txt. */
 const takesVisible = ({ theme }) => theme === "light";

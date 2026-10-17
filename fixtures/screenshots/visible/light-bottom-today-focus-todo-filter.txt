@@ -1,0 +1,16 @@
+date Thursday, Jan, 15
+  task due: due today | Today · Emoji dates > Emoji dates
+  task due: 13:30 standup | Today · Emoji dates > Emoji dates
+  task due: 7:05 not a full time prefix | Today · Emoji dates > Emoji dates
+  task due: 09:00-10:00 meeting | Today · Emoji dates > Emoji dates
+  task due: 24:00 midnight | Today · Emoji dates > Emoji dates
+  task scheduled: Scheduled | Markers
+  task scheduled: scheduled marker without a date | Status > Status without dates
+  task start: scheduled earlier, starts today | Today · 7 days ago · Status > Status without dates
+  task process: In Progress | Markers
+  task process: in progress without a date | Status > Status without dates
+today header "Focus On Today", color rgb(138, 92, 245)
+counter 65 Todo, color rgb(138, 92, 245), background oklch(0 0 none / 0.067)
+counter 19 Overdue, color rgb(34, 34, 34), background rgb(228, 228, 228)
+counter 85 Unplanned, color rgb(34, 34, 34), background rgb(228, 228, 228)
+quick entry
