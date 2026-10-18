@@ -169,6 +169,25 @@ export function relativeDate(
 	return Math.abs(days) <= 1 ? text.charAt(0).toUpperCase() + text.slice(1) : text;
 }
 
+/**
+ * The platform formatter of each locale, built on first use. Building one costs far more than formatting with it,
+ * and every date badge of every row asks for one: building them took about a third of each timeline render.
+ * The locale only changes with Obsidian's language, so this stays small.
+ *
+ * Only formatters that were built are kept. A locale the platform rejects is tried again, and warned about,
+ * on every call, as before there was a cache.
+ */
+const relativeDayFormats = new Map<string, Intl.RelativeTimeFormat>();
+
+function relativeDayFormat(locale: string): Intl.RelativeTimeFormat {
+	let format = relativeDayFormats.get(locale);
+	if (!format) {
+		format = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+		relativeDayFormats.set(locale, format);
+	}
+	return format;
+}
+
 /** Uses the platform formatter, which names the nearby days instead of counting them. */
 function relativeDays(
 	days: number,
@@ -176,7 +195,7 @@ function relativeDays(
 	warn: (message: string, error: unknown) => void,
 ): string | undefined {
 	try {
-		return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(days, "day");
+		return relativeDayFormat(locale).format(days, "day");
 	} catch (error) {
 		warn(`Tasks Calendar Wrapper: no relative date format for locale ${locale}`, error);
 		return undefined;
