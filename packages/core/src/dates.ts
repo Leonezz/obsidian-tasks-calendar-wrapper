@@ -80,6 +80,20 @@ export function dateOfDay(m: MomentFactory, key: DayKey): Moment {
 	return date;
 }
 
+/**
+ * A day's heading in the timeline: the day written in the date format, in the locale's words and digits. The key is
+ * read as moment(key) read it before, so a day moment cannot read, such as one after the year 9999, is labelled as it
+ * was.
+ */
+export function dayLabel(m: MomentFactory, key: DayKey, format: string): string {
+	return m(key).format(format);
+}
+
+/** A year's heading in the timeline, in the locale's digits. */
+export function yearLabel(now: DateValue, year: number): string {
+	return now.clone().year(year).format("YYYY");
+}
+
 /** A date written in exactly the given format, or undefined if it is not a real day, e.g. 2024-02-31. */
 export function parseStrictDate(m: MomentFactory, text: string, format: string): Moment | undefined {
 	const date = m(text, format, true);
