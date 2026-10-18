@@ -1,5 +1,5 @@
 import type { TAbstractFile, Vault } from "obsidian";
-import { insertTaskUnderSection, parentFolder } from "../../utils/quickentry";
+import { insertTaskUnderSection, parentFolder } from "@tasks-calendar-wrapper/core";
 
 /** The part of the vault that adding a task uses. */
 export type TaskNoteVault = Pick<

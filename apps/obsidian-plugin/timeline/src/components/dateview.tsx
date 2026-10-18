@@ -1,7 +1,6 @@
 import { moment } from "../../../utils/moment";
 import * as React from "react";
-import { getFileTitle, type DayGroup, type ResolvedTask } from "@tasks-calendar-wrapper/core";
-import { expandShortcuts } from "../../../utils/quickentry";
+import { expandShortcuts, getFileTitle, type DayGroup, type ResolvedTask } from "@tasks-calendar-wrapper/core";
 import * as Icons from "./asserts/icons";
 import { QuickEntryHandlerContext, TodayFocusEventHandlersContext, UserOptionContext } from "./context";
 import { TaskItemView } from "./taskitemview";

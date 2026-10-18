@@ -221,6 +221,24 @@ function relativeDays(
 
 const asMoment = (date: DateValue) => date as unknown as Moment;
 
+/** A unit the quick entry's "in 3 days" words count in, as moment adds it. */
+export type CountUnit = "day" | "days" | "week" | "weeks" | "month" | "year" | "years";
+
+/** The key of the day that comes `amount` units after a date's. */
+export function dayKeyAfter(date: DateValue, amount: number, unit: CountUnit): DayKey {
+	return dayKey(date.clone().add(amount, unit));
+}
+
+/** The ISO day of the week a date falls on: 1 for Monday to 7 for Sunday. */
+export function isoWeekday(date: DateValue): number {
+	return asMoment(date).isoWeekday();
+}
+
+/** The key of the day with the given ISO weekday in the week of a date, or `weeksLater` weeks after it. */
+export function dayKeyOfWeekday(date: DateValue, weekday: number, weeksLater: number): DayKey {
+	return dayKey(date.clone().add(weeksLater, "weeks").isoWeekday(weekday));
+}
+
 /** Whether two dates fall on the same calendar day. */
 export function sameDay(a: DateValue, b: DateValue): boolean {
 	return asMoment(a).isSame(asMoment(b), "day");
