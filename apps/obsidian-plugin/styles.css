@@ -598,49 +598,6 @@
 	background: var(--background-modifier-hover);
 }
 
-/* Filter */
-.taskido.todoFilter
-	.year:not([data-types~="due"]):not([data-types~="scheduled"]):not([data-types~="process"]):not(
-		[data-types~="start"]
-	) {
-	display: none;
-}
-
-.taskido.todoFilter
-	.details:not([data-types~="due"]):not([data-types~="scheduled"]):not([data-types~="process"]):not(
-		[data-types~="start"]
-	) {
-	display: none;
-}
-
-.taskido.todoFilter .task:not(.due, .scheduled, .process, .start) {
-	display: none;
-}
-
-.taskido.overdueFilter .year:not([data-types*="overdue"]) {
-	display: none;
-}
-
-.taskido.overdueFilter .details:not([data-types*="overdue"]) {
-	display: none;
-}
-
-.taskido.overdueFilter .task:not(.overdue) {
-	display: none;
-}
-
-.taskido.unplannedFilter .year:not([data-types*="unplanned"]) {
-	display: none;
-}
-
-.taskido.unplannedFilter .details:not([data-types*="unplanned"]) {
-	display: none;
-}
-
-.taskido.unplannedFilter .task:not(.unplanned) {
-	display: none;
-}
-
 /* Warning note in setting descriptions, e.g. the path filters. */
 .tasks-calendar-wrapper-setting-warning {
 	color: var(--text-error);

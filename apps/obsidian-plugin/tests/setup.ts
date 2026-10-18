@@ -13,6 +13,10 @@ declare global {
 const globalScope = globalThis as unknown as { window?: { moment: typeof moment } };
 globalScope.window = { ...(globalScope.window ?? {}), moment };
 
+/** Obsidian's createEl. The task rows only hand it to MarkdownRenderer, which fills it in. */
+const scope = globalThis as unknown as { createEl?: () => { firstElementChild: unknown } };
+scope.createEl ??= () => ({ firstElementChild: null });
+
 if (!Array.prototype.contains) {
 	Object.defineProperty(Array.prototype, "contains", {
 		value: function <T>(this: T[], target: T) {

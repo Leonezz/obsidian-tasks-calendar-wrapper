@@ -1,25 +1,57 @@
 import { moment } from "../../../utils/moment";
 import * as React from "react";
-import { UserOption } from "../../../src/settings";
-import * as TaskMapable from "../../../utils/taskmapable";
-import { TaskDataModel, TaskStatus } from "../../../utils/tasks";
-import { counterClass, dayKey, quickEntryTargets } from "@tasks-calendar-wrapper/core";
-import { timelineSpan } from "../taskdates";
-import { TaskListContext, TodayFocusEventHandlersContext, UserOptionContext } from "./context";
+import { UserOption } from "../../../src/useroptions";
+import {
+	counterClass,
+	createQuery,
+	quickEntryTargets,
+	type CounterFilter,
+	type QuickFilter,
+	type Task,
+} from "@tasks-calendar-wrapper/core";
+import { TodayFocusEventHandlersContext, UserOptionContext } from "./context";
 import { YearView } from "./yearview";
 
-const defaultTimelineProps = {
-	userOptions: {} as UserOption,
-	taskList: [] as TaskDataModel[],
-};
+interface TimelineProps {
+	readonly userOptions: UserOption;
+	readonly tasks: readonly Task[];
+	readonly quickFilter?: QuickFilter;
+}
 const defaultTimelineStates = {
 	filter: "" as string,
 	todayFocus: false as boolean,
 };
-type TimelineProps = Readonly<typeof defaultTimelineProps>;
 type TimelineStates = typeof defaultTimelineStates;
+
+const counterFilters: readonly CounterFilter[] = ["todoFilter", "overdueFilter", "unplannedFilter"];
+
+/**
+ * The counter whose Filter rules the timeline's class turned on: the stylesheet matched the class counterClass gives, so
+ * a saved "todo" filtered as "todoFilter" did, and Focus filtered nothing. A value that names several counters, which
+ * no setting saves, filters by the first of todo, overdue and unplanned.
+ */
+function counterFilterOf(filter: string, behavior: string): CounterFilter {
+	const classes = counterClass(filter, behavior).split(/\s+/);
+	return counterFilters.find((name) => classes.includes(name)) ?? "";
+}
+
 export class TimelineView extends React.Component<TimelineProps, TimelineStates> {
-	//private calendar: Map<string, Set<number>> = new Map();
+	/** Remembers the last layout, so a click on a counter or on Focus on today resolves no task again. */
+	private readonly query = createQuery();
+	/** The options with the Filter behaviour, kept while the options are the same, see settingsFor. */
+	private filtering?: { readonly options: UserOption; readonly settings: UserOption };
+
+	/**
+	 * The settings query reads. A counter whose Filter class is on filters whatever the behaviour says, as the class
+	 * did: a hand-edited "todoFilter " with Focus gives that class too.
+	 */
+	private settingsFor(options: UserOption, counter: CounterFilter): UserOption {
+		if (counter === "" || options.counterBehavior === "Filter") return options;
+		if (this.filtering?.options !== options)
+			this.filtering = { options, settings: { ...options, counterBehavior: "Filter" } };
+		return this.filtering.settings;
+	}
+
 	constructor(props: TimelineProps) {
 		super(props);
 
@@ -51,21 +83,13 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 	}
 
 	render(): React.ReactNode {
-		const taskList = this.props.taskList;
-		const newestFirst = this.props.userOptions.newestFirst;
-		const { years, entryDay } = timelineSpan(
-			taskList,
-			dayKey(moment()),
-			this.props.userOptions.entryPosition,
-			newestFirst,
+		const { userOptions } = this.props;
+		const counter = counterFilterOf(this.state.filter, userOptions.counterBehavior);
+		const { counts, years } = this.query(
+			this.props.tasks,
+			{ settings: this.settingsFor(userOptions, counter), counter, quickFilter: this.props.quickFilter },
+			{ now: moment(), moment },
 		);
-
-		const overdueCount: number = taskList.filter((t) => t.status === TaskStatus.overdue).length;
-		const unplannedCount: number = taskList.filter((t) => t.status === TaskStatus.unplanned).length;
-		const completedCount: number = taskList.filter((t) => t.status === TaskStatus.done).length;
-		const cancelledCount: number = taskList.filter((t) => t.status === TaskStatus.cancelled).length;
-		// .due, .scheduled, .process, .start
-		const todoCount: number = taskList.length - unplannedCount - completedCount - cancelledCount - overdueCount;
 
 		const styles = new Array<string>();
 		if (!this.props.userOptions.useCounters) styles.push("noCounters");
@@ -106,14 +130,13 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 							dateFormat: this.props.userOptions.dateFormat,
 							taskFiles: quickEntryTargets(this.props.userOptions, moment()),
 							select: this.props.userOptions.inbox,
-							forward: this.props.userOptions.forward,
 							useBuiltinStyle: this.props.userOptions.useBuiltinStyle,
 							counters: [
 								{
 									onClick: () => {
 										this.handleCounterFilterClick("todoFilter");
 									},
-									cnt: todoCount,
+									cnt: counts.todo,
 									label: "Todo",
 									id: "todo",
 									ariaLabel: "Todo Tasks",
@@ -122,7 +145,7 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 									onClick: () => {
 										this.handleCounterFilterClick("overdueFilter");
 									},
-									cnt: overdueCount,
+									cnt: counts.overdue,
 									id: "overdue",
 									label: "Overdue",
 									ariaLabel: "Overdue Tasks",
@@ -131,7 +154,7 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 									onClick: () => {
 										this.handleCounterFilterClick("unplannedFilter");
 									},
-									cnt: unplannedCount,
+									cnt: counts.unplanned,
 									id: "unplanned",
 									label: "Unplanned",
 									ariaLabel: "Unplanned Tasks",
@@ -140,16 +163,12 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 						}}
 					>
 						<span>
-							{years.map((y, i) => (
-								<TaskListContext.Provider
-									value={{
-										taskList: taskList.filter(TaskMapable.filterYear(moment().year(y))),
-										entryOnDate: entryDay,
-									}}
-									key={i}
-								>
-									<YearView year={y} newestFirst={newestFirst} key={y} />
-								</TaskListContext.Provider>
+							{years.map((year, i) => (
+								// Keyed by place, then by year, as before: a year added in front of the entry's year makes
+								// React build the entry day, and with it the quick entry panel, again.
+								<React.Fragment key={i}>
+									<YearView year={year} key={year.year} />
+								</React.Fragment>
 							))}
 						</span>
 					</UserOptionContext.Provider>

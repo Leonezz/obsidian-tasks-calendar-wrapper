@@ -1,67 +1,40 @@
 import { moment } from "../../../utils/moment";
-import type { Moment } from "moment";
 import * as React from "react";
-import { getFileTitle } from "@tasks-calendar-wrapper/core";
+import { getFileTitle, type DayGroup, type ResolvedTask } from "@tasks-calendar-wrapper/core";
 import { expandShortcuts } from "../../../utils/quickentry";
-import { tasksListedOnDay } from "../taskdates";
 import * as Icons from "./asserts/icons";
-import {
-	QuickEntryHandlerContext,
-	TaskListContext,
-	TodayFocusEventHandlersContext,
-	UserOptionContext,
-} from "./context";
+import { QuickEntryHandlerContext, TodayFocusEventHandlersContext, UserOptionContext } from "./context";
 import { TaskItemView } from "./taskitemview";
 
-const defaultDateProps = {
-	date: moment(),
+type DateViewProps = {
+	readonly day: DayGroup;
+	/** The day's year in the locale's digits. */
+	readonly yearLabel: string;
 };
 
-type DateViewProps = Readonly<typeof defaultDateProps>;
-
+/**
+ * A day of the timeline, as core arranged it: the entry panel when the entry sits on it, then its heading and its
+ * rows when it lists any. The statuses it lists before the counter filter go on its data-types, as before.
+ */
 export class DateView extends React.Component<DateViewProps> {
 	render(): React.ReactNode {
+		const { day, yearLabel } = this.props;
+		const className = day.isToday ? "details today" : "details";
+		const types = day.statuses.join(" ");
 		return (
-			<UserOptionContext.Consumer>
-				{({ forward, dateFormat }) => (
-					<TaskListContext.Consumer>
-						{({ taskList, entryOnDate }) => {
-							const entryOnDateMoment = moment(entryOnDate);
-							const isEntryDate =
-								this.props.date.format("YYYYMMDD") === entryOnDateMoment.format("YYYYMMDD");
-							const isToday = this.props.date.isSame(moment(), "date");
-							taskList = tasksListedOnDay(taskList, isToday, forward);
-							return (
-								<div>
-									{isEntryDate && <TodayFocus visual={"Focus On Today"} />}
-									{isEntryDate && <Counters />}
-									{isEntryDate && <QuickEntry />}
-									{taskList.length > 0 && (
-										<div
-											className={isToday ? "details today" : "details"}
-											data-year={this.props.date.format("YYYY")}
-											data-types={[...new Set(taskList.map((t) => t.status))].join(" ")}
-										>
-											<DateHeader thisDate={this.props.date.format(dateFormat)} />
-											<div
-												className={isToday ? "details today" : "details"}
-												data-year={this.props.date.format("YYYY")}
-												data-types={[...new Set(taskList.map((t) => t.status))].join(" ")}
-											>
-												<TaskListContext.Provider
-													value={{ taskList: taskList, entryOnDate: entryOnDate }}
-												>
-													<NormalDateContent date={this.props.date} />
-												</TaskListContext.Provider>
-											</div>
-										</div>
-									)}
-								</div>
-							);
-						}}
-					</TaskListContext.Consumer>
+			<div>
+				{day.isEntry && <TodayFocus visual={"Focus On Today"} />}
+				{day.isEntry && <Counters />}
+				{day.isEntry && <QuickEntry />}
+				{day.tasks.length > 0 && (
+					<div className={className} data-year={yearLabel} data-types={types}>
+						<DateHeader thisDate={day.label} />
+						<div className={className} data-year={yearLabel} data-types={types}>
+							<NormalDateContent tasks={day.tasks} />
+						</div>
+					</div>
 				)}
-			</UserOptionContext.Consumer>
+			</div>
 		);
 	}
 }
@@ -81,22 +54,18 @@ class DateHeader extends React.Component<DateHeaderProps> {
 }
 
 type NormalDateContentProps = {
-	date: Moment;
+	readonly tasks: readonly ResolvedTask[];
 };
 
 class NormalDateContent extends React.Component<NormalDateContentProps> {
 	render(): React.ReactNode {
 		return (
-			<TaskListContext.Consumer>
-				{({ taskList }) => (
-					<div className="content">
-						{/* Keyed by the task's place in the vault, so a row is never reused for another task, see issue #138. */}
-						{taskList.map((t) => (
-							<TaskItemView key={`${t.path}:${t.line}`} taskItem={t} />
-						))}
-					</div>
-				)}
-			</TaskListContext.Consumer>
+			<div className="content">
+				{/* Keyed by the task's place in the vault, so a row is never reused for another task, see issue #138. */}
+				{this.props.tasks.map((resolved) => (
+					<TaskItemView key={resolved.task.id} task={resolved} />
+				))}
+			</div>
 		);
 	}
 }

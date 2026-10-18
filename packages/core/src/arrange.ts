@@ -273,3 +273,50 @@ export function arrange(resolved: Resolved, view: ViewState, env: QueryEnv): Que
 export function query(tasks: readonly Task[], view: ViewState, env: QueryEnv): QueryResult {
 	return arrange(resolveTasks(tasks, view.settings, env), view, env);
 }
+
+/**
+ * query with a memory of its last result, for a view that renders again on every click. A call with the same tasks
+ * and settings, on the same day and in the same language, resolves nothing again; one that also has the same counter
+ * and quick filter gives the same result. Everything is compared by identity, so callers pass new objects when
+ * something changes, as they do for immutable data. The result depends on the clock only through the day.
+ */
+export function createQuery(): (tasks: readonly Task[], view: ViewState, env: QueryEnv) => QueryResult {
+	let resolvedFor:
+		| { tasks: readonly Task[]; settings: ViewState["settings"]; day: DayKey; locale: string; resolved: Resolved }
+		| undefined;
+	let arrangedFor:
+		| { resolved: Resolved; counter: CounterFilter; quickFilter: QuickFilter | undefined; result: QueryResult }
+		| undefined;
+	return (tasks, view, env) => {
+		const day = dayKey(env.now);
+		const locale = env.moment.locale();
+		if (
+			resolvedFor?.tasks !== tasks ||
+			resolvedFor.settings !== view.settings ||
+			resolvedFor.day !== day ||
+			resolvedFor.locale !== locale
+		) {
+			resolvedFor = {
+				tasks,
+				settings: view.settings,
+				day,
+				locale,
+				resolved: resolveTasks(tasks, view.settings, env),
+			};
+		}
+		const { resolved } = resolvedFor;
+		if (
+			arrangedFor?.resolved !== resolved ||
+			arrangedFor.counter !== view.counter ||
+			arrangedFor.quickFilter !== view.quickFilter
+		) {
+			arrangedFor = {
+				resolved,
+				counter: view.counter,
+				quickFilter: view.quickFilter,
+				result: arrange(resolved, view, env),
+			};
+		}
+		return arrangedFor.result;
+	};
+}
