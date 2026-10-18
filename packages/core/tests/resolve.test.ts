@@ -103,3 +103,66 @@ test("resolving drops the tasks of notes the filters leave out", () => {
     const tasks = [task("- [ ] secret", "Excluded/Secret.md"), task("- [ ] kept", "Inbox.md")];
     assert.deepEqual(shownTexts(tasks, { excludePaths: ["Excluded"] }), ["kept"]);
 });
+
+// Branches of resolveTasks the snapshots do not reach; each expectation is what the plugin's parser chain gives.
+
+test("an open task whose only date is a done date is scheduled, not unplanned", () => {
+    const [resolved] = resolveTasks([task("- [ ] a ✅ 2026-01-10")], {}, { now: TODAY, moment }).shown;
+    assert.equal(resolved.status, "scheduled");
+});
+
+test("a task in a daily note with only an extra date keeps its own dates", () => {
+    const settings = { dailyNoteFormat: "YYYY-MM-DD" };
+    const [resolved] = resolveTasks([task("- [ ] a [unplanned:: 2026-09-20]", "Journal/2026-09-15.md")], settings, { now: TODAY, moment }).shown;
+    assert.ok(resolved.dailyNote);
+    assert.equal(resolved.dates.start, undefined);
+    assert.equal(resolved.dates.scheduled, undefined);
+});
+
+test("without a daily note format, notes named YYYY-MM-DD are daily notes", () => {
+    const [resolved] = resolveTasks([task("- [ ] a", "Journal/2026-09-15.md")], {}, { now: TODAY, moment }).shown;
+    assert.ok(resolved.dailyNote);
+    assert.equal(resolved.dates.scheduled?.format("YYYY-MM-DD"), "2026-09-15");
+    // Strictly YYYY-MM-DD: a name moment would read without a format is not a daily note.
+    assert.ok(!resolveTasks([task("- [ ] a", "Journal/20260915.md")], {}, { now: TODAY, moment }).shown[0].dailyNote);
+});
+
+test("a status the status order does not name sorts first, with order 0", () => {
+    const tasks = [task("- [ ] due 📅 2026-09-18"), task("- [ ] unplanned")];
+    const shown = resolveTasks(tasks, { sort: "status-asc", taskStatusOrder: ["due"] }, { now: TODAY, moment }).shown;
+    assert.deepEqual(shown.map(r => [r.visual, r.order]), [["unplanned", 0], ["due", 1]]);
+});
+
+test("the result names today's day", () => {
+    assert.equal(resolveTasks([], {}, { now: TODAY, moment }).today, "2026-09-18");
+});
+
+test("the task filters only apply when they are turned on", () => {
+    const tagged = [task("- [ ] a #work")];
+    assert.equal(resolveTasks(tagged, { useIncludeTags: false, taskIncludeTags: ["#home"] }, { now: TODAY, moment }).shown.length, 1);
+    assert.equal(resolveTasks(tagged, { useExcludeTags: false, taskExcludeTags: ["#work"] }, { now: TODAY, moment }).shown.length, 1);
+    assert.equal(resolveTasks(tagged, { useExcludeTags: true, taskExcludeTags: ["#work"] }, { now: TODAY, moment }).shown.length, 0);
+});
+
+test("hiding a marker hides the tasks with it, also a marker that sets no status", () => {
+    const tasks = [task("- [ ] open"), task("- [X] capital x"), task("- [x] done")];
+    const shownWith = (hideStatusTasks: string[]) =>
+        resolveTasks(tasks, { hideStatusTasks }, { now: TODAY, moment }).shown.map(r => r.visual);
+    assert.deepEqual(shownWith([" ", "X"]), ["done"]);
+    assert.deepEqual(shownWith(["x"]), ["open", "capital x"]);
+});
+
+test("note tag filters need one included tag and none of the excluded ones", () => {
+    const settings = { fileIncludeTags: ["#a", "#b"], fileExcludeTags: ["#x", "#y"] };
+    assert.ok(noteVisible(note("n.md", ["#b"]), settings));
+    assert.ok(!noteVisible(note("n.md", ["#c"]), settings));
+    assert.ok(!noteVisible(note("n.md", ["#b", "#y"]), settings));
+});
+
+test("everything resolveTasks returns is frozen, the daily note's dates included", () => {
+    const tasks = [task("- [ ] a", "Journal/2026-09-15.md"), task("- [ ] b 📅 2026-09-20")];
+    const resolved = resolveTasks(tasks, { dailyNoteFormat: "YYYY-MM-DD" }, { now: TODAY, moment });
+    assert.ok(Object.isFrozen(resolved) && Object.isFrozen(resolved.shown));
+    for (const r of resolved.shown) assert.ok(Object.isFrozen(r) && Object.isFrozen(r.dates) && Object.isFrozen(r.extraDates));
+    assert.ok(resolved.shown.some(r => r.dailyNote));
+});

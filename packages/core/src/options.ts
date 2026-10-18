@@ -24,6 +24,9 @@ export function copyJsonValue<T>(value: T): T {
  */
 export function deepFreeze<T>(value: T): T {
     if (value === null || typeof value !== "object" || !isPlainContainer(value)) return value;
+    // A lookup in a plain object can hand back a built-in prototype: [priority:: __proto__] gives Object.prototype, as
+    // it always has. Freezing one would freeze it for Obsidian and every plugin, so they are left alone.
+    if (value === Object.prototype || value === Array.prototype) return value;
     for (const item of Object.values(value)) deepFreeze(item);
     return Object.freeze(value);
 }

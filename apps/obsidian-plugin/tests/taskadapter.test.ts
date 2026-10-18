@@ -72,13 +72,14 @@ interface FakeNote {
     frontmatter?: Record<string, unknown>;
 }
 
-/** An app whose notes each hold one task on their first line, with the given frontmatter. */
-function coreApp(notes: Record<string, FakeNote>, failing: string[] = []) {
+/** An app whose notes each hold one task on their first line, with the given frontmatter. `read` lists the notes read. */
+function coreApp(notes: Record<string, FakeNote>, failing: string[] = [], read: string[] = []) {
     const list = Object.keys(notes).map(path => ({ path }));
     return {
         vault: {
             getMarkdownFiles: () => list,
             cachedRead: async (file: { path: string }) => {
+                read.push(file.path);
                 if (failing.includes(file.path)) throw new Error(`cannot read ${file.path}`);
                 return notes[file.path].content;
             },
@@ -101,16 +102,20 @@ const shownNotices = (Notice as unknown as { shown: string[] }).shown;
 
 const noFilters = { includePaths: [], excludePaths: [], fileIncludeTags: [], fileExcludeTags: [], excludeProperties: {} };
 
-test("readTasks parses every note, in path order", async () => {
+test("readTasks parses every note, in path order, and shows no Notice when all went well", async () => {
+    shownNotices.length = 0;
     const tasks = await readTasks(coreApp({ "b.md": { content: line }, "a.md": { content: line } }), noFilters, moment);
     assert.deepEqual(tasks.map(t => t.path), ["a.md", "b.md"]);
     assert.equal(tasks[0].visual, "a task");
+    assert.deepEqual(shownNotices, []);
 });
 
 test("readTasks skips notes the note filters leave out, before reading them", async () => {
-    const tasks = await readTasks(coreApp({ "Excluded/x.md": { content: line }, "kept.md": { content: line } }, ["Excluded/x.md"]),
+    const read: string[] = [];
+    const tasks = await readTasks(coreApp({ "Excluded/x.md": { content: line }, "kept.md": { content: line } }, [], read),
         { ...noFilters, excludePaths: ["Excluded"] }, moment);
     assert.deepEqual(tasks.map(t => t.path), ["kept.md"]);
+    assert.deepEqual(read, ["kept.md"]);
 });
 
 test("a note whose frontmatter tags hold a number drops only that note, and says so", async (t) => {

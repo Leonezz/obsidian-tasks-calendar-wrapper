@@ -371,3 +371,60 @@ test("an inline date that moment cannot read is a warning, not an error", () => 
         moment.suppressDeprecationWarnings = previous;
     }
 });
+
+test("[priority:: __proto__] does not freeze Object.prototype", () => {
+    // The lookup gives Object.prototype as the priority, as the plugin's parser always did; it must stay unfrozen.
+    const parsed = task("- [ ] pay rent [priority:: __proto__]");
+    assert.ok(Object.isFrozen(parsed));
+    assert.ok(!Object.isFrozen(Object.prototype));
+    assert.ok(!Object.isFrozen(Array.prototype));
+});
+
+// Details of the text and tags the snapshots do not reach; each expectation is what the plugin's parser chain gives.
+
+test("hashtags are taken out after the inline fields, so a hashtag inside a field goes with the field", () => {
+    const parsed = task("- [ ] call [note:: see #x]");
+    assert.equal(parsed.visual, "call");
+    assert.deepEqual(parsed.tags, []);
+});
+
+test("taking out a leading hashtag leaves the space after it", () => {
+    const parsed = task("- [ ] #work call Bob");
+    assert.equal(parsed.visual, " call Bob");
+    assert.deepEqual(parsed.tags, ["#work"]);
+});
+
+test("the recurrence is trimmed when a tag follows it", () => {
+    assert.equal(task("- [ ] water 🔁 every week #home").recurrence, "every week");
+});
+
+test("a frontmatter tag that is not text, and tags that are text or null, add no tags", () => {
+    const tagsOf = (frontmatter: Record<string, unknown>) => parseNote(snapshot("- [ ] one", [[0, 0]], frontmatter), moment).tasks[0].tags;
+    assert.deepEqual(tagsOf({ tag: 7, tags: "work" }), []);
+    assert.deepEqual(tagsOf({ tags: null }), []);
+    assert.deepEqual(tagsOf({ tag: "#done" }), ["#done"]);
+});
+
+test("a tag both on the line and in the frontmatter is listed once, in the line's place", () => {
+    const content = "- [ ] one #work";
+    const note: NoteSnapshot = {
+        path: "Note.md",
+        content,
+        metadata: {
+            listItems: [{ task: " ", parent: -1, position: position(0, 0, 0, content.length) }],
+            tags: [{ tag: "#work", position: position(0, 10, 10, 15) }, { tag: "#work", position: position(0, 10, 10, 15) }],
+            frontmatter: { tags: ["plan", "work"] },
+        },
+    };
+    // The line's and the frontmatter's tags are de-duplicated; the hashtag taken from the text is added again.
+    assert.deepEqual(parseNote(note, moment).tasks[0].tags, ["#work", "#plan", "#work"]);
+});
+
+test("everything parseNote returns is frozen, for a note without tasks too", () => {
+    const parsed = parseNote(snapshot("- [ ] one [due:: someday]", [[0, 0]]), moment);
+    for (const value of [parsed, parsed.tasks, parsed.warnings, parsed.note, parsed.note.frontmatter, parsed.note.tags]) {
+        assert.ok(Object.isFrozen(value));
+    }
+    const empty = parseNote({ path: "Empty.md", content: "text", metadata: { frontmatter: { a: 1 } } }, moment);
+    assert.ok(Object.isFrozen(empty.note) && Object.isFrozen(empty.note.frontmatter) && Object.isFrozen(empty.tasks));
+});
