@@ -6,6 +6,22 @@ import moment from "moment";
 
 export { moment };
 
+/** As in Obsidian: with resetTimer, every call starts the wait again, so only the last call of a burst runs. */
+export function debounce<T extends unknown[]>(cb: (...args: T) => unknown, timeout = 0, resetTimer = false) {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const debounced = (...args: T) => {
+		if (timer !== undefined) {
+			if (!resetTimer) return;
+			clearTimeout(timer);
+		}
+		timer = setTimeout(() => {
+			timer = undefined;
+			cb(...args);
+		}, timeout);
+	};
+	return Object.assign(debounced, { cancel: () => clearTimeout(timer) });
+}
+
 /** Obsidian shows a toast. The stub keeps each message, so a test can check what the user was told. */
 export class Notice {
 	static shown: string[] = [];
