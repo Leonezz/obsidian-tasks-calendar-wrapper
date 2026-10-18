@@ -82,9 +82,11 @@ export function dateOfDay(m: MomentFactory, key: DayKey): Moment {
 
 /**
  * A day key read back as the timeline's views read it, with moment(key), for its heading and for whether it is today
- * or the entry day. moment reads every key from the year 0000 on. For an earlier year it falls back to the engine's
- * Date parser, which reads another day, e.g. "-0001-05-26" as 2026-01-05; the views placed such a day there, and so
- * does this, until that is changed on purpose.
+ * or the entry day. moment reads the keys of the years 0000 to 9999 itself. Any other key falls back to the engine's
+ * Date parser, which logs moment's deprecation warning: V8 (desktop, Android) reads a year after 9999 right, but a year
+ * before 0000 as another day, e.g. "-0001-05-26" as 2026-01-05, or as an invalid date; JavaScriptCore (iOS) reads both
+ * right. The views read the keys the same way on the same engine, so this places such days where they did, until that
+ * is changed on purpose.
  */
 export function readDayKey(m: MomentFactory, key: DayKey): DateValue {
 	return m(key);
