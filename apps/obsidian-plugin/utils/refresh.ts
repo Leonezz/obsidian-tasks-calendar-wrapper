@@ -1,4 +1,4 @@
-import type { CachedMetadata } from "obsidian";
+import { type CachedMetadata, debounce, type Debouncer } from "obsidian";
 
 /**
  * Whether a change to a file can change the timeline: the file has tasks now, or one of its paths
@@ -15,4 +15,16 @@ export function changeAffectsTasks(
 ): boolean {
 	if (paths.some((path) => filesWithTasks.has(path))) return true;
 	return cache?.listItems?.some((item) => item.task !== undefined) ?? false;
+}
+
+/** Settings that change within this time of each other reach the views together. */
+export const OPTIONS_DELAY_MS = 200;
+
+/**
+ * Runs `apply` once the settings stop changing for OPTIONS_DELAY_MS. Text settings save on every
+ * keystroke, and handing the options to a view re-renders and reloads the whole timeline, so typing
+ * does that once per pause, while a toggle still shows almost at once, see issue #202.
+ */
+export function debounceOptionUpdates(apply: () => void): Debouncer<[], void> {
+	return debounce(apply, OPTIONS_DELAY_MS, true);
 }

@@ -8,11 +8,19 @@ import { notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
 import { RELEASE_NOTES, SUPPORT_LINKS } from "../utils/whatsnew";
 import { WhatsNewModal } from "./whatsnew-modal";
 import { defaultUserOptions, TasksCalendarSettingTab, UserOption } from "./settings";
+import { debounceOptionUpdates } from "../utils/refresh";
 
 export default class TasksCalendarWrapper extends Plugin {
 	userOptions: UserOption = {} as UserOption;
-	private userOptionsReloading = false;
+	private readonly pushOptionsToViews = debounceOptionUpdates(() => {
+		this.app.workspace.getLeavesOfType(TIMELINE_VIEW).forEach((leaf) => {
+			if (leaf.view instanceof TasksTimelineView) {
+				leaf.view.onUpdateOptions({ ...this.userOptions });
+			}
+		});
+	});
 	async onload() {
+		this.register(() => this.pushOptionsToViews.cancel());
 		await this.loadOptions();
 		this.registerView(TIMELINE_VIEW, (leaf) => {
 			const view = new TasksTimelineView(leaf);
@@ -66,17 +74,7 @@ export default class TasksCalendarWrapper extends Plugin {
 
 	private updateOptions(updatedOpts: Partial<UserOption>) {
 		Object.assign(this.userOptions, { ...updatedOpts });
-		if (!this.userOptionsReloading) {
-			this.userOptionsReloading = true;
-			window.setTimeout(() => {
-				this.app.workspace.getLeavesOfType(TIMELINE_VIEW).forEach((leaf) => {
-					if (leaf.view instanceof TasksTimelineView) {
-						leaf.view.onUpdateOptions({ ...this.userOptions });
-					}
-				});
-				this.userOptionsReloading = false;
-			}, 5000);
-		}
+		this.pushOptionsToViews();
 	}
 
 	async loadOptions(): Promise<void> {
