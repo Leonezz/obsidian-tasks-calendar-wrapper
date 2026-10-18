@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { createEmojiMatcher, createHeaderNormalizer, normalizeHeaderForLink, RegExpFactory } from "../dataview-util/dataview";
+import { createEmojiMatcher, createHeaderNormalizer, normalizeHeaderForLink, RegExpFactory } from "../src/links";
 
 /** Stands in for an engine without the `v` flag (before Chrome 112 and iOS 17), which throws a SyntaxError for it. */
 const withoutVFlag: RegExpFactory = (pattern, flags) => {

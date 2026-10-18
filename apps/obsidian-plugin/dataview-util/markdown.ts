@@ -1,5 +1,5 @@
 import { LinkCache, Pos, SectionCache } from 'obsidian';
-import { getFileTitle, normalizeHeaderForLink } from './dataview';
+import { getFileTitle, normalizeHeaderForLink } from '@tasks-calendar-wrapper/core';
 //////////
 // LINK //
 //////////

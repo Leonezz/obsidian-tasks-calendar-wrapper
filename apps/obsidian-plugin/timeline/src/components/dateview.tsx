@@ -1,7 +1,7 @@
 import { moment } from '../../../utils/moment';
 import type { Moment } from 'moment';
 import * as React from 'react';
-import { getFileTitle } from '../../../dataview-util/dataview';
+import { getFileTitle } from '@tasks-calendar-wrapper/core';
 import { expandShortcuts } from '../../../utils/quickentry';
 import { tasksListedOnDay } from '../taskdates';
 import * as Icons from './asserts/icons';

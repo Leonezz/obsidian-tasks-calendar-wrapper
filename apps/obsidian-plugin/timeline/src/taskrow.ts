@@ -1,7 +1,7 @@
 import { Pos } from "obsidian";
 import { moment } from "../../utils/moment";
 import type { Moment } from "moment";
-import { getFileTitle } from "../../dataview-util/dataview";
+import { getFileTitle } from "@tasks-calendar-wrapper/core";
 import { recurrenceSymbol, TaskDataModel } from "../../utils/tasks";
 import { isTagHidden, relativeDate } from "../../utils/utils";
 
