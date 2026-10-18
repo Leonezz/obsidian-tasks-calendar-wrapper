@@ -6,9 +6,13 @@ import moment from "moment";
 
 export { moment };
 
-/** Obsidian shows a toast; the tests only need it to exist. */
+/** Obsidian shows a toast. The stub keeps each message, so a test can check what the user was told. */
 export class Notice {
-    constructor(public message: string, public duration?: number) { }
+    static shown: string[] = [];
+
+    constructor(public message: string, public duration?: number) {
+        Notice.shown.push(message);
+    }
 }
 
 /** Stands in for the DOM elements a modal is built from. Keeps the text, the children and whether it got the focus. */
