@@ -40,8 +40,18 @@ test("the 40,000-task vault is that vault and nine more sets of notes in folders
 test("each set of the large vault has its own dates", () => {
 	const projects = [...vault.keys()].filter((path) => path.startsWith("Projects/"));
 	const copy = (set: number, path: string) => large.get(`Copy ${String(set).padStart(2, "0")}/${path}`);
-	const sameAsFirst = projects.filter((path) => copy(2, path) === vault.get(path)).length;
-	assert.ok(sameAsFirst < projects.length / 4, `${sameAsFirst} of ${projects.length} projects have the same dates`);
+	// A project's dates all follow from one day, so its first date stands for them. Days drawn independently from 943
+	// match about once in 943; the tags and texts would differ anyway.
+	const day = (text?: string) => text?.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+	const dated = projects.filter((path) => day(vault.get(path)) !== undefined);
+	assert.ok(dated.length > 1000, `${dated.length} projects have dates`);
+	for (let set = 2; set <= 10; set++) {
+		const sameDay = dated.filter((path) => day(copy(set, path)) === day(vault.get(path))).length;
+		assert.ok(
+			sameDay < dated.length / 20,
+			`${sameDay} of ${dated.length} projects of set ${set} have the same day`,
+		);
+	}
 	// The daily notes of each set are a day later than those of the set before.
 	assert.ok(vault.has("Daily/2024/2024, September 01 - Sunday.md"));
 	assert.ok(large.has("Copy 02/Daily/2024/2024, September 02 - Monday.md"));

@@ -66,8 +66,9 @@ const NO_RELOAD_WINDOW_MS = 3_000;
 const LOAD_WATCH_MS = 2_000;
 
 /**
- * Runs in Obsidian: one measurement. Times are milliseconds from the start of the measured action. The waits allow
- * `slowness` times as long, the vault's scale.
+ * Runs in Obsidian: one measurement. Times are milliseconds from the start of the measured action. The waits give up
+ * after `slowness` times as long, the vault's scale; how long the timeline must stay quiet does not grow, as quiet
+ * counts from the last paint and the last long task.
  */
 async function measure({
 	action,
@@ -147,6 +148,12 @@ async function measure({
 		let work = null;
 		return {
 			seen,
+			/** When the last long task reported so far ended, or 0. */
+			busyUntil() {
+				for (const entry of performanceObserver.takeRecords())
+					longTasks.push({ start: entry.startTime, duration: entry.duration });
+				return Math.max(0, ...longTasks.map((task) => task.start + task.duration));
+			},
 			/** Stops recording and sums the long tasks that started at `from` or later. Later calls return the same. */
 			stop(from) {
 				if (work) return work;
@@ -199,7 +206,17 @@ async function measure({
 			return reads;
 		};
 	}
-	const quietFor = (seen, ms) => () => seen.last !== null && performance.now() - seen.last >= ms;
+	/**
+	 * Whether the timeline has not changed for `ms` since the frame showing its last change was painted, and the main
+	 * thread has had no long task for as long. Counting from the change itself would not do in the large vault: laying
+	 * out a render, or a reload before the next render, takes longer than `ms` there.
+	 */
+	const quietFor = (recorder, ms) => () => {
+		const { seen } = recorder;
+		if (seen.last === null) return false;
+		const frame = seen.frames.find((candidate) => candidate.startedAt >= seen.last);
+		return frame !== undefined && performance.now() - Math.max(frame.paintedAt, recorder.busyUntil()) >= ms;
+	};
 	/** When the frame that shows the changes made up to `time` was painted. */
 	function paintedAfter(seen, time) {
 		const frame = seen.frames.find((candidate) => candidate.startedAt >= time);
@@ -212,7 +229,7 @@ async function measure({
 		case "unload": {
 			app.workspace.detachLeavesOfType(viewType);
 			if (app.plugins.plugins[pluginId]) await app.plugins.disablePlugin(pluginId);
-			await sleep(1_000);
+			await sleep(1_000 * slowness);
 			return true;
 		}
 		case "load": {
@@ -229,7 +246,7 @@ async function measure({
 					() =>
 						recorder.seen.rowsAt !== null &&
 						performance.now() - start >= settleMs &&
-						quietFor(recorder.seen, quietMs)(),
+						quietFor(recorder, quietMs)(),
 					60_000,
 					"the timeline to render its task rows and stop changing",
 				);
@@ -261,7 +278,7 @@ async function measure({
 			try {
 				await sleep(settleMs);
 				await until(
-					() => recorder.seen.last === null || quietFor(recorder.seen, quietMs)(),
+					() => recorder.seen.last === null || quietFor(recorder, quietMs)(),
 					30_000,
 					"the timeline to stop changing",
 				);
@@ -289,7 +306,7 @@ async function measure({
 				await until(() => changed !== null, 30_000, "Obsidian to read the saved note");
 				if (token) {
 					await until(() => recorder.seen.token !== null, 30_000, `the timeline to show "${token}"`);
-					await until(quietFor(recorder.seen, quietMs), 30_000, "the timeline to stop changing");
+					await until(quietFor(recorder, quietMs), 30_000, "the timeline to stop changing");
 				} else {
 					await sleep(windowMs);
 				}
@@ -349,7 +366,7 @@ async function measure({
 			try {
 				await plugin.writeOptions({ useRelative: !was });
 				await until(() => appliedAt !== null, 10_000, "the timeline to show the changed setting");
-				await until(quietFor(recorder.seen, quietMs), 30_000, "the timeline to stop changing");
+				await until(quietFor(recorder, quietMs), 30_000, "the timeline to stop changing");
 				const { tasks, ...work } = recorder.stop(start);
 				return {
 					appliedMs: paintedAfter(recorder.seen, appliedAt) - start,
