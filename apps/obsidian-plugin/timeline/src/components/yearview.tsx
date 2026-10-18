@@ -1,71 +1,31 @@
-import { yearOfDay } from "@tasks-calendar-wrapper/core";
-import { moment } from "../../../utils/moment";
 import * as React from "react";
-import { groupTasksByDate, inDisplayOrder } from "../taskdates";
-import { TaskListContext } from "./context";
+import type { YearGroup } from "@tasks-calendar-wrapper/core";
 import { DateView } from "./dateview";
 
-const defaultYearViewProps = {
-	year: 2023 as number,
-	newestFirst: false as boolean,
-};
-type YearViewProps = Readonly<typeof defaultYearViewProps>;
+type YearViewProps = { readonly year: YearGroup };
+
+/** A year of the timeline: its header, when core shows one, and its days, as core arranged them. */
 export class YearView extends React.Component<YearViewProps> {
 	render(): React.ReactNode {
+		const { year } = this.props;
 		return (
-			<TaskListContext.Consumer>
-				{({ taskList, entryOnDate }) => {
-					const tasksOfThisYear = taskList;
-					const tasksByDate = groupTasksByDate(tasksOfThisYear);
-					const daysOfThisYear: Set<string> = new Set(tasksByDate.keys());
-					if (this.props.year === yearOfDay(entryOnDate) && !daysOfThisYear.has(entryOnDate))
-						daysOfThisYear.add(entryOnDate);
-					const days = inDisplayOrder(
-						[...daysOfThisYear].filter((d) => yearOfDay(d) === this.props.year),
-						this.props.newestFirst,
-					);
-					return (
-						<div>
-							{tasksOfThisYear.length > 0 && (
-								<YearHeader
-									year={this.props.year}
-									dataTypes={[...new Set(tasksOfThisYear.map((t) => t.status))]}
-								/>
-							)}
-							{days.map((d) => {
-								const tasksOfThisDate = tasksByDate.get(d) ?? [];
-								// Keyed by the day, so a day added above does not make React rebuild every day below it.
-								return (
-									<TaskListContext.Provider
-										value={{ taskList: tasksOfThisDate, entryOnDate: entryOnDate }}
-										key={d}
-									>
-										<DateView date={moment(d)} />
-									</TaskListContext.Provider>
-								);
-							})}
-						</div>
-					);
-				}}
-			</TaskListContext.Consumer>
+			<div>
+				{year.showHeader && <YearHeader year={year} />}
+				{/* Keyed by the day, so a day added above does not make React rebuild every day below it. */}
+				{year.days.map((day) => (
+					<DateView day={day} yearLabel={year.label} key={day.key} />
+				))}
+			</div>
 		);
 	}
 }
 
-const defaultYearHeaderProps = {
-	year: 2023 as number,
-	dataTypes: [] as string[],
-};
-type YearHeaderProps = Readonly<typeof defaultYearHeaderProps>;
-class YearHeader extends React.Component<YearHeaderProps> {
+class YearHeader extends React.Component<YearViewProps> {
 	render(): React.ReactNode {
-		const yearMoment = moment().year(this.props.year);
+		const { year } = this.props;
 		return (
-			<div
-				className={"year" + (yearMoment.isSame(moment(), "year") ? " current" : "")}
-				data-types={this.props.dataTypes.join(" ")}
-			>
-				{yearMoment.format("YYYY")}
+			<div className={"year" + (year.isCurrent ? " current" : "")} data-types={year.statuses.join(" ")}>
+				{year.label}
 			</div>
 		);
 	}

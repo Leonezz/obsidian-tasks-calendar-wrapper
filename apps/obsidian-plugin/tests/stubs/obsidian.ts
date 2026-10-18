@@ -126,3 +126,34 @@ export class Modal {
 		return this;
 	}
 }
+
+const escapeHtml = (text: string) =>
+	text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/** Writes the markdown as escaped text where Obsidian would render it, so a test reads the row's own text. */
+export const MarkdownRenderer = {
+	renderMarkdown(markdown: string, el: { firstElementChild: unknown }): Promise<void> {
+		el.firstElementChild = { innerHTML: escapeHtml(markdown) };
+		return Promise.resolve();
+	},
+};
+
+/** A view keeps the app of the leaf it is opened in, as Obsidian's views do. Events are not delivered. */
+export class ItemView {
+	readonly app: unknown;
+
+	constructor(public leaf: { app?: unknown }) {
+		this.app = leaf.app;
+	}
+
+	registerEvent(): void {}
+}
+
+export class TFile {}
+
+export class WorkspaceLeaf {}
+
+/** No test reaches it: the quick entry, which writes notes, is not tested through the bridge. */
+export function normalizePath(path: string): string {
+	return path;
+}

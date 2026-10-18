@@ -1,18 +1,22 @@
 import { MarkdownRenderer } from "obsidian";
 import * as React from "react";
-import { getFileTitle } from "@tasks-calendar-wrapper/core";
+import {
+	getFileTitle,
+	taskRowModel,
+	type BadgeKind,
+	type ResolvedTask,
+	type TaskRowModel,
+} from "@tasks-calendar-wrapper/core";
 import { TasksTimelineView } from "../../../src/views";
-import { TaskDataModel } from "../../../utils/tasks";
-import { BadgeKind, TaskRowModel, taskRowModel } from "../taskrow";
+import { moment } from "../../../utils/moment";
 import * as Icons from "./asserts/icons";
 import { TaskItemEventHandlersContext, UserOptionContext } from "./context";
 import { StripWithIcon } from "./statusmarker";
 
-const defaultTaskItemProps = {
-	taskItem: {} as TaskDataModel,
-};
+type TaskItemProps = { readonly task: ResolvedTask };
 
-type TaskItemProps = Readonly<typeof defaultTaskItemProps>;
+const warn = (message: string, error: unknown) => console.warn(message, error);
+
 export class TaskItemView extends React.Component<TaskItemProps> {
 	render(): React.ReactNode {
 		return (
@@ -20,12 +24,11 @@ export class TaskItemView extends React.Component<TaskItemProps> {
 				{(callbacks) => (
 					<UserOptionContext.Consumer>
 						{({ dateFormat, hideTags, tagPalette, useBuiltinStyle }) => {
-							const model = taskRowModel(this.props.taskItem, {
-								dateFormat,
-								hideTags,
-								tagPalette,
-								useBuiltinStyle,
-							});
+							const model = taskRowModel(
+								this.props.task,
+								{ dateFormat, hideTags, tagPalette, useBuiltinStyle },
+								{ now: moment(), moment, warn },
+							);
 							return <TaskRow model={model} modelKey={JSON.stringify(model)} callbacks={callbacks} />;
 						}}
 					</UserOptionContext.Consumer>

@@ -1,22 +1,59 @@
 import { Model } from "backbone";
 import { CachedMetadata, debounce, ItemView, Notice, TFile, WorkspaceLeaf } from "obsidian";
+import { resolveTasks, type ResolvedTask, type Task } from "@tasks-calendar-wrapper/core";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
-import { ObsidianTaskAdapter } from "../timeline/src/taskadapter";
+import { readTasks } from "../timeline/src/taskadapter";
 import { createRoot, Root } from "react-dom/client";
+import { moment } from "../utils/moment";
 import { changeAffectsTasks } from "../utils/refresh";
-import { filterTasks, parseTasks } from "../utils/tasklist";
-import { TaskDataModel } from "../utils/tasks";
-import { defaultUserOptions, UserOption } from "./settings";
+import { defaultUserOptions, UserOption } from "./useroptions";
 
 export const TIMELINE_VIEW = "tasks_timeline_view";
+
+/**
+ * What the old view's list held of a task it showed. Backbone compared that list to decide whether the timeline had
+ * changed, and replacing it cleared the quick filter. It kept a task's forwarded and other dates in a Map, which
+ * Backbone's comparison does not look into, and it had neither the note's tags nor what comes before the list marker.
+ */
+export function heldOf(resolved: ResolvedTask) {
+	const { task } = resolved;
+	return {
+		id: task.id,
+		position: task.position,
+		lineCount: task.lineCount,
+		text: task.text,
+		symbol: task.symbol,
+		statusMarker: task.statusMarker,
+		completed: task.completed,
+		fullyCompleted: task.fullyCompleted,
+		checked: task.checked,
+		isTasksTask: task.isTasksTask,
+		priority: task.priority,
+		recurrence: task.recurrence,
+		tags: task.tags,
+		section: task.section,
+		outlinks: task.outlinks,
+		frontmatter: task.note.frontmatter,
+		status: resolved.status,
+		order: resolved.order,
+		dailyNote: resolved.dailyNote,
+		dates: resolved.dates,
+		visual: resolved.visual,
+	};
+}
 
 /** Changes that arrive within this time of each other are applied in one reload. */
 const RELOAD_DELAY_MS = 500;
 
 export class TasksTimelineView extends ItemView {
 	private root?: Root;
+	/**
+	 * The tasks read at the last reload, and what the old view's list held of the ones shown then, see heldOf. The
+	 * bridge renders again when either changes, and clears the quick filter when the list shown changes, as before.
+	 */
 	private taskListModel = new Model({
-		taskList: [] as TaskDataModel[],
+		tasks: [] as readonly Task[],
+		shown: [] as ReturnType<typeof heldOf>[],
 	});
 
 	private isReloading = false;
@@ -85,57 +122,38 @@ export class TasksTimelineView extends ItemView {
 		if (changeAffectsTasks(paths, cache, this.filesWithTasks)) this.requestReload();
 	}
 
-	onUpdateOptions(opt: UserOption) {
+	/** Reloads the tasks with the options. Returns once the reload is done. */
+	onUpdateOptions(opt: UserOption): Promise<void> {
 		this.userOptionModel.clear();
 		this.userOptionModel.set({ ...opt });
-		this.onReloadTasks();
+		return this.onReloadTasks();
 	}
 
-	onReloadTasks(): void {
+	/** Reads the tasks of the notes again. Returns once this reload, and one asked for while it ran, are done. */
+	onReloadTasks(): Promise<void> {
 		if (this.isReloading) {
 			this.reloadAgain = true;
-			return;
+			return Promise.resolve();
 		}
 		this.isReloading = true;
-		const fileExcludeFilter = this.userOptionModel.get("excludePaths") || [];
-		const fileIncludeFilter = this.userOptionModel.get("includePaths") || [];
-		const fileIncludeTagsFilter = this.userOptionModel.get("fileIncludeTags") || [];
-		const fileExcludeTagsFilter = this.userOptionModel.get("fileExcludeTags") || [];
-		const excludeProperties = this.userOptionModel.get("excludeProperties") || {};
-		const adapter = new ObsidianTaskAdapter(this.app);
-		adapter
-			.generateTasksList(
-				fileIncludeFilter,
-				fileExcludeFilter,
-				fileIncludeTagsFilter,
-				fileExcludeTagsFilter,
-				excludeProperties,
-			)
-			.catch((reason) => {
-				new Notice("Error when generating tasks from files: " + reason, 5000);
-				throw reason;
-			})
-			.then(() => {
-				const taskList = adapter.getTaskList();
-				this.filesWithTasks = new Set(taskList.map((task) => task.path));
-				// Returned, so the reload counts as running until the parsed list is shown.
-				return parseTasks(taskList, this.userOptionModel.toJSON()).catch((reason) => {
-					new Notice("Error when parsing task items: " + reason, 5000);
-					throw reason;
-				});
-			})
+		const options = this.userOptionModel.toJSON();
+		return readTasks(this.app, options, moment)
 			.then((tasks) => {
-				tasks = filterTasks(tasks, this.userOptionModel.toJSON());
+				this.filesWithTasks = new Set(tasks.map((task) => task.path));
 				const taskfiles = this.userOptionModel.get("taskFiles");
-				this.taskListModel.set({ taskList: tasks });
+				const { shown } = resolveTasks(tasks, options, { now: moment(), moment });
+				this.taskListModel.set({ tasks, shown: shown.map(heldOf) });
 				this.userOptionModel.set({ taskFiles: taskfiles || [] });
 			})
-			.catch((reason) => console.error("Tasks Calendar Wrapper: reloading tasks failed", reason))
+			.catch((reason) => {
+				new Notice("Error when generating tasks from files: " + reason, 5000);
+				console.error("Tasks Calendar Wrapper: reloading tasks failed", reason);
+			})
 			.finally(() => {
 				this.isReloading = false;
 				if (this.reloadAgain) {
 					this.reloadAgain = false;
-					this.onReloadTasks();
+					return this.onReloadTasks();
 				}
 			});
 	}

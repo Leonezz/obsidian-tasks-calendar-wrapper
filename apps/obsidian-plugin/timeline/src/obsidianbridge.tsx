@@ -1,12 +1,10 @@
 import { Model } from "backbone";
 import { App, ItemView, Notice, normalizePath, Pos } from "obsidian";
-import { moment } from "../../utils/moment";
+import type { QuickFilter, Task } from "@tasks-calendar-wrapper/core";
 import * as React from "react";
-import { UserOption, defaultUserOptions } from "../../src/settings";
-import * as TaskMapable from "../../utils/taskmapable";
+import { UserOption, defaultUserOptions } from "../../src/useroptions";
 import { ConfirmModal } from "../../src/confirm-modal";
 import { normalizeNotePath } from "../../utils/quickentry";
-import { TaskDataModel } from "../../utils/tasks";
 import { tagSearchUri, tasksPluginCommand } from "../../utils/utils";
 import { appendTaskToNote } from "./appendtask";
 import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "./components/context";
@@ -15,14 +13,33 @@ import { TimelineView } from "./components/timelineview";
 const defaultObsidianBridgeProps = {
 	plugin: {} as ItemView,
 	userOptionModel: new Model({ ...defaultUserOptions }) as Model,
-	taskListModel: new Model({ taskList: [] as TaskDataModel[] }) as Model,
-};
-const defaultObsidianBridgeState = {
-	taskList: [] as TaskDataModel[],
-	userOptions: defaultUserOptions as UserOption,
+	taskListModel: new Model({ tasks: [] as readonly Task[], shown: [] }) as Model,
 };
 type ObsidianBridgeProps = Readonly<typeof defaultObsidianBridgeProps>;
-type ObsidianBridgeState = typeof defaultObsidianBridgeState;
+interface ObsidianBridgeState {
+	readonly tasks: readonly Task[];
+	readonly userOptions: UserOption;
+	/** The quick entry panel's filter, applied to the tasks until the list shown changes. */
+	readonly quickFilter?: QuickFilter;
+}
+
+/**
+ * The quick entry panel's filter. The priorities are copied: the panel goes on changing its own list, and the filter
+ * is the one the button applied.
+ */
+export function quickFilterOf(
+	from: string | undefined,
+	to: string | undefined,
+	priorities: readonly string[],
+): QuickFilter {
+	return Object.freeze({ from, to, priorities: Object.freeze([...priorities]) });
+}
+
+/** The bridge's state with the tasks of a new list shown. The quick filter goes with the old list, as it did. */
+export function withNewList(state: ObsidianBridgeState, tasks: readonly Task[]): ObsidianBridgeState {
+	return { ...state, tasks, quickFilter: undefined };
+}
+
 export class ObsidianBridge extends React.Component<ObsidianBridgeProps, ObsidianBridgeState> {
 	//private readonly adapter: ObsidianTaskAdapter;
 	private readonly app: App;
@@ -38,23 +55,24 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		this.handleOpenFile = this.handleOpenFile.bind(this);
 		this.handleCompleteTask = this.handleCompleteTask.bind(this);
 		this.onUpdateTasks = this.onUpdateTasks.bind(this);
+		this.onTasksChanged = this.onTasksChanged.bind(this);
 		this.onUpdateUserOption = this.onUpdateUserOption.bind(this);
 		this.handleModifyTask = this.handleModifyTask.bind(this);
 		this.handleFilterEnable = this.handleFilterEnable.bind(this);
 
 		this.state = {
 			userOptions: { ...(this.props.userOptionModel.pick(this.props.userOptionModel.keys()) as UserOption) },
-			taskList: this.props.taskListModel.get("taskList"),
+			tasks: this.props.taskListModel.get("tasks"),
 		};
 	}
 
 	componentDidMount(): void {
-		this.props.taskListModel.on("change", this.onUpdateTasks);
+		this.props.taskListModel.on("change", this.onTasksChanged);
 		this.props.userOptionModel.on("change", this.onUpdateUserOption);
 	}
 
 	componentWillUnmount(): void {
-		this.props.taskListModel.off("change", this.onUpdateTasks);
+		this.props.taskListModel.off("change", this.onTasksChanged);
 		this.props.userOptionModel.off("change", this.onUpdateUserOption);
 	}
 
@@ -64,24 +82,24 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		});
 	}
 
-	onUpdateTasks() {
-		this.setState({
-			taskList: this.props.taskListModel.get("taskList"),
-		});
+	/**
+	 * After a reload that changed the model. Only a change in the list shown renders the timeline again, as only a
+	 * changed list did before: the other tasks are hidden, and the next change or the quick entry brings them along.
+	 */
+	onTasksChanged() {
+		const model = this.props.taskListModel;
+		if (!model.hasChanged("shown")) return;
+		this.setState((state) => withNewList(state, model.get("tasks")));
 	}
 
-	handleFilterEnable(startDate: string, endDate: string, priorities: string[]) {
-		let taskList: TaskDataModel[] = this.props.taskListModel.get("taskList");
+	/** Shows the tasks read last, without the quick filter, as adding a task through the quick entry always did. */
+	onUpdateTasks() {
+		this.setState((state) => withNewList(state, this.props.taskListModel.get("tasks")));
+	}
 
-		if (startDate && startDate !== "" && endDate && endDate !== "") {
-			taskList = taskList.filter(TaskMapable.filterDateRange(moment(startDate), moment(endDate)));
-		}
-		if (priorities.length !== 0) {
-			taskList = taskList.filter((t: TaskDataModel) => priorities.includes(t.priority));
-		}
-		this.setState({
-			taskList: taskList,
-		});
+	/** The quick entry panel's filter, which core applies, see QuickFilter. */
+	handleFilterEnable(startDate: string | undefined, endDate: string | undefined, priorities: string[]) {
+		this.setState({ quickFilter: quickFilterOf(startDate, endDate, priorities) });
 	}
 
 	handleCreateNewTask(path: string, append: string) {
@@ -223,7 +241,11 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 				}}
 			>
 				<TaskItemEventHandlersContext.Provider value={this.getTaskItemHandlers()}>
-					<TimelineView userOptions={this.state.userOptions} taskList={this.state.taskList} />
+					<TimelineView
+						userOptions={this.state.userOptions}
+						tasks={this.state.tasks}
+						quickFilter={this.state.quickFilter}
+					/>
 				</TaskItemEventHandlersContext.Provider>
 			</QuickEntryHandlerContext.Provider>
 		);
