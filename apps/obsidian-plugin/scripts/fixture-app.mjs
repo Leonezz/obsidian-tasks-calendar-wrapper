@@ -150,11 +150,11 @@ export function fixtureVaultPath(cli, vaultName, expected, howToOpen) {
 	}
 	if (!vaultPath || !existsSync(vaultPath))
 		throw new ScriptError(`Obsidian has no vault "${vaultName}". ${howToOpen}`);
-	const onDisk = markdownFiles(vaultPath);
+	const onDisk = new Set(markdownFiles(vaultPath));
 	const differing = [...new Set([...expected.keys(), ...onDisk])].filter(
 		(file) =>
 			!expected.has(file) ||
-			!onDisk.includes(file) ||
+			!onDisk.has(file) ||
 			!readFileSync(path.join(vaultPath, file)).equals(Buffer.from(expected.get(file))),
 	);
 	if (differing.length) {

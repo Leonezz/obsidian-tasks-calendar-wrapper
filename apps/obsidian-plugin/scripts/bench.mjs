@@ -1,5 +1,6 @@
 /**
- * Measures how fast the timeline reacts in a real Obsidian, in the 4,000-task vault bench-vault.mjs generates:
+ * Measures how fast the timeline reacts in a real Obsidian, in the 4,000-task vault bench-vault.mjs generates, or with
+ * `--scale 10` in the 40,000-task one:
  * - initial load: from loading the plugin and running "Open Tasks Timeline View" until the timeline has rendered;
  * - save with tasks: from saving a note with tasks until the timeline shows the new task text;
  * - save without tasks: saving a note without tasks, which should not reload the timeline at all;
@@ -12,13 +13,14 @@
  * bench-results.mjs.
  *
  * `pnpm bench` builds the plugin, measures, and compares with fixtures/bench-vault.baseline.json; it fails when the
- * fastest run of a measurement got slower by more than 25 % and 50 ms, or a save without tasks reloads the timeline. `pnpm bench --update`
- * records the new numbers as the baseline. Numbers depend on the machine and the Obsidian version, which the baseline
+ * fastest run of a measurement got slower by more than 25 % and 50 ms, or a save without tasks reloads the timeline.
+ * `pnpm bench --update` records the new numbers as the baseline. `pnpm bench --scale 10` does the same in bench-vault-x10,
+ * with fixtures/bench-vault-x10.baseline.json and 3 runs of each measurement. Numbers depend on the machine and the Obsidian version, which the baseline
  * records; compare on the same setup. Other work on the machine moves the medians a lot and the fastest runs little, so
  * the fastest runs are compared, and the load average before and after the run is recorded and printed.
  *
- * Needs Obsidian running with the vault named bench-vault open: generate it with `pnpm bench:vault <folder>`, open the
- * folder in Obsidian once, and keep its window open. The script only talks to that vault, after checking its notes are
+ * Needs Obsidian running with the vault named bench-vault (bench-vault-x10) open: generate it with
+ * `pnpm bench:vault <folder> [--scale 10]`, open the folder in Obsidian once, and keep its window open. The script only talks to that vault, after checking its notes are
  * exactly the generated ones. It installs the build into the vault, turns community plugins on, pins today to
  * 2026-01-15, stops throttling the window while it is hidden, sizes its page through the DevTools protocol, and puts all
  * of that and the edited notes back at the end.
@@ -27,7 +29,7 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import os from "os";
 import path from "path";
 import { compare, counts, round, splitLoad, summary } from "./bench-results.mjs";
-import { BENCH_TARGETS, BENCH_VAULT_NAME, benchVaultNotes } from "./bench-vault.mjs";
+import { BENCH_TARGETS, benchVaultName, benchVaultNotes, scaleOf, withoutScale } from "./bench-notes.mjs";
 import {
 	buildInfo,
 	fixtureCli,
@@ -44,14 +46,12 @@ import {
 	TIMELINE_VIEW,
 } from "./fixture-app.mjs";
 
-const baselineFile = path.join(repoRoot, "fixtures", `${BENCH_VAULT_NAME}.baseline.json`);
 const OPEN_COMMAND = `${manifest.id}:open-tasks-timeline-view`;
 const VIEWPORT = { width: 1280, height: 800, deviceScaleFactor: 2, mobile: false };
-const LOADS = 5;
+/** The measured runs at each scale; the large vault has fewer, so that a run takes minutes rather than an hour. */
+const RUNS = { 1: { loads: 5, saves: 10, optionChanges: 5 }, 10: { loads: 3, saves: 3, optionChanges: 3 } };
 const WARMUP_SAVES = 2;
-const SAVES = 10;
 const WARMUP_OPTION_CHANGES = 1;
-const OPTION_CHANGES = 5;
 /** A change is rendered once the timeline's DOM has not changed for this long. */
 const QUIET_MS = 1_000;
 /** Changes to the DOM less than this far apart belong to one render. */
@@ -65,17 +65,33 @@ const NO_RELOAD_WINDOW_MS = 3_000;
  */
 const LOAD_WATCH_MS = 2_000;
 
-/** Runs in Obsidian: one measurement. Times are milliseconds from the start of the measured action. */
-async function measure({ action, viewType, pluginId, command, path, content, token, quietMs, windowMs, settleMs }) {
+/**
+ * Runs in Obsidian: one measurement. Times are milliseconds from the start of the measured action. The waits allow
+ * `slowness` times as long, the vault's scale.
+ */
+async function measure({
+	action,
+	viewType,
+	pluginId,
+	command,
+	path,
+	content,
+	token,
+	quietMs,
+	windowMs,
+	settleMs,
+	slowness = 1,
+}) {
 	const leafSelector = `.workspace-leaf-content[data-type="${viewType}"]`;
 	// The timeline itself, without the view header, whose buttons Obsidian updates on its own.
 	const contentSelector = `${leafSelector} > .view-content`;
 	const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 	async function until(condition, timeoutMs, what) {
 		const start = performance.now();
+		const limit = timeoutMs * slowness;
 		while (!condition()) {
-			if (performance.now() - start > timeoutMs)
-				throw new Error(`timed out after ${timeoutMs / 1000} s waiting for ${what}`);
+			if (performance.now() - start > limit)
+				throw new Error(`timed out after ${limit / 1000} s waiting for ${what}`);
 			await sleep(20);
 		}
 	}
@@ -382,26 +398,34 @@ function withToken(original, token) {
 	return edited;
 }
 
-function measureAll(cli, notes) {
-	const args = { viewType: TIMELINE_VIEW, pluginId: manifest.id, command: OPEN_COMMAND, quietMs: QUIET_MS };
+function measureAll(cli, notes, scale) {
+	const runs = RUNS[scale];
+	const args = {
+		viewType: TIMELINE_VIEW,
+		pluginId: manifest.id,
+		command: OPEN_COMMAND,
+		quietMs: QUIET_MS,
+		slowness: scale,
+	};
+	// The CLI gives up on code run in Obsidian after 2 minutes, which the large vault's loads can come close to.
+	const evaluate = (arg) => cli.evaluate(measure, { ...args, ...arg }, 120_000 * scale);
 	const loads = [];
-	for (let run = 0; run < LOADS; run++) {
-		cli.evaluate(measure, { ...args, action: "unload" });
-		const raw = cli.evaluate(measure, { ...args, action: "load", settleMs: LOAD_WATCH_MS });
+	for (let run = 0; run < runs.loads; run++) {
+		evaluate({ action: "unload" });
+		const raw = evaluate({ action: "load", settleMs: LOAD_WATCH_MS });
 		const load = splitLoad(raw, BURST_GAP_MS);
 		console.log(
 			`bench: initial load ${run + 1}: rendered ${round(load.renderedMs)} ms, ${load.rows} rows, ${load.filesRead} notes read, longest task ${round(load.longestMs)} ms; ${load.laterRenders} later render(s) blocking ${round(load.laterBlockedMs)} ms`,
 		);
 		loads.push(load);
 	}
-	cli.evaluate(measure, { ...args, action: "settle", settleMs: LOAD_WATCH_MS });
+	evaluate({ action: "settle", settleMs: LOAD_WATCH_MS });
 
 	const withTasks = [];
 	const original = notes.get(BENCH_TARGETS.withTasks);
-	for (let run = 0; run < WARMUP_SAVES + SAVES; run++) {
+	for (let run = 0; run < WARMUP_SAVES + runs.saves; run++) {
 		const token = `bench${run}x${Date.now().toString(36)}`;
-		const save = cli.evaluate(measure, {
-			...args,
+		const save = evaluate({
 			action: "save",
 			path: BENCH_TARGETS.withTasks,
 			content: withToken(original, token),
@@ -415,10 +439,9 @@ function measureAll(cli, notes) {
 
 	const withoutTasks = [];
 	const plain = notes.get(BENCH_TARGETS.withoutTasks);
-	for (let run = 0; run < WARMUP_SAVES + SAVES; run++) {
+	for (let run = 0; run < WARMUP_SAVES + runs.saves; run++) {
 		const content = `${plain}\nEdited by the benchmark, run ${run}.\n`;
-		const save = cli.evaluate(measure, {
-			...args,
+		const save = evaluate({
 			action: "save",
 			path: BENCH_TARGETS.withoutTasks,
 			content,
@@ -431,11 +454,11 @@ function measureAll(cli, notes) {
 		);
 	}
 
-	cli.evaluate(measure, { ...args, action: "saveOptions" });
-	cli.evaluate(measure, { ...args, action: "settle", settleMs: LOAD_WATCH_MS });
+	evaluate({ action: "saveOptions" });
+	evaluate({ action: "settle", settleMs: LOAD_WATCH_MS });
 	const optionChanges = [];
-	for (let run = 0; run < WARMUP_OPTION_CHANGES + OPTION_CHANGES; run++) {
-		const change = cli.evaluate(measure, { ...args, action: "optionChange" });
+	for (let run = 0; run < WARMUP_OPTION_CHANGES + runs.optionChanges; run++) {
+		const change = evaluate({ action: "optionChange" });
 		if (change.reloadCalls === null)
 			throw new ScriptError(
 				"the timeline view has no onReloadTasks, which the benchmark counts an option change's reloads with; count them where the view reloads now.",
@@ -487,27 +510,39 @@ function measureAll(cli, notes) {
 }
 
 await runScript("bench", async () => {
-	const unknown = process.argv.slice(2).filter((arg) => arg !== "--update");
+	const args = process.argv.slice(2);
+	let scale;
+	try {
+		scale = scaleOf(args);
+	} catch (error) {
+		throw new ScriptError(error.message);
+	}
+	const unknown = withoutScale(args).filter((arg) => arg !== "--update");
 	if (unknown.length)
-		throw new ScriptError(`unknown arguments ${JSON.stringify(unknown)}; the only one is --update.`);
-	const update = process.argv.includes("--update");
+		throw new ScriptError(
+			`unknown arguments ${JSON.stringify(unknown)}; the only ones are --update and --scale 10.`,
+		);
+	const update = args.includes("--update");
+	const vaultName = benchVaultName(scale);
+	const scaleArg = scale === 1 ? "" : ` --scale ${scale}`;
+	const baselineFile = path.join(repoRoot, "fixtures", `${vaultName}.baseline.json`);
 	// Checked before the run, which takes minutes, rather than after it.
 	if (!update && !existsSync(baselineFile))
 		throw new ScriptError(
-			`there is no baseline ${path.relative(repoRoot, baselineFile)}. Record one with \`pnpm bench --update\`.`,
+			`there is no baseline ${path.relative(repoRoot, baselineFile)}. Record one with \`pnpm bench --update${scaleArg}\`.`,
 		);
 	const build = buildInfo();
-	const cli = fixtureCli(BENCH_VAULT_NAME);
-	const notes = benchVaultNotes();
+	const cli = fixtureCli(vaultName);
+	const notes = benchVaultNotes(scale);
 	const vaultPath = fixtureVaultPath(
 		cli,
-		BENCH_VAULT_NAME,
+		vaultName,
 		notes,
-		`Generate it with \`pnpm bench:vault <folder named ${BENCH_VAULT_NAME}>\`, open the folder with "Open folder as vault", then run this again.`,
+		`Generate it with \`pnpm bench:vault <folder named ${vaultName}>${scaleArg}\`, open the folder with "Open folder as vault", then run this again.`,
 	);
 
 	const plugin = installPlugin(vaultPath, quietSettings());
-	const fixture = fixtureWindow(cli, BENCH_VAULT_NAME, plugin);
+	const fixture = fixtureWindow(cli, vaultName, plugin);
 	const { env, results } = runAndUndo(() => {
 		const prepared = fixture.prepare();
 		cli.cdp("Emulation.setDeviceMetricsOverride", VIEWPORT);
@@ -522,7 +557,7 @@ await runScript("bench", async () => {
 		};
 		// Other work on the machine slows the timeline down as much as a change could; the load average shows it.
 		const loadBefore = os.loadavg()[0];
-		const results = measureAll(cli, notes);
+		const results = measureAll(cli, notes, scale);
 		env.loadAverage = {
 			before: Math.round(loadBefore * 10) / 10,
 			after: Math.round(os.loadavg()[0] * 10) / 10,
@@ -539,13 +574,14 @@ await runScript("bench", async () => {
 	]);
 
 	const record = {
-		note: "Measured by apps/obsidian-plugin/scripts/bench.mjs (`pnpm bench --update`). Do not edit by hand.",
+		note: `Measured by apps/obsidian-plugin/scripts/bench.mjs (\`pnpm bench --update${scaleArg}\`). Do not edit by hand.`,
 		measuredAt: new Date().toISOString().slice(0, 10),
 		...env,
 		plugin: build,
 		vault: {
+			name: vaultName,
 			notes: notes.size,
-			tasks: 4000,
+			tasks: 4000 * scale,
 			withTasks: BENCH_TARGETS.withTasks,
 			withoutTasks: BENCH_TARGETS.withoutTasks,
 		},
@@ -555,6 +591,7 @@ await runScript("bench", async () => {
 			loadWatchMs: LOAD_WATCH_MS,
 			warmupSaves: WARMUP_SAVES,
 			warmupOptionChanges: WARMUP_OPTION_CHANGES,
+			runs: RUNS[scale],
 		},
 		results,
 	};
