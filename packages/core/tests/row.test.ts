@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import moment from "moment";
 import "moment/locale/zh-cn";
 
+import type { MomentFactory } from "../src/dates";
 import { parseNote, parseTaskLine } from "../src/parse";
 import { resolveTasks, type ResolvedTask, type ResolveSettings } from "../src/resolve";
 import { taskRowModel, type RowOptions } from "../src/row";
@@ -153,13 +154,70 @@ test("a row takes its colour from the note's color property", () => {
 	const shown = resolveTasks([task], {}, { now: today, moment }).shown[0];
 	assert.equal(taskRowModel(shown, options, env()).color, "#123456");
 	assert.equal(taskRowModel(resolved("- [ ] plain"), options, env()).color, undefined);
+	// A property without a value is null, and the row keeps it as written.
+	const [blank] = parseNote(
+		{
+			path: "Blank.md",
+			content,
+			metadata: { listItems: [{ task: " ", parent: -1, position }], frontmatter: { color: null } },
+		},
+		moment,
+	).tasks;
+	assert.equal(taskRowModel(resolveTasks([blank], {}, { now: today, moment }).shown[0], options, env()).color, null);
 });
 
-test("relative dates are written in moment's language", () => {
+test("a row in a note named with digits that is not a daily note is not a daily note's row", () => {
+	const row = taskRowModel(resolved("- [ ] t", "Plans 2020.md"), options, env());
+	assert.equal(row.isDailyNote, false);
+	assert.deepEqual(
+		row.badges.map((b) => b.kind),
+		[],
+	);
+});
+
+/** Every array and plain object reachable from a value that is not frozen. Dates are left out: they are typed read-only. */
+function unfrozen(value: unknown, seen = new Set<object>()): object[] {
+	if (value === null || typeof value !== "object" || moment.isMoment(value) || seen.has(value)) return [];
+	seen.add(value);
+	return [
+		...(Object.isFrozen(value) ? [] : [value]),
+		...Object.values(value).flatMap((item) => unfrozen(item, seen)),
+	];
+}
+
+test("every part of a row is frozen: its badges, its tags and its position", () => {
+	const row = taskRowModel(resolved(line), options, env());
+	assert.ok(row.badges.length > 0 && row.tags.length > 0);
+	assert.deepEqual(unfrozen(row), []);
+});
+
+test("a row passes on the warning when the platform has no relative date format for moment's language", () => {
+	const warnings: string[] = [];
+	// Obsidian's moment with a language the platform has no format for.
+	const rejected: MomentFactory = Object.assign(
+		(input: Parameters<MomentFactory>[0], format?: string, strict?: boolean) => moment(input, format, strict),
+		{ locale: () => "not a locale" },
+	);
+	const row = taskRowModel(resolved(line), options, {
+		now: today,
+		moment: rejected,
+		warn: (message) => warnings.push(message),
+	});
+	// One warning for each date badge, whose label falls back to moment's own words.
+	assert.equal(warnings.length, 2);
+	assert.match(warnings[0], /not a locale/);
+	assert.deepEqual(
+		row.badges.slice(0, 2).map((b) => b.label),
+		["A day ago", "In a day"],
+	);
+});
+
+test("relative dates are written in moment's language now, whatever it was when the task was read", () => {
+	const task = resolved("- [ ] 明天 📅 2026-10-13");
 	const previous = moment.locale();
 	try {
 		assert.equal(moment.locale("zh-cn"), "zh-cn");
-		const row = taskRowModel(resolved("- [ ] 明天 📅 2026-10-13"), options, env());
+		const row = taskRowModel(task, options, env());
 		assert.deepEqual(
 			row.badges.map((b) => b.label),
 			["明天"],
