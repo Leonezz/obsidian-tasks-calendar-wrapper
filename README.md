@@ -190,6 +190,7 @@ The repository is a [pnpm](https://pnpm.io/) workspace:
 ```sh
 pnpm install
 pnpm run eslint     # lint
+pnpm format         # format with Prettier; pnpm format:check only checks
 pnpm run typecheck  # type-check every package
 pnpm test           # unit tests
 pnpm run build      # writes apps/obsidian-plugin/dist/main.js
