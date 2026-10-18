@@ -1,7 +1,8 @@
 /**
  * Helpers for the quick entry panel, which appends new tasks to a note.
  */
-import type { DateValue } from "./dates";
+import { dayKey, dayKeyAfter, dayKeyOfWeekday, isoWeekday, type CountUnit, type DateValue } from "./dates";
+import { doneDateSymbol, dueDateSymbol, recurrenceSymbol, scheduledDateSymbol, startDateSymbol } from "./syntax";
 
 /**
  * Turns a user supplied note path into the path of a markdown file in the vault.
@@ -65,4 +66,46 @@ export function quickEntryTargets(options: QuickEntryTargetOptions, now: DateVal
 				: options.dailyNoteFolder + "/";
 	if (options.dailyNoteFormat && options.dailyNoteFormat !== "") targets.add(dailyNoteFolder + dailyNoteFileName);
 	return [...targets];
+}
+
+/**
+ * Replaces the words typed into the quick entry box with task symbols and dates, e.g. "due " with "📅 " and
+ * "tomorrow " with tomorrow's date. A word is replaced once a space follows it. Every rule starts again from the text
+ * as typed, so when several words match at once only the last rule's replacement is kept. Text with nothing to replace
+ * is returned as is. Moved from the plugin's utils/quickentry.ts with its rules as they were.
+ *
+ * Dates are written with dayKey(), in ASCII digits. format() writes the locale's own digits in Arabic, Persian, Hindi
+ * and other languages, which neither this plugin nor the Tasks plugin reads as a date.
+ */
+export function expandShortcuts(newTask: string, today: DateValue): string {
+	let expanded = newTask;
+	// Symbols
+	if (newTask.includes("due ")) expanded = newTask.replace("due", dueDateSymbol);
+	if (newTask.includes("start ")) expanded = newTask.replace("start", startDateSymbol);
+	if (newTask.includes("scheduled ")) expanded = newTask.replace("scheduled", scheduledDateSymbol);
+	if (newTask.includes("done ")) expanded = newTask.replace("done", doneDateSymbol);
+	if (newTask.includes("repeat ")) expanded = newTask.replace("repeat", recurrenceSymbol);
+	if (newTask.includes("recurring ")) expanded = newTask.replace("recurring", recurrenceSymbol);
+
+	// Dates
+	if (newTask.includes("today ")) expanded = newTask.replace("today", dayKey(today));
+	if (newTask.includes("tomorrow ")) expanded = newTask.replace("tomorrow", dayKeyAfter(today, 1, "days"));
+	if (newTask.includes("yesterday ")) expanded = newTask.replace("yesterday", dayKeyAfter(today, -1, "days"));
+
+	// In 3 days, 2 weeks, 1 month or 1 year
+	const futureDate = newTask.match(/(in)\W(\d{1,3})\W(days|day|weeks|week|month|years|year) /);
+	if (futureDate) {
+		const date = dayKeyAfter(today, parseInt(futureDate[2]), futureDate[3] as CountUnit) + " ";
+		expanded = newTask.replace(futureDate[0], date);
+	}
+
+	// The next weekday of that name: this week's, or next week's when it is today or has passed
+	const weekday = newTask.match(/(monday|tuesday|wednesday|thursday|friday|saturday|sunday) /);
+	if (weekday) {
+		const weekdays = ["", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+		const wanted = weekdays.indexOf(weekday[1]);
+		const weeksLater = isoWeekday(today) < wanted ? 0 : 1;
+		expanded = newTask.replace(weekday[1], dayKeyOfWeekday(today, wanted, weeksLater));
+	}
+	return expanded;
 }

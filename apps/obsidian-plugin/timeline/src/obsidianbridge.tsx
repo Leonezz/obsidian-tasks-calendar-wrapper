@@ -1,10 +1,9 @@
 import { Model } from "backbone";
 import { App, ItemView, Notice, normalizePath, Pos } from "obsidian";
-import type { QuickFilter, Task } from "@tasks-calendar-wrapper/core";
+import { normalizeNotePath, type QuickFilter, type Task } from "@tasks-calendar-wrapper/core";
 import * as React from "react";
 import { UserOption, defaultUserOptions } from "../../src/useroptions";
 import { ConfirmModal } from "../../src/confirm-modal";
-import { normalizeNotePath } from "../../utils/quickentry";
 import { tagSearchUri, tasksPluginCommand } from "../../utils/utils";
 import { appendTaskToNote } from "./appendtask";
 import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "./components/context";
