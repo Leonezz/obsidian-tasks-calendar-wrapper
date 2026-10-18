@@ -4,12 +4,18 @@ import "./setup";
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { Moment } from "moment";
 
-import { resolveTasks, type DateValue, type ResolvedTask, type Task } from "@tasks-calendar-wrapper/core";
+import {
+	arrange,
+	dayKey,
+	resolveTasks,
+	type DateValue,
+	type ResolvedTask,
+	type Task,
+} from "@tasks-calendar-wrapper/core";
 import { defaultUserOptions, UserOption } from "../src/useroptions";
 import { ObsidianTaskAdapter, readTasks } from "../timeline/src/taskadapter";
 import { groupTasksByDate, tasksListedOnDay } from "../timeline/src/taskdates";
@@ -17,6 +23,7 @@ import { moment } from "../utils/moment";
 import { sortOptionLabels } from "../utils/sort";
 import { filterTasks, parseTasks } from "../utils/tasklist";
 import { innerDateFormat, TaskDataModel } from "../utils/tasks";
+import { FIXTURES, goldenApp, loadVault, type CapturedVault, type ReadOrder } from "./golden-vault";
 
 /**
  * Golden snapshots of what the plugin makes of the notes in fixtures/golden-vault today: every task's
@@ -26,95 +33,8 @@ import { innerDateFormat, TaskDataModel } from "../utils/tasks";
  * The metadata comes from Obsidian itself, see scripts/capture-golden.mjs.
  */
 
-const FIXTURES = process.env.GOLDEN_FIXTURES ?? "";
-const VAULT = path.join(FIXTURES, "golden-vault");
-const METADATA = path.join(FIXTURES, "golden-vault.metadata.json");
 const GOLDEN = path.join(FIXTURES, "golden");
 const UPDATE = process.env.UPDATE_GOLDEN === "1";
-
-interface CapturedVault {
-	obsidianVersion: string;
-	/** The SHA-256 of each note the metadata was computed from. */
-	notes: Record<string, string>;
-	files: Record<string, unknown>;
-}
-
-function notesOnDisk(dir: string, prefix = ""): string[] {
-	return readdirSync(dir)
-		.sort()
-		.flatMap((name) => {
-			if (name.startsWith(".")) return [];
-			const relative = prefix ? `${prefix}/${name}` : name;
-			if (statSync(path.join(dir, name)).isDirectory()) return notesOnDisk(path.join(dir, name), relative);
-			return name.endsWith(".md") ? [relative] : [];
-		});
-}
-
-const sha256 = (file: string) => createHash("sha256").update(readFileSync(file)).digest("hex");
-
-let loaded: CapturedVault | undefined;
-
-/** The captured metadata, after checking that it was computed from exactly the notes in the fixture vault. */
-function loadVault(): CapturedVault {
-	if (loaded) return loaded;
-	if (!FIXTURES) assert.fail("GOLDEN_FIXTURES is not set. Run the tests with `pnpm test`, which sets it.");
-	if (!existsSync(METADATA)) {
-		assert.fail(`${METADATA} is missing. Open fixtures/golden-vault in Obsidian and run \`pnpm capture:golden\`.`);
-	}
-	const vault = JSON.parse(readFileSync(METADATA, "utf8")) as CapturedVault;
-	const onDisk = notesOnDisk(VAULT);
-	const captured = Object.keys(vault.notes ?? {}).sort();
-	const stale = [...new Set([...onDisk, ...captured])].filter(
-		(note) =>
-			!onDisk.includes(note) || !captured.includes(note) || sha256(path.join(VAULT, note)) !== vault.notes[note],
-	);
-	if (stale.length > 0) {
-		assert.fail(
-			`the metadata does not match these fixture notes: ${JSON.stringify(stale)}. ` +
-				"Recapture it with `pnpm capture:golden` (not UPDATE_GOLDEN=1), then regenerate the snapshots.",
-		);
-	}
-	assert.deepEqual(Object.keys(vault.files).sort(), captured, "every captured note has metadata");
-	loaded = vault;
-	return vault;
-}
-
-interface ReadOrder {
-	/** Lists the notes in reverse, unlike the sorted list of a fresh vault. */
-	reversed?: boolean;
-	/** Delays each read by a different time, so reads finish out of order. */
-	staggered?: boolean;
-}
-
-/** An app with just what the adapter reads: the notes of the fixture vault and the metadata Obsidian computed for them. */
-function goldenApp(vault: CapturedVault, order: ReadOrder = {}, handedOut: unknown[] = []) {
-	const paths = Object.keys(vault.files).sort();
-	if (order.reversed) paths.reverse();
-	const files = paths.map((filePath) => ({
-		path: filePath,
-		basename: path.basename(filePath, ".md"),
-		extension: "md",
-	}));
-	const wait = (file: string) => new Promise((resolve) => setTimeout(resolve, (file.length * 7) % 13));
-	return {
-		vault: {
-			getMarkdownFiles: () => files,
-			cachedRead: async (file: { path: string }) => {
-				if (order.staggered) await wait(file.path);
-				return readFileSync(path.join(VAULT, file.path), "utf8");
-			},
-		},
-		metadataCache: {
-			// A copy each time, so nothing a run does to the metadata can leak into the next one. The copies are
-			// kept in handedOut, so a test can check that parsing left Obsidian's objects as they were.
-			getFileCache: (file: { path: string }) => {
-				const cache = structuredClone(vault.files[file.path] ?? null);
-				handedOut.push(cache);
-				return cache;
-			},
-		},
-	} as never;
-}
 
 /**
  * Reads, parses, sorts and filters the vault the way TasksTimelineView.onReloadTasks does, with moment set to
@@ -304,6 +224,18 @@ function days(tasks: TaskDataModel[], options: UserOption): Record<string, strin
 	);
 }
 
+/** days() of the tasks core shows: the days arrange lays out that have a task, without a counter or quick filter. */
+function coreDays(shown: readonly ResolvedTask[], options: UserOption): Record<string, string[]> {
+	const env = { now: moment(), moment };
+	const { years } = arrange({ today: dayKey(env.now), shown }, { settings: options, counter: "" }, env);
+	return Object.fromEntries(
+		years
+			.flatMap((year) => year.days)
+			.filter((day) => day.dated)
+			.map((day) => [day.key, day.tasks.map(coreId)]),
+	);
+}
+
 /** The snapshots the tests produce, so the last test can find files no test produces any more. */
 const snapshotNames = new Set<string>();
 
@@ -376,7 +308,9 @@ for (const [name, options] of Object.entries(variants)) {
 	test(`golden: tasks shown with the ${name} settings`, async () => {
 		const tasks = await taskList(loadVault(), options);
 		expectGolden(`variant-${name}`, { shown: tasks.map(summary), days: days(tasks, options) });
-		expectGoldenFromCore(`variant-${name}`, (await coreTaskList(loadVault(), options)).map(coreSummary), "shown");
+		const shown = await coreTaskList(loadVault(), options);
+		expectGoldenFromCore(`variant-${name}`, shown.map(coreSummary), "shown");
+		expectGoldenFromCore(`variant-${name}`, coreDays(shown, options), "days");
 	});
 }
 
@@ -392,11 +326,9 @@ test("golden: tasks shown with Obsidian set to Chinese", async () => {
 		"the app language changes which notes are daily notes",
 	);
 	expectGolden("variant-locale-zh-cn", { shown: chinese.map(summary), days: days(chinese, defaults()) });
-	expectGoldenFromCore(
-		"variant-locale-zh-cn",
-		(await coreTaskList(vault, defaults(), {}, "zh-cn")).map(coreSummary),
-		"shown",
-	);
+	const chineseCore = await coreTaskList(vault, defaults(), {}, "zh-cn");
+	expectGoldenFromCore("variant-locale-zh-cn", chineseCore.map(coreSummary), "shown");
+	expectGoldenFromCore("variant-locale-zh-cn", coreDays(chineseCore, defaults()), "days");
 });
 
 test("golden: the order under every sort option", async () => {
@@ -422,7 +354,7 @@ test("golden: the result does not depend on the order or timing of the reads", a
 });
 
 // The snapshots pin core where the fixtures reach; the legacy pipeline, which core replaces, is compared with it
-// everywhere else: every settings variant under every sort, in both languages, field by field.
+// everywhere else: every settings variant under every sort, in both languages, field by field and day by day.
 /** JSON with the keys of every object sorted, so two values that only list their keys in another order give the same text. */
 const canonicalJson = (value: unknown) =>
 	JSON.stringify(value, (_key, item: unknown) =>
@@ -443,11 +375,11 @@ test("golden: core gives what the legacy pipeline gives for every variant, sort 
 		for (const [name, options] of Object.entries(variants)) {
 			for (const sort of [...Object.keys(sortOptionLabels), "no-such-sort"]) {
 				const withSort = { ...options, sort };
-				const legacy = canonicalJson((await taskList(vault, withSort, {}, locale)).map(details));
+				const legacyTasks = await taskList(vault, withSort, {}, locale);
+				const legacy = canonicalJson({ tasks: legacyTasks.map(details), days: days(legacyTasks, withSort) });
 				moment.locale(locale);
-				const core = canonicalJson(
-					resolveTasks(parsed, withSort, { now: moment(), moment }).shown.map(coreDetails),
-				);
+				const shown = resolveTasks(parsed, withSort, { now: moment(), moment }).shown;
+				const core = canonicalJson({ tasks: shown.map(coreDetails), days: coreDays(shown, withSort) });
 				moment.locale(previous);
 				// Comparing the text is fast; only a difference is compared field by field, for a readable message.
 				if (core !== legacy)
