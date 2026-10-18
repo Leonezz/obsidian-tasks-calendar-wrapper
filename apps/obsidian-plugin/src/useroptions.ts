@@ -83,7 +83,7 @@ export const defaultUserOptions = {
 	 */
 	forwardPastStartAndScheduled: false as boolean,
 	/**
-	 * Specify how do you like the task items to be sorted, see utils/sort.ts for the options.
+	 * Specify how do you like the task items to be sorted, see sortOptionLabels in packages/core/src/sort.ts.
 	 */
 	sort: defaultSortKey as string,
 	/**

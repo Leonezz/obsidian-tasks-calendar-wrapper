@@ -27,6 +27,22 @@ for (const { engine, normalize } of normalizers) {
 		assert.equal(normalize("  Tasks -- (done)  "), "Tasks -- done");
 	});
 
+	// What Dataview's parser gave, which normalizer-oracle.test.ts compared with parsimmon until phase 1 step 9.
+	test(`header normalization keeps ASCII digits only and drops combining marks, as Dataview did (${engine})`, () => {
+		assert.equal(normalize("٢٠٢٦ أرقام"), "أرقام");
+		assert.equal(normalize("２０２６年 计划"), "年 计划");
+		assert.equal(normalize("𝟘 math digit"), "math digit");
+		assert.equal(normalize("Ⅻ Roman"), "Roman");
+		assert.equal(normalize("Cafe\u0301 menu"), "Cafe menu");
+		assert.equal(normalize("नमस्ते दुनिया"), "नमस त द न य");
+	});
+
+	test(`header normalization keeps a flag's tag sequence only when it is closed (${engine})`, () => {
+		assert.equal(normalize("🏴\u{E0067}\u{E0062} tag"), "🏴 tag");
+		const scotland = "🏴\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}";
+		assert.equal(normalize(`${scotland} Scotland`), `${scotland} Scotland`);
+	});
+
 	test(`header normalization drops symbols that are only emoji with U+FE0F (${engine})`, () => {
 		assert.equal(normalize("© 2026 ☀️ Plan"), "2026 ☀️ Plan");
 	});

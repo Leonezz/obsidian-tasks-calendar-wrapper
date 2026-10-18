@@ -231,6 +231,28 @@ test("golden: the order under every sort option", async () => {
 	expectGolden("sort-orders", orders);
 });
 
+test("golden: under every sort, each day lists its tasks in the order the sort gives them", async () => {
+	const vault = loadVault();
+	for (const sort of [...Object.keys(sortOptionLabels), "no-such-sort"]) {
+		const options = { ...everything, sort };
+		const shown = await taskList(vault, options);
+		const order = new Map(shown.map((resolved, i) => [id(resolved), i]));
+		const listed = Object.entries(days(shown, options));
+		assert.ok(
+			listed.some(([, ids]) => ids.length > 2),
+			sort,
+		);
+		for (const [key, ids] of listed) {
+			const places = ids.map((task) => order.get(task) ?? -1);
+			assert.deepEqual(
+				places,
+				[...places].sort((a, b) => a - b),
+				`${sort}, ${key}`,
+			);
+		}
+	}
+});
+
 test("golden: the result does not depend on the order or timing of the reads", async () => {
 	const vault = loadVault();
 	const usual = (await taskList(vault, everything)).map(details);

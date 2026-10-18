@@ -73,9 +73,16 @@ try {
 		.map((name) => path.join(outdir, name));
 	// A fixed locale, so localeCompare collates the same everywhere (see the plugin's scripts/test.mjs),
 	// and a fixed time zone, so the date tests give the same days on every machine.
-	const env = { ...process.env, LC_ALL: "en_US.UTF-8", LANG: "en_US.UTF-8", TZ: "UTC" };
-	const result = spawnSync(process.execPath, ["--test", ...bundles], { stdio: "inherit", env, cwd: root });
-	process.exitCode = result.status ?? 1;
+	const env = { ...process.env, LC_ALL: "en_US.UTF-8", LANG: "en_US.UTF-8" };
+	const run = (files, timeZone) =>
+		spawnSync(process.execPath, ["--test", ...files], {
+			stdio: "inherit",
+			env: { ...env, TZ: timeZone },
+			cwd: root,
+		}).status ?? 1;
+	// Relative dates are worked out by day, which only a zone ahead of UTC and one behind it test, see #108.
+	const byDay = bundles.filter((file) => /[/\\](dates|row)\.test\.js$/.test(file));
+	process.exitCode = run(bundles, "UTC") || run(byDay, "Asia/Shanghai") || run(byDay, "America/New_York");
 } finally {
 	rmSync(outdir, { recursive: true, force: true });
 }
