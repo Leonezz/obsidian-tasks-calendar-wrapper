@@ -83,13 +83,19 @@ test("a measurement is slower when its fastest run grew by more than 25 % and 50
 		compare(base, resultsWith({ saveWithTasks: { renderedMs: timing(renderedMs), blockedMs: timing(blockedMs) } }))
 			.slower;
 	assert.equal(slower(200, 100), 0);
-	// 26 % and 52 ms more is slower; 24.5 % is not.
+	// 26 % and 52 ms more is slower; 24.5 % and 49 ms, under both limits, is not.
 	assert.equal(slower(252, 100), 1);
 	assert.equal(slower(249, 100), 0);
 	// 40 % but only 40 ms more is not; 51 % and 51 ms is.
 	assert.equal(slower(200, 140), 0);
 	assert.equal(slower(200, 151), 1);
 	assert.equal(slower(300, 160), 2);
+	// 100 ms more but only 10 % is not slower either.
+	const longer = baselineWith({ initialLoad: { rows: 100, renderedMs: timing(1000) } });
+	const slowerLoad = (renderedMs: number) =>
+		compare(longer, resultsWith({ initialLoad: { rows: 100, renderedMs: timing(renderedMs) } })).slower;
+	assert.equal(slowerLoad(1100), 0);
+	assert.equal(slowerLoad(1251), 1);
 });
 
 test("how long Obsidian takes to read a note is shown but not judged", () => {

@@ -4,11 +4,12 @@
  * - save with tasks: from saving a note with tasks until the timeline shows the new task text;
  * - save without tasks: saving a note without tasks, which should not reload the timeline at all;
  * - option change: turning the relative dates off through the plugin's writeOptions, as the settings tab does, until the
- *   timeline shows it, then on again; data.json is checked to be byte for byte as it was.
+ *   timeline shows it, then on again; data.json has to be byte for byte as it was after that.
  * Besides the time until the timeline shows the change, it sums the long tasks (main-thread work over 50 ms, when
  * Obsidian does not respond to input) and records the longest one, which is what a user feels as a freeze. It also
- * counts the notes read (vault.cachedRead), and for option changes how often Obsidian called the plugin's
- * onExternalSettingsChange while it saved. The arithmetic and the comparison are in bench-results.mjs.
+ * counts the notes read (vault.cachedRead calls), and for option changes the timeline's reloads and how often Obsidian
+ * called the plugin's onExternalSettingsChange after it saved. The arithmetic and the comparison are in
+ * bench-results.mjs.
  *
  * `pnpm bench` builds the plugin, measures, and compares with fixtures/bench-vault.baseline.json; it fails when the
  * fastest run of a measurement got slower by more than 25 % and 50 ms, or a save without tasks reloads the timeline. `pnpm bench --update`
@@ -58,8 +59,8 @@ const BURST_GAP_MS = 500;
 /** How long after Obsidian reports a save without tasks the timeline is watched for a reload. */
 const NO_RELOAD_WINDOW_MS = 3_000;
 /**
- * The plugin pushes its options to open views 200 ms after it loads (#203), and reads the notes again on Obsidian's first
- * "resolved". A load is watched at least this long, and then until the timeline is quiet, so those renders are seen and
+ * The plugin pushes its options to open views 200 ms after it loads (#203), which renders the timeline again. A load is
+ * watched until it shows task rows, at least this long, and then until the timeline is quiet, so that render is seen and
  * counted apart from the first one.
  */
 const LOAD_WATCH_MS = 2_000;
@@ -163,7 +164,10 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 			return calls;
 		};
 	}
-	/** Counts the notes read, as the plugin reads them through vault.cachedRead. Returns a function that undoes it. */
+	/**
+	 * Counts the calls of vault.cachedRead, which the plugin reads notes with. Obsidian's File recovery calls it too, for
+	 * an edited note at most every few minutes. Returns a function that undoes the counting and returns the count.
+	 */
 	function countReads() {
 		const vault = app.vault;
 		const own = Object.prototype.hasOwnProperty.call(vault, "cachedRead");
@@ -206,9 +210,12 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 					throw new Error(`Obsidian could not load the plugin ${pluginId}`);
 				if (!app.commands.executeCommandById(command)) throw new Error(`the command ${command} did not run`);
 				await until(
-					() => performance.now() - start >= settleMs && quietFor(recorder.seen, quietMs)(),
+					() =>
+						recorder.seen.rowsAt !== null &&
+						performance.now() - start >= settleMs &&
+						quietFor(recorder.seen, quietMs)(),
 					60_000,
-					"the timeline to stop changing",
+					"the timeline to render its task rows and stop changing",
 				);
 				const { seen } = recorder;
 				const { tasks } = recorder.stop(start);
@@ -301,6 +308,11 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 			const shows = (useRelative) => () =>
 				leaf.querySelector(".taskido")?.classList.contains("noRelative") === !useRelative;
 			if (!shows(was)()) throw new Error("the timeline does not show the relative dates setting it has");
+			// Obsidian passes changes of a plugin's data.json on only for plugins in the vault's list of enabled plugins,
+			// which enablePlugin does not add it to. It is listed while the option changes, as for a user who turned it on,
+			// so that onExternalSettingsChange can be called at all.
+			const listed = app.plugins.enabledPlugins.has(pluginId);
+			app.plugins.enabledPlugins.add(pluginId);
 			let externalCalls = 0;
 			const ownExternal = Object.prototype.hasOwnProperty.call(plugin, "onExternalSettingsChange");
 			const external = plugin.onExternalSettingsChange;
@@ -337,13 +349,21 @@ async function measure({ action, viewType, pluginId, command, path, content, tok
 				reads();
 				await plugin.writeOptions({ useRelative: was });
 				await until(shows(was), 10_000, "the timeline to show the setting as it was");
+				if (!listed) app.plugins.enabledPlugins.delete(pluginId);
 				if (ownExternal) plugin.onExternalSettingsChange = external;
 				else delete plugin.onExternalSettingsChange;
-				// writeOptions saves every option, so the file is written back as it was found.
-				await app.vault.adapter.write(dataPath, saved);
+				// The "saveOptions" action saved the options before, so changing one and back saves the same file.
 				if ((await app.vault.adapter.read(dataPath)) !== saved)
-					throw new Error(`${dataPath} is not as it was before the option change`);
+					throw new Error(`${dataPath} is not as it was before the option change and its undo`);
 			}
+		}
+		case "saveOptions": {
+			// The fixture installs a data.json with some options, written its own way; writeOptions saves all of them as
+			// Obsidian writes JSON. Saving once first lets each option change check that it leaves data.json as it was.
+			const plugin = app.plugins.plugins[pluginId];
+			if (!plugin) throw new Error(`the plugin ${pluginId} is not loaded`);
+			await plugin.writeOptions({});
+			return true;
 		}
 		case "restore": {
 			const file = app.vault.getAbstractFileByPath(path);
@@ -411,12 +431,18 @@ function measureAll(cli, notes) {
 		);
 	}
 
+	cli.evaluate(measure, { ...args, action: "saveOptions" });
+	cli.evaluate(measure, { ...args, action: "settle", settleMs: LOAD_WATCH_MS });
 	const optionChanges = [];
 	for (let run = 0; run < WARMUP_OPTION_CHANGES + OPTION_CHANGES; run++) {
 		const change = cli.evaluate(measure, { ...args, action: "optionChange" });
+		if (change.reloadCalls === null)
+			throw new ScriptError(
+				"the timeline view has no onReloadTasks, which the benchmark counts an option change's reloads with; count them where the view reloads now.",
+			);
 		if (run >= WARMUP_OPTION_CHANGES) optionChanges.push(change);
 		console.log(
-			`bench: option change ${run < WARMUP_OPTION_CHANGES ? "(warm-up)" : run - WARMUP_OPTION_CHANGES + 1}: shown after ${round(change.appliedMs)} ms, ${change.reloadCalls ?? "?"} reload call(s), ${change.filesRead} notes read, onExternalSettingsChange called ${change.externalSettingsCalls} time(s), longest task ${round(change.longestMs)} ms`,
+			`bench: option change ${run < WARMUP_OPTION_CHANGES ? "(warm-up)" : run - WARMUP_OPTION_CHANGES + 1}: shown after ${round(change.appliedMs)} ms, ${change.reloadCalls} reload call(s), ${change.filesRead} notes read, onExternalSettingsChange called ${change.externalSettingsCalls} time(s), longest task ${round(change.longestMs)} ms`,
 		);
 	}
 
@@ -428,7 +454,7 @@ function measureAll(cli, notes) {
 			blockedMs: summary(loads.map((load) => load.blockedMs)),
 			longestTaskMs: summary(loads.map((load) => load.longestMs)),
 			// Renders after the first one, such as the reload after the options push 200 ms after loading.
-			laterRenders: loads.map((load) => load.laterRenders),
+			laterRenders: counts(loads.map((load) => load.laterRenders)),
 			laterBlockedMs: summary(loads.map((load) => load.laterBlockedMs)),
 			filesRead: counts(loads.map((load) => load.filesRead)),
 		},
@@ -453,7 +479,7 @@ function measureAll(cli, notes) {
 			appliedMs: summary(optionChanges.map((change) => change.appliedMs)),
 			blockedMs: summary(optionChanges.map((change) => change.blockedMs)),
 			longestTaskMs: summary(optionChanges.map((change) => change.longestMs)),
-			reloadCalls: counts(optionChanges.map((change) => change.reloadCalls ?? 0)),
+			reloadCalls: counts(optionChanges.map((change) => change.reloadCalls)),
 			filesRead: counts(optionChanges.map((change) => change.filesRead)),
 			externalSettingsCalls: counts(optionChanges.map((change) => change.externalSettingsCalls)),
 		},
