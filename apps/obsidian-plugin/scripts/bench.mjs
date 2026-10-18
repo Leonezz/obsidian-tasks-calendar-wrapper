@@ -2,9 +2,13 @@
  * Measures how fast the timeline reacts in a real Obsidian, in the 4,000-task vault bench-vault.mjs generates:
  * - initial load: from loading the plugin and running "Open Tasks Timeline View" until the timeline has rendered;
  * - save with tasks: from saving a note with tasks until the timeline shows the new task text;
- * - save without tasks: saving a note without tasks, which should not reload the timeline at all.
+ * - save without tasks: saving a note without tasks, which should not reload the timeline at all;
+ * - option change: turning the relative dates off through the plugin's writeOptions, as the settings tab does, until the
+ *   timeline shows it, then on again; data.json is checked to be byte for byte as it was.
  * Besides the time until the timeline shows the change, it sums the long tasks (main-thread work over 50 ms, when
- * Obsidian does not respond to input) and records the longest one, which is what a user feels as a freeze.
+ * Obsidian does not respond to input) and records the longest one, which is what a user feels as a freeze. It also
+ * counts the notes read (vault.cachedRead), and for option changes how often Obsidian called the plugin's
+ * onExternalSettingsChange while it saved. The arithmetic and the comparison are in bench-results.mjs.
  *
  * `pnpm bench` builds the plugin, measures, and compares with fixtures/bench-vault.baseline.json; it fails when the
  * fastest run of a measurement got slower by more than 25 % and 50 ms, or a save without tasks reloads the timeline. `pnpm bench --update`
@@ -21,6 +25,7 @@
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import os from "os";
 import path from "path";
+import { compare, counts, round, splitLoad, summary } from "./bench-results.mjs";
 import { BENCH_TARGETS, BENCH_VAULT_NAME, benchVaultNotes } from "./bench-vault.mjs";
 import {
 	buildInfo,
@@ -44,6 +49,8 @@ const VIEWPORT = { width: 1280, height: 800, deviceScaleFactor: 2, mobile: false
 const LOADS = 5;
 const WARMUP_SAVES = 2;
 const SAVES = 10;
+const WARMUP_OPTION_CHANGES = 1;
+const OPTION_CHANGES = 5;
 /** A change is rendered once the timeline's DOM has not changed for this long. */
 const QUIET_MS = 1_000;
 /** Changes to the DOM less than this far apart belong to one render. */
@@ -51,28 +58,14 @@ const BURST_GAP_MS = 500;
 /** How long after Obsidian reports a save without tasks the timeline is watched for a reload. */
 const NO_RELOAD_WINDOW_MS = 3_000;
 /**
- * The plugin applies its settings to open views 5 s after it loads, which renders the timeline again. A load is watched
- * this long, so that render is seen and kept apart from the first one.
+ * The plugin pushes its options to open views 200 ms after it loads (#203), and reads the notes again on Obsidian's first
+ * "resolved". A load is watched at least this long, and then until the timeline is quiet, so those renders are seen and
+ * counted apart from the first one.
  */
-const SETTLE_AFTER_LOAD_MS = 6_000;
-/** A measurement counts as slower when its fastest run grew by more than both of these. */
-const SLOWER_RATIO = 1.25;
-const SLOWER_MS = 50;
+const LOAD_WATCH_MS = 2_000;
 
 /** Runs in Obsidian: one measurement. Times are milliseconds from the start of the measured action. */
-async function measure({
-	action,
-	viewType,
-	pluginId,
-	command,
-	path,
-	content,
-	token,
-	quietMs,
-	windowMs,
-	settleMs,
-	burstGapMs,
-}) {
+async function measure({ action, viewType, pluginId, command, path, content, token, quietMs, windowMs, settleMs }) {
 	const leafSelector = `.workspace-leaf-content[data-type="${viewType}"]`;
 	// The timeline itself, without the view header, whose buttons Obsidian updates on its own.
 	const contentSelector = `${leafSelector} > .view-content`;
@@ -170,6 +163,22 @@ async function measure({
 			return calls;
 		};
 	}
+	/** Counts the notes read, as the plugin reads them through vault.cachedRead. Returns a function that undoes it. */
+	function countReads() {
+		const vault = app.vault;
+		const own = Object.prototype.hasOwnProperty.call(vault, "cachedRead");
+		const original = vault.cachedRead;
+		let reads = 0;
+		vault.cachedRead = function (...args) {
+			reads++;
+			return original.apply(this, args);
+		};
+		return () => {
+			if (own) vault.cachedRead = original;
+			else delete vault.cachedRead;
+			return reads;
+		};
+	}
 	const quietFor = (seen, ms) => () => seen.last !== null && performance.now() - seen.last >= ms;
 	/** When the frame that shows the changes made up to `time` was painted. */
 	function paintedAfter(seen, time) {
@@ -190,6 +199,7 @@ async function measure({
 			// The command opens the timeline in the right sidebar, where a collapsed sidebar would keep it from loading.
 			app.workspace.rightSplit.expand();
 			const recorder = record(document.body);
+			const reads = countReads();
 			const start = performance.now();
 			try {
 				if (!(await app.plugins.enablePlugin(pluginId)))
@@ -201,29 +211,25 @@ async function measure({
 					"the timeline to stop changing",
 				);
 				const { seen } = recorder;
-				if (seen.rowsAt === null) throw new Error("the timeline rendered no task rows (.task)");
-				// The first render with rows ends at the first pause of burstGapMs; what comes later is another render.
-				let end = seen.rowsAt;
-				for (const time of seen.times) {
-					if (time <= end) continue;
-					if (time - end >= burstGapMs) break;
-					end = time;
-				}
-				const painted = paintedAfter(seen, end);
-				const later = seen.times.filter((time) => time > painted);
 				const { tasks } = recorder.stop(start);
-				const first = sum(tasks.filter((task) => task.start >= start && task.start < painted));
+				// In milliseconds from enabling the plugin; bench-results.mjs splits them into renders.
+				const since = (time) => time - start;
 				return {
-					renderedMs: painted - start,
 					rows: rows(),
-					// The plugin's reload 5 s after loading starts while the first render is still going on.
-					reachedSettingsTimer: painted - start >= settleMs - 1_500,
-					...first,
-					laterRenders: later.filter((time, i) => i === 0 || time - later[i - 1] >= burstGapMs).length,
-					laterBlockedMs: sum(tasks.filter((task) => task.start >= painted)).blockedMs,
+					filesRead: reads(),
+					rowsAt: seen.rowsAt === null ? null : since(seen.rowsAt),
+					times: seen.times.map(since),
+					frames: seen.frames.map((frame) => ({
+						startedAt: since(frame.startedAt),
+						paintedAt: since(frame.paintedAt),
+					})),
+					tasks: tasks
+						.filter((task) => task.start >= start)
+						.map((task) => ({ start: since(task.start), duration: task.duration })),
 				};
 			} finally {
 				recorder.stop(start);
+				reads();
 			}
 		}
 		case "settle": {
@@ -248,6 +254,7 @@ async function measure({
 			if (!root) throw new Error("the timeline view is not open");
 			const recorder = record(root);
 			const reloadCalls = countReloads();
+			const reads = countReads();
 			let changed = null;
 			const ref = app.metadataCache.on("changed", (changedFile) => {
 				if (changedFile.path === path) changed ??= performance.now();
@@ -272,12 +279,70 @@ async function measure({
 						recorder.seen.token === null ? null : paintedAfter(recorder.seen, recorder.seen.token) - start,
 					reloadCalls: calls,
 					reloaded: recorder.seen.first !== null || calls > 0,
+					filesRead: reads(),
 					...work,
 				};
 			} finally {
 				recorder.stop(start);
 				reloadCalls();
+				reads();
 				app.metadataCache.offref(ref);
+			}
+		}
+		case "optionChange": {
+			const plugin = app.plugins.plugins[pluginId];
+			if (!plugin) throw new Error(`the plugin ${pluginId} is not loaded`);
+			const leaf = document.querySelector(leafSelector);
+			if (!leaf) throw new Error("the timeline view is not open");
+			const dataPath = `${app.vault.configDir}/plugins/${pluginId}/data.json`;
+			const saved = await app.vault.adapter.read(dataPath);
+			const was = plugin.userOptions.useRelative;
+			// The timeline shows the relative dates are off with a class on its root, see TimelineView.
+			const shows = (useRelative) => () =>
+				leaf.querySelector(".taskido")?.classList.contains("noRelative") === !useRelative;
+			if (!shows(was)()) throw new Error("the timeline does not show the relative dates setting it has");
+			let externalCalls = 0;
+			const ownExternal = Object.prototype.hasOwnProperty.call(plugin, "onExternalSettingsChange");
+			const external = plugin.onExternalSettingsChange;
+			plugin.onExternalSettingsChange = function (...args) {
+				externalCalls++;
+				return external.apply(this, args);
+			};
+			const recorder = record(leaf);
+			const reloadCalls = countReloads();
+			const reads = countReads();
+			// When the change that shows the setting was made: the frame after it is the one that shows it.
+			let appliedAt = null;
+			const classes = new MutationObserver(() => {
+				if (appliedAt === null && shows(!was)()) appliedAt = performance.now();
+			});
+			classes.observe(leaf, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
+			const start = performance.now();
+			try {
+				await plugin.writeOptions({ useRelative: !was });
+				await until(() => appliedAt !== null, 10_000, "the timeline to show the changed setting");
+				await until(quietFor(recorder.seen, quietMs), 30_000, "the timeline to stop changing");
+				const { tasks, ...work } = recorder.stop(start);
+				return {
+					appliedMs: paintedAfter(recorder.seen, appliedAt) - start,
+					reloadCalls: reloadCalls(),
+					filesRead: reads(),
+					externalSettingsCalls: externalCalls,
+					...work,
+				};
+			} finally {
+				classes.disconnect();
+				recorder.stop(start);
+				reloadCalls();
+				reads();
+				await plugin.writeOptions({ useRelative: was });
+				await until(shows(was), 10_000, "the timeline to show the setting as it was");
+				if (ownExternal) plugin.onExternalSettingsChange = external;
+				else delete plugin.onExternalSettingsChange;
+				// writeOptions saves every option, so the file is written back as it was found.
+				await app.vault.adapter.write(dataPath, saved);
+				if ((await app.vault.adapter.read(dataPath)) !== saved)
+					throw new Error(`${dataPath} is not as it was before the option change`);
 			}
 		}
 		case "restore": {
@@ -288,21 +353,6 @@ async function measure({
 		default:
 			throw new Error(`unknown action ${action}`);
 	}
-}
-
-const median = (values) => {
-	const sorted = [...values].sort((a, b) => a - b);
-	const middle = Math.floor(sorted.length / 2);
-	return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
-};
-const round = (value) => Math.round(value * 10) / 10;
-function summary(samples) {
-	return {
-		medianMs: round(median(samples)),
-		minMs: round(Math.min(...samples)),
-		maxMs: round(Math.max(...samples)),
-		samplesMs: samples.map(round),
-	};
 }
 
 /** The note with tasks, with a token in the text of its first task, so the timeline has something new to show. */
@@ -317,22 +367,14 @@ function measureAll(cli, notes) {
 	const loads = [];
 	for (let run = 0; run < LOADS; run++) {
 		cli.evaluate(measure, { ...args, action: "unload" });
-		const load = cli.evaluate(measure, {
-			...args,
-			action: "load",
-			settleMs: SETTLE_AFTER_LOAD_MS,
-			burstGapMs: BURST_GAP_MS,
-		});
+		const raw = cli.evaluate(measure, { ...args, action: "load", settleMs: LOAD_WATCH_MS });
+		const load = splitLoad(raw, BURST_GAP_MS);
 		console.log(
-			`bench: initial load ${run + 1}: rendered ${round(load.renderedMs)} ms, ${load.rows} rows, longest task ${round(load.longestMs)} ms; ${load.laterRenders} later render(s) blocking ${round(load.laterBlockedMs)} ms`,
+			`bench: initial load ${run + 1}: rendered ${round(load.renderedMs)} ms, ${load.rows} rows, ${load.filesRead} notes read, longest task ${round(load.longestMs)} ms; ${load.laterRenders} later render(s) blocking ${round(load.laterBlockedMs)} ms`,
 		);
-		if (load.reachedSettingsTimer)
-			console.warn(
-				"bench: warning: this load took so long that the reload the plugin does 5 s after loading may be part of it.",
-			);
 		loads.push(load);
 	}
-	cli.evaluate(measure, { ...args, action: "settle", settleMs: SETTLE_AFTER_LOAD_MS });
+	cli.evaluate(measure, { ...args, action: "settle", settleMs: LOAD_WATCH_MS });
 
 	const withTasks = [];
 	const original = notes.get(BENCH_TARGETS.withTasks);
@@ -347,7 +389,7 @@ function measureAll(cli, notes) {
 		});
 		if (run >= WARMUP_SAVES) withTasks.push(save);
 		console.log(
-			`bench: save with tasks ${run < WARMUP_SAVES ? "(warm-up)" : run - WARMUP_SAVES + 1}: rendered ${round(save.renderedMs)} ms, longest task ${round(save.longestMs)} ms`,
+			`bench: save with tasks ${run < WARMUP_SAVES ? "(warm-up)" : run - WARMUP_SAVES + 1}: rendered ${round(save.renderedMs)} ms, ${save.filesRead} notes read, longest task ${round(save.longestMs)} ms`,
 		);
 	}
 
@@ -365,7 +407,16 @@ function measureAll(cli, notes) {
 		});
 		if (run >= WARMUP_SAVES) withoutTasks.push(save);
 		console.log(
-			`bench: save without tasks ${run < WARMUP_SAVES ? "(warm-up)" : run - WARMUP_SAVES + 1}: ${save.reloaded ? `reloaded (${save.reloadCalls ?? "?"} reload calls)` : "no reload"}, longest task ${round(save.longestMs)} ms`,
+			`bench: save without tasks ${run < WARMUP_SAVES ? "(warm-up)" : run - WARMUP_SAVES + 1}: ${save.reloaded ? `reloaded (${save.reloadCalls ?? "?"} reload calls)` : "no reload"}, ${save.filesRead} notes read, longest task ${round(save.longestMs)} ms`,
+		);
+	}
+
+	const optionChanges = [];
+	for (let run = 0; run < WARMUP_OPTION_CHANGES + OPTION_CHANGES; run++) {
+		const change = cli.evaluate(measure, { ...args, action: "optionChange" });
+		if (run >= WARMUP_OPTION_CHANGES) optionChanges.push(change);
+		console.log(
+			`bench: option change ${run < WARMUP_OPTION_CHANGES ? "(warm-up)" : run - WARMUP_OPTION_CHANGES + 1}: shown after ${round(change.appliedMs)} ms, ${change.reloadCalls ?? "?"} reload call(s), ${change.filesRead} notes read, onExternalSettingsChange called ${change.externalSettingsCalls} time(s), longest task ${round(change.longestMs)} ms`,
 		);
 	}
 
@@ -373,13 +424,13 @@ function measureAll(cli, notes) {
 		initialLoad: {
 			runs: loads.length,
 			rows: loads[0].rows,
-			reachedSettingsTimer: loads.filter((load) => load.reachedSettingsTimer).length,
 			renderedMs: summary(loads.map((load) => load.renderedMs)),
 			blockedMs: summary(loads.map((load) => load.blockedMs)),
 			longestTaskMs: summary(loads.map((load) => load.longestMs)),
-			// Renders within 6 s after the first one, such as the plugin's reload 5 s after loading.
+			// Renders after the first one, such as the reload after the options push 200 ms after loading.
 			laterRenders: loads.map((load) => load.laterRenders),
 			laterBlockedMs: summary(loads.map((load) => load.laterBlockedMs)),
+			filesRead: counts(loads.map((load) => load.filesRead)),
 		},
 		saveWithTasks: {
 			runs: withTasks.length,
@@ -387,6 +438,7 @@ function measureAll(cli, notes) {
 			renderedMs: summary(withTasks.map((save) => save.renderedMs)),
 			blockedMs: summary(withTasks.map((save) => save.blockedMs)),
 			longestTaskMs: summary(withTasks.map((save) => save.longestMs)),
+			filesRead: counts(withTasks.map((save) => save.filesRead)),
 		},
 		saveWithoutTasks: {
 			runs: withoutTasks.length,
@@ -394,60 +446,18 @@ function measureAll(cli, notes) {
 			indexedMs: summary(withoutTasks.map((save) => save.indexedMs)),
 			blockedMs: summary(withoutTasks.map((save) => save.blockedMs)),
 			longestTaskMs: summary(withoutTasks.map((save) => save.longestMs)),
+			filesRead: counts(withoutTasks.map((save) => save.filesRead)),
+		},
+		optionChange: {
+			runs: optionChanges.length,
+			appliedMs: summary(optionChanges.map((change) => change.appliedMs)),
+			blockedMs: summary(optionChanges.map((change) => change.blockedMs)),
+			longestTaskMs: summary(optionChanges.map((change) => change.longestMs)),
+			reloadCalls: counts(optionChanges.map((change) => change.reloadCalls ?? 0)),
+			filesRead: counts(optionChanges.map((change) => change.filesRead)),
+			externalSettingsCalls: counts(optionChanges.map((change) => change.externalSettingsCalls)),
 		},
 	};
-}
-
-/**
- * Prints the fastest and the median run next to the baseline's and returns how many got slower. Judged by the fastest
- * run: other work on the machine only adds time, and moved the medians of the same build by up to 25 % between runs,
- * the fastest runs by under 5 %.
- */
-function compare(baseline, results) {
-	let slower = 0;
-	const cell = (value) => String(value ?? "-").padStart(8);
-	console.log(
-		`bench: ${"(ms)".padEnd(32)} ${"fastest: baseline".padStart(17)} ${"now".padStart(8)} ${"change".padStart(7)}   median: baseline      now`,
-	);
-	for (const [scenario, metrics] of Object.entries(results)) {
-		for (const [metric, value] of Object.entries(metrics)) {
-			if (typeof value !== "object" || Array.isArray(value)) continue;
-			const before = baseline.results[scenario]?.[metric];
-			const name = `${scenario}.${metric}`.padEnd(32);
-			if (before === undefined) {
-				console.log(
-					`bench: ${name} ${cell(null).padStart(17)} ${cell(value.minMs)}                ${cell(null)} ${cell(value.medianMs)}`,
-				);
-				continue;
-			}
-			// How long Obsidian takes to read a note is not up to the plugin, so it is shown but not judged.
-			const isSlower =
-				metric !== "indexedMs" &&
-				value.minMs > before.minMs * SLOWER_RATIO &&
-				value.minMs - before.minMs > SLOWER_MS;
-			if (isSlower) slower++;
-			const change =
-				before.minMs === 0
-					? ""
-					: `${value.minMs >= before.minMs ? "+" : ""}${Math.round((100 * (value.minMs - before.minMs)) / before.minMs)} %`;
-			console.log(
-				`bench: ${name} ${cell(before.minMs).padStart(17)} ${cell(value.minMs)} ${change.padStart(7)}   ${cell(before.medianMs).padStart(16)} ${cell(value.medianMs)}${isSlower ? "  SLOWER" : ""}`,
-			);
-		}
-	}
-	if (results.initialLoad.rows !== baseline.results.initialLoad?.rows) {
-		console.warn(
-			`bench: warning: the timeline shows ${results.initialLoad.rows} task rows, the baseline ${baseline.results.initialLoad?.rows}; it renders something else now.`,
-		);
-	}
-	const reloads = results.saveWithoutTasks.reloads;
-	if (reloads > (baseline.results.saveWithoutTasks?.reloads ?? 0)) {
-		console.log(
-			`bench: saving a note without tasks reloaded the timeline ${reloads} of ${results.saveWithoutTasks.runs} times.  SLOWER`,
-		);
-		slower++;
-	}
-	return slower;
 }
 
 await runScript("bench", async () => {
@@ -513,7 +523,13 @@ await runScript("bench", async () => {
 			withTasks: BENCH_TARGETS.withTasks,
 			withoutTasks: BENCH_TARGETS.withoutTasks,
 		},
-		settings: { quietMs: QUIET_MS, noReloadWindowMs: NO_RELOAD_WINDOW_MS, warmupSaves: WARMUP_SAVES },
+		settings: {
+			quietMs: QUIET_MS,
+			noReloadWindowMs: NO_RELOAD_WINDOW_MS,
+			loadWatchMs: LOAD_WATCH_MS,
+			warmupSaves: WARMUP_SAVES,
+			warmupOptionChanges: WARMUP_OPTION_CHANGES,
+		},
 		results,
 	};
 	if (update) {
@@ -544,7 +560,9 @@ await runScript("bench", async () => {
 			);
 		}
 	}
-	const slower = compare(baseline, results);
+	const { lines, warnings, slower } = compare(baseline, results);
+	lines.forEach((line) => console.log(line));
+	warnings.forEach((warning) => console.warn(warning));
 	console.log(
 		slower
 			? `bench: ${slower} measurement(s) got slower than the baseline.`

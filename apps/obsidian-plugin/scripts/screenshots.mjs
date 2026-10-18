@@ -61,8 +61,11 @@ const MAX_HEIGHT = 16_000;
  */
 const NOISE_PIXELS = 500;
 const NOISE_DELTA = 24;
-/** The plugin applies its settings to open views 5 s after it loads, which renders the timeline again. */
-const SETTLE_AFTER_LOAD_MS = 6_000;
+/**
+ * The plugin pushes its options to open views 200 ms after it loads (#203), which renders the timeline again; the
+ * timeline is left this long after opening, and then until it is quiet, before the first screenshot.
+ */
+const SETTLE_AFTER_LOAD_MS = 1_500;
 
 /** The appearance settings recorded in screenshots.json, with their names in Obsidian's settings for the warnings. */
 const APPEARANCE = {
