@@ -256,6 +256,55 @@ test("a locale the platform cannot format falls back to moment's words, with a w
 	assert.ok(error instanceof RangeError);
 });
 
+/**
+ * Runs with a stand-in for Intl.RelativeTimeFormat that records the locale of every formatter built, then puts the
+ * real one back. The stand-in is the real formatter underneath, so a formatter dates.ts keeps still works afterwards.
+ */
+function countingFormatters(run: (built: string[]) => void) {
+	const real = Object.getOwnPropertyDescriptor(Intl, "RelativeTimeFormat");
+	if (!real) assert.fail("this platform has no Intl.RelativeTimeFormat");
+	const built: string[] = [];
+	class Counting extends Intl.RelativeTimeFormat {
+		constructor(...args: ConstructorParameters<typeof Intl.RelativeTimeFormat>) {
+			// Before super(), so a locale the platform rejects is counted too.
+			built.push(String(args[0]));
+			super(...args);
+		}
+	}
+	Object.defineProperty(Intl, "RelativeTimeFormat", { ...real, value: Counting });
+	try {
+		run(built);
+	} finally {
+		Object.defineProperty(Intl, "RelativeTimeFormat", real);
+	}
+}
+
+test("each locale's formatter is built once, not once per label", () => {
+	const now = at("2026-09-22 14:00");
+	// Locales no other test formats, so neither has a formatter yet.
+	countingFormatters((built) => {
+		assert.equal(relativeDate(at("2026-09-23 00:00"), now, "de", noWarning), "Morgen");
+		assert.equal(relativeDate(at("2026-09-24 00:00"), now, "de", noWarning), "übermorgen");
+		assert.equal(relativeDate(at("2026-09-19 00:00"), now, "de", noWarning), "vor 3 Tagen");
+		assert.equal(relativeDate(at("2026-09-24 00:00"), now, "fr", noWarning), "après-demain");
+		assert.equal(relativeDate(at("2026-09-25 00:00"), now, "fr", noWarning), "dans 3 jours");
+		assert.equal(relativeDate(at("2026-09-21 00:00"), now, "de", noWarning), "Gestern");
+		assert.deepEqual(built, ["de", "fr"]);
+	});
+});
+
+test("a locale the platform rejects is tried again, and warned about, on every label", () => {
+	const now = at("2026-09-22 14:00");
+	const warnings: string[] = [];
+	const warn = (message: string) => warnings.push(message);
+	countingFormatters((built) => {
+		assert.equal(relativeDate(at("2026-09-24 00:00"), now, "still not a locale", warn), "in 2 days");
+		assert.equal(relativeDate(at("2026-09-19 00:00"), now, "still not a locale", warn), "3 days ago");
+		assert.deepEqual(built, ["still not a locale", "still not a locale"]);
+	});
+	assert.equal(warnings.length, 2);
+});
+
 test("reading a relative date changes neither date", () => {
 	const date = at("2026-09-24 23:00");
 	const now = at("2026-09-22 14:00");
