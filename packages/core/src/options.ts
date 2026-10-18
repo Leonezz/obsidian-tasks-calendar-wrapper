@@ -17,3 +17,21 @@ export function copyJsonValue<T>(value: T): T {
     }
     return value;
 }
+
+/**
+ * Freezes a value and every array and plain object in it, so code that receives it cannot change it. Dates are left
+ * as they are: a frozen moment can still be changed through its methods, so dates are typed DateValue instead.
+ */
+export function deepFreeze<T>(value: T): T {
+    if (value === null || typeof value !== "object" || !isPlainContainer(value)) return value;
+    // A lookup in a plain object can hand back a built-in prototype: [priority:: __proto__] gives Object.prototype, as
+    // it always has. Freezing one would freeze it for Obsidian and every plugin, so they are left alone.
+    if (value === Object.prototype || value === Array.prototype) return value;
+    for (const item of Object.values(value)) deepFreeze(item);
+    return Object.freeze(value);
+}
+
+function isPlainContainer(value: object): boolean {
+    const prototype = Object.getPrototypeOf(value);
+    return Array.isArray(value) || prototype === Object.prototype || prototype === null;
+}

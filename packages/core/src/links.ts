@@ -2,6 +2,7 @@
  * Normalizes heading text the way Obsidian links to it. Adapted from Obsidian Dataview, see NOTICE; Dataview built
  * this with parsimmon, and the loop below does at each position exactly what that parser did.
  */
+import type { LinkRef } from "./task";
 
 /** Builds a RegExp. Tests pass one that rejects the `v` flag to stand in for an older engine. */
 export type RegExpFactory = (pattern: string, flags: string) => RegExp;
@@ -88,4 +89,42 @@ const HEADER_NORMALIZER = createHeaderNormalizer();
  */
 export function normalizeHeaderForLink(header: string): string {
     return HEADER_NORMALIZER(header);
+}
+
+// Links to a note, a heading or a block, built as Dataview's Link class builds them, with the same fields as its
+// toObject(). Frozen.
+
+/** A link to a whole note. */
+export function fileLink(path: string, embed = false, display?: string): LinkRef {
+    return Object.freeze({ path, type: "file", subpath: undefined, display, embed });
+}
+
+/** A link to a heading in a note; the heading is normalized as Obsidian links to it. */
+export function headerLink(path: string, header: string, embed = false, display?: string): LinkRef {
+    return Object.freeze({ path, type: "header", subpath: normalizeHeaderForLink(header), display, embed });
+}
+
+function blockLink(path: string, id: string | undefined, embed: boolean, display?: string): LinkRef {
+    return Object.freeze({ path, type: "block", subpath: id, display, embed });
+}
+
+/**
+ * The link to a section of a note, from the link to the note and the section's metadata. `text` is the section's
+ * text in the note; for a heading, that is its whole line.
+ */
+export function sectionLink(note: LinkRef, section: { readonly type: string; readonly id?: string }, text: string): LinkRef {
+    switch (section.type) {
+        case "heading":
+            return headerLink(note.path, text, note.embed, note.display);
+        case "list":
+        case "block":
+            return blockLink(note.path, section.id, note.embed, note.display);
+        default:
+            return fileLink(note.path, note.embed, note.display);
+    }
+}
+
+/** A link a note makes, from Obsidian's link metadata: to the linked note, with the text shown for it. */
+export function outlink(link: { readonly link: string; readonly displayText?: string }): LinkRef {
+    return fileLink(link.link, false, link.displayText);
 }

@@ -9,8 +9,9 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, wri
 import path from "node:path";
 import type { Moment } from "moment";
 
+import { resolveTasks, type DateValue, type ResolvedTask, type Task } from "@tasks-calendar-wrapper/core";
 import { defaultUserOptions, UserOption } from "../src/useroptions";
-import { ObsidianTaskAdapter } from "../timeline/src/taskadapter";
+import { ObsidianTaskAdapter, readTasks } from "../timeline/src/taskadapter";
 import { groupTasksByDate, tasksListedOnDay } from "../timeline/src/taskdates";
 import { moment } from "../utils/moment";
 import { sortOptionLabels } from "../utils/sort";
@@ -80,7 +81,7 @@ interface ReadOrder {
 }
 
 /** An app with just what the adapter reads: the notes of the fixture vault and the metadata Obsidian computed for them. */
-function goldenApp(vault: CapturedVault, order: ReadOrder = {}) {
+function goldenApp(vault: CapturedVault, order: ReadOrder = {}, handedOut: unknown[] = []) {
     const paths = Object.keys(vault.files).sort();
     if (order.reversed) paths.reverse();
     const files = paths.map(filePath => ({ path: filePath, basename: path.basename(filePath, ".md"), extension: "md" }));
@@ -94,8 +95,13 @@ function goldenApp(vault: CapturedVault, order: ReadOrder = {}) {
             },
         },
         metadataCache: {
-            // A copy each time, so nothing a run does to the metadata can leak into the next one.
-            getFileCache: (file: { path: string }) => structuredClone(vault.files[file.path] ?? null),
+            // A copy each time, so nothing a run does to the metadata can leak into the next one. The copies are
+            // kept in handedOut, so a test can check that parsing left Obsidian's objects as they were.
+            getFileCache: (file: { path: string }) => {
+                const cache = structuredClone(vault.files[file.path] ?? null);
+                handedOut.push(cache);
+                return cache;
+            },
         },
     } as never;
 }
@@ -119,9 +125,21 @@ async function taskList(vault: CapturedVault, options: UserOption, order: ReadOr
     }
 }
 
+/** The same, through packages/core: readTasks reads and parses the notes, resolveTasks does the rest. */
+async function coreTaskList(vault: CapturedVault, options: UserOption, order: ReadOrder = {}, locale = "en"): Promise<ResolvedTask[]> {
+    const previous = moment.locale();
+    if (moment.locale(locale) !== locale) assert.fail(`moment has no "${locale}" locale loaded`);
+    try {
+        const tasks = await readTasks(goldenApp(vault, order), options, moment);
+        return [...resolveTasks(tasks, options, { now: moment(), moment }).shown];
+    } finally {
+        moment.locale(previous);
+    }
+}
+
 const id = (task: TaskDataModel) => `${task.path}:${task.line}`;
 
-function day(date: Moment | undefined): string | null {
+function day(date: Moment | DateValue | undefined): string | null {
     if (!date) return null;
     return date.format(date.hours() || date.minutes() ? "YYYY-MM-DDTHH:mm" : "YYYY-MM-DD");
 }
@@ -166,6 +184,69 @@ function summary(task: TaskDataModel): string {
         .map(([key, date]) => `${key}=${day(date)}`)
         .join(" ");
     return `${id(task)} | ${task.status} | ${dates} | ${task.visual}`;
+}
+
+const coreId = (resolved: ResolvedTask) => resolved.task.id;
+
+/** The legacy pipeline keeps the day a task is forwarded to as one more date; core keeps only its key. */
+function coreDates(resolved: ResolvedTask): (readonly [string, DateValue])[] {
+    return [...resolved.extraDates, ...(resolved.forwarded ? [[resolved.forwarded, moment()] as const] : [])];
+}
+
+/** details() of a task that went through core. */
+function coreDetails(resolved: ResolvedTask) {
+    const { task, dates } = resolved;
+    return {
+        id: coreId(resolved),
+        position: task.position,
+        lineCount: task.lineCount,
+        text: task.text,
+        visual: resolved.visual,
+        symbol: task.symbol,
+        statusMarker: task.statusMarker,
+        status: resolved.status,
+        completed: task.completed,
+        checked: task.checked,
+        fullyCompleted: task.fullyCompleted,
+        isTasksTask: task.isTasksTask,
+        priority: task.priority,
+        recurrence: task.recurrence,
+        tags: task.tags,
+        dailyNote: resolved.dailyNote,
+        order: resolved.order,
+        due: day(dates.due),
+        scheduled: day(dates.scheduled),
+        start: day(dates.start),
+        created: day(dates.created),
+        completion: day(dates.completion),
+        dates: coreDates(resolved).map(([key, date]) => [key, day(date)]),
+        section: task.section,
+        outlinks: task.outlinks,
+        frontmatter: task.note.frontmatter,
+    };
+}
+
+/** summary() of a task that went through core. */
+function coreSummary(resolved: ResolvedTask): string {
+    const { dates } = resolved;
+    const all = ([["due", dates.due], ["scheduled", dates.scheduled], ["start", dates.start], ["created", dates.created],
+        ["completion", dates.completion], ...coreDates(resolved)] as (readonly [string, DateValue | undefined])[])
+        .filter(([, date]) => date)
+        .map(([key, date]) => `${key}=${day(date)}`)
+        .join(" ");
+    return `${coreId(resolved)} | ${resolved.status} | ${all} | ${resolved.visual}`;
+}
+
+/**
+ * Asserts what core makes of the vault against a snapshot the legacy pipeline wrote, or against one field of it.
+ * Core never writes a snapshot, even with UPDATE_GOLDEN=1: only the legacy pipeline does, until core replaces it.
+ */
+function expectGoldenFromCore(name: string, actual: unknown, field?: string) {
+    const file = path.join(GOLDEN, `${name}.json`);
+    if (!existsSync(file)) assert.fail(`${file} is missing; the legacy test that writes it has to run first.`);
+    const snapshot = JSON.parse(readFileSync(file, "utf8"));
+    assert.deepEqual(JSON.parse(JSON.stringify(actual)), field ? snapshot[field] : snapshot,
+        `core differs from fixtures/golden/${name}.json${field ? ` (${field})` : ""}, which the legacy pipeline wrote.`);
 }
 
 /** The tasks each day of the timeline lists, as DateView lists them. */
@@ -236,12 +317,14 @@ test("golden: the metadata was captured from Obsidian from exactly the fixture n
 test("golden: every task's parsed fields", async () => {
     const tasks = await taskList(loadVault(), everything);
     expectGolden("tasks", tasks.map(details));
+    expectGoldenFromCore("tasks", (await coreTaskList(loadVault(), everything)).map(coreDetails));
 });
 
 for (const [name, options] of Object.entries(variants)) {
     test(`golden: tasks shown with the ${name} settings`, async () => {
         const tasks = await taskList(loadVault(), options);
         expectGolden(`variant-${name}`, { shown: tasks.map(summary), days: days(tasks, options) });
+        expectGoldenFromCore(`variant-${name}`, (await coreTaskList(loadVault(), options)).map(coreSummary), "shown");
     });
 }
 
@@ -253,15 +336,19 @@ test("golden: tasks shown with Obsidian set to Chinese", async () => {
     // A daily note named in Chinese is only recognised in Chinese, and one named in English only in English.
     assert.notDeepEqual(chinese.map(summary), english.map(summary), "the app language changes which notes are daily notes");
     expectGolden("variant-locale-zh-cn", { shown: chinese.map(summary), days: days(chinese, defaults()) });
+    expectGoldenFromCore("variant-locale-zh-cn", (await coreTaskList(vault, defaults(), {}, "zh-cn")).map(coreSummary), "shown");
 });
 
 test("golden: the order under every sort option", async () => {
     const vault = loadVault();
     const orders: Record<string, string[]> = {};
+    const coreOrders: Record<string, string[]> = {};
     for (const sort of [...Object.keys(sortOptionLabels), "no-such-sort"]) {
         orders[sort] = (await taskList(vault, { ...everything, sort })).map(id);
+        coreOrders[sort] = (await coreTaskList(vault, { ...everything, sort })).map(coreId);
     }
     expectGolden("sort-orders", orders);
+    expectGoldenFromCore("sort-orders", coreOrders);
 });
 
 test("golden: the result does not depend on the order or timing of the reads", async () => {
@@ -269,6 +356,65 @@ test("golden: the result does not depend on the order or timing of the reads", a
     const usual = (await taskList(vault, everything)).map(details);
     const shuffled = (await taskList(vault, everything, { reversed: true, staggered: true })).map(details);
     assert.deepEqual(shuffled, usual);
+    const coreUsual = (await coreTaskList(vault, everything)).map(coreDetails);
+    const coreShuffled = (await coreTaskList(vault, everything, { reversed: true, staggered: true })).map(coreDetails);
+    assert.deepEqual(coreShuffled, coreUsual);
+});
+
+// The snapshots pin core where the fixtures reach; the legacy pipeline, which core replaces, is compared with it
+// everywhere else: every settings variant under every sort, in both languages, field by field.
+/** JSON with the keys of every object sorted, so two values that only list their keys in another order give the same text. */
+const canonicalJson = (value: unknown) => JSON.stringify(value, (_key, item: unknown) => item !== null && typeof item === "object" && !Array.isArray(item)
+    ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0))
+    : item);
+
+test("golden: core gives what the legacy pipeline gives for every variant, sort and language", async () => {
+    const vault = loadVault();
+    for (const locale of ["en", "zh-cn"]) {
+        // Read and parsed once: resolveTasks applies the note filters readTasks skips notes with, which the variant
+        // tests above check through readTasks.
+        const previous = moment.locale();
+        if (moment.locale(locale) !== locale) assert.fail(`moment has no "${locale}" locale loaded`);
+        const parsed = await readTasks(goldenApp(vault), {}, moment);
+        moment.locale(previous);
+        for (const [name, options] of Object.entries(variants)) {
+            for (const sort of [...Object.keys(sortOptionLabels), "no-such-sort"]) {
+                const withSort = { ...options, sort };
+                const legacy = canonicalJson((await taskList(vault, withSort, {}, locale)).map(details));
+                moment.locale(locale);
+                const core = canonicalJson(resolveTasks(parsed, withSort, { now: moment(), moment }).shown.map(coreDetails));
+                moment.locale(previous);
+                // Comparing the text is fast; only a difference is compared field by field, for a readable message.
+                if (core !== legacy) assert.deepEqual(JSON.parse(core), JSON.parse(legacy), `${name}, ${sort}, ${locale}`);
+            }
+        }
+    }
+});
+
+/** Every array and plain object reachable from a value, dates left out: moments are typed read-only, not frozen. */
+function containers(value: unknown, found: object[] = []): object[] {
+    if (value === null || typeof value !== "object" || moment.isMoment(value) || found.includes(value)) return found;
+    found.push(value);
+    for (const item of Object.values(value)) containers(item, found);
+    return found;
+}
+
+test("golden: core's tasks cannot be changed, and resolving changes no date and none of Obsidian's metadata", async () => {
+    const vault = loadVault();
+    const handedOut: unknown[] = [];
+    const tasks: Task[] = await readTasks(goldenApp(vault, {}, handedOut), everything, moment);
+    assert.ok(tasks.length > 100);
+    const unfrozen = tasks.flatMap(task => containers(task)).filter(container => !Object.isFrozen(container));
+    assert.deepEqual(unfrozen, [], "every array and object of a Task is frozen");
+    // Parsing copies what it keeps, so the objects Obsidian handed out stay as they were.
+    assert.ok(handedOut.length > 0);
+    assert.deepEqual(handedOut.flatMap(cache => containers(cache)).filter(container => Object.isFrozen(container)), []);
+
+    const datesOf = (task: Task) => [...Object.values(task.dates), ...task.extraDates.map(([, date]) => date)]
+        .filter((date): date is DateValue => !!date);
+    const before = tasks.flatMap(datesOf).map(date => date.valueOf());
+    for (const options of Object.values(variants)) resolveTasks(tasks, options, { now: moment(), moment });
+    assert.deepEqual(tasks.flatMap(datesOf).map(date => date.valueOf()), before, "resolving changes no date of a task");
 });
 
 // Declared last, so it runs after every test that produces a snapshot.

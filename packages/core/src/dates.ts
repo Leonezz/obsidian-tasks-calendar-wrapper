@@ -39,6 +39,9 @@ export interface DateValue {
 /** A calendar day as "YYYY-MM-DD", always in ASCII digits. */
 export type DayKey = string;
 
+/** Dates by name, in the order they were first written, e.g. [unplanned:: ] fields. Frozen. */
+export type DateEntries = readonly (readonly [key: string, date: DateValue])[];
+
 const pad = (value: number, length: number) => String(value).padStart(length, "0");
 
 /**
