@@ -154,6 +154,20 @@ test("the entry sits on today, or on the day at the top or the bottom of the vie
 	assert.equal(entryDay("bottom", true), "2025-12-31");
 });
 
+test("a year's days are its days with tasks and the entry day, so today is no day of its own when the entry is elsewhere", () => {
+	const days = layout(day("2026-09-18"), { entryPosition: "top", forward: false }, [
+		"- [ ] a 📅 2026-09-10",
+		"- [ ] b 📅 2026-09-25",
+	]).years.flatMap((year) => year.days);
+	assert.deepEqual(
+		days.map((d) => [d.key, d.isEntry]),
+		[
+			["2026-09-10", true],
+			["2026-09-25", false],
+		],
+	);
+});
+
 test("today is the top or the bottom of the view when it lies outside the days with tasks", () => {
 	const later = day("2026-11-20");
 	assert.equal(layout(later, { entryPosition: "bottom" }).entryDay, "2026-11-20");
@@ -185,6 +199,49 @@ test("days in years before 0000 or after 9999 are placed by their year", () => {
 	const years = bottom.years.map((year) => year.year);
 	assert.deepEqual([years[0], years[years.length - 1], years.length], [-1, 12026, 12028]);
 	assert.equal(layout(TODAY, { entryPosition: "top" }, outOfRange).entryDay, "-0001-12-31");
+	assert.equal(bottom.years.find((year) => year.year === 12026)?.label, "12026");
+});
+
+test("a year is labelled with four digits at least, from now's year", () => {
+	const labels = (now: DateValue, texts: string[]) =>
+		layout(now, {}, texts).years.map((year) => [year.year, year.label, year.isCurrent]);
+	assert.deepEqual(labels(TODAY, ["- [ ] old 📅 0999-06-01"])[0], [999, "0999", false]);
+	// On the last and the first day of a year, now's year is still the one its date says, not its week's year.
+	assert.deepEqual(labels(day("2026-12-31"), ["- [ ] a 📅 2025-06-01"]), [
+		[2025, "2025", false],
+		[2026, "2026", true],
+	]);
+	assert.deepEqual(labels(day("2027-01-01"), ["- [ ] a 📅 2026-06-01"]), [
+		[2026, "2026", false],
+		[2027, "2027", true],
+	]);
+});
+
+test("only the entry day is the entry, even a day with its month and day in another year", () => {
+	for (const [now, texts] of [
+		[day("2026-09-18"), ["- [ ] a 📅 2025-09-18", "- [ ] b 📅 1926-09-18"]],
+		// 2027-12-27 and 2028-12-27 are in the same week of their week years' last weeks.
+		[day("2028-12-27"), ["- [ ] a 📅 2027-12-27"]],
+	] as const) {
+		const days = layout(now, { forward: false }, [...texts]).years.flatMap((year) => year.days);
+		assert.deepEqual(
+			days.filter((d) => d.isEntry).map((d) => d.key),
+			[now.format("YYYY-MM-DD")],
+		);
+		assert.deepEqual(
+			days.filter((d) => d.isToday).map((d) => d.key),
+			[now.format("YYYY-MM-DD")],
+		);
+	}
+});
+
+test("a day's heading is the day's midnight in the date format", () => {
+	const days = layout(day("2026-09-18").hours(10), { dateFormat: "YYYY-MM-DD HH:mm" }, ["- [ ] a 📅 2026-09-25"])
+		.years[0].days;
+	assert.deepEqual(
+		days.map((d) => d.label),
+		["2026-09-18 00:00", "2026-09-25 00:00"],
+	);
 });
 
 test("a day's heading reads its key as moment(key) did, so a year before 0000 is labelled as before", () => {
@@ -208,6 +265,20 @@ test("a day before the year 0000 that moment(key) reads as today is today, as be
 			["-0001-05-26", true, true, ["neg"]],
 			["2026-01-05", true, true, ["neg"]],
 		],
+	);
+});
+
+test("an entry day moment(key) cannot read is still the entry, labelled Invalid date, as before", () => {
+	// moment hands "-0031-01-01" to the engine's Date parser, which cannot read it. Both sides of the entry comparison then
+	// read "Invalid date", so the views drew the entry panel there.
+	const days = layout(TODAY, { entryPosition: "top" }, ["- [ ] neg [due:: -000031-01-01]"]).years.flatMap(
+		(year) => year.days,
+	);
+	const neg = days.find((d) => d.key === "-0031-01-01");
+	assert.deepEqual([neg?.label, neg?.isEntry, neg?.isToday], ["Invalid date", true, false]);
+	assert.deepEqual(
+		days.filter((d) => d.isEntry).map((d) => d.key),
+		["-0031-01-01"],
 	);
 });
 
@@ -246,6 +317,21 @@ test("the timeline has its years and entry day in a locale with digits of its ow
 	assert.deepEqual(
 		result.years.map((year) => year.label),
 		["٢٠٢٥", "٢٠٢٦"],
+	);
+	// The day keys are compared as the views compared them, written in the locale's digits on both sides.
+	const days = result.years.flatMap((year) => year.days);
+	assert.deepEqual(
+		days.filter((d) => d.isEntry).map((d) => d.key),
+		["2025-12-31"],
+	);
+	assert.deepEqual(
+		days.filter((d) => d.isToday).map((d) => d.key),
+		["2026-10-12"],
+	);
+	const onToday = inArabic(() => layout(day("2026-10-12"))).years.flatMap((year) => year.days);
+	assert.deepEqual(
+		onToday.filter((d) => d.isEntry).map((d) => d.key),
+		["2026-10-12"],
 	);
 });
 
