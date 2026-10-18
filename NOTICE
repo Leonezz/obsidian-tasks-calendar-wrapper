@@ -15,15 +15,15 @@ Obsidian-Tasks-Timeline and Obsidian-Tasks-Calendar by 702573N
 Obsidian Dataview
   https://github.com/blacksmithgu/obsidian-dataview
   Copyright (c) 2021 Michael Brenan, MIT License
-  apps/obsidian-plugin/dataview-util and the header normalizer in
-  packages/core/src/links.ts are adapted from Dataview.
+  The links and the header normalizer in packages/core/src/links.ts,
+  getFileTitle in packages/core/src/paths.ts and the reading of a note's lists
+  and sections in packages/core/src/parse.ts are adapted from Dataview.
 
 Obsidian Tasks
   https://github.com/obsidian-tasks-group/obsidian-tasks
   Copyright (c) 2021 Clare Macrae, Ilyas Landikov and Martin Schenck, MIT License
-  The task line parsing in packages/core/src/syntax.ts,
-  apps/obsidian-plugin/utils/taskmapable.ts and
-  apps/obsidian-plugin/timeline/src/taskadapter.ts is adapted from Obsidian Tasks.
+  The task line parsing in packages/core/src/syntax.ts and
+  packages/core/src/parse.ts is adapted from Obsidian Tasks.
 
 The MIT License of Obsidian Dataview and Obsidian Tasks:
 

@@ -1,5 +1,5 @@
 import type { PropertyRules } from "@tasks-calendar-wrapper/core";
-import { defaultSortKey } from "../utils/sort";
+import { defaultSortKey } from "@tasks-calendar-wrapper/core";
 
 /*
  * The plugin's settings and their defaults, as saved in data.json. Kept apart from the settings page,
@@ -83,7 +83,7 @@ export const defaultUserOptions = {
 	 */
 	forwardPastStartAndScheduled: false as boolean,
 	/**
-	 * Specify how do you like the task items to be sorted, see utils/sort.ts for the options.
+	 * Specify how do you like the task items to be sorted, see sortOptionLabels in packages/core/src/sort.ts.
 	 */
 	sort: defaultSortKey as string,
 	/**

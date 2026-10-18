@@ -1,7 +1,7 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { formatPropertyRules, parsePropertyRules } from "@tasks-calendar-wrapper/core";
-import { defaultSortKey, sortOptionLabels } from "../utils/sort";
-import { TaskRegularExpressions } from "../utils/tasks";
+import { defaultSortKey, sortOptionLabels } from "@tasks-calendar-wrapper/core";
+import { TaskRegularExpressions } from "@tasks-calendar-wrapper/core";
 import TasksCalendarWrapper from "./main";
 import { defaultUserOptions, UserOption } from "./useroptions";
 

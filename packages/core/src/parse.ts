@@ -3,8 +3,8 @@
  * parsing of the Obsidian Tasks plugin and from Dataview, see NOTICE.
  *
  * Parsing is synchronous and uses nothing but the note: no clock and no setting. Its steps run in the order the
- * plugin's parser chain ran them (utils/taskmapable.ts), each returning new values; what depends on the clock or the
- * settings, such as the status or the daily note's date, is left to resolveTasks.
+ * plugin's former parser chain ran them (utils/taskmapable.ts, removed in phase 1 step 9), each returning new values;
+ * what depends on the clock or the settings, such as the status or the daily note's date, is left to resolveTasks.
  */
 import { parseLooseDate, parseStrictDate, type DateValue, type MomentFactory } from "./dates";
 import { fileLink, outlink, sectionLink } from "./links";

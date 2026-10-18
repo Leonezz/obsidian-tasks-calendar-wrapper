@@ -1,9 +1,15 @@
 /**
  * Helpers for the quick entry panel, which appends new tasks to a note.
  */
-import { dayKey } from "@tasks-calendar-wrapper/core";
+import {
+	dayKey,
+	doneDateSymbol,
+	dueDateSymbol,
+	recurrenceSymbol,
+	scheduledDateSymbol,
+	startDateSymbol,
+} from "@tasks-calendar-wrapper/core";
 import type { Moment, unitOfTime } from "moment";
-import { doneDateSymbol, dueDateSymbol, recurrenceSymbol, scheduledDateSymbol, startDateSymbol } from "./tasks";
 
 // The other quick entry helpers moved to packages/core; re-exported for the modules that import them from here.
 export {

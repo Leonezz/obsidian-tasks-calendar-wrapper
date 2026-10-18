@@ -1,5 +1,6 @@
 /**
- * Everything one row of the timeline shows, as plain data, ported from the plugin's timeline/src/taskrow.ts. The row
+ * Everything one row of the timeline shows, as plain data, ported from the plugin's timeline/src/taskrow.ts (removed in
+ * phase 1 step 9). The row
  * renders only from this, so two rows with the same data look the same, and a row whose data did not change can skip
  * rendering. Every save gives new task objects, so comparing the tasks themselves would never match, see #63.
  */

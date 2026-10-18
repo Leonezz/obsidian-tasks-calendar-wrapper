@@ -85,6 +85,18 @@ test("tasks come in path order, then line order, whatever order they are passed 
 	);
 });
 
+test("text sorting compares the text shown, after the 24-hour option", () => {
+	const tasks = [task("- [ ] 09:30 a 📅 2026-09-01"), task("- [ ] 14:00 b 📅 2026-09-01")];
+	const sorted = (convert24HourTimePrefix: boolean) =>
+		resolveTasks(
+			tasks,
+			{ forward: true, sort: "text-asc", convert24HourTimePrefix },
+			{ now: TODAY, moment },
+		).shown.map((r) => r.visual);
+	assert.deepEqual(sorted(false), ["09:30 a", "14:00 b"]);
+	assert.deepEqual(sorted(true), ["2:00 pm b", "9:30 am a"]);
+});
+
 test("resolving gives new values and leaves the tasks passed in as they were", () => {
 	const tasks = [task("- [ ] 14:00 call 📅 2026-09-01")];
 	const before = JSON.stringify(tasks);

@@ -41,7 +41,6 @@ export function withNewList(state: ObsidianBridgeState, tasks: readonly Task[]):
 }
 
 export class ObsidianBridge extends React.Component<ObsidianBridgeProps, ObsidianBridgeState> {
-	//private readonly adapter: ObsidianTaskAdapter;
 	private readonly app: App;
 	private taskItemHandlers?: React.ContextType<typeof TaskItemEventHandlersContext>;
 	constructor(props: ObsidianBridgeProps) {
