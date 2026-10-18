@@ -6,16 +6,16 @@
  * @param saved The parsed data.json, or nothing when the plugin has not saved its options yet.
  */
 export function mergeOptions<T extends object>(defaults: T, saved: Partial<T> | null | undefined): T {
-    return copyJsonValue({ ...defaults, ...saved });
+	return copyJsonValue({ ...defaults, ...saved });
 }
 
 /** Copies a value that can be stored in data.json, with new arrays and objects at every level. */
 export function copyJsonValue<T>(value: T): T {
-    if (Array.isArray(value)) return value.map(copyJsonValue) as T;
-    if (value !== null && typeof value === "object") {
-        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, copyJsonValue(item)])) as T;
-    }
-    return value;
+	if (Array.isArray(value)) return value.map(copyJsonValue) as T;
+	if (value !== null && typeof value === "object") {
+		return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, copyJsonValue(item)])) as T;
+	}
+	return value;
 }
 
 /**
@@ -23,15 +23,15 @@ export function copyJsonValue<T>(value: T): T {
  * as they are: a frozen moment can still be changed through its methods, so dates are typed DateValue instead.
  */
 export function deepFreeze<T>(value: T): T {
-    if (value === null || typeof value !== "object" || !isPlainContainer(value)) return value;
-    // A lookup in a plain object can hand back a built-in prototype: [priority:: __proto__] gives Object.prototype, as
-    // it always has. Freezing one would freeze it for Obsidian and every plugin, so they are left alone.
-    if (value === Object.prototype || value === Array.prototype) return value;
-    for (const item of Object.values(value)) deepFreeze(item);
-    return Object.freeze(value);
+	if (value === null || typeof value !== "object" || !isPlainContainer(value)) return value;
+	// A lookup in a plain object can hand back a built-in prototype: [priority:: __proto__] gives Object.prototype, as
+	// it always has. Freezing one would freeze it for Obsidian and every plugin, so they are left alone.
+	if (value === Object.prototype || value === Array.prototype) return value;
+	for (const item of Object.values(value)) deepFreeze(item);
+	return Object.freeze(value);
 }
 
 function isPlainContainer(value: object): boolean {
-    const prototype = Object.getPrototypeOf(value);
-    return Array.isArray(value) || prototype === Object.prototype || prototype === null;
+	const prototype = Object.getPrototypeOf(value);
+	return Array.isArray(value) || prototype === Object.prototype || prototype === null;
 }

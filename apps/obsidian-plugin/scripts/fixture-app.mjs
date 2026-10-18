@@ -3,7 +3,17 @@
  * vault, installing the plugin build into that vault, and putting the app back the way it was afterwards.
  */
 import { execFileSync, spawnSync } from "child_process";
-import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "fs";
+import {
+	copyFileSync,
+	cpSync,
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from "fs";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -16,7 +26,7 @@ export const TIMELINE_VIEW = "tasks_timeline_view";
 /** "Today" while the scripts run: Thursday 2026-01-15 at noon, the day the golden tests use. Dates are in English. */
 export const PINNED_TODAY = { year: 2026, month: 0, day: 15 };
 
-export class ScriptError extends Error { }
+export class ScriptError extends Error {}
 
 function cliPath() {
 	if (process.env.OBSIDIAN_CLI) return process.env.OBSIDIAN_CLI;
@@ -25,7 +35,7 @@ function cliPath() {
 	return "obsidian-cli";
 }
 
-const pause = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
 /**
  * The CLI for one vault: every command names that vault first, so the user's own vaults are never addressed.
@@ -35,13 +45,26 @@ const pause = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0,
 export function fixtureCli(vaultName) {
 	function run(args, { timeout = 20_000, retries = 2 } = {}) {
 		for (let attempt = 0; ; attempt++) {
-			const result = spawnSync(cliPath(), [`vault=${vaultName}`, ...args], { encoding: "utf8", timeout, killSignal: "SIGKILL", maxBuffer: 512 * 1024 * 1024 });
+			const result = spawnSync(cliPath(), [`vault=${vaultName}`, ...args], {
+				encoding: "utf8",
+				timeout,
+				killSignal: "SIGKILL",
+				maxBuffer: 512 * 1024 * 1024,
+			});
 			if (result.error?.code === "ETIMEDOUT") {
 				if (attempt < retries) continue;
-				throw new ScriptError(`the Obsidian CLI did not answer "${args[0]}" within ${timeout / 1000} s. Is Obsidian running with the vault ${vaultName} open?`);
+				throw new ScriptError(
+					`the Obsidian CLI did not answer "${args[0]}" within ${timeout / 1000} s. Is Obsidian running with the vault ${vaultName} open?`,
+				);
 			}
-			if (result.error) throw new ScriptError(`could not run the Obsidian CLI (${cliPath()}): ${result.error.message}. Set OBSIDIAN_CLI to its path.`);
-			if (result.status !== 0) throw new ScriptError(`the Obsidian CLI failed for "${args[0]}": ${(result.stderr || result.stdout).trim()}`);
+			if (result.error)
+				throw new ScriptError(
+					`could not run the Obsidian CLI (${cliPath()}): ${result.error.message}. Set OBSIDIAN_CLI to its path.`,
+				);
+			if (result.status !== 0)
+				throw new ScriptError(
+					`the Obsidian CLI failed for "${args[0]}": ${(result.stderr || result.stdout).trim()}`,
+				);
 			return result.stdout.trim();
 		}
 	}
@@ -49,7 +72,7 @@ export function fixtureCli(vaultName) {
 	function evalString(code) {
 		const out = run(["eval", `code=${code}`]);
 		// The CLI prints what was logged meanwhile first, then "=> " and the result, or an error instead of a result.
-		const result = out.split("\n").findLast(line => line.startsWith("=> "));
+		const result = out.split("\n").findLast((line) => line.startsWith("=> "));
 		if (result === undefined) throw new ScriptError(`code run in Obsidian failed: ${out.slice(-2000)}`);
 		return result.slice(3);
 	}
@@ -85,7 +108,8 @@ export function fixtureCli(vaultName) {
 					if (state.error !== undefined) throw new ScriptError(`code run in Obsidian failed: ${state.error}`);
 					return JSON.parse(state.result);
 				}
-				if (Date.now() - start > timeout) throw new ScriptError(`code run in Obsidian did not finish within ${timeout / 1000} s.`);
+				if (Date.now() - start > timeout)
+					throw new ScriptError(`code run in Obsidian did not finish within ${timeout / 1000} s.`);
 			}
 		},
 		/** Calls a Chrome DevTools Protocol method on the vault's window. */
@@ -102,13 +126,15 @@ export function fixtureCli(vaultName) {
 
 /** Lists the notes (*.md) below a folder, skipping hidden folders such as .obsidian. */
 export function markdownFiles(dir, prefix = "") {
-	return readdirSync(dir).sort().flatMap(name => {
-		if (name.startsWith(".")) return [];
-		const full = path.join(dir, name);
-		const relative = prefix ? `${prefix}/${name}` : name;
-		if (statSync(full).isDirectory()) return markdownFiles(full, relative);
-		return name.endsWith(".md") ? [relative] : [];
-	});
+	return readdirSync(dir)
+		.sort()
+		.flatMap((name) => {
+			if (name.startsWith(".")) return [];
+			const full = path.join(dir, name);
+			const relative = prefix ? `${prefix}/${name}` : name;
+			if (statSync(full).isDirectory()) return markdownFiles(full, relative);
+			return name.endsWith(".md") ? [relative] : [];
+		});
 }
 
 /**
@@ -122,21 +148,31 @@ export function fixtureVaultPath(cli, vaultName, expected, howToOpen) {
 	} catch (error) {
 		throw new ScriptError(`${error.message}\n${howToOpen}`);
 	}
-	if (!vaultPath || !existsSync(vaultPath)) throw new ScriptError(`Obsidian has no vault "${vaultName}". ${howToOpen}`);
+	if (!vaultPath || !existsSync(vaultPath))
+		throw new ScriptError(`Obsidian has no vault "${vaultName}". ${howToOpen}`);
 	const onDisk = markdownFiles(vaultPath);
-	const differing = [...new Set([...expected.keys(), ...onDisk])].filter(file =>
-		!expected.has(file) || !onDisk.includes(file) || !readFileSync(path.join(vaultPath, file)).equals(Buffer.from(expected.get(file))));
+	const differing = [...new Set([...expected.keys(), ...onDisk])].filter(
+		(file) =>
+			!expected.has(file) ||
+			!onDisk.includes(file) ||
+			!readFileSync(path.join(vaultPath, file)).equals(Buffer.from(expected.get(file))),
+	);
 	if (differing.length) {
-		throw new ScriptError(`the vault "${vaultName}" at ${vaultPath} is not the fixture; these notes differ: ${JSON.stringify(differing.slice(0, 20))}${differing.length > 20 ? ` and ${differing.length - 20} more` : ""}.`);
+		throw new ScriptError(
+			`the vault "${vaultName}" at ${vaultPath} is not the fixture; these notes differ: ${JSON.stringify(differing.slice(0, 20))}${differing.length > 20 ? ` and ${differing.length - 20} more` : ""}.`,
+		);
 	}
 	const base = cli.evaluate(() => app.vault.adapter.getBasePath?.() ?? null);
-	if (base !== vaultPath) throw new ScriptError(`the window for "${vaultName}" shows the vault at ${base}, not ${vaultPath}. Is more than one vault named ${vaultName}?`);
+	if (base !== vaultPath)
+		throw new ScriptError(
+			`the window for "${vaultName}" shows the vault at ${base}, not ${vaultPath}. Is more than one vault named ${vaultName}?`,
+		);
 	return vaultPath;
 }
 
 /** Reads the notes of a folder as `markdownFiles` lists them, as a map from path to content. */
 export function notesOf(dir) {
-	return new Map(markdownFiles(dir).map(file => [file, readFileSync(path.join(dir, file))]));
+	return new Map(markdownFiles(dir).map((file) => [file, readFileSync(path.join(dir, file))]));
 }
 
 /**
@@ -147,7 +183,8 @@ export function notesOf(dir) {
  */
 export function installPlugin(vaultPath, settings) {
 	const mainJs = path.join(packageDir, "dist", "main.js");
-	if (!existsSync(mainJs)) throw new ScriptError(`${path.relative(repoRoot, mainJs)} does not exist. Run \`pnpm build\` first.`);
+	if (!existsSync(mainJs))
+		throw new ScriptError(`${path.relative(repoRoot, mainJs)} does not exist. Run \`pnpm build\` first.`);
 	const obsidianDir = path.join(vaultPath, ".obsidian");
 	const pluginsDir = path.join(obsidianDir, "plugins");
 	const pluginDir = path.join(pluginsDir, manifest.id);
@@ -163,14 +200,17 @@ export function installPlugin(vaultPath, settings) {
 		rmSync(backupDir, { recursive: true, force: true });
 	}
 	if (existsSync(backupDir)) {
-		console.warn(`${path.relative(vaultPath, backupDir)} is left from a run that did not finish; putting the plugin folder back first.`);
+		console.warn(
+			`${path.relative(vaultPath, backupDir)} is left from a run that did not finish; putting the plugin folder back first.`,
+		);
 		restore();
 	}
 	const state = { pluginsDirExisted: existsSync(pluginsDir), pluginDirExisted: existsSync(pluginDir) };
 	mkdirSync(backupDir, { recursive: true });
 	if (state.pluginDirExisted) cpSync(pluginDir, path.join(backupDir, "files"), { recursive: true });
 	writeFileSync(stateFile, JSON.stringify(state));
-	const writeSettings = values => writeFileSync(path.join(pluginDir, "data.json"), JSON.stringify(values, null, "\t"));
+	const writeSettings = (values) =>
+		writeFileSync(path.join(pluginDir, "data.json"), JSON.stringify(values, null, "\t"));
 	try {
 		mkdirSync(pluginDir, { recursive: true });
 		copyFileSync(mainJs, path.join(pluginDir, "main.js"));
@@ -189,7 +229,13 @@ export function installPlugin(vaultPath, settings) {
  * active counter or "Focus on today", whatever the defaults are.
  */
 export function quietSettings(extra = {}) {
-	return { showWhatsNewOnUpdate: false, lastSeenVersion: manifest.version, defaultFilters: "", defaultTodayFocus: false, ...extra };
+	return {
+		showWhatsNewOnUpdate: false,
+		lastSeenVersion: manifest.version,
+		defaultFilters: "",
+		defaultTodayFocus: false,
+		...extra,
+	};
 }
 
 /**
@@ -243,15 +289,22 @@ export async function unloadApp({ pluginId, viewType }) {
 			failures.push(`${what}: ${error?.message ?? error}`);
 		}
 	};
-	await step("unpin today", () => { window.moment.now = saved.momentNow; });
-	await step("restore the language of dates", () => { window.moment.locale(saved.locale); });
-	await step("restore throttling", () => require("@electron/remote").getCurrentWebContents().setBackgroundThrottling(saved.throttling));
+	await step("unpin today", () => {
+		window.moment.now = saved.momentNow;
+	});
+	await step("restore the language of dates", () => {
+		window.moment.locale(saved.locale);
+	});
+	await step("restore throttling", () =>
+		require("@electron/remote").getCurrentWebContents().setBackgroundThrottling(saved.throttling),
+	);
 	await step("wait for unfinished calls", async () => {
 		// This call is one of the jobs that are not done.
 		const start = performance.now();
-		while (Object.values(window.__tcwJobs ?? {}).filter(job => !job.done).length > 1) {
-			if (performance.now() - start > 30_000) throw new Error("code from an earlier call is still running after 30 s");
-			await new Promise(resolve => setTimeout(resolve, 100));
+		while (Object.values(window.__tcwJobs ?? {}).filter((job) => !job.done).length > 1) {
+			if (performance.now() - start > 30_000)
+				throw new Error("code from an earlier call is still running after 30 s");
+			await new Promise((resolve) => setTimeout(resolve, 100));
 		}
 	});
 	await step("close the timeline", () => app.workspace.detachLeavesOfType(viewType));
@@ -304,18 +357,24 @@ export function fixtureWindow(cli, vaultName, plugin) {
 	const undo = (fn, what) => () => {
 		if (!prepared) return;
 		if (cli.evaluate(fn, { pluginId: manifest.id, viewType: TIMELINE_VIEW }) === false) {
-			throw new ScriptError(`the window of ${vaultName} no longer has what it saved before the run (was it reloaded, or closed and reopened?), so ${what} were not put back; check them in Obsidian`);
+			throw new ScriptError(
+				`the window of ${vaultName} no longer has what it saved before the run (was it reloaded, or closed and reopened?), so ${what} were not put back; check them in Obsidian`,
+			);
 		}
 	};
 	return {
 		prepare() {
 			prepared = true;
 			const result = cli.evaluate(prepareApp, { pluginId: manifest.id, today: PINNED_TODAY });
-			if (result.today !== "2026-01-15 Thursday") throw new ScriptError(`pinning today failed: Obsidian says it is ${result.today}.`);
+			if (result.today !== "2026-01-15 Thursday")
+				throw new ScriptError(`pinning today failed: Obsidian says it is ${result.today}.`);
 			return result;
 		},
 		undoSteps: [
-			["unload the plugin", undo(unloadApp, "the clock, the language of dates, the throttling and the loaded plugin")],
+			[
+				"unload the plugin",
+				undo(unloadApp, "the clock, the language of dates, the throttling and the loaded plugin"),
+			],
 			["restore the plugin folder", () => plugin.restore()],
 			["restore the app", undo(restoreApp, `restricted mode, the theme setting and the layout of ${vaultName}`)],
 		],
@@ -345,7 +404,10 @@ export function runAndUndo(work, undoSteps) {
 	}
 	if (problems.length) {
 		const message = `could not put everything back, see what is left: ${problems.join("; ")}`;
-		if (failure) throw new ScriptError(`${failure instanceof ScriptError ? failure.message : failure.stack}\nAlso ${message}`);
+		if (failure)
+			throw new ScriptError(
+				`${failure instanceof ScriptError ? failure.message : failure.stack}\nAlso ${message}`,
+			);
 		throw new ScriptError(message);
 	}
 	if (failure) throw failure;
@@ -363,13 +425,23 @@ export function machineInfo() {
 			// sw_vers is only for a nicer name; the kernel version above identifies the system too.
 		}
 	}
-	return { cpu: cpus[0]?.model ?? "unknown", cores: cpus.length, memoryGB: Math.round(os.totalmem() / 2 ** 30), os: osName, arch: os.arch() };
+	return {
+		cpu: cpus[0]?.model ?? "unknown",
+		cores: cpus.length,
+		memoryGB: Math.round(os.totalmem() / 2 ** 30),
+		os: osName,
+		arch: os.arch(),
+	};
 }
 
 /** What `pnpm build` reads, as git pathspecs. */
 const BUILD_INPUTS = [
-	"apps/obsidian-plugin", ":(exclude)apps/obsidian-plugin/scripts", ":(exclude)apps/obsidian-plugin/tests",
-	"packages", "manifest.json", "pnpm-lock.yaml",
+	"apps/obsidian-plugin",
+	":(exclude)apps/obsidian-plugin/scripts",
+	":(exclude)apps/obsidian-plugin/tests",
+	"packages",
+	"manifest.json",
+	"pnpm-lock.yaml",
 ];
 
 /** The last commit that changed what the build is made from, and whether the checkout changes it further. */

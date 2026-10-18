@@ -1,0 +1,5 @@
+# Commits that only reformat, which `git blame` skips. GitHub reads this file by itself; for git, run once:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# chore: reformat with Prettier and store every text file with LF (#204)
+ec5e54f892e5d8d28783b20037cc5890e4208dfb

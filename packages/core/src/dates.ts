@@ -14,9 +14,9 @@ import { getFileTitle } from "./paths";
  * required: moment() without one reads the clock, and core gets the current time passed in instead.
  */
 export interface MomentFactory {
-    (input: Exclude<MomentInput, null | undefined | void>, format?: string, strict?: boolean): Moment;
-    /** The global locale, which moments created from now on are written in. */
-    locale(): string;
+	(input: Exclude<MomentInput, null | undefined | void>, format?: string, strict?: boolean): Moment;
+	/** The global locale, which moments created from now on are written in. */
+	locale(): string;
 }
 
 /**
@@ -24,16 +24,16 @@ export interface MomentFactory {
  * are not part of it, so calling them is a compile error. `clone()` gives a moment of one's own to change.
  */
 export interface DateValue {
-    format(format?: string): string;
-    valueOf(): number;
-    year(): number;
-    month(): number;
-    date(): number;
-    hours(): number;
-    minutes(): number;
-    isValid(): boolean;
-    clone(): Moment;
-    from(other: Moment): string;
+	format(format?: string): string;
+	valueOf(): number;
+	year(): number;
+	month(): number;
+	date(): number;
+	hours(): number;
+	minutes(): number;
+	isValid(): boolean;
+	clone(): Moment;
+	from(other: Moment): string;
 }
 
 /** A calendar day as "YYYY-MM-DD", always in ASCII digits. */
@@ -50,18 +50,18 @@ const pad = (value: number, length: number) => String(value).padStart(length, "0
  * back from those.
  */
 export function dayKey(date: DateValue): DayKey {
-    const year = date.year();
-    const yearText = year < 0 ? "-" + pad(-year, 4) : pad(year, 4);
-    return `${yearText}-${pad(date.month() + 1, 2)}-${pad(date.date(), 2)}`;
+	const year = date.year();
+	const yearText = year < 0 ? "-" + pad(-year, 4) : pad(year, 4);
+	return `${yearText}-${pad(date.month() + 1, 2)}-${pad(date.date(), 2)}`;
 }
 
 const dayKeyPattern = /^(-?\d{4,})-\d\d-\d\d$/;
 
 /** The year a day key names, read from the key without parsing it. */
 export function yearOfDay(key: DayKey): number {
-    const match = dayKeyPattern.exec(key);
-    if (!match) throw new Error(`"${key}" is not a day key; day keys are written as YYYY-MM-DD`);
-    return Number(match[1]);
+	const match = dayKeyPattern.exec(key);
+	if (!match) throw new Error(`"${key}" is not a day key; day keys are written as YYYY-MM-DD`);
+	return Number(match[1]);
 }
 
 /**
@@ -69,21 +69,21 @@ export function yearOfDay(key: DayKey): number {
  * from the earliest, or from the latest with the newest first option (issue #54).
  */
 export function inDisplayOrder<T extends string | number>(values: Iterable<T>, newestFirst: boolean): T[] {
-    const sorted = [...values].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
-    return newestFirst ? sorted.reverse() : sorted;
+	const sorted = [...values].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+	return newestFirst ? sorted.reverse() : sorted;
 }
 
 /** The start of the day a key names. Labels formatted from it use the locale's own digits again. */
 export function dateOfDay(m: MomentFactory, key: DayKey): Moment {
-    const date = m(key, "YYYY-MM-DD", true);
-    if (!date.isValid()) throw new Error(`"${key}" is not a day key; day keys are written as YYYY-MM-DD`);
-    return date;
+	const date = m(key, "YYYY-MM-DD", true);
+	if (!date.isValid()) throw new Error(`"${key}" is not a day key; day keys are written as YYYY-MM-DD`);
+	return date;
 }
 
 /** A date written in exactly the given format, or undefined if it is not a real day, e.g. 2024-02-31. */
 export function parseStrictDate(m: MomentFactory, text: string, format: string): Moment | undefined {
-    const date = m(text, format, true);
-    return date.isValid() ? date : undefined;
+	const date = m(text, format, true);
+	return date.isValid() ? date : undefined;
 }
 
 /**
@@ -91,8 +91,8 @@ export function parseStrictDate(m: MomentFactory, text: string, format: string):
  * back to the engine's Date parser, which logs moment's deprecation warning.
  */
 export function parseLooseDate(m: MomentFactory, text: string): Moment | undefined {
-    const date = m(text);
-    return date.isValid() ? date : undefined;
+	const date = m(text);
+	return date.isValid() ? date : undefined;
 }
 
 /**
@@ -101,15 +101,15 @@ export function parseLooseDate(m: MomentFactory, text: string): Moment | undefin
  * such notes were never recognised, see issue #95.
  */
 function dailyNoteName(path: string, dailyNoteFormat: string): string {
-    const segments = dailyNoteFormat.split("/").length;
-    if (segments === 1) return getFileTitle(path);
-    return path.replace(/\.md$/i, "").split("/").slice(-segments).join("/");
+	const segments = dailyNoteFormat.split("/").length;
+	if (segments === 1) return getFileTitle(path);
+	return path.replace(/\.md$/i, "").split("/").slice(-segments).join("/");
 }
 
 /** The date of the daily note at a path, or undefined if the path does not match the daily note format. */
 export function parseDailyNoteName(m: MomentFactory, path: string, dailyNoteFormat: string): Moment | undefined {
-    const name = dailyNoteName(path, dailyNoteFormat);
-    return parseStrictDate(m, name, dailyNoteFormat) ?? dailyNoteDateByLookup(m, name, dailyNoteFormat);
+	const name = dailyNoteName(path, dailyNoteFormat);
+	return parseStrictDate(m, name, dailyNoteFormat) ?? dailyNoteDateByLookup(m, name, dailyNoteFormat);
 }
 
 /** Daily note names of one year, keyed by locale, format and year. */
@@ -121,21 +121,21 @@ const dailyNoteNameIndex = new Map<string, Map<string, Moment>>();
  * years mentioned in the name are generated once and looked up.
  */
 function dailyNoteDateByLookup(m: MomentFactory, name: string, dailyNoteFormat: string): Moment | undefined {
-    const years = new Set((name.match(/\d{4}/g) ?? []).map(Number).filter(year => year >= 1900 && year <= 2200));
-    for (const year of years) {
-        const key = `${m.locale()}|${dailyNoteFormat}|${year}`;
-        let index = dailyNoteNameIndex.get(key);
-        if (!index) {
-            index = new Map();
-            for (const day = m({ year, month: 0, date: 1 }); day.year() === year; day.add(1, "day")) {
-                index.set(day.format(dailyNoteFormat), day.clone());
-            }
-            dailyNoteNameIndex.set(key, index);
-        }
-        const date = index.get(name);
-        if (date) return date.clone();
-    }
-    return undefined;
+	const years = new Set((name.match(/\d{4}/g) ?? []).map(Number).filter((year) => year >= 1900 && year <= 2200));
+	for (const year of years) {
+		const key = `${m.locale()}|${dailyNoteFormat}|${year}`;
+		let index = dailyNoteNameIndex.get(key);
+		if (!index) {
+			index = new Map();
+			for (const day = m({ year, month: 0, date: 1 }); day.year() === year; day.add(1, "day")) {
+				index.set(day.format(dailyNoteFormat), day.clone());
+			}
+			dailyNoteNameIndex.set(key, index);
+		}
+		const date = index.get(name);
+		if (date) return date.clone();
+	}
+	return undefined;
 }
 
 /**
@@ -143,10 +143,10 @@ function dailyNoteDateByLookup(m: MomentFactory, name: string, dailyNoteFormat: 
  * "2:00 pm call", in the words and digits of the locale. Text that does not start with one is returned as is.
  */
 export function convert24HourPrefix(m: MomentFactory, text: string): string {
-    if (text.length < 5) return text;
-    const time = m(text.substring(0, 5), "HH:mm", true);
-    if (!time.isValid()) return text;
-    return time.format("h:mm a") + text.substring(5);
+	if (text.length < 5) return text;
+	const time = m(text.substring(0, 5), "HH:mm", true);
+	if (!time.isValid()) return text;
+	return time.format("h:mm a") + text.substring(5);
 }
 
 /**
@@ -155,48 +155,57 @@ export function convert24HourPrefix(m: MomentFactory, text: string): string {
  * Both sides are compared by day. Comparing the exact moments made every date two or more
  * days away read as "in a day" from midday onwards, see issue #108.
  */
-export function relativeDate(date: DateValue, now: DateValue, locale: string, warn: (message: string, error: unknown) => void): string {
-    const day = date.clone().startOf("day");
-    const today = now.clone().startOf("day");
-    const days = day.diff(today, "days");
-    const text = relativeDays(days, locale, warn) ?? day.from(today);
-    // Today, tomorrow and yesterday stand on their own, so they read better capitalized.
-    return Math.abs(days) <= 1 ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+export function relativeDate(
+	date: DateValue,
+	now: DateValue,
+	locale: string,
+	warn: (message: string, error: unknown) => void,
+): string {
+	const day = date.clone().startOf("day");
+	const today = now.clone().startOf("day");
+	const days = day.diff(today, "days");
+	const text = relativeDays(days, locale, warn) ?? day.from(today);
+	// Today, tomorrow and yesterday stand on their own, so they read better capitalized.
+	return Math.abs(days) <= 1 ? text.charAt(0).toUpperCase() + text.slice(1) : text;
 }
 
 /** Uses the platform formatter, which names the nearby days instead of counting them. */
-function relativeDays(days: number, locale: string, warn: (message: string, error: unknown) => void): string | undefined {
-    try {
-        return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(days, "day");
-    } catch (error) {
-        warn(`Tasks Calendar Wrapper: no relative date format for locale ${locale}`, error);
-        return undefined;
-    }
+function relativeDays(
+	days: number,
+	locale: string,
+	warn: (message: string, error: unknown) => void,
+): string | undefined {
+	try {
+		return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(days, "day");
+	} catch (error) {
+		warn(`Tasks Calendar Wrapper: no relative date format for locale ${locale}`, error);
+		return undefined;
+	}
 }
 
 const asMoment = (date: DateValue) => date as unknown as Moment;
 
 /** Whether two dates fall on the same calendar day. */
 export function sameDay(a: DateValue, b: DateValue): boolean {
-    return asMoment(a).isSame(asMoment(b), "day");
+	return asMoment(a).isSame(asMoment(b), "day");
 }
 
 /** Whether a falls on an earlier calendar day than b. */
 export function beforeDay(a: DateValue, b: DateValue): boolean {
-    return asMoment(a).isBefore(asMoment(b), "day");
+	return asMoment(a).isBefore(asMoment(b), "day");
 }
 
 /** Whether two dates fall in the same calendar year. */
 export function sameYear(a: DateValue, b: DateValue): boolean {
-    return asMoment(a).isSame(asMoment(b), "year");
+	return asMoment(a).isSame(asMoment(b), "year");
 }
 
 /** Whether a is a later instant than b. */
 export function afterInstant(a: DateValue, b: DateValue): boolean {
-    return asMoment(a).isAfter(asMoment(b));
+	return asMoment(a).isAfter(asMoment(b));
 }
 
 /** Whether a date falls on a day after `from` and before `to`, both days left out. */
 export function betweenDaysExclusive(date: DateValue, from: DateValue, to: DateValue): boolean {
-    return asMoment(date).isBetween(asMoment(from), asMoment(to), "day");
+	return asMoment(date).isBetween(asMoment(from), asMoment(to), "day");
 }

@@ -127,13 +127,13 @@ Modification to the options will take effect after 5 secs.
 - **Use Builtin Style**: Enable plugin defined icons for tasks status or disable them and use those defined by the theme that you prefer.
 - **Enable Counters and Filters Panel**: Use counters / filters on the quick entry panel or not, the counters / filters will not be displayed if this option not enabled.
 - **Behavior of Counters and Filters Panel**: Control the effect of the counter/filter button, available options are:
-  - Focus: Highlight the corresponding items.
-  - Filter: Hide other items.
+    - Focus: Highlight the corresponding items.
+    - Filter: Hide other items.
 - **Enable Quick Entry Panel**: The quick entry will not be displayed if this option not enabled.
 - **Quick Entry Panel Position**: Set the position you would like the quick entry panel to be displayed. Available options are:
-  - top: on the first date out of all the dates
-  - today: on today's part
-  - bottom: on the last date out of all the dates
+    - top: on the first date out of all the dates
+    - today: on today's part
+    - bottom: on the last date out of all the dates
 - **Tasks Files**: Fileanmes separated by ',' to be displayed in the fileselect of the quick entry panel.
 - **Inbox**: Set a filename to be your 'Inbox', you can quickly append new tasks to it from the quick entry panel.
 - **Section For New Tasks**: Specify under which section the new tasks should be appended.
@@ -145,10 +145,10 @@ Modification to the options will take effect after 5 secs.
 - **Forward Tasks From Past**: If enabled, all unplanned and overdue tasks will be displayed on today's part, and removed form their original dates. If disabled, all overdue tasks will be on their original dates, but all unplanned tasks will disappear.
 - **Today Focus On Load**: Enable the Today Focus Button on load or not.
 - **Activate Filter On Load**: Select a counter/filter button to be enabled on load. Available options are:
-  - No Filters
-  - todo
-  - overdue
-  - unplanned
+    - No Filters
+    - todo
+    - overdue
+    - unplanned
 - **Use Relative Date**: If enabled, the dates will be replaced by description relative to today.
 - **Use Recurrence**: Display the recurrence information of an item or not.
 - **Use Priority**: Display the priority of an item or not.
@@ -158,18 +158,18 @@ Modification to the options will take effect after 5 secs.
 - **Use Section**: Display the section of items or not.
 - **Date Format**: Specify a date format you like the most, the visible dates in this view will be formated as such. Do note the input here should be a valid [moment](https://momentjs.com/docs/#/displaying/format/) format.
 - **Sort By**: Specify how would you like the task items in the same date to be sorted. Available options are:
-  - (I believe all option texts here explain themselves)
+    - (I believe all option texts here explain themselves)
 - **Convert Time Prefix**: If enabled, tasks prefixed with a 24-hour timestamp (i.e. "09:00") will be displayed in the timeline with a 12-hour timestamp instead (i.e. "9:00 am"). This is a purely visual option that does not affect sorting, allowing users to display tasks with a 12-hour time format chronologically.
 - **Use Include Tags**: If enabled, you could specify tags without which the tasks should not be displayed.
-  - **Task Include Filters**: Tasks without any of these tags should not be displayed.
-  - **File Include Tags**: Tasks of the files which have none of these tags should not be displayed.
+    - **Task Include Filters**: Tasks without any of these tags should not be displayed.
+    - **File Include Tags**: Tasks of the files which have none of these tags should not be displayed.
 - **Use Exclude Tags**: If enabled, you could specify tags with which tasks should not be displayed.
-  - **Task Exclude Tags**: Tasks with any of these tags should not be displayed.
-  - **File Exclude Tags**: Tasks of files which have any of these tags should not be displayed.
+    - **Task Exclude Tags**: Tasks with any of these tags should not be displayed.
+    - **File Exclude Tags**: Tasks of files which have any of these tags should not be displayed.
 - **Exclude Paths**: Specify items of which paths should not be counted as tasks. In most of the time your template folder path should be included here.
 - **Exclude Properties**: Tasks of files whose frontmatter property has one of these values should not be displayed. One property per line, values separated by commas, e.g. `status: archived, done`.
-  - Values are compared as trimmed text and are case-sensitive, like the tag filters. A number or boolean matches its text (`priority: 2`, `pinned: true`), and a link matches as written (`project: [[Home]]`).
-  - A list property matches if any of its items does. Empty values never match.
+    - Values are compared as trimmed text and are case-sensitive, like the tag filters. A number or boolean matches its text (`priority: 2`, `pinned: true`), and a link matches as written (`project: [[Home]]`).
+    - A list property matches if any of its items does. Empty values never match.
 - **Include Paths**: Specify items of which paths should be counted as tasks.
 - **Filter Empty**: If enabled, tasks with empty content will not be displayed. If disabled, the raw text of the empty content tasks will be displayed.
 
@@ -199,4 +199,3 @@ pnpm run build      # writes apps/obsidian-plugin/dist/main.js
 # Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=leonezz/obsidian-tasks-calendar-wrapper&type=Date)](https://star-history.com/#leonezz/obsidian-tasks-calendar-wrapper&Date)
-

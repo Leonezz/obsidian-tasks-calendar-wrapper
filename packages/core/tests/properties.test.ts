@@ -8,21 +8,22 @@ import { formatPropertyRules, matchesProperties, parsePropertyRules } from "../s
 const rules = { status: ["archived"], priority: ["2"], project: ["[[Home]]"] };
 
 test("values match as trimmed, case-sensitive text, and a list matches if any item does", () => {
-    assert.equal(matchesProperties({ status: " archived " }, rules), true);
-    assert.equal(matchesProperties({ status: "Archived" }, rules), false);
-    assert.equal(matchesProperties({ priority: 2 }, rules), true);
-    assert.equal(matchesProperties({ project: "[[Home]]" }, rules), true);
-    assert.equal(matchesProperties({ status: ["todo", "archived"] }, rules), true);
+	assert.equal(matchesProperties({ status: " archived " }, rules), true);
+	assert.equal(matchesProperties({ status: "Archived" }, rules), false);
+	assert.equal(matchesProperties({ priority: 2 }, rules), true);
+	assert.equal(matchesProperties({ project: "[[Home]]" }, rules), true);
+	assert.equal(matchesProperties({ status: ["todo", "archived"] }, rules), true);
 });
 
 test("missing, empty and object values never match", () => {
-    assert.equal(matchesProperties(undefined, rules), false);
-    assert.equal(matchesProperties({ status: "" }, rules), false);
-    assert.equal(matchesProperties({ status: { value: "archived" } }, rules), false);
+	assert.equal(matchesProperties(undefined, rules), false);
+	assert.equal(matchesProperties({ status: "" }, rules), false);
+	assert.equal(matchesProperties({ status: { value: "archived" } }, rules), false);
 });
 
 test("the settings text has one property per line with comma separated values", () => {
-    assert.deepEqual(parsePropertyRules("status: archived, done\nno colon\ntype:\nstatus: todo"),
-        { status: ["archived", "done", "todo"] });
-    assert.deepEqual(parsePropertyRules(formatPropertyRules(rules)), rules);
+	assert.deepEqual(parsePropertyRules("status: archived, done\nno colon\ntype:\nstatus: todo"), {
+		status: ["archived", "done", "todo"],
+	});
+	assert.deepEqual(parsePropertyRules(formatPropertyRules(rules)), rules);
 });

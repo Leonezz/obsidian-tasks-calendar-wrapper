@@ -1,20 +1,20 @@
 import type { PriorityLabel } from "@tasks-calendar-wrapper/core";
-import { STask } from '../dataview-util/markdown';
+import { STask } from "../dataview-util/markdown";
 
 // The task syntax and the statuses moved to packages/core; re-exported for the modules that import them from here.
 export {
-    doneDateSymbol,
-    dueDateSymbol,
-    innerDateFormat,
-    recurrenceSymbol,
-    scheduledDateSymbol,
-    startDateSymbol,
-    TaskRegularExpressions,
-    TasksPriorityNameToLabel,
-    TasksPriorityRank,
-    TasksPrioritySymbolToLabel,
-    TaskStatus,
-    TaskStatusMarkerMap,
+	doneDateSymbol,
+	dueDateSymbol,
+	innerDateFormat,
+	recurrenceSymbol,
+	scheduledDateSymbol,
+	startDateSymbol,
+	TaskRegularExpressions,
+	TasksPriorityNameToLabel,
+	TasksPriorityRank,
+	TasksPrioritySymbolToLabel,
+	TaskStatus,
+	TaskStatusMarkerMap,
 } from "@tasks-calendar-wrapper/core";
 export type { PriorityLabel, TasksPrioritySymbol } from "@tasks-calendar-wrapper/core";
 
@@ -27,22 +27,20 @@ export type { PriorityLabel, TasksPrioritySymbol } from "@tasks-calendar-wrapper
  * @class Task
  */
 export interface TaskDataModel extends STask {
-    // 
-    dailyNote: boolean,
-    //
-    order: number,
-    //
-    priority: PriorityLabel,
-    //
-    //happens: Map<string, string>,
-    //
-    recurrence: string,
-    //
-    fontMatter: Record<string, string>,
-    //
-    isTasksTask: boolean,
-    statusMarker: string,
-    dates: Map<string, moment.Moment>;
+	//
+	dailyNote: boolean;
+	//
+	order: number;
+	//
+	priority: PriorityLabel;
+	//
+	//happens: Map<string, string>,
+	//
+	recurrence: string;
+	//
+	fontMatter: Record<string, string>;
+	//
+	isTasksTask: boolean;
+	statusMarker: string;
+	dates: Map<string, moment.Moment>;
 }
-
-

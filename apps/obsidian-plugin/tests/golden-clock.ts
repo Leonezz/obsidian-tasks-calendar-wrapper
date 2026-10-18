@@ -16,11 +16,13 @@ export const GOLDEN_NOW = Date.UTC(2026, 0, 15, 9, 0, 0);
 moment.now = () => GOLDEN_NOW;
 
 if (new Date(GOLDEN_NOW).getTimezoneOffset() !== 0) {
-    throw new Error("the golden tests need the UTC time zone, but setting TZ had no effect");
+	throw new Error("the golden tests need the UTC time zone, but setting TZ had no effect");
 }
 // ICU takes the collation from the locale the process starts with, so it cannot be set from here.
 // scripts/test.mjs starts the tests with LC_ALL=en_US.UTF-8.
 const collation = new Intl.Collator().resolvedOptions().locale;
 if (!collation.startsWith("en")) {
-    throw new Error(`the golden tests sort with English collation, but this process uses "${collation}". Run them with \`pnpm test\`, which sets LC_ALL.`);
+	throw new Error(
+		`the golden tests sort with English collation, but this process uses "${collation}". Run them with \`pnpm test\`, which sets LC_ALL.`,
+	);
 }

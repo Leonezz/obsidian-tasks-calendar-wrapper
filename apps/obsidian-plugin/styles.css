@@ -184,19 +184,19 @@
 }
 
 .taskido .task.overdue .timeline::after,
-.taskido .task[data-task='>'] .timeline::after {
+.taskido .task[data-task=">"] .timeline::after {
 	background-color: var(--taskido-color-overdue);
 }
 
 .taskido .task.done .timeline::after,
-.taskido .task[data-task='x'] .timeline::after {
+.taskido .task[data-task="x"] .timeline::after {
 	background-color: var(--taskido-color-done);
 }
 
 .taskido .task.process .timeline::after,
 .taskido .task.scheduled .timeline::after,
 .taskido .task.start .timeline::after,
-.taskido .task[data-task='<'] .timeline::after {
+.taskido .task[data-task="<"] .timeline::after {
 	background-color: var(--taskido-color-process);
 }
 
@@ -213,7 +213,6 @@
 .taskido .task.start .timeline .icon svg {
 	stroke: var(--taskido-color-process);
 }
-
 
 .taskido .task.done .info .tag,
 .taskido .task.done .info .repeat,
@@ -254,8 +253,8 @@
 	align-items: center;
 }
 
-.taskido .task .timeline input[type='checkbox']:not(.icon) {
-	margin-top: calc(11px - var(--checkbox-size) / 2.0);
+.taskido .task .timeline input[type="checkbox"]:not(.icon) {
+	margin-top: calc(11px - var(--checkbox-size) / 2);
 	margin-left: 0;
 	margin-right: 0;
 }
@@ -413,7 +412,7 @@
 	justify-content: space-between;
 }
 
-.taskido .quickEntryPanel .left .dateFilter input[type=date] {
+.taskido .quickEntryPanel .left .dateFilter input[type="date"] {
 	width: fit-content;
 }
 
@@ -548,7 +547,7 @@
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noPriority .priority,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noFile .task .file,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noHeader .task .header,
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noFile .task .info>.file,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noFile .task .info > .file,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noInfo .task .line:nth-child(2),
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noDone .year[data-types="done"],
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noDone .details[data-types="done"],
@@ -600,11 +599,17 @@
 }
 
 /* Filter */
-.taskido.todoFilter .year:not([data-types~="due"]):not([data-types~="scheduled"]):not([data-types~="process"]):not([data-types~="start"]) {
+.taskido.todoFilter
+	.year:not([data-types~="due"]):not([data-types~="scheduled"]):not([data-types~="process"]):not(
+		[data-types~="start"]
+	) {
 	display: none;
 }
 
-.taskido.todoFilter .details:not([data-types~="due"]):not([data-types~="scheduled"]):not([data-types~="process"]):not([data-types~="start"]) {
+.taskido.todoFilter
+	.details:not([data-types~="due"]):not([data-types~="scheduled"]):not([data-types~="process"]):not(
+		[data-types~="start"]
+	) {
 	display: none;
 }
 

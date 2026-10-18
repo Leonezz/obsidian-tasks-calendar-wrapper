@@ -25,7 +25,20 @@ const FIRST_DAY = Date.UTC(2024, 8, 1);
 const DAYS = 943;
 const DAY_MS = 86_400_000;
 
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS = [
+	"January",
+	"February",
+	"March",
+	"April",
+	"May",
+	"June",
+	"July",
+	"August",
+	"September",
+	"October",
+	"November",
+	"December",
+];
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const AREAS = ["Work", "Home", "Health", "Finance", "Garden", "Travel", "Reading", "Music", "Learning", "Errands"];
 const TAGS = ["#work", "#home", "#urgent", "#later", "#idea", "#errand", "#call", "#writing"];
@@ -49,28 +62,39 @@ function random(seed) {
 }
 
 const pad = (n, width = 2) => String(n).padStart(width, "0");
-const isoDay = ms => {
+const isoDay = (ms) => {
 	const d = new Date(ms);
 	return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 };
 /** The plugin's default daily note format, "YYYY, MMMM DD - dddd". */
-const dailyTitle = ms => {
+const dailyTitle = (ms) => {
 	const d = new Date(ms);
 	return `${d.getUTCFullYear()}, ${MONTHS[d.getUTCMonth()]} ${pad(d.getUTCDate())} - ${WEEKDAYS[d.getUTCDay()]}`;
 };
 
 function projectTasks(id, kind, day, pick) {
-	const d = offset => isoDay(day + offset * DAY_MS);
+	const d = (offset) => isoDay(day + offset * DAY_MS);
 	const tag = pick(TAGS);
 	switch (kind) {
-		case 0: return [`- [ ] Task ${id} a 📅 ${d(0)}`, `- [ ] Task ${id} b ⏳ ${d(-2)} 📅 ${d(3)} ${tag}`];
-		case 1: return [`- [ ] Task ${id} a [due:: ${d(0)}]`, `- [ ] Task ${id} b [scheduled:: ${d(2)}] [start:: ${d(-1)}]`];
-		case 2: return [`- [ ] Task ${id} a 🛫 ${d(-3)} 📅 ${d(0)}`, `    - [ ] Task ${id} b ⏳ ${d(1)} ${tag}`];
-		case 3: return [`- [x] Task ${id} a 📅 ${d(0)} ✅ ${d(0)}`, `- [-] Task ${id} b 📅 ${d(4)}`];
-		case 4: return [`- [ ] Task ${id} a ⏫ 🔁 every week 📅 ${d(0)}`, `- [ ] Task ${id} b 🔽 ➕ ${d(-7)} ⏳ ${d(2)}`];
-		case 5: return [`- [ ] Task ${id} a ${tag}`, `- [ ] Task ${id} b 🔼 #someday`];
-		case 6: return [`- [ ] 09:30 Task ${id} a 📅 ${d(0)}`, `- [x] Task ${id} b [completion:: ${d(1)}] [due:: ${d(1)}]`];
-		default: return [`- [ ] Task ${id} a 📅 ${d(0)} [scheduled:: ${d(-1)}]`, `\t- [ ] Task ${id} b 📅 ${d(5)} ${tag}`];
+		case 0:
+			return [`- [ ] Task ${id} a 📅 ${d(0)}`, `- [ ] Task ${id} b ⏳ ${d(-2)} 📅 ${d(3)} ${tag}`];
+		case 1:
+			return [
+				`- [ ] Task ${id} a [due:: ${d(0)}]`,
+				`- [ ] Task ${id} b [scheduled:: ${d(2)}] [start:: ${d(-1)}]`,
+			];
+		case 2:
+			return [`- [ ] Task ${id} a 🛫 ${d(-3)} 📅 ${d(0)}`, `    - [ ] Task ${id} b ⏳ ${d(1)} ${tag}`];
+		case 3:
+			return [`- [x] Task ${id} a 📅 ${d(0)} ✅ ${d(0)}`, `- [-] Task ${id} b 📅 ${d(4)}`];
+		case 4:
+			return [`- [ ] Task ${id} a ⏫ 🔁 every week 📅 ${d(0)}`, `- [ ] Task ${id} b 🔽 ➕ ${d(-7)} ⏳ ${d(2)}`];
+		case 5:
+			return [`- [ ] Task ${id} a ${tag}`, `- [ ] Task ${id} b 🔼 #someday`];
+		case 6:
+			return [`- [ ] 09:30 Task ${id} a 📅 ${d(0)}`, `- [x] Task ${id} b [completion:: ${d(1)}] [due:: ${d(1)}]`];
+		default:
+			return [`- [ ] Task ${id} a 📅 ${d(0)} [scheduled:: ${d(-1)}]`, `\t- [ ] Task ${id} b 📅 ${d(5)} ${tag}`];
 	}
 }
 
@@ -90,7 +114,7 @@ function projectNote(i, pick, day) {
 		"## Log",
 		"",
 		`- met about ${pick(TAGS).slice(1)}`,
-		`- wrote ${(i * 37) % 900 + 100} words`,
+		`- wrote ${((i * 37) % 900) + 100} words`,
 		"",
 	];
 	return { path: `Projects/${area}/Project ${id}.md`, lines };
@@ -136,19 +160,26 @@ function plainNote(k) {
 export function benchVaultNotes() {
 	const pick = (() => {
 		const next = random(4000);
-		return list => list[Math.floor(next() * list.length)];
+		return (list) => list[Math.floor(next() * list.length)];
 	})();
 	const days = random(943);
 	const notes = [];
-	for (let j = 0; j < DAILY_NOTES; j++) notes.push(dailyNote(j + 1, FIRST_DAY + Math.floor(j * DAYS / DAILY_NOTES) * DAY_MS));
-	for (let i = 1; i <= PROJECT_NOTES; i++) notes.push(projectNote(i, pick, FIRST_DAY + Math.floor(days() * DAYS) * DAY_MS));
+	for (let j = 0; j < DAILY_NOTES; j++)
+		notes.push(dailyNote(j + 1, FIRST_DAY + Math.floor((j * DAYS) / DAILY_NOTES) * DAY_MS));
+	for (let i = 1; i <= PROJECT_NOTES; i++)
+		notes.push(projectNote(i, pick, FIRST_DAY + Math.floor(days() * DAYS) * DAY_MS));
 	for (let k = 1; k <= PLAIN_NOTES; k++) notes.push(plainNote(k));
 	// Every seventh note uses Windows line endings, like fixtures/golden-vault/CRLF note.md.
 	const files = new Map(notes.map((note, n) => [note.path, note.lines.join(n % 7 === 3 ? "\r\n" : "\n")]));
 
-	const tasks = [...files.values()].reduce((sum, text) => sum + (text.match(/^\s*([-*+]|\d+[.)]) \[.\]/gm)?.length ?? 0), 0);
+	const tasks = [...files.values()].reduce(
+		(sum, text) => sum + (text.match(/^\s*([-*+]|\d+[.)]) \[.\]/gm)?.length ?? 0),
+		0,
+	);
 	if (files.size !== DAILY_NOTES + PROJECT_NOTES + PLAIN_NOTES || tasks !== EXPECTED_TASKS) {
-		throw new Error(`bench-vault: generated ${files.size} notes with ${tasks} tasks; expected ${DAILY_NOTES + PROJECT_NOTES + PLAIN_NOTES} notes with ${EXPECTED_TASKS}.`);
+		throw new Error(
+			`bench-vault: generated ${files.size} notes with ${tasks} tasks; expected ${DAILY_NOTES + PROJECT_NOTES + PLAIN_NOTES} notes with ${EXPECTED_TASKS}.`,
+		);
 	}
 	for (const target of Object.values(BENCH_TARGETS)) {
 		if (!files.has(target)) throw new Error(`bench-vault: the benchmark's note ${target} is not generated.`);
@@ -174,23 +205,30 @@ function writeVault(target) {
 	// pnpm runs the script in the package folder; a relative folder means one relative to where pnpm was started.
 	const dir = path.resolve(process.env.INIT_CWD ?? process.cwd(), target);
 	if (path.basename(dir) !== BENCH_VAULT_NAME) {
-		throw new Error(`the folder must be named ${BENCH_VAULT_NAME}, which is the vault name pnpm bench looks for; got ${dir}.`);
+		throw new Error(
+			`the folder must be named ${BENCH_VAULT_NAME}, which is the vault name pnpm bench looks for; got ${dir}.`,
+		);
 	}
 	// Only the benchmark vault itself may have a .obsidian folder, once it was made here and opened in Obsidian.
 	const ours = existsSync(path.join(dir, MARKER)) ? realpathSync(dir) : null;
-	const vault = vaultsAround(dir).find(found => found !== ours);
+	const vault = vaultsAround(dir).find((found) => found !== ours);
 	if (vault) {
 		const where = existsSync(dir) && realpathSync(dir) === vault ? "is" : "is inside";
-		throw new Error(`${dir} ${where} the Obsidian vault at ${vault}, which this script did not make. Pick a folder outside every vault.`);
+		throw new Error(
+			`${dir} ${where} the Obsidian vault at ${vault}, which this script did not make. Pick a folder outside every vault.`,
+		);
 	}
 	const notes = benchVaultNotes();
 	if (existsSync(dir)) {
-		const entries = readdirSync(dir).filter(name => name !== ".obsidian" && name !== ".DS_Store");
+		const entries = readdirSync(dir).filter((name) => name !== ".obsidian" && name !== ".DS_Store");
 		if (entries.length > 0 && !existsSync(path.join(dir, MARKER))) {
 			throw new Error(`${dir} is not empty and was not made by this script. Pick an empty folder.`);
 		}
-		const extra = markdownFiles(dir).filter(file => !notes.has(file));
-		if (extra.length > 0) throw new Error(`${dir} has notes the benchmark vault does not have; remove them first: ${JSON.stringify(extra.slice(0, 10))}`);
+		const extra = markdownFiles(dir).filter((file) => !notes.has(file));
+		if (extra.length > 0)
+			throw new Error(
+				`${dir} has notes the benchmark vault does not have; remove them first: ${JSON.stringify(extra.slice(0, 10))}`,
+			);
 	}
 	mkdirSync(dir, { recursive: true });
 	writeFileSync(path.join(dir, MARKER), "Made by apps/obsidian-plugin/scripts/bench-vault.mjs.\n");
@@ -213,7 +251,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
 	}
 	try {
 		const { dir, notes, written } = writeVault(target);
-		console.log(`bench-vault: ${dir} has the ${notes} notes of the benchmark vault (${written} written). Open it in Obsidian once with "Open folder as vault".`);
+		console.log(
+			`bench-vault: ${dir} has the ${notes} notes of the benchmark vault (${written} written). Open it in Obsidian once with "Open folder as vault".`,
+		);
 	} catch (error) {
 		console.error(`bench-vault: ${error.message}`);
 		process.exit(1);
