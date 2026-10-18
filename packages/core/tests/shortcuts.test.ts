@@ -25,15 +25,21 @@ const dateWords: [word: string, day: string][] = [
 	["yesterday", "2026-10-14"],
 	["in 3 days", "2026-10-18"],
 	["in 1 day", "2026-10-16"],
+	["in 10 days", "2026-10-25"],
+	["in 100 days", "2027-01-23"],
 	["in 2 weeks", "2026-10-29"],
 	["in 1 week", "2026-10-22"],
 	["in 1 month", "2026-11-15"],
 	["in 1 year", "2027-10-15"],
 	["in 2 years", "2028-10-15"],
+	// The days after today in this week are this week's; the day itself and the ones before it are next week's.
+	["friday", "2026-10-16"],
 	["saturday", "2026-10-17"],
-	// The day of the week itself, or one before it, is next week's.
+	["sunday", "2026-10-18"],
 	["thursday", "2026-10-22"],
 	["monday", "2026-10-19"],
+	["tuesday", "2026-10-20"],
+	["wednesday", "2026-10-21"],
 ];
 
 /**
@@ -78,13 +84,40 @@ test("the symbol words become task symbols", () => {
 	assert.equal(expandShortcuts("call recurring ", today()), "call 🔁 ");
 });
 
+const words = [
+	"due",
+	"start",
+	"scheduled",
+	"done",
+	"repeat",
+	"recurring",
+	"today",
+	"tomorrow",
+	"yesterday",
+	"in 3 days",
+];
+const weekdays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
 test("a word is only replaced once a space follows it", () => {
-	assert.equal(expandShortcuts("call 📅 tomorrow", today()), "call 📅 tomorrow");
-	assert.equal(expandShortcuts("call 📅 in 3 days", today()), "call 📅 in 3 days");
+	for (const word of [...words, ...weekdays]) {
+		assert.equal(expandShortcuts(`call ${word}`, today()), `call ${word}`, word);
+	}
 });
 
 test("when several words match at once only the last rule's replacement is kept", () => {
-	assert.equal(expandShortcuts("call due tomorrow ", today()), "call due 2026-10-16 ");
+	const pairs: [typed: string, expanded: string][] = [
+		["call due tomorrow ", "call due 2026-10-16 "],
+		["due start ", "due 🛫 "],
+		["scheduled done ", "scheduled ✅ "],
+		["repeat recurring ", "repeat 🔁 "],
+		["today tomorrow ", "today 2026-10-16 "],
+		["tomorrow yesterday ", "tomorrow 2026-10-14 "],
+		["due today ", "due 2026-10-15 "],
+		["today in 3 days ", "today 2026-10-18 "],
+		["in 3 days monday ", "in 3 days 2026-10-19 "],
+		["due monday ", "due 2026-10-19 "],
+	];
+	for (const [typed, expanded] of pairs) assert.equal(expandShortcuts(typed, today()), expanded, typed);
 });
 
 test("text with nothing to replace is returned as it is", () => {
@@ -99,6 +132,39 @@ test("the counted words are matched as written: months, capitals and four-digit 
 		assert.equal(expandShortcuts(text, today()), text);
 	}
 	assert.equal(expandShortcuts("call 📅 in-3-days ", today()), "call 📅 2026-10-18 ");
+});
+
+test("a word is replaced where it first appears, even inside another word", () => {
+	const typed: [typed: string, expanded: string][] = [
+		["pay overdue bill due ", "pay over📅 bill due "],
+		["restart server start ", "re🛫 server start "],
+		["abandoned project done ", "aban✅d project done "],
+		["todays today ", "2026-10-15s today "],
+		["call mondays monday ", "call 2026-10-19s monday "],
+		["everymonday ", "every2026-10-19 "],
+		["call within 3 days ", "call with2026-10-18 "],
+	];
+	for (const [text, expanded] of typed) assert.equal(expandShortcuts(text, today()), expanded, text);
+});
+
+test("a count needs one character on each side of it, and anything may follow its unit's space", () => {
+	for (const text of ["call 📅 in  3 days ", "call 📅 in3 days "]) assert.equal(expandShortcuts(text, today()), text);
+	assert.equal(expandShortcuts("call 📅 in 3 days #x", today()), "call 📅 2026-10-18 #x");
+	assert.equal(expandShortcuts("call 📅 monday #x", today()), "call 📅 2026-10-19 #x");
+});
+
+test("the dates are the days of today's own time zone, also late in the evening", () => {
+	// A Monday. Core's runner runs this file in a zone ahead of UTC and one behind it too.
+	const late = moment("2026-10-12 23:30", "YYYY-MM-DD HH:mm", true);
+	assert.equal(expandShortcuts("call 📅 tomorrow ", late), "call 📅 2026-10-13 ");
+	assert.equal(expandShortcuts("call 📅 friday ", late), "call 📅 2026-10-16 ");
+	assert.equal(expandShortcuts("call 📅 monday ", late), "call 📅 2026-10-19 ");
+	assert.equal(expandShortcuts("call 📅 in 1 year ", late), "call 📅 2027-10-12 ");
+	// Just after midnight on a Monday, and just before it on a Sunday, the UTC day is in another week in some zones.
+	const mondayMorning = moment("2026-10-12 00:30", "YYYY-MM-DD HH:mm", true);
+	assert.equal(expandShortcuts("call 📅 friday ", mondayMorning), "call 📅 2026-10-16 ");
+	const sundayNight = moment("2026-10-18 23:30", "YYYY-MM-DD HH:mm", true);
+	assert.equal(expandShortcuts("call 📅 monday ", sundayNight), "call 📅 2026-10-19 ");
 });
 
 test("a weekday on a Sunday is in the week after it", () => {

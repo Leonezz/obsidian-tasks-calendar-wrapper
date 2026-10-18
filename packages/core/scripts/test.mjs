@@ -80,8 +80,9 @@ try {
 			env: { ...env, TZ: timeZone },
 			cwd: root,
 		}).status ?? 1;
-	// Relative dates are worked out by day, which only a zone ahead of UTC and one behind it test, see #108.
-	const byDay = bundles.filter((file) => /[/\\](dates|row)\.test\.js$/.test(file));
+	// Relative dates and the quick entry's dates are worked out by day, which only a zone ahead of UTC and one behind it
+	// test, see #108.
+	const byDay = bundles.filter((file) => /[/\\](dates|row|shortcuts)\.test\.js$/.test(file));
 	process.exitCode = run(bundles, "UTC") || run(byDay, "Asia/Shanghai") || run(byDay, "America/New_York");
 } finally {
 	rmSync(outdir, { recursive: true, force: true });
