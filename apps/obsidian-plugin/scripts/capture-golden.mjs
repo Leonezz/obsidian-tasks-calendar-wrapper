@@ -34,21 +34,25 @@ function cliPath() {
 /** Runs one CLI command against the fixture vault only. */
 function cli(...args) {
 	const result = spawnSync(cliPath(), [`vault=${VAULT_NAME}`, ...args], { encoding: "utf8", timeout: 60_000 });
-	if (result.error) fail(`could not run the Obsidian CLI (${cliPath()}): ${result.error.message}. Set OBSIDIAN_CLI to its path.`);
-	if (result.status !== 0) fail(`the Obsidian CLI failed for "${args[0]}": ${(result.stderr || result.stdout).trim()}`);
+	if (result.error)
+		fail(`could not run the Obsidian CLI (${cliPath()}): ${result.error.message}. Set OBSIDIAN_CLI to its path.`);
+	if (result.status !== 0)
+		fail(`the Obsidian CLI failed for "${args[0]}": ${(result.stderr || result.stdout).trim()}`);
 	return result.stdout.trim();
 }
 
-const sha256 = file => createHash("sha256").update(readFileSync(file)).digest("hex");
+const sha256 = (file) => createHash("sha256").update(readFileSync(file)).digest("hex");
 
 function markdownFiles(dir, prefix = "") {
-	return readdirSync(dir).sort().flatMap(name => {
-		if (name.startsWith(".")) return [];
-		const full = path.join(dir, name);
-		const relative = prefix ? `${prefix}/${name}` : name;
-		if (statSync(full).isDirectory()) return markdownFiles(full, relative);
-		return name.endsWith(".md") ? [relative] : [];
-	});
+	return readdirSync(dir)
+		.sort()
+		.flatMap((name) => {
+			if (name.startsWith(".")) return [];
+			const full = path.join(dir, name);
+			const relative = prefix ? `${prefix}/${name}` : name;
+			if (statSync(full).isDirectory()) return markdownFiles(full, relative);
+			return name.endsWith(".md") ? [relative] : [];
+		});
 }
 
 if (!existsSync(vaultDir)) fail(`the fixture vault ${vaultDir} does not exist.`);
@@ -57,14 +61,21 @@ if (!existsSync(vaultDir)) fail(`the fixture vault ${vaultDir} does not exist.`)
 const expected = markdownFiles(vaultDir);
 const openVaultPath = cli("vault", "info=path");
 if (!openVaultPath || !existsSync(openVaultPath)) {
-	fail(`Obsidian has no vault "${VAULT_NAME}". Open ${vaultDir}, or a copy of it in a folder named ${VAULT_NAME}, with "Open folder as vault", then run this again.`);
+	fail(
+		`Obsidian has no vault "${VAULT_NAME}". Open ${vaultDir}, or a copy of it in a folder named ${VAULT_NAME}, with "Open folder as vault", then run this again.`,
+	);
 }
 const onDisk = markdownFiles(openVaultPath);
-const differing = [...new Set([...expected, ...onDisk])].filter(file =>
-	!expected.includes(file) || !onDisk.includes(file) ||
-	!readFileSync(path.join(vaultDir, file)).equals(readFileSync(path.join(openVaultPath, file))));
+const differing = [...new Set([...expected, ...onDisk])].filter(
+	(file) =>
+		!expected.includes(file) ||
+		!onDisk.includes(file) ||
+		!readFileSync(path.join(vaultDir, file)).equals(readFileSync(path.join(openVaultPath, file))),
+);
 if (differing.length) {
-	fail(`the vault "${VAULT_NAME}" at ${openVaultPath} is not a copy of fixtures/${VAULT_NAME}; these notes differ: ${JSON.stringify(differing)}.`);
+	fail(
+		`the vault "${VAULT_NAME}" at ${openVaultPath} is not a copy of fixtures/${VAULT_NAME}; these notes differ: ${JSON.stringify(differing)}.`,
+	);
 }
 
 // Metadata parsing changes between Obsidian versions, so the capture records which one produced it,
@@ -95,31 +106,44 @@ try {
 }
 
 const got = Object.keys(captured.files).sort();
-const missing = expected.filter(file => !got.includes(file));
-const extra = got.filter(file => !expected.includes(file));
+const missing = expected.filter((file) => !got.includes(file));
+const extra = got.filter((file) => !expected.includes(file));
 if (missing.length || extra.length) {
-	fail(`the vault's notes differ from fixtures/${VAULT_NAME}: missing ${JSON.stringify(missing)}, extra ${JSON.stringify(extra)}.`);
+	fail(
+		`the vault's notes differ from fixtures/${VAULT_NAME}: missing ${JSON.stringify(missing)}, extra ${JSON.stringify(extra)}.`,
+	);
 }
-const unindexed = got.filter(file => !captured.files[file]);
-if (unindexed.length) fail(`Obsidian has not indexed ${JSON.stringify(unindexed)} yet. Wait a moment and run this again.`);
+const unindexed = got.filter((file) => !captured.files[file]);
+if (unindexed.length)
+	fail(`Obsidian has not indexed ${JSON.stringify(unindexed)} yet. Wait a moment and run this again.`);
 
 if (!captured.base || realpathSync(captured.base) !== realpathSync(openVaultPath)) {
-	fail(`the metadata came from the vault at ${captured.base}, not ${openVaultPath}. Is more than one vault named ${VAULT_NAME}?`);
+	fail(
+		`the metadata came from the vault at ${captured.base}, not ${openVaultPath}. Is more than one vault named ${VAULT_NAME}?`,
+	);
 }
-const notes = Object.fromEntries(expected.map(file => [file, sha256(path.join(vaultDir, file))]));
-if (got.some(file => captured.hashes[file] === null)) {
-	fail("this Obsidian version does not expose the content hashes the capture checks (metadataCache.fileCache). Update capture-golden.mjs.");
+const notes = Object.fromEntries(expected.map((file) => [file, sha256(path.join(vaultDir, file))]));
+if (got.some((file) => captured.hashes[file] === null)) {
+	fail(
+		"this Obsidian version does not expose the content hashes the capture checks (metadataCache.fileCache). Update capture-golden.mjs.",
+	);
 }
-const outdated = got.filter(file => captured.hashes[file] !== notes[file]);
+const outdated = got.filter((file) => captured.hashes[file] !== notes[file]);
 if (outdated.length) {
-	fail(`Obsidian's metadata for ${JSON.stringify(outdated)} was computed from other content than the fixture notes. Wait until Obsidian has re-indexed them, then run this again.`);
+	fail(
+		`Obsidian's metadata for ${JSON.stringify(outdated)} was computed from other content than the fixture notes. Wait until Obsidian has re-indexed them, then run this again.`,
+	);
 }
 
 /** Sorts object keys so the file only changes when the metadata does. */
 function sorted(value) {
 	if (Array.isArray(value)) return value.map(sorted);
 	if (value && typeof value === "object") {
-		return Object.fromEntries(Object.keys(value).sort().map(key => [key, sorted(value[key])]));
+		return Object.fromEntries(
+			Object.keys(value)
+				.sort()
+				.map((key) => [key, sorted(value[key])]),
+		);
 	}
 	return value;
 }
@@ -129,7 +153,9 @@ const output = {
 	obsidianVersion,
 	// The golden tests check these against the fixture notes, so they fail when the metadata is out of date.
 	notes,
-	files: sorted(Object.fromEntries(got.map(file => [file, captured.files[file]]))),
+	files: sorted(Object.fromEntries(got.map((file) => [file, captured.files[file]]))),
 };
 writeFileSync(outputFile, JSON.stringify(output, null, "\t") + "\n");
-console.log(`capture-golden: wrote metadata for ${got.length} notes from Obsidian ${obsidianVersion} to ${path.relative(repoRoot, outputFile)}`);
+console.log(
+	`capture-golden: wrote metadata for ${got.length} notes from Obsidian ${obsidianVersion} to ${path.relative(repoRoot, outputFile)}`,
+);

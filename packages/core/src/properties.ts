@@ -10,22 +10,25 @@ export type PropertyRules = Record<string, string[]>;
  * matches as written ("[[Note]]"), and a list property matches if any of its items does.
  * Empty values and nested objects never match.
  */
-export function matchesProperties(frontmatter: Record<string, unknown> | null | undefined, rules: PropertyRules): boolean {
-    if (!frontmatter) return false;
-    return Object.entries(rules).some(([property, values]) => {
-        const value = frontmatter[property];
-        const items = Array.isArray(value) ? value : [value];
-        return items.some(item => {
-            const text = asText(item);
-            return text !== undefined && values.includes(text);
-        });
-    });
+export function matchesProperties(
+	frontmatter: Record<string, unknown> | null | undefined,
+	rules: PropertyRules,
+): boolean {
+	if (!frontmatter) return false;
+	return Object.entries(rules).some(([property, values]) => {
+		const value = frontmatter[property];
+		const items = Array.isArray(value) ? value : [value];
+		return items.some((item) => {
+			const text = asText(item);
+			return text !== undefined && values.includes(text);
+		});
+	});
 }
 
 function asText(value: unknown): string | undefined {
-    if (typeof value === "string") return value.trim() || undefined;
-    if (typeof value === "number" || typeof value === "boolean") return String(value);
-    return undefined;
+	if (typeof value === "string") return value.trim() || undefined;
+	if (typeof value === "number" || typeof value === "boolean") return String(value);
+	return undefined;
 }
 
 /**
@@ -34,19 +37,25 @@ function asText(value: unknown): string | undefined {
  * on several lines gets the values of all of them.
  */
 export function parsePropertyRules(text: string): PropertyRules {
-    const rules: PropertyRules = {};
-    for (const line of text.split("\n")) {
-        const colon = line.indexOf(":");
-        if (colon < 0) continue;
-        const property = line.slice(0, colon).trim();
-        const values = line.slice(colon + 1).split(",").map(v => v.trim()).filter(v => v.length > 0);
-        if (!property || values.length === 0) continue;
-        rules[property] = [...new Set([...(rules[property] ?? []), ...values])];
-    }
-    return rules;
+	const rules: PropertyRules = {};
+	for (const line of text.split("\n")) {
+		const colon = line.indexOf(":");
+		if (colon < 0) continue;
+		const property = line.slice(0, colon).trim();
+		const values = line
+			.slice(colon + 1)
+			.split(",")
+			.map((v) => v.trim())
+			.filter((v) => v.length > 0);
+		if (!property || values.length === 0) continue;
+		rules[property] = [...new Set([...(rules[property] ?? []), ...values])];
+	}
+	return rules;
 }
 
 /** The settings text for the rules, the reverse of parsePropertyRules. */
 export function formatPropertyRules(rules: PropertyRules): string {
-    return Object.entries(rules).map(([property, values]) => `${property}: ${values.join(", ")}`).join("\n");
+	return Object.entries(rules)
+		.map(([property, values]) => `${property}: ${values.join(", ")}`)
+		.join("\n");
 }

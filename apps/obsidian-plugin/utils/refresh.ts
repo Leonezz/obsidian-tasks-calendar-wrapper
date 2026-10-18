@@ -9,10 +9,10 @@ import type { CachedMetadata } from "obsidian";
  * @param filesWithTasks The paths that had tasks at the last reload.
  */
 export function changeAffectsTasks(
-    paths: string[],
-    cache: CachedMetadata | null | undefined,
-    filesWithTasks: ReadonlySet<string>,
+	paths: string[],
+	cache: CachedMetadata | null | undefined,
+	filesWithTasks: ReadonlySet<string>,
 ): boolean {
-    if (paths.some(path => filesWithTasks.has(path))) return true;
-    return cache?.listItems?.some(item => item.task !== undefined) ?? false;
+	if (paths.some((path) => filesWithTasks.has(path))) return true;
+	return cache?.listItems?.some((item) => item.task !== undefined) ?? false;
 }

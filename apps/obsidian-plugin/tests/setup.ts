@@ -5,17 +5,19 @@
 import moment from "moment";
 
 declare global {
-    interface Array<T> {
-        contains(target: T): boolean;
-    }
+	interface Array<T> {
+		contains(target: T): boolean;
+	}
 }
 
 const globalScope = globalThis as unknown as { window?: { moment: typeof moment } };
 globalScope.window = { ...(globalScope.window ?? {}), moment };
 
 if (!Array.prototype.contains) {
-    Object.defineProperty(Array.prototype, "contains", {
-        value: function <T>(this: T[], target: T) { return this.includes(target); },
-        configurable: true,
-    });
+	Object.defineProperty(Array.prototype, "contains", {
+		value: function <T>(this: T[], target: T) {
+			return this.includes(target);
+		},
+		configurable: true,
+	});
 }

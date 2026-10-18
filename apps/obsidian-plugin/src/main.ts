@@ -1,54 +1,50 @@
-import { Notice, Plugin } from 'obsidian';
+import { Notice, Plugin } from "obsidian";
 
-import { TasksTimelineView, TIMELINE_VIEW } from './views';
+import { TasksTimelineView, TIMELINE_VIEW } from "./views";
 
-import { mergeOptions } from '../utils/options';
-import { migrateSortOption } from '../utils/sort';
-import { notesSince, shouldShowWhatsNew } from '@tasks-calendar-wrapper/core';
-import { RELEASE_NOTES, SUPPORT_LINKS } from '../utils/whatsnew';
-import { WhatsNewModal } from './whatsnew-modal';
-import { defaultUserOptions, TasksCalendarSettingTab, UserOption } from './settings';
-
+import { mergeOptions } from "../utils/options";
+import { migrateSortOption } from "../utils/sort";
+import { notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
+import { RELEASE_NOTES, SUPPORT_LINKS } from "../utils/whatsnew";
+import { WhatsNewModal } from "./whatsnew-modal";
+import { defaultUserOptions, TasksCalendarSettingTab, UserOption } from "./settings";
 
 export default class TasksCalendarWrapper extends Plugin {
 	userOptions: UserOption = {} as UserOption;
 	private userOptionsReloading = false;
 	async onload() {
 		await this.loadOptions();
-		this.registerView(
-			TIMELINE_VIEW,
-			(leaf) => {
-				const view = new TasksTimelineView(leaf);
-				view.onUpdateOptions({ ...this.userOptions });
-				return view;
-			}
-		);
-        if (this.userOptions.openViewOnStartup)
-			this.app.workspace.onLayoutReady(
-				() => { this.activateView(TIMELINE_VIEW).catch(reportError); }
-			);
+		this.registerView(TIMELINE_VIEW, (leaf) => {
+			const view = new TasksTimelineView(leaf);
+			view.onUpdateOptions({ ...this.userOptions });
+			return view;
+		});
+		if (this.userOptions.openViewOnStartup)
+			this.app.workspace.onLayoutReady(() => {
+				this.activateView(TIMELINE_VIEW).catch(reportError);
+			});
 
 		this.addCommand({
-			id: 'open-tasks-timeline-view',
-			name: 'Open Tasks Timeline View',
+			id: "open-tasks-timeline-view",
+			name: "Open Tasks Timeline View",
 			callback: () => {
 				this.activateView(TIMELINE_VIEW).catch(reportError);
-			}
+			},
 		});
 
 		this.addCommand({
-			id: 'show-whats-new',
+			id: "show-whats-new",
 			name: "Show what's new",
 			callback: () => {
 				new WhatsNewModal(this.app, notesSince(RELEASE_NOTES, "", this.manifest.version), SUPPORT_LINKS).open();
-			}
+			},
 		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new TasksCalendarSettingTab(this.app, this));
 
 		this.app.workspace.onLayoutReady(() => {
-			this.showWhatsNewAfterUpdate().catch(error => {
+			this.showWhatsNewAfterUpdate().catch((error) => {
 				console.error("Tasks Calendar Wrapper: showing what's new failed", error);
 			});
 		});
@@ -73,7 +69,7 @@ export default class TasksCalendarWrapper extends Plugin {
 		if (!this.userOptionsReloading) {
 			this.userOptionsReloading = true;
 			window.setTimeout(() => {
-				this.app.workspace.getLeavesOfType(TIMELINE_VIEW).forEach(leaf => {
+				this.app.workspace.getLeavesOfType(TIMELINE_VIEW).forEach((leaf) => {
 					if (leaf.view instanceof TasksTimelineView) {
 						leaf.view.onUpdateOptions({ ...this.userOptions });
 					}
@@ -98,9 +94,7 @@ export default class TasksCalendarWrapper extends Plugin {
 		await this.loadOptions();
 	}
 
-	async writeOptions(
-		changedOpts: Partial<UserOption>
-	): Promise<void> {
+	async writeOptions(changedOpts: Partial<UserOption>): Promise<void> {
 		this.updateOptions(changedOpts);
 		await this.saveData(Object.assign({}, this.userOptions));
 	}
@@ -110,7 +104,7 @@ export default class TasksCalendarWrapper extends Plugin {
 			return;
 		}
 
-        const leaves = this.app.workspace.getLeavesOfType(type);
+		const leaves = this.app.workspace.getLeavesOfType(type);
 		if (leaves.length > 0) {
 			await this.app.workspace.revealLeaf(leaves[0]);
 			return;
@@ -121,7 +115,7 @@ export default class TasksCalendarWrapper extends Plugin {
 			type: type,
 			active: true,
 		});
-    }
+	}
 }
 
 function reportError(error: unknown) {

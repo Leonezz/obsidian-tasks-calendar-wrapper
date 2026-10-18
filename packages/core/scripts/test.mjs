@@ -28,7 +28,11 @@ const forbiddenAtRuntime = {
 	name: "forbid-moment-and-obsidian",
 	setup(build) {
 		build.onResolve({ filter: /^(moment|obsidian)(\/|$)/ }, (args) => ({
-			errors: [{ text: `${args.importer} loads "${args.path}" at runtime; core must get moment passed in and must not use obsidian.` }],
+			errors: [
+				{
+					text: `${args.importer} loads "${args.path}" at runtime; core must get moment passed in and must not use obsidian.`,
+				},
+			],
 		}));
 	},
 };

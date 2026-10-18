@@ -5,6 +5,6 @@
  * Joining it with the behaviour gave "todoFilter Focus", so Focus hid the other tasks like Filter.
  */
 export function counterClass(filter: string, behavior: string): string {
-    if (filter.length === 0) return "";
-    return filter.replace(/Filter$/, "") + behavior;
+	if (filter.length === 0) return "";
+	return filter.replace(/Filter$/, "") + behavior;
 }

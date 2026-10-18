@@ -29,8 +29,20 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync,
 import os from "os";
 import path from "path";
 import {
-	buildInfo, fixtureCli, fixtureVaultPath, fixtureWindow, installPlugin, machineInfo, manifest, notesOf, quietSettings,
-	repoRoot, runAndUndo, runScript, ScriptError, TIMELINE_VIEW,
+	buildInfo,
+	fixtureCli,
+	fixtureVaultPath,
+	fixtureWindow,
+	installPlugin,
+	machineInfo,
+	manifest,
+	notesOf,
+	quietSettings,
+	repoRoot,
+	runAndUndo,
+	runScript,
+	ScriptError,
+	TIMELINE_VIEW,
 } from "./fixture-app.mjs";
 import { comparePngs, decodePng, encodePng } from "./png.mjs";
 
@@ -90,15 +102,27 @@ function plan(only) {
 			for (const theme of Object.keys(THEMES)) {
 				for (const todayFocus of [false, true]) {
 					for (const counter of counters) {
-						const name = [theme, position, todayFocus ? "today-focus" : "all-days",
-							counter === "none" ? "no-counter" : `${counter}-${behavior.toLowerCase()}`].join("-");
-						const state = { name, theme, position, todayFocus, counter, behavior: counter === "none" ? null : behavior };
+						const name = [
+							theme,
+							position,
+							todayFocus ? "today-focus" : "all-days",
+							counter === "none" ? "no-counter" : `${counter}-${behavior.toLowerCase()}`,
+						].join("-");
+						const state = {
+							name,
+							theme,
+							position,
+							todayFocus,
+							counter,
+							behavior: counter === "none" ? null : behavior,
+						};
 						shots.push({ ...state, png: takesPng(state), visible: takesVisible(state) });
 					}
 				}
 			}
-			const wanted = shots.filter(shot => (shot.png || shot.visible) && shot.name.includes(only));
-			if (wanted.length > 0) groups.push({ settings: { entryPosition: position, counterBehavior: behavior }, shots: wanted });
+			const wanted = shots.filter((shot) => (shot.png || shot.visible) && shot.name.includes(only));
+			if (wanted.length > 0)
+				groups.push({ settings: { entryPosition: position, counterBehavior: behavior }, shots: wanted });
 		}
 	}
 	return groups;
@@ -110,13 +134,19 @@ function plan(only) {
  */
 async function timeline({ action, viewType, pluginId, label, theme, settleMs }) {
 	// A window behind others may draw no frames, so waiting for one is cut short.
-	const frame = () => Promise.race([new Promise(resolve => requestAnimationFrame(() => resolve())), new Promise(resolve => setTimeout(resolve, 500))]);
+	const frame = () =>
+		Promise.race([
+			new Promise((resolve) => requestAnimationFrame(() => resolve())),
+			new Promise((resolve) => setTimeout(resolve, 500)),
+		]);
 	const content = () => document.querySelector(`.workspace-leaf-content[data-type="${viewType}"] > .view-content`);
 	async function quiet(ms, timeoutMs = 15_000) {
 		const target = content();
 		if (!target) throw new Error("the timeline view is not open");
 		let last = performance.now();
-		const observer = new MutationObserver(() => { last = performance.now(); });
+		const observer = new MutationObserver(() => {
+			last = performance.now();
+		});
 		observer.observe(target, { subtree: true, childList: true, characterData: true, attributes: true });
 		const start = performance.now();
 		while (performance.now() - last < ms) {
@@ -124,7 +154,7 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 				observer.disconnect();
 				throw new Error(`the timeline kept changing for ${timeoutMs / 1000} s`);
 			}
-			await new Promise(resolve => setTimeout(resolve, 50));
+			await new Promise((resolve) => setTimeout(resolve, 50));
 		}
 		observer.disconnect();
 		await document.fonts.ready;
@@ -135,8 +165,13 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 		const target = content();
 		const rect = target.getBoundingClientRect();
 		return {
-			x: rect.left, y: rect.top, width: rect.width, height: rect.height,
-			scrollHeight: target.scrollHeight, clientHeight: target.clientHeight, below: innerHeight - rect.bottom,
+			x: rect.left,
+			y: rect.top,
+			width: rect.width,
+			height: rect.height,
+			scrollHeight: target.scrollHeight,
+			clientHeight: target.clientHeight,
+			below: innerHeight - rect.bottom,
 		};
 	}
 	switch (action) {
@@ -144,13 +179,14 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 			// The plugin is loaded again, so the timeline starts without a counter or "Focus on today".
 			app.workspace.detachLeavesOfType(viewType);
 			if (app.plugins.plugins[pluginId]) await app.plugins.disablePlugin(pluginId);
-			if (!await app.plugins.enablePlugin(pluginId)) throw new Error(`Obsidian could not load the plugin ${pluginId}`);
+			if (!(await app.plugins.enablePlugin(pluginId)))
+				throw new Error(`Obsidian could not load the plugin ${pluginId}`);
 			const others = [];
-			app.workspace.iterateRootLeaves(leaf => others.push(leaf));
+			app.workspace.iterateRootLeaves((leaf) => others.push(leaf));
 			const leaf = app.workspace.getLeaf("tab");
 			await leaf.setViewState({ type: viewType, active: true });
 			// An empty tab can be reused for the timeline, so only the other leaves go.
-			others.filter(other => other !== leaf).forEach(other => other.detach());
+			others.filter((other) => other !== leaf).forEach((other) => other.detach());
 			app.workspace.leftSplit.collapse();
 			app.workspace.rightSplit.collapse();
 			if (!document.getElementById("tcw-screenshots")) {
@@ -162,7 +198,7 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 					text: `.status-bar { display: none !important; } .workspace-leaf-content[data-type="${viewType}"] > .view-content { scrollbar-width: none !important; }`,
 				});
 			}
-			await new Promise(resolve => setTimeout(resolve, settleMs));
+			await new Promise((resolve) => setTimeout(resolve, settleMs));
 			await quiet(500);
 			return measure();
 		}
@@ -171,11 +207,14 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 			if (!target) throw new Error(`the timeline has nothing labelled "${label}"`);
 			// Every click changes the timeline's state, so one that changes nothing in the DOM did not land.
 			let changed = false;
-			const observer = new MutationObserver(() => { changed = true; });
+			const observer = new MutationObserver(() => {
+				changed = true;
+			});
 			observer.observe(content(), { subtree: true, childList: true, characterData: true, attributes: true });
 			target.click();
 			const start = performance.now();
-			while (!changed && performance.now() - start < 2_000) await new Promise(resolve => setTimeout(resolve, 20));
+			while (!changed && performance.now() - start < 2_000)
+				await new Promise((resolve) => setTimeout(resolve, 20));
 			observer.disconnect();
 			if (!changed) throw new Error(`clicking "${label}" changed nothing in the timeline within 2 s`);
 			document.activeElement?.blur();
@@ -185,7 +224,7 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 		case "theme": {
 			app.changeTheme(theme);
 			// changeTheme turns CSS transitions off for 200 ms.
-			await new Promise(resolve => setTimeout(resolve, 300));
+			await new Promise((resolve) => setTimeout(resolve, 300));
 			await quiet(300);
 			return measure();
 		}
@@ -197,21 +236,30 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 			const root = content()?.querySelector(".taskido");
 			if (!root) throw new Error("the timeline has no .taskido element");
 			await quiet(300);
-			const text = element => (element?.innerText ?? "").replace(/\s+/g, " ").trim();
+			const text = (element) => (element?.innerText ?? "").replace(/\s+/g, " ").trim();
 			const lines = [];
-			for (const element of root.querySelectorAll(".year, .todayHeader, .counter, .quickEntryPanel, .dateLine, .task")) {
+			for (const element of root.querySelectorAll(
+				".year, .todayHeader, .counter, .quickEntryPanel, .dateLine, .task",
+			)) {
 				if (!element.checkVisibility({ checkVisibilityCSS: true })) continue;
 				const style = getComputedStyle(element);
 				if (element.matches(".year")) lines.push(`year ${text(element)}`);
-				else if (element.matches(".todayHeader")) lines.push(`today header "${text(element)}", color ${style.color}`);
-				else if (element.matches(".counter")) lines.push(`counter ${text(element)}, color ${style.color}, background ${style.backgroundColor}`);
+				else if (element.matches(".todayHeader"))
+					lines.push(`today header "${text(element)}", color ${style.color}`);
+				else if (element.matches(".counter"))
+					lines.push(`counter ${text(element)}, color ${style.color}, background ${style.backgroundColor}`);
 				else if (element.matches(".quickEntryPanel")) lines.push("quick entry");
 				else if (element.matches(".dateLine")) lines.push(`date ${text(element)}`);
 				else {
-					const status = [...element.classList].filter(name => name !== "task").join(" ");
+					const status = [...element.classList].filter((name) => name !== "task").join(" ");
 					const highlighted = style.backgroundColor === "rgba(0, 0, 0, 0)" ? "" : " highlighted";
-					const badges = [...(element.querySelector(".info")?.children ?? [])].map(text).filter(Boolean).join(" · ");
-					lines.push(`  task ${status}${highlighted}: ${text(element.querySelector(".content"))} | ${badges}`);
+					const badges = [...(element.querySelector(".info")?.children ?? [])]
+						.map(text)
+						.filter(Boolean)
+						.join(" · ");
+					lines.push(
+						`  task ${status}${highlighted}: ${text(element.querySelector(".content"))} | ${badges}`,
+					);
 				}
 			}
 			return lines;
@@ -219,13 +267,27 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 		case "appearance": {
 			const root = content()?.querySelector(".taskido");
 			if (!root) throw new Error("the timeline has no .taskido element");
-			const settings = ["accentColor", "baseFontSize", "interfaceFontFamily", "textFontFamily", "monospaceFontFamily", "cssTheme", "enabledCssSnippets", "showRibbon"];
+			const settings = [
+				"accentColor",
+				"baseFontSize",
+				"interfaceFontFamily",
+				"textFontFamily",
+				"monospaceFontFamily",
+				"cssTheme",
+				"enabledCssSnippets",
+				"showRibbon",
+			];
 			const display = require("@electron/remote").screen.getDisplayMatching(electronWindow.getBounds());
 			return {
-				...Object.fromEntries(settings.map(key => [key, app.vault.getConfig(key) ?? null])),
+				...Object.fromEntries(settings.map((key) => [key, app.vault.getConfig(key) ?? null])),
 				zoom: require("electron").webFrame.getZoomFactor(),
 				timelineFont: getComputedStyle(root).fontFamily,
-				display: { name: display.label, internal: display.internal, colorSpace: display.colorSpace, scaleFactor: display.scaleFactor },
+				display: {
+					name: display.label,
+					internal: display.internal,
+					colorSpace: display.colorSpace,
+					scaleFactor: display.scaleFactor,
+				},
 			};
 		}
 		case "cleanup":
@@ -242,7 +304,12 @@ function unhover(cli) {
 }
 
 function setViewport(cli, height) {
-	cli.cdp("Emulation.setDeviceMetricsOverride", { width: VIEWPORT_WIDTH, height, deviceScaleFactor: 1, mobile: false });
+	cli.cdp("Emulation.setDeviceMetricsOverride", {
+		width: VIEWPORT_WIDTH,
+		height,
+		deviceScaleFactor: 1,
+		mobile: false,
+	});
 	return cli.evaluate(timeline, { action: "measure", viewType: TIMELINE_VIEW });
 }
 
@@ -255,15 +322,25 @@ function capture(cli) {
 	for (let attempt = 0; box.scrollHeight > box.clientHeight; attempt++) {
 		if (attempt === 3) throw new ScriptError(`the timeline does not fit the page: ${JSON.stringify(box)}`);
 		const height = Math.ceil(box.y + box.scrollHeight + box.below);
-		if (height > MAX_HEIGHT) throw new ScriptError(`the timeline is ${box.scrollHeight} px high, more than the ${MAX_HEIGHT} px a screenshot can take.`);
+		if (height > MAX_HEIGHT)
+			throw new ScriptError(
+				`the timeline is ${box.scrollHeight} px high, more than the ${MAX_HEIGHT} px a screenshot can take.`,
+			);
 		box = setViewport(cli, height);
 	}
 	// Once, right after a change of the page size, the timeline measured 0 px wide; it is measured again then.
 	for (let attempt = 0; !(box.width >= 1 && box.height >= 1); attempt++) {
-		if (attempt === 3) throw new ScriptError(`the timeline has no size to take a screenshot of: ${JSON.stringify(box)}`);
+		if (attempt === 3)
+			throw new ScriptError(`the timeline has no size to take a screenshot of: ${JSON.stringify(box)}`);
 		box = cli.evaluate(timeline, { action: "measure", viewType: TIMELINE_VIEW });
 	}
-	const clip = { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height), scale: 1 };
+	const clip = {
+		x: Math.round(box.x),
+		y: Math.round(box.y),
+		width: Math.round(box.width),
+		height: Math.round(box.height),
+		scale: 1,
+	};
 	const { data } = cli.cdp("Page.captureScreenshot", { format: "png", clip, captureBeyondViewport: false });
 	if (!data) throw new ScriptError("Page.captureScreenshot returned no image.");
 	return Buffer.from(data, "base64");
@@ -275,8 +352,18 @@ function takeScreenshots(cli, plugin, outDir, only) {
 	mkdirSync(path.join(outDir, VISIBLE), { recursive: true });
 	for (const group of plan(only)) {
 		plugin.writeSettings(quietSettings(group.settings));
-		cli.cdp("Emulation.setDeviceMetricsOverride", { width: VIEWPORT_WIDTH, height: MIN_HEIGHT, deviceScaleFactor: 1, mobile: false });
-		cli.evaluate(timeline, { action: "open", viewType: TIMELINE_VIEW, pluginId: manifest.id, settleMs: SETTLE_AFTER_LOAD_MS });
+		cli.cdp("Emulation.setDeviceMetricsOverride", {
+			width: VIEWPORT_WIDTH,
+			height: MIN_HEIGHT,
+			deviceScaleFactor: 1,
+			mobile: false,
+		});
+		cli.evaluate(timeline, {
+			action: "open",
+			viewType: TIMELINE_VIEW,
+			pluginId: manifest.id,
+			settleMs: SETTLE_AFTER_LOAD_MS,
+		});
 		const state = { theme: null, todayFocus: false, counter: "none" };
 		for (const shot of group.shots) {
 			if (state.theme !== shot.theme) {
@@ -308,7 +395,9 @@ function takeScreenshots(cli, plugin, outDir, only) {
 				record.png = { width, height };
 			}
 			shots[name] = record;
-			console.log(`screenshots: ${name} (${[record.png && `${record.png.width}×${record.png.height}`, record.visibleLines !== null && `${record.visibleLines} visible`].filter(Boolean).join(", ")})`);
+			console.log(
+				`screenshots: ${name} (${[record.png && `${record.png.width}×${record.png.height}`, record.visibleLines !== null && `${record.visibleLines} visible`].filter(Boolean).join(", ")})`,
+			);
 		}
 	}
 	return shots;
@@ -343,7 +432,7 @@ function comparePng(outDir, name) {
 	if (result.differing === 0) return null;
 	writeFileSync(path.join(outDir, `${name}.diff.png`), encodePng(result.diff));
 	const size = result.sameSize ? "" : ` (${expected.width}×${expected.height} → ${actual.width}×${actual.height})`;
-	const summary = `${result.differing} of ${result.total} pixels differ, by up to ${result.maxDelta} (${(100 * result.differing / result.total).toFixed(2)} %)${size}`;
+	const summary = `${result.differing} of ${result.total} pixels differ, by up to ${result.maxDelta} (${((100 * result.differing) / result.total).toFixed(2)} %)${size}`;
 	if (result.differing <= NOISE_PIXELS && result.maxDelta <= NOISE_DELTA) {
 		console.log(`screenshots: ${name}: ${summary}, counted as rendering noise`);
 		return null;
@@ -355,25 +444,38 @@ function comparePng(outDir, name) {
 function warnAboutSetup(baseline, env) {
 	for (const key of ["obsidianVersion", "electron", "machine", "viewportWidth", "today"]) {
 		if (JSON.stringify(baseline[key]) !== JSON.stringify(env[key])) {
-			console.warn(`screenshots: warning: the baselines were taken with ${key} ${JSON.stringify(baseline[key])}, this run has ${JSON.stringify(env[key])}; pixels may differ for that reason alone.`);
+			console.warn(
+				`screenshots: warning: the baselines were taken with ${key} ${JSON.stringify(baseline[key])}, this run has ${JSON.stringify(env[key])}; pixels may differ for that reason alone.`,
+			);
 		}
 	}
 	for (const [key, setting] of Object.entries(APPEARANCE)) {
 		const before = baseline.appearance?.[key];
 		if (JSON.stringify(before) !== JSON.stringify(env.appearance[key])) {
-			const was = before === undefined ? `the baselines do not record the ${setting} (${key})` : `the baselines were taken with the ${setting} (${key}) ${JSON.stringify(before)}`;
-			console.warn(`screenshots: warning: ${was}, this run has ${JSON.stringify(env.appearance[key])}; pixels may differ for that reason alone.`);
+			const was =
+				before === undefined
+					? `the baselines do not record the ${setting} (${key})`
+					: `the baselines were taken with the ${setting} (${key}) ${JSON.stringify(before)}`;
+			console.warn(
+				`screenshots: warning: ${was}, this run has ${JSON.stringify(env.appearance[key])}; pixels may differ for that reason alone.`,
+			);
 		}
 	}
 }
 
 function compare(outDir, shots, only) {
 	const baseline = JSON.parse(readFileSync(manifestFile, "utf8"));
-	const names = new Set([...Object.keys(shots), ...Object.keys(baseline.shots).filter(name => name.includes(only))]);
+	const names = new Set([
+		...Object.keys(shots),
+		...Object.keys(baseline.shots).filter((name) => name.includes(only)),
+	]);
 	const results = [];
 	for (const name of [...names].sort()) {
 		const shot = shots[name];
-		if (!shot) { results.push({ name, problem: "is no longer taken" }); continue; }
+		if (!shot) {
+			results.push({ name, problem: "is no longer taken" });
+			continue;
+		}
 		const problems = [
 			shot.visibleLines !== null && compareVisible(outDir, name),
 			shot.png && comparePng(outDir, name),
@@ -396,19 +498,28 @@ function environment(cli, prepared) {
 }
 
 await runScript("screenshots", async () => {
-	const unknown = process.argv.slice(2).filter(arg => arg !== "--update" && !arg.startsWith("--only="));
-	if (unknown.length) throw new ScriptError(`unknown arguments ${JSON.stringify(unknown)}; use --update or --only=<text>.`);
+	const unknown = process.argv.slice(2).filter((arg) => arg !== "--update" && !arg.startsWith("--only="));
+	if (unknown.length)
+		throw new ScriptError(`unknown arguments ${JSON.stringify(unknown)}; use --update or --only=<text>.`);
 	const update = process.argv.includes("--update");
-	const only = process.argv.find(arg => arg.startsWith("--only="))?.slice("--only=".length) ?? "";
-	if (update && only) throw new ScriptError("--only cannot be combined with --update, which replaces all screenshots.");
+	const only = process.argv.find((arg) => arg.startsWith("--only="))?.slice("--only=".length) ?? "";
+	if (update && only)
+		throw new ScriptError("--only cannot be combined with --update, which replaces all screenshots.");
 	if (plan(only).length === 0) throw new ScriptError(`no screenshot name contains "${only}".`);
 	// Checked before the run, which takes minutes, rather than after it.
-	if (!update && !existsSync(manifestFile)) throw new ScriptError(`there are no baselines in ${path.relative(repoRoot, baselineDir)}. Take them with \`pnpm screenshots --update\`.`);
+	if (!update && !existsSync(manifestFile))
+		throw new ScriptError(
+			`there are no baselines in ${path.relative(repoRoot, baselineDir)}. Take them with \`pnpm screenshots --update\`.`,
+		);
 	const build = buildInfo();
 	const cli = fixtureCli(VAULT_NAME);
 	const vaultDir = path.join(repoRoot, "fixtures", VAULT_NAME);
-	const vaultPath = fixtureVaultPath(cli, VAULT_NAME, notesOf(vaultDir),
-		`Open ${vaultDir}, or a copy of it in a folder named ${VAULT_NAME}, with "Open folder as vault", then run this again.`);
+	const vaultPath = fixtureVaultPath(
+		cli,
+		VAULT_NAME,
+		notesOf(vaultDir),
+		`Open ${vaultDir}, or a copy of it in a folder named ${VAULT_NAME}, with "Open folder as vault", then run this again.`,
+	);
 
 	// Taken into a folder of their own first, so a run that fails halfway leaves the baselines alone.
 	const outDir = path.join(os.tmpdir(), "tcw-screenshots");
@@ -448,13 +559,13 @@ await runScript("screenshots", async () => {
 			}
 		}
 		const removed = [];
-		for (const file of readdirSync(baselineDir).filter(file => file.endsWith(".png"))) {
+		for (const file of readdirSync(baselineDir).filter((file) => file.endsWith(".png"))) {
 			if (!shots[file.slice(0, -".png".length)]?.png) {
 				rmSync(path.join(baselineDir, file));
 				removed.push(file);
 			}
 		}
-		for (const file of readdirSync(visibleDir).filter(file => file.endsWith(".txt"))) {
+		for (const file of readdirSync(visibleDir).filter((file) => file.endsWith(".txt"))) {
 			const shot = shots[file.slice(0, -".txt".length)];
 			if (!shot || shot.visibleLines === null) {
 				rmSync(path.join(visibleDir, file));
@@ -471,17 +582,23 @@ await runScript("screenshots", async () => {
 		writeFileSync(manifestFile, JSON.stringify(record, null, "\t") + "\n");
 		for (const file of changed) console.log(`screenshots: changed ${file}`);
 		for (const file of removed) console.log(`screenshots: removed ${file}, a state no longer taken`);
-		console.log(`screenshots: took ${Object.keys(shots).length} states; ${changed.length} baseline files changed and ${removed.length} were removed in ${path.relative(repoRoot, baselineDir)}, the others still match and were kept.`);
+		console.log(
+			`screenshots: took ${Object.keys(shots).length} states; ${changed.length} baseline files changed and ${removed.length} were removed in ${path.relative(repoRoot, baselineDir)}, the others still match and were kept.`,
+		);
 		return 0;
 	}
 
 	const { baseline, results } = compare(outDir, shots, only);
 	warnAboutSetup(baseline, env);
 	if (results.length === 0) {
-		console.log(`screenshots: all ${Object.keys(shots).length} states match ${path.relative(repoRoot, baselineDir)}.`);
+		console.log(
+			`screenshots: all ${Object.keys(shots).length} states match ${path.relative(repoRoot, baselineDir)}.`,
+		);
 		return 0;
 	}
 	for (const { name, problem } of results) console.log(`screenshots: ${name}: ${problem}`);
-	console.log(`screenshots: ${new Set(results.map(result => result.name)).size} of ${Object.keys(shots).length} states differ. What this run took is in ${outDir}: visible/*.txt to diff with fixtures/screenshots/visible, and for each screenshot that differs a *.diff.png with the differing pixels in red.`);
+	console.log(
+		`screenshots: ${new Set(results.map((result) => result.name)).size} of ${Object.keys(shots).length} states differ. What this run took is in ${outDir}: visible/*.txt to diff with fixtures/screenshots/visible, and for each screenshot that differs a *.diff.png with the differing pixels in red.`,
+	);
 	return 1;
 });

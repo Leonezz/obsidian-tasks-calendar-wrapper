@@ -16,70 +16,76 @@ const at = (value: string) => moment(value, "YYYY-MM-DD HH:mm", true);
 // so from about noon onwards every task two or more days away read "in a day".
 
 test("a task two days away reads the same at any time of day", () => {
-    for (const hour of ["00:30", "09:00", "14:00", "23:30"]) {
-        assert.equal(relativeDate(at("2026-09-24 00:00"), at(`2026-09-22 ${hour}`)), "in 2 days", hour);
-    }
+	for (const hour of ["00:30", "09:00", "14:00", "23:30"]) {
+		assert.equal(relativeDate(at("2026-09-24 00:00"), at(`2026-09-22 ${hour}`)), "in 2 days", hour);
+	}
 });
 
 test("today, tomorrow and yesterday keep their words", () => {
-    const now = at("2026-09-22 14:00");
-    assert.equal(relativeDate(at("2026-09-22 00:00"), now), "Today");
-    assert.equal(relativeDate(at("2026-09-23 00:00"), now), "Tomorrow");
-    assert.equal(relativeDate(at("2026-09-21 00:00"), now), "Yesterday");
+	const now = at("2026-09-22 14:00");
+	assert.equal(relativeDate(at("2026-09-22 00:00"), now), "Today");
+	assert.equal(relativeDate(at("2026-09-23 00:00"), now), "Tomorrow");
+	assert.equal(relativeDate(at("2026-09-21 00:00"), now), "Yesterday");
 });
 
 test("dates further in the past are counted in days", () => {
-    const now = at("2026-09-22 14:00");
-    assert.equal(relativeDate(at("2026-09-19 00:00"), now), "3 days ago");
-    assert.equal(relativeDate(at("2026-10-02 00:00"), now), "in 10 days");
+	const now = at("2026-09-22 14:00");
+	assert.equal(relativeDate(at("2026-09-19 00:00"), now), "3 days ago");
+	assert.equal(relativeDate(at("2026-10-02 00:00"), now), "in 10 days");
 });
 
 test("the time of day of the task itself does not change the label", () => {
-    const now = at("2026-09-22 09:00");
-    assert.equal(relativeDate(at("2026-09-24 23:00"), now), "in 2 days");
-    assert.equal(relativeDate(at("2026-09-24 01:00"), now), "in 2 days");
+	const now = at("2026-09-22 09:00");
+	assert.equal(relativeDate(at("2026-09-24 23:00"), now), "in 2 days");
+	assert.equal(relativeDate(at("2026-09-24 01:00"), now), "in 2 days");
 });
 
 test("day words carry no time and follow the moment locale", () => {
-    const now = at("2026-09-22 14:00");
-    const previous = moment.locale();
-    try {
-        moment.locale("zh-cn");
-        assert.equal(relativeDate(at("2026-09-22 00:00"), now), "今天");
-        assert.equal(relativeDate(at("2026-09-23 00:00"), now), "明天");
-        assert.equal(relativeDate(at("2026-09-21 00:00"), now), "昨天");
-        assert.equal(relativeDate(at("2026-09-24 00:00"), now), "后天");
-        assert.equal(relativeDate(at("2026-09-25 00:00"), now), "3天后");
-        assert.equal(relativeDate(at("2026-09-19 00:00"), now), "3天前");
-    } finally {
-        moment.locale(previous);
-    }
+	const now = at("2026-09-22 14:00");
+	const previous = moment.locale();
+	try {
+		moment.locale("zh-cn");
+		assert.equal(relativeDate(at("2026-09-22 00:00"), now), "今天");
+		assert.equal(relativeDate(at("2026-09-23 00:00"), now), "明天");
+		assert.equal(relativeDate(at("2026-09-21 00:00"), now), "昨天");
+		assert.equal(relativeDate(at("2026-09-24 00:00"), now), "后天");
+		assert.equal(relativeDate(at("2026-09-25 00:00"), now), "3天后");
+		assert.equal(relativeDate(at("2026-09-19 00:00"), now), "3天前");
+	} finally {
+		moment.locale(previous);
+	}
 });
 
 // Toggling a task with the Tasks plugin disabled threw an uncaught TypeError and showed nothing
 
 test("an available Tasks command is returned", () => {
-    const editorCheckCallback = () => true;
-    const commands = { "obsidian-tasks-plugin:toggle-done": { editorCheckCallback } };
-    assert.equal(tasksPluginCommand(commands, "obsidian-tasks-plugin:toggle-done"), commands["obsidian-tasks-plugin:toggle-done"]);
+	const editorCheckCallback = () => true;
+	const commands = { "obsidian-tasks-plugin:toggle-done": { editorCheckCallback } };
+	assert.equal(
+		tasksPluginCommand(commands, "obsidian-tasks-plugin:toggle-done"),
+		commands["obsidian-tasks-plugin:toggle-done"],
+	);
 });
 
 test("a missing Tasks command raises an error that says what to do", () => {
-    assert.throws(() => tasksPluginCommand({}, "obsidian-tasks-plugin:toggle-done"),
-        /Tasks plugin is not enabled/);
-    assert.throws(() => tasksPluginCommand({ "obsidian-tasks-plugin:toggle-done": {} }, "obsidian-tasks-plugin:toggle-done"),
-        /Tasks plugin is not enabled/);
+	assert.throws(() => tasksPluginCommand({}, "obsidian-tasks-plugin:toggle-done"), /Tasks plugin is not enabled/);
+	assert.throws(
+		() => tasksPluginCommand({ "obsidian-tasks-plugin:toggle-done": {} }, "obsidian-tasks-plugin:toggle-done"),
+		/Tasks plugin is not enabled/,
+	);
 });
 
 // Clicking a tag searches for it through the documented search URI, not the private search plugin
 
 test("a tag search opens the search URI of the vault", () => {
-    assert.equal(tagSearchUri("Notes", "#work"), "obsidian://search?vault=Notes&query=tag%3A%23work");
+	assert.equal(tagSearchUri("Notes", "#work"), "obsidian://search?vault=Notes&query=tag%3A%23work");
 });
 
 test("the vault name and the tag are encoded, so spaces, ampersands and nested tags survive", () => {
-    assert.equal(tagSearchUri("My Vault & Co", "#work/admin"),
-        "obsidian://search?vault=My%20Vault%20%26%20Co&query=tag%3A%23work%2Fadmin");
-    assert.equal(new URL(tagSearchUri("笔记", "#项目")).searchParams.get("vault"), "笔记");
-    assert.equal(new URL(tagSearchUri("笔记", "#项目")).searchParams.get("query"), "tag:#项目");
+	assert.equal(
+		tagSearchUri("My Vault & Co", "#work/admin"),
+		"obsidian://search?vault=My%20Vault%20%26%20Co&query=tag%3A%23work%2Fadmin",
+	);
+	assert.equal(new URL(tagSearchUri("笔记", "#项目")).searchParams.get("vault"), "笔记");
+	assert.equal(new URL(tagSearchUri("笔记", "#项目")).searchParams.get("query"), "tag:#项目");
 });

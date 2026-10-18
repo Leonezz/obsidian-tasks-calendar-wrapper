@@ -20,14 +20,20 @@ function crc32(buffer) {
 
 function paeth(a, b, c) {
 	const p = a + b - c;
-	const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+	const pa = Math.abs(p - a),
+		pb = Math.abs(p - b),
+		pc = Math.abs(p - c);
 	return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
 }
 
 /** Returns { width, height, data } with data as RGBA bytes. */
 export function decodePng(buffer) {
 	if (!buffer.subarray(0, 8).equals(SIGNATURE)) throw new Error("not a PNG file");
-	let width = 0, height = 0, bitDepth = 0, colorType = 0, interlace = 0;
+	let width = 0,
+		height = 0,
+		bitDepth = 0,
+		colorType = 0,
+		interlace = 0;
 	const idat = [];
 	for (let pos = 8; pos < buffer.length;) {
 		const length = buffer.readUInt32BE(pos);
@@ -45,12 +51,15 @@ export function decodePng(buffer) {
 		pos += 12 + length;
 	}
 	if (bitDepth !== 8 || (colorType !== 2 && colorType !== 6) || interlace !== 0) {
-		throw new Error(`unsupported PNG (bit depth ${bitDepth}, color type ${colorType}, interlace ${interlace}); only 8-bit RGB and RGBA are read`);
+		throw new Error(
+			`unsupported PNG (bit depth ${bitDepth}, color type ${colorType}, interlace ${interlace}); only 8-bit RGB and RGBA are read`,
+		);
 	}
 	const channels = colorType === 6 ? 4 : 3;
 	const stride = width * channels;
 	const raw = inflateSync(Buffer.concat(idat));
-	if (raw.length !== height * (stride + 1)) throw new Error(`PNG data has ${raw.length} bytes, a ${width}×${height} image needs ${height * (stride + 1)}`);
+	if (raw.length !== height * (stride + 1))
+		throw new Error(`PNG data has ${raw.length} bytes, a ${width}×${height} image needs ${height * (stride + 1)}`);
 	const data = Buffer.alloc(width * height * 4);
 	let previous = Buffer.alloc(stride);
 	for (let y = 0; y < height; y++) {
@@ -95,7 +104,12 @@ export function encodePng({ width, height, data }) {
 	header.set([8, 6, 0, 0, 0], 8);
 	const raw = Buffer.alloc(height * (width * 4 + 1));
 	for (let y = 0; y < height; y++) data.copy(raw, y * (width * 4 + 1) + 1, y * width * 4, (y + 1) * width * 4);
-	return Buffer.concat([SIGNATURE, chunk("IHDR", header), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
+	return Buffer.concat([
+		SIGNATURE,
+		chunk("IHDR", header),
+		chunk("IDAT", deflateSync(raw)),
+		chunk("IEND", Buffer.alloc(0)),
+	]);
 }
 
 /**
@@ -107,7 +121,8 @@ export function comparePngs(expected, actual) {
 	const width = Math.max(expected.width, actual.width);
 	const height = Math.max(expected.height, actual.height);
 	const sameSize = expected.width === actual.width && expected.height === actual.height;
-	if (sameSize && expected.data.equals(actual.data)) return { differing: 0, maxDelta: 0, total: width * height, sameSize, diff: null };
+	if (sameSize && expected.data.equals(actual.data))
+		return { differing: 0, maxDelta: 0, total: width * height, sameSize, diff: null };
 	const diff = Buffer.alloc(width * height * 4);
 	let differing = 0;
 	let maxDelta = sameSize ? 0 : 255;
@@ -117,18 +132,23 @@ export function comparePngs(expected, actual) {
 			const at = (y * width + x) * 4;
 			const a = (y * expected.width + x) * 4;
 			const b = (y * actual.width + x) * 4;
-			const same = inside(expected, x, y) && inside(actual, x, y) &&
+			const same =
+				inside(expected, x, y) &&
+				inside(actual, x, y) &&
 				expected.data.readUInt32BE(a) === actual.data.readUInt32BE(b);
 			if (!same) {
 				differing++;
 				if (inside(expected, x, y) && inside(actual, x, y)) {
-					for (let c = 0; c < 4; c++) maxDelta = Math.max(maxDelta, Math.abs(expected.data[a + c] - actual.data[b + c]));
+					for (let c = 0; c < 4; c++)
+						maxDelta = Math.max(maxDelta, Math.abs(expected.data[a + c] - actual.data[b + c]));
 				}
 				diff[at] = 255;
 				diff[at + 3] = 255;
 				continue;
 			}
-			const gray = Math.round((expected.data[a] * 0.3 + expected.data[a + 1] * 0.59 + expected.data[a + 2] * 0.11) / 4 + 191);
+			const gray = Math.round(
+				(expected.data[a] * 0.3 + expected.data[a + 1] * 0.59 + expected.data[a + 2] * 0.11) / 4 + 191,
+			);
 			diff[at] = diff[at + 1] = diff[at + 2] = gray;
 			diff[at + 3] = 255;
 		}

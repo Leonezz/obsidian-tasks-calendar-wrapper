@@ -9,18 +9,24 @@ const targetVersion = checkOnly ? process.env.npm_new_version : process.env.npm_
 const exactVersion = /^\d+(\.\d+)*(-[0-9A-Za-z.-]+)?$/;
 
 if (!targetVersion) fail("the target version is not set. Run this through `pnpm version <x.y.z>`.");
-if (targetVersion.includes("-")) fail(`${targetVersion} is a pre-release. Tag betas off master instead, so the store keeps the released version.`);
+if (targetVersion.includes("-"))
+	fail(`${targetVersion} is a pre-release. Tag betas off master instead, so the store keeps the released version.`);
 
 const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
 const { minAppVersion } = manifest;
 // The plugin is built against these typings, so an older Obsidian may lack an API the build uses.
 const typingsVersion = JSON.parse(readFileSync("apps/obsidian-plugin/package.json", "utf8")).devDependencies.obsidian;
-if (!exactVersion.test(minAppVersion)) fail(`minAppVersion "${minAppVersion}" in manifest.json is not a version number.`);
+if (!exactVersion.test(minAppVersion))
+	fail(`minAppVersion "${minAppVersion}" in manifest.json is not a version number.`);
 if (!exactVersion.test(typingsVersion)) {
-	fail(`the obsidian typings in apps/obsidian-plugin/package.json are "${typingsVersion}", not an exact version, so minAppVersion cannot be checked against them. Pin an exact version.`);
+	fail(
+		`the obsidian typings in apps/obsidian-plugin/package.json are "${typingsVersion}", not an exact version, so minAppVersion cannot be checked against them. Pin an exact version.`,
+	);
 }
 if (compareVersions(minAppVersion, typingsVersion) < 0) {
-	fail(`minAppVersion ${minAppVersion} in manifest.json is older than the obsidian typings the plugin is built against (${typingsVersion}). Raise minAppVersion first.`);
+	fail(
+		`minAppVersion ${minAppVersion} in manifest.json is older than the obsidian typings the plugin is built against (${typingsVersion}). Raise minAppVersion first.`,
+	);
 }
 if (checkOnly) process.exit(0);
 
