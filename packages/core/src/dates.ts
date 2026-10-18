@@ -81,12 +81,13 @@ export function dateOfDay(m: MomentFactory, key: DayKey): Moment {
 }
 
 /**
- * A day's heading in the timeline: the day written in the date format, in the locale's words and digits. The key is
- * read as moment(key) read it before, so a day moment cannot read, such as one after the year 9999, is labelled as it
- * was.
+ * A day key read back as the timeline's views read it, with moment(key), for its heading and for whether it is today
+ * or the entry day. moment reads every key from the year 0000 on. For an earlier year it falls back to the engine's
+ * Date parser, which reads another day, e.g. "-0001-05-26" as 2026-01-05; the views placed such a day there, and so
+ * does this, until that is changed on purpose.
  */
-export function dayLabel(m: MomentFactory, key: DayKey, format: string): string {
-	return m(key).format(format);
+export function readDayKey(m: MomentFactory, key: DayKey): DateValue {
+	return m(key);
 }
 
 /** A year's heading in the timeline, in the locale's digits. */

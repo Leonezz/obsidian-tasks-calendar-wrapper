@@ -5,7 +5,16 @@
  * and the Filter rules of styles.css, which hid the tasks, days and year headers without the counter's statuses.
  * Focus on today and the Focus counter behaviour stay in the stylesheet: they hide or highlight, and change no data.
  */
-import { betweenDaysExclusive, dayKey, dayLabel, inDisplayOrder, parseLooseDate, yearLabel, yearOfDay } from "./dates";
+import {
+	betweenDaysExclusive,
+	dayKey,
+	inDisplayOrder,
+	parseLooseDate,
+	readDayKey,
+	sameDay,
+	yearLabel,
+	yearOfDay,
+} from "./dates";
 import type { DateValue, DayKey } from "./dates";
 import { resolveTasks, type QueryEnv, type Resolved, type ResolvedTask, type ResolveSettings } from "./resolve";
 import { TaskStatus } from "./status";
@@ -57,8 +66,9 @@ export interface DayGroup {
 	readonly key: DayKey;
 	/** The day written in the date format. */
 	readonly label: string;
+	/** The day is today. Its key is read as the views read it, see readDayKey. */
 	readonly isToday: boolean;
-	/** The entry panel sits on this day. */
+	/** The entry panel sits on this day. Its key is read as the views read it, see readDayKey. */
 	readonly isEntry: boolean;
 	/** Some task has a date on this day. Only the entry day can be shown without one. */
 	readonly dated: boolean;
@@ -207,7 +217,9 @@ const distinctStatuses = (tasks: readonly ResolvedTask[]) => Object.freeze([...n
 export function arrange(resolved: Resolved, view: ViewState, env: QueryEnv): QueryResult {
 	const { settings } = view;
 	const { today } = resolved;
-	const tasks = quickFiltered(resolved.shown, view.quickFilter, env);
+	// The caller's list is left as it is: one that is not frozen yet is copied, and the copy is frozen.
+	const shown = Object.isFrozen(resolved.shown) ? resolved.shown : Object.freeze([...resolved.shown]);
+	const tasks = quickFiltered(shown, view.quickFilter, env);
 	const byDay = groupTasksByDay(tasks, env.now);
 	const { years, entryDay } = timelineSpan(byDay.keys(), today, settings);
 	const kept =
@@ -217,14 +229,16 @@ export function arrange(resolved: Resolved, view: ViewState, env: QueryEnv): Que
 	const tasksOfYear = groupBy(tasks, (task) => new Set([...daysOf(task, env.now)].map(yearOfDay)));
 	const daysOfYear = groupBy([...new Set([...byDay.keys(), entryDay])], (day) => [yearOfDay(day)]);
 
+	const entry = readDayKey(env.moment, entryDay).format("YYYYMMDD");
 	const dayGroup = (key: DayKey): DayGroup => {
-		const isToday = key === today;
+		const date = readDayKey(env.moment, key);
+		const isToday = sameDay(date, env.now);
 		const listed = tasksListedOnDay(byDay.get(key) ?? [], isToday, !!settings.forward);
 		return Object.freeze({
 			key,
-			label: dayLabel(env.moment, key, settings.dateFormat),
+			label: date.format(settings.dateFormat),
 			isToday,
-			isEntry: key === entryDay,
+			isEntry: date.format("YYYYMMDD") === entry,
 			dated: byDay.has(key),
 			tasks: Object.freeze(listed.filter((r) => keeps(r.status))),
 			statuses: distinctStatuses(listed),
@@ -243,11 +257,12 @@ export function arrange(resolved: Resolved, view: ViewState, env: QueryEnv): Que
 		});
 	};
 
-	// Frozen part by part: the resolved tasks are frozen already, and freezing them again would walk every one.
+	// Frozen part by part: the resolved tasks are frozen already, and freezing them again would walk every one. tasks is
+	// either shown, frozen above, or a list quickFiltered made.
 	return Object.freeze({
 		today,
 		entryDay,
-		shown: resolved.shown,
+		shown,
 		tasks: Object.freeze(tasks),
 		counts: Object.freeze(countsOf(tasks)),
 		years: Object.freeze(years.map(yearGroup)),

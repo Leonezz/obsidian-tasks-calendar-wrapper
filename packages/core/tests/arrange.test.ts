@@ -203,6 +203,35 @@ test("the quick filter reads its days as moment(day) did, and one it cannot read
 	assert.deepEqual(tasksBetween("2026-09-01", "no such day"), []);
 });
 
+test("the quick filter decides the years, the entry day and what each day lists", () => {
+	const resolved = resolve(["- [ ] old 📅 2024-03-01", "- [ ] high ⏫ 📅 2026-09-25"]);
+	const result = arrange(resolved, view({ quickFilter: { priorities: ["High"] } }, { entryPosition: "top" }), env);
+	// The task it leaves out neither stretches the years back to 2024 nor moves the entry day, nor is it forwarded.
+	assert.equal(result.entryDay, "2026-09-18");
+	assert.deepEqual(
+		result.years.map((year) => year.year),
+		[2026],
+	);
+	assert.deepEqual(listed(result), { "2026-09-18": [], "2026-09-25": ["high"] });
+});
+
+test("the quick filter decides which years have a header", () => {
+	const resolved = resolve([
+		"- [ ] high ⏫ 📅 2024-03-01",
+		"- [ ] mid 📅 2025-06-01",
+		"- [ ] high2 ⏫ 📅 2026-09-25",
+	]);
+	const result = arrange(resolved, view({ quickFilter: { priorities: ["High"] } }), env);
+	assert.deepEqual(
+		result.years.map((year) => [year.year, year.showHeader, year.days.length]),
+		[
+			[2024, true, 1],
+			[2025, false, 0],
+			[2026, true, 2],
+		],
+	);
+});
+
 test("the quick filter's priorities are compared as written, so the numbered ones match nothing, as before", () => {
 	const resolved = resolve(["- [ ] high ⏫", "- [ ] none"]);
 	const tasksWith = (priorities: string[]) =>
@@ -266,6 +295,36 @@ test("a filter that leaves the entry day empty still keeps it, for the entry pan
 	assert.deepEqual(entry.tasks, []);
 });
 
+const finished = ["- [x] done ✅ 2026-09-18", "- [-] cancelled 📅 2026-09-18", "- [ ] due today 📅 2026-09-18"];
+
+test("every counter filter leaves out done and cancelled tasks, and a year that only has those", () => {
+	const lines = [...finished, "- [ ] late 📅 2026-09-01", "- [ ] unplanned", "- [x] old done ✅ 2025-05-01"];
+	const expected = {
+		todoFilter: ["due today"],
+		overdueFilter: ["late"],
+		unplannedFilter: ["unplanned"],
+	} as const;
+	for (const [counter, today] of Object.entries(expected)) {
+		const result = arrange(
+			resolve(lines),
+			view({ counter: counter as keyof typeof expected }, { counterBehavior: "Filter" }),
+			env,
+		);
+		assert.deepEqual(listed(result)["2026-09-18"], today, counter);
+		assert.deepEqual(listed(result)["2025-05-01"], [], counter);
+		assert.equal(result.years.find((year) => year.year === 2025)?.showHeader, false, counter);
+	}
+	const unfiltered = arrange(resolve(lines), view(), env);
+	assert.equal(unfiltered.years.find((year) => year.year === 2025)?.showHeader, true);
+	assert.deepEqual(listed(unfiltered)["2025-05-01"], ["old done"]);
+});
+
+test("without a counter behaviour the counter hides nothing, as the class it gave matched no rule", () => {
+	const result = arrange(resolve(finished), view({ counter: "todoFilter" }), env);
+	assert.deepEqual(listed(result)["2026-09-18"], listed(arrange(resolve(finished), view(), env))["2026-09-18"]);
+	assert.equal(listed(result)["2026-09-18"].length, 3);
+});
+
 test("the Focus behaviour hides nothing", () => {
 	const filtered = arrange(resolve(mixed), view({ counter: "todoFilter" }, { counterBehavior: "Focus" }), env);
 	const plain = arrange(resolve(mixed), view(), env);
@@ -273,6 +332,38 @@ test("the Focus behaviour hides nothing", () => {
 	assert.ok(
 		filtered.years.every((year) => year.showHeader === plain.years.find((y) => y.year === year.year)?.showHeader),
 	);
+});
+
+test("a day's statuses are those it lists before the counter filter, a year's those of every task with a date in it", () => {
+	const result = arrange(
+		resolve(["- [ ] late 📅 2026-09-01", "- [ ] due today 📅 2026-09-18", "- [ ] unplanned"]),
+		view({ counter: "overdueFilter" }, { counterBehavior: "Filter" }),
+		env,
+	);
+	const days = Object.fromEntries(result.years[0].days.map((day) => [day.key, [...day.statuses].sort()]));
+	assert.deepEqual(days, { "2026-09-01": [], "2026-09-18": ["due", "overdue", "unplanned"] });
+	assert.deepEqual([...result.years[0].statuses].sort(), ["due", "overdue", "unplanned"]);
+	assert.deepEqual(
+		result.years[0].days.find((day) => day.isToday)?.tasks.map((r) => r.visual),
+		["late"],
+	);
+});
+
+test("the current year is the year of now, wherever the entry sits", () => {
+	const resolved = resolve(["- [ ] a 📅 2025-12-01", "- [ ] b 📅 2026-09-25"]);
+	for (const entryPosition of ["top", "bottom"] as const) {
+		for (const newestFirst of [false, true]) {
+			const years = arrange(resolved, view({}, { entryPosition, newestFirst }), env).years;
+			assert.deepEqual(
+				years.map((year) => [year.year, year.isCurrent]).sort(),
+				[
+					[2025, false],
+					[2026, true],
+				],
+				`${entryPosition}, newest first ${newestFirst}`,
+			);
+		}
+	}
 });
 
 test("counts are taken before the counter filter", () => {
@@ -311,15 +402,48 @@ test("query resolves and arranges in one go, and every part of the result is fro
 	);
 	assert.deepEqual(listed(result), listed(inTwoSteps));
 	assert.deepEqual(result.counts, inTwoSteps.counts);
-	for (const part of [
-		result,
-		result.tasks,
-		result.shown,
-		result.counts,
-		result.years,
-		...result.years,
-		...result.years.flatMap((year) => [year.days, year.statuses, ...year.days]),
+	assert.deepEqual(unfrozen(result), []);
+});
+
+/** Every array and plain object reachable from a value that is not frozen. Dates are left out: they are typed read-only. */
+function unfrozen(value: unknown, seen = new Set<object>()): object[] {
+	if (value === null || typeof value !== "object" || moment.isMoment(value) || seen.has(value)) return [];
+	seen.add(value);
+	return [
+		...(Object.isFrozen(value) ? [] : [value]),
+		...Object.values(value).flatMap((item) => unfrozen(item, seen)),
+	];
+}
+
+test("every part of the result is frozen under a quick filter and a counter filter too", () => {
+	const tasks = mixed.map((line) => task(line));
+	for (const quickFilter of [
+		{ priorities: [] },
+		{ priorities: [""] },
+		{ from: "2026-09-01", to: "2026-09-30", priorities: [] },
 	]) {
-		assert.ok(Object.isFrozen(part));
+		const result = query(
+			tasks,
+			view({ quickFilter, counter: "overdueFilter" }, { counterBehavior: "Filter" }),
+			env,
+		);
+		assert.ok(result.tasks.length > 0);
+		assert.deepEqual(unfrozen(result), [], JSON.stringify(quickFilter));
+	}
+});
+
+test("arrange leaves the caller's list of tasks as it was, and gives back lists of its own", () => {
+	const mine = [...resolve(mixed).shown];
+	for (const quickFilter of [undefined, { priorities: [] }, { priorities: [""] }]) {
+		const result = arrange({ today: "2026-09-18", shown: mine }, view({ quickFilter }), env);
+		assert.ok(!Object.isFrozen(mine), JSON.stringify(quickFilter));
+		assert.deepEqual(unfrozen(result), [], JSON.stringify(quickFilter));
+		assert.notEqual(result.shown, mine);
+		assert.deepEqual(result.shown, mine);
+		const before = result.tasks.length;
+		mine.push(mine[0]);
+		assert.equal(result.shown.length, mine.length - 1);
+		assert.equal(result.tasks.length, before);
+		mine.pop();
 	}
 });
