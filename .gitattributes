@@ -1,3 +1,5 @@
+# Git stores text files with LF line endings and checks them out with LF, as .editorconfig asks.
+* text=auto eol=lf
 # The golden fixtures are compared byte for byte with metadata Obsidian computed from them, so git must
 # never change their line endings (CRLF note.md is CRLF on purpose).
 fixtures/golden-vault/** -text

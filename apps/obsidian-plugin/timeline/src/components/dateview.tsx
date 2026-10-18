@@ -215,7 +215,7 @@ class QuickEntry extends React.Component<Record<string, unknown>, QuickEntryStat
                                     if (f === 'date') {
                                         return <div key={i} className='dateFilter'>
                                             <a key={0}>From: </a><input key={1} type='date' onChange={e => this.dateFilter[0] = e.target.value} />
-                                            <a key={2}>  To: </a><input key={3} type='date' onChange={e => this.dateFilter[1] = e.target.value} />
+                                            <a key={2}>{"  To: "}</a><input key={3} type='date' onChange={e => this.dateFilter[1] = e.target.value} />
                                         </div>
                                     } else if (f === 'priority') {
                                         return <div key={i} className='actionSelect'>

@@ -131,9 +131,11 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
                         const editor = this.app.workspace.activeEditor?.editor;
                         if (editor) {
                             const view = this.app.workspace.getLeaf().view;
-                            // @ts-expect-error commands is not part of the public API
-                            tasksPluginCommand(this.app.commands.commands, 'obsidian-tasks-plugin:edit-task')
-                                .editorCheckCallback(false, editor, view);
+                            tasksPluginCommand(
+                                // @ts-expect-error commands is not part of the public API
+                                this.app.commands.commands,
+                                'obsidian-tasks-plugin:edit-task',
+                            ).editorCheckCallback(false, editor, view);
                         }
                     }
                 } catch (err) {
@@ -163,9 +165,11 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
             const editor = this.app.workspace.activeEditor?.editor;
             if (editor) {
                 const view = this.app.workspace.getLeaf().view;
-                // @ts-expect-error commands is not part of the public API
-                tasksPluginCommand(this.app.commands.commands, 'obsidian-tasks-plugin:toggle-done')
-                    .editorCheckCallback(false, editor, view);
+                tasksPluginCommand(
+                    // @ts-expect-error commands is not part of the public API
+                    this.app.commands.commands,
+                    'obsidian-tasks-plugin:toggle-done',
+                ).editorCheckCallback(false, editor, view);
             }
         }).catch(reason => {
             // This used to be an uncaught error, so nothing happened and nothing was shown.
@@ -179,8 +183,9 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
      * change can skip rendering (issue #63). Modifying a task needs the Tasks plugin.
      */
     getTaskItemHandlers(): React.ContextType<typeof TaskItemEventHandlersContext> {
-        // @ts-expect-error plugins is not part of the public API
-        const handleModifyTask = this.app.plugins.plugins['obsidian-tasks-plugin'] === undefined ? undefined : this.handleModifyTask;
+        const handleModifyTask =
+            // @ts-expect-error plugins is not part of the public API
+            this.app.plugins.plugins['obsidian-tasks-plugin'] === undefined ? undefined : this.handleModifyTask;
         if (!this.taskItemHandlers || this.taskItemHandlers.handleModifyTask !== handleModifyTask) {
             this.taskItemHandlers = {
                 handleOpenFile: this.handleOpenFile,

@@ -1,0 +1,9 @@
+# Prettier also skips what .gitignore lists, such as node_modules, dist/ and main.js.
+
+# Compared byte for byte or kept as captured: the golden vault and its snapshots, the benchmark baseline and the
+# screenshots. .gitattributes keeps git from changing their line endings, too.
+fixtures/
+# Notes to try the plugin on by hand, written as a user would.
+ExampleVault/
+# Written by pnpm.
+pnpm-lock.yaml
