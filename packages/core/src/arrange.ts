@@ -1,9 +1,9 @@
 /**
  * Arranges the tasks resolveTasks shows the way the timeline lays them out: the quick filter, the counts, the years and
- * their days, the day the entry panel sits on, and the counter filter. It follows the plugin's views
- * (timeline/src/components: TimelineView, YearView, DateView), its quick filter (ObsidianBridge.handleFilterEnable)
- * and the Filter rules of styles.css, which hid the tasks, days and year headers without the counter's statuses.
- * Focus on today and the Focus counter behaviour stay in the stylesheet: they hide or highlight, and change no data.
+ * their days, the day the entry panel sits on, and the counter filter. It does what the plugin's views (TimelineView,
+ * YearView, DateView), its quick filter (ObsidianBridge.handleFilterEnable) and the Filter rules of styles.css did
+ * before phase 1 step 8; those rules hid the tasks, days and year headers without the counter's statuses. Focus on
+ * today and the Focus counter behaviour stay in the stylesheet: they hide or highlight, and change no data.
  */
 import {
 	betweenDaysExclusive,

@@ -3,7 +3,7 @@ import { Notice, Plugin } from "obsidian";
 import { TasksTimelineView, TIMELINE_VIEW } from "./views";
 
 import { mergeOptions } from "../utils/options";
-import { migrateSortOption } from "../utils/sort";
+import { migrateSortOption } from "@tasks-calendar-wrapper/core";
 import { notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
 import { RELEASE_NOTES, SUPPORT_LINKS } from "../utils/whatsnew";
 import { WhatsNewModal } from "./whatsnew-modal";

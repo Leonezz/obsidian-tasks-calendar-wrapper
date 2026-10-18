@@ -1,4 +1,4 @@
-import { TaskStatus } from "../../../../utils/tasks";
+import { TaskStatus } from "@tasks-calendar-wrapper/core";
 
 export const doneIcon = (
 	<svg

@@ -6,10 +6,9 @@ import assert from "node:assert/strict";
 import moment from "moment";
 import "moment/locale/ar";
 
-import { dayKey } from "@tasks-calendar-wrapper/core";
+import { dayKey, parseTaskLine } from "@tasks-calendar-wrapper/core";
 
 import { expandShortcuts } from "../utils/quickentry";
-import { parse } from "./helpers";
 
 // Loading a locale file switches moment over to it, so the default is set back here.
 moment.locale("en");
@@ -39,14 +38,15 @@ const dateWords: [word: string, day: string][] = [
  * Types a date word after the due date symbol on TODAY, then reads the task that quick entry adds, all with
  * moment in the given locale, as Obsidian sets it for its app language.
  */
-async function enterDueDate(word: string, locale: string): Promise<{ text: string; due?: string }> {
+function enterDueDate(word: string, locale: string): { text: string; due?: string } {
 	const previous = moment.locale();
 	try {
 		assert.equal(moment.locale(locale), locale, `moment locale ${locale} is not loaded`);
 		const today = moment(TODAY, "YYYY-MM-DD", true);
 		const text = expandShortcuts(`call 📅 ${word} `, today);
-		const task = await parse("- [ ] " + text, today);
-		return { text, due: task.due && dayKey(task.due) };
+		const task = parseTaskLine("- [ ] " + text, { moment });
+		assert.ok(task, text);
+		return { text, due: task.dates.due && dayKey(task.dates.due) };
 	} finally {
 		moment.locale(previous);
 	}
@@ -54,7 +54,7 @@ async function enterDueDate(word: string, locale: string): Promise<{ text: strin
 
 test("the date words write the day in ASCII digits in a locale with digits of its own", async () => {
 	for (const [word, day] of dateWords) {
-		const { text, due } = await enterDueDate(word, "ar");
+		const { text, due } = enterDueDate(word, "ar");
 		assert.equal(text, `call 📅 ${day} `, `"${word}" in Arabic`);
 		assert.equal(due, day, `the due date of "${word}" in Arabic`);
 	}
@@ -62,7 +62,7 @@ test("the date words write the day in ASCII digits in a locale with digits of it
 
 test("the date words write the same text in English", async () => {
 	for (const [word, day] of dateWords) {
-		const { text, due } = await enterDueDate(word, "en");
+		const { text, due } = enterDueDate(word, "en");
 		assert.equal(text, `call 📅 ${day} `, `"${word}" in English`);
 		assert.equal(due, day, `the due date of "${word}" in English`);
 	}

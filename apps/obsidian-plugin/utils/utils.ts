@@ -1,17 +1,3 @@
-import { relativeDate as relativeDateIn, type DateValue } from "@tasks-calendar-wrapper/core";
-import { moment } from "./moment";
-
-// isTagHidden moved to packages/core; re-exported for the modules that import it from here.
-export { isTagHidden } from "@tasks-calendar-wrapper/core";
-
-/**
- * Describes a date relative to today, e.g. "Tomorrow" or "in 2 days", in the language
- * the app is set to.
- */
-export function relativeDate(date: DateValue, now: DateValue = moment()): string {
-	return relativeDateIn(date, now, moment.locale(), (message, error) => console.warn(message, error));
-}
-
 type EditorCheckCallback = (checking: boolean, editor: unknown, view: unknown) => boolean | void;
 type EditorCommand = { editorCheckCallback?: EditorCheckCallback };
 

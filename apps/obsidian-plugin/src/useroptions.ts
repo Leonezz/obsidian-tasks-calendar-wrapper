@@ -1,5 +1,5 @@
 import type { PropertyRules } from "@tasks-calendar-wrapper/core";
-import { defaultSortKey } from "../utils/sort";
+import { defaultSortKey } from "@tasks-calendar-wrapper/core";
 
 /*
  * The plugin's settings and their defaults, as saved in data.json. Kept apart from the settings page,

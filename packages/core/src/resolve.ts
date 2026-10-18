@@ -1,8 +1,8 @@
 /**
  * Turns parsed tasks into the tasks the timeline shows, for given settings and a given now: the note filters, the
  * daily note's date, the status, forwarding to today, the status order, the 24-hour option, the sort and the task
- * filters. It follows the plugin's parser chain (utils/tasklist.ts, utils/taskmapable.ts) and the adapter's note
- * filters (timeline/src/taskadapter.ts). It never changes the tasks it is given.
+ * filters. It follows the plugin's former parser chain (utils/tasklist.ts and utils/taskmapable.ts, removed in phase 1
+ * step 9) and its note filters. It never changes the tasks it is given.
  */
 import { afterInstant, beforeDay, convert24HourPrefix, dayKey, parseDailyNoteName, sameDay } from "./dates";
 import type { DateEntries, DateValue, DayKey, MomentFactory } from "./dates";
