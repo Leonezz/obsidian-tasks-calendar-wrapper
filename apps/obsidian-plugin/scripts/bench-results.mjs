@@ -49,7 +49,8 @@ export function paintedAfter(frames, time) {
 /**
  * A load, from the times measured in Obsidian, all in milliseconds from enabling the plugin: the first render with
  * task rows ends at the first pause of `burstGapMs` after the rows appear, and is on screen when the next frame is
- * painted; what changes the timeline after that are later renders, such as the reload after the options push.
+ * painted; what changes the timeline after that are later renders, such as the reload after the options push. The
+ * long tasks are summed for the first render, for what comes after it, and for the whole load.
  */
 export function splitLoad(raw, burstGapMs) {
 	if (raw.rowsAt === null) throw new Error("the timeline rendered no task rows (.task)");
@@ -68,18 +69,36 @@ export function splitLoad(raw, burstGapMs) {
 		...sumTasks(raw.tasks.filter((task) => task.start >= 0 && task.start < painted)),
 		laterRenders: later.filter((time, i) => i === 0 || time - later[i - 1] >= burstGapMs).length,
 		laterBlockedMs: sumTasks(raw.tasks.filter((task) => task.start >= painted)).blockedMs,
+		totalBlockedMs: sumTasks(raw.tasks.filter((task) => task.start >= 0)).blockedMs,
 	};
+}
+
+/**
+ * The timings shown but not judged in the vault at a scale:
+ * - indexedMs: how long Obsidian takes to read a saved note, which is not up to the plugin;
+ * - laterBlockedMs in the 40,000-task vault: the work after a load's first render. The plugin pushes its options to
+ *   the view 200 ms after it loads; whether that lands before the first render is painted or after it is a race, and
+ *   after it the timeline reloads and renders again. With the noise of a busy machine on top, this moved between
+ *   1.7 s and 7.1 s across loads of the same build. The whole load's work, totalBlockedMs, moved 1.6 %, and is judged
+ *   instead; the push's own reload and render are also judged in optionChange, which runs the same code. In the
+ *   4,000-task vault laterBlockedMs stayed within 230-245 ms over 20 loads, and is judged.
+ */
+export function notJudgedAt(scale) {
+	return new Set(scale === 1 ? ["indexedMs"] : ["indexedMs", "laterBlockedMs"]);
 }
 
 const isTiming = (value) => typeof value === "object" && value !== null && "minMs" in value;
 const isCount = (value) => typeof value === "object" && value !== null && "min" in value && "samples" in value;
 
 /**
- * The fastest and the median run next to the baseline's, and how many got slower. Judged by the fastest run: other
- * work on the machine only adds time, and moved the medians of the same build by up to 25 % between runs, the fastest
- * runs by under 5 %. Counts are shown and not judged.
+ * The fastest and the median run next to the baseline's, and how many got slower, for the vault at `scale`. Judged by
+ * the fastest run: other work on the machine only adds time, and moved the medians of the same build by up to 25 %
+ * between runs, the fastest runs by under 5 %. Counts are shown and not judged; so are timings the baseline does not
+ * have, which a warning names.
  */
-export function compare(baseline, results) {
+export function compare(baseline, results, scale = 1) {
+	const notJudged = notJudgedAt(scale);
+	const missing = [];
 	const lines = [];
 	const warnings = [];
 	let slower = 0;
@@ -98,14 +117,13 @@ export function compare(baseline, results) {
 			}
 			if (!isTiming(value)) continue;
 			if (!isTiming(before)) {
-				lines.push(row(name, null, value.minMs, "", null, value.medianMs));
+				lines.push(row(name, null, value.minMs, "", null, value.medianMs) + "  no baseline");
+				missing.push(name);
 				continue;
 			}
-			// How long Obsidian takes to read a note is not up to the plugin, so it is shown but not judged.
+			const judged = !notJudged.has(metric);
 			const isSlower =
-				metric !== "indexedMs" &&
-				value.minMs > before.minMs * SLOWER_RATIO &&
-				value.minMs - before.minMs > SLOWER_MS;
+				judged && value.minMs > before.minMs * SLOWER_RATIO && value.minMs - before.minMs > SLOWER_MS;
 			if (isSlower) slower++;
 			const change =
 				before.minMs === 0
@@ -113,9 +131,14 @@ export function compare(baseline, results) {
 					: `${value.minMs >= before.minMs ? "+" : ""}${Math.round((100 * (value.minMs - before.minMs)) / before.minMs)} %`;
 			lines.push(
 				row(name, before.minMs, value.minMs, change, before.medianMs, value.medianMs) +
-					(isSlower ? "  SLOWER" : ""),
+					(isSlower ? "  SLOWER" : judged ? "" : "  not judged"),
 			);
 		}
+	}
+	if (missing.length) {
+		warnings.push(
+			`bench: warning: the baseline has no ${missing.join(", ")}; they are not judged until it is recorded again with \`pnpm bench --update${scale === 1 ? "" : ` --scale ${scale}`}\`.`,
+		);
 	}
 	if (results.initialLoad.rows !== baseline.results.initialLoad?.rows) {
 		warnings.push(

@@ -53,6 +53,7 @@ test("a load's first render ends at the first pause, and what comes later is cou
 		longTasks: 2,
 		laterRenders: 2,
 		laterBlockedMs: 150,
+		totalBlockedMs: 330,
 	});
 });
 
@@ -102,13 +103,57 @@ test("how long Obsidian takes to read a note is shown but not judged", () => {
 	const base = baselineWith({ saveWithTasks: { indexedMs: timing(2) } });
 	const result = compare(base, resultsWith({ saveWithTasks: { indexedMs: timing(500) } }));
 	assert.equal(result.slower, 0);
-	assert.ok(result.lines.some((line) => line.includes("saveWithTasks.indexedMs") && !line.includes("SLOWER")));
+	const line = result.lines.find((candidate) => candidate.includes("saveWithTasks.indexedMs"));
+	assert.ok(line && !line.includes("SLOWER") && line.endsWith("  not judged"), line);
 });
 
-test("a measurement the baseline does not have is shown and not judged", () => {
-	const result = compare(baselineWith({}), resultsWith({ optionChange: { appliedMs: timing(300) } }));
+test("in the large vault, the work after a load's first render is shown but not judged; the whole load's work is", () => {
+	// Whether the options push lands before the first render or after it is a race, which moved this by seconds
+	// between runs of the same build in the 40,000-task vault.
+	const base = baselineWith({
+		initialLoad: { rows: 100, laterBlockedMs: timing(1658), totalBlockedMs: timing(1000) },
+	});
+	const result = compare(
+		base,
+		resultsWith({ initialLoad: { rows: 100, laterBlockedMs: timing(3488), totalBlockedMs: timing(1300) } }),
+		10,
+	);
+	assert.equal(result.slower, 1);
+	const later = result.lines.find((line) => line.includes("initialLoad.laterBlockedMs"));
+	assert.ok(later && later.endsWith("  not judged"), later);
+	const total = result.lines.find((line) => line.includes("initialLoad.totalBlockedMs"));
+	assert.ok(total && total.endsWith("  SLOWER"), total);
+});
+
+test("in the 4,000-task vault, where it is steady, the work after a load's first render is judged", () => {
+	const base = baselineWith({
+		initialLoad: { rows: 100, laterBlockedMs: timing(230), totalBlockedMs: timing(1970) },
+	});
+	const result = compare(
+		base,
+		resultsWith({ initialLoad: { rows: 100, laterBlockedMs: timing(360), totalBlockedMs: timing(2100) } }),
+	);
+	assert.equal(result.slower, 1);
+	const later = result.lines.find((line) => line.includes("initialLoad.laterBlockedMs"));
+	assert.ok(later && later.endsWith("  SLOWER"), later);
+	assert.equal(compare(base, resultsWith({ initialLoad: { rows: 100, laterBlockedMs: timing(360) } }), 1).slower, 1);
+});
+
+test("a measurement the baseline does not have is shown, not judged, and named in a warning", () => {
+	const result = compare(
+		baselineWith({}),
+		resultsWith({ optionChange: { appliedMs: timing(300), blockedMs: timing(200), reloadCalls: counts([1]) } }),
+	);
 	assert.equal(result.slower, 0);
-	assert.ok(result.lines.some((line) => line.includes("optionChange.appliedMs")));
+	const line = result.lines.find((candidate) => candidate.includes("optionChange.appliedMs"));
+	assert.ok(line && line.endsWith("  no baseline"), line);
+	assert.deepEqual(result.warnings, [
+		"bench: warning: the baseline has no optionChange.appliedMs, optionChange.blockedMs; they are not judged until it is recorded again with `pnpm bench --update`.",
+	]);
+	assert.match(
+		compare(baselineWith({}), resultsWith({ optionChange: { appliedMs: timing(300) } }), 10).warnings[0],
+		/`pnpm bench --update --scale 10`/,
+	);
 });
 
 test("counts such as the files read are shown next to the baseline's and not judged", () => {
@@ -128,7 +173,7 @@ test("the table's columns line up, with and without a baseline", () => {
 			optionChange: { appliedMs: timing(600), externalSettingsCalls: counts([0]) },
 		}),
 	);
-	const table = lines.map((line) => line.replace(/ {2}SLOWER$/, ""));
+	const table = lines.map((line) => line.replace(/ {2}(SLOWER|not judged|no baseline)$/, ""));
 	assert.equal(table.length, 5);
 	assert.equal(new Set(table.map((line) => line.length)).size, 1, table.join("\n"));
 });
