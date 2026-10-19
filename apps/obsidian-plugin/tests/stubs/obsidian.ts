@@ -138,18 +138,161 @@ export const MarkdownRenderer = {
 	},
 };
 
-/** A view keeps the app of the leaf it is opened in, as Obsidian's views do. Events are not delivered. */
-export class ItemView {
+/** What `on` returns, to hand to `offref`. */
+export interface EventRef {
+	readonly e: Events;
+	readonly name: string;
+	readonly fn: (...data: unknown[]) => unknown;
+	readonly ctx?: unknown;
+}
+
+/** The timer of the module's start, which a test's mocked clock does not replace. */
+const realSetTimeout = setTimeout;
+
+/**
+ * As Obsidian's Events (1.14.4): a trigger calls the handlers there were when it started, in the order they were added,
+ * and a handler that throws does not stop the others; its error is thrown again from a timer. Here that is a real
+ * timer, so a test that mocks the clock still fails on it.
+ */
+export class Events {
+	private handlers: Record<string, EventRef[]> = {};
+
+	on(name: string, callback: (...data: never[]) => unknown, ctx?: unknown): EventRef {
+		const ref: EventRef = { e: this, name, fn: callback as EventRef["fn"], ctx };
+		this.handlers = { ...this.handlers, [name]: [...(this.handlers[name] ?? []), ref] };
+		return ref;
+	}
+
+	off(name: string, callback: (...data: never[]) => unknown): void {
+		this.keep(name, (ref) => ref.fn !== callback);
+	}
+
+	offref(ref: EventRef): void {
+		this.keep(ref.name, (other) => other !== ref);
+	}
+
+	trigger(name: string, ...data: unknown[]): void {
+		for (const ref of this.handlers[name] ?? []) this.tryTrigger(ref, data);
+	}
+
+	tryTrigger(ref: EventRef, data: unknown[]): void {
+		try {
+			ref.fn.apply(ref.ctx, data);
+		} catch (error) {
+			realSetTimeout(() => {
+				throw error;
+			}, 0);
+		}
+	}
+
+	private keep(name: string, wanted: (ref: EventRef) => boolean): void {
+		const { [name]: refs = [], ...others } = this.handlers;
+		const kept = refs.filter(wanted);
+		this.handlers = kept.length > 0 ? { ...others, [name]: kept } : others;
+	}
+}
+
+/**
+ * As Obsidian's Component: what is registered while it is loaded is undone, last first, when it unloads, and then
+ * onunload runs. registerEvent registers taking the handler off again.
+ */
+export class Component {
+	private loaded = false;
+	private cleanups: (() => unknown)[] = [];
+
+	load(): void {
+		if (this.loaded) return;
+		this.loaded = true;
+		this.onload();
+	}
+
+	onload(): void {}
+
+	unload(): void {
+		if (!this.loaded) return;
+		this.loaded = false;
+		const cleanups = this.cleanups;
+		this.cleanups = [];
+		for (const cleanup of [...cleanups].reverse()) cleanup();
+		this.onunload();
+	}
+
+	onunload(): void {}
+
+	register(cleanup: () => unknown): void {
+		this.cleanups = [...this.cleanups, cleanup];
+	}
+
+	registerEvent(ref: EventRef): void {
+		this.register(() => ref.e.offref(ref));
+	}
+}
+
+/** Obsidian's `empty()` on the elements of a view. */
+class ViewElement {
+	empty(): void {}
+}
+
+/**
+ * A view keeps the app of the leaf it is opened in, as Obsidian's views do. As in Obsidian, opening it loads it and then
+ * runs onOpen, and closing it unloads it, which takes off the handlers it registered, and then runs onClose. Obsidian's
+ * typings do not declare open and close; tests reach them through tests/fakevault.ts.
+ */
+export class ItemView extends Component {
 	readonly app: unknown;
+	/** The view's header and its content, as Obsidian builds them. */
+	readonly containerEl = { children: [new ViewElement(), new ViewElement()] };
 
 	constructor(public leaf: { app?: unknown }) {
+		super();
 		this.app = leaf.app;
 	}
 
-	registerEvent(): void {}
+	async open(): Promise<void> {
+		this.load();
+		await this.onOpen();
+	}
+
+	async close(): Promise<void> {
+		this.unload();
+		await this.onClose();
+	}
+
+	async onOpen(): Promise<void> {}
+
+	async onClose(): Promise<void> {}
 }
 
-export class TFile {}
+/** A file or folder of the vault. As in Obsidian, renaming one changes the path of the same object. */
+export class TAbstractFile {
+	path = "";
+	name = "";
+	parent: TFolder | null = null;
+
+	/** Not in Obsidian's typings: what Obsidian does when the vault renames a file. */
+	setPath(path: string): void {
+		this.path = path;
+		this.name = path.slice(path.lastIndexOf("/") + 1);
+	}
+}
+
+export class TFile extends TAbstractFile {
+	basename = "";
+	extension = "";
+
+	/** As in Obsidian, the extension is what follows the last dot, in lower case, unless the name starts or ends with it. */
+	setPath(path: string): void {
+		super.setPath(path);
+		const dot = this.name.lastIndexOf(".");
+		const hasExtension = dot > 0 && dot < this.name.length - 1;
+		this.basename = hasExtension ? this.name.slice(0, dot) : this.name;
+		this.extension = hasExtension ? this.name.slice(dot + 1).toLowerCase() : "";
+	}
+}
+
+export class TFolder extends TAbstractFile {
+	children: TAbstractFile[] = [];
+}
 
 export class WorkspaceLeaf {}
 

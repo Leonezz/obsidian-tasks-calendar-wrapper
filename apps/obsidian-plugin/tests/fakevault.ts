@@ -1,0 +1,241 @@
+/**
+ * A vault in memory for tests of how the timeline follows changes. Its edits fire the events Obsidian 1.14.4 fires for
+ * them, in the same order:
+ * - writing a note: the vault's "modify" (or "create" for a new note), then the metadata cache's "changed";
+ * - removing a note: the metadata cache's "deleted" with the metadata the note had, then the vault's "delete";
+ * - renaming: the metadata moves to the new path, then the vault's "rename"; a folder is renamed first, then each
+ *   file and folder in it, as Obsidian reports them;
+ * - after each of them, once Obsidian has resolved the links again, the metadata cache's "resolved". The "resolve" it
+ *   fires for each note before that is left out, as the plugin does not listen to it.
+ * Obsidian fires the metadata events a moment later, after reading the note; here they come at once. A file that is not
+ * a note (not ".md") gets no "changed", and its metadata is empty, as in Obsidian.
+ *
+ * The metadata of a note is computed from its text, as far as the plugin uses it: each line that starts with a list
+ * marker is a list item at the top of its list, a task when "[x]" follows the marker; "#tags"; and a frontmatter of
+ * "key: value" lines between "---" lines. Code blocks, nested lists and typed frontmatter values are not modelled; tests
+ * that need Obsidian's own metadata use the golden vault's, see golden-vault.ts.
+ */
+import type { CachedMetadata, FrontMatterCache, ListItemCache, TagCache } from "obsidian";
+import { Events, TAbstractFile, TFile, TFolder } from "obsidian";
+
+const LIST_ITEM = /^(\s*)([-*+]|\d+[.)]) (?:\[(.)\])?/;
+const TAG = /(^|\s)(#[^\s#]+)/g;
+
+/** The metadata Obsidian computes for a note's text, as far as the plugin uses it. */
+export function metadataOf(content: string): CachedMetadata {
+	const lines = content.split("\n");
+	const starts = lines.map((_, n) => lines.slice(0, n).reduce((offset, line) => offset + line.length + 1, 0));
+	const end = lines[0] === "---" ? lines.indexOf("---", 1) : -1;
+	const frontmatter: FrontMatterCache | undefined =
+		end > 0
+			? Object.fromEntries(
+					lines
+						.slice(1, end)
+						.map((line) => line.match(/^([^:]+):\s*(.*)$/))
+						.filter((match): match is RegExpMatchArray => match !== null)
+						.map((match) => [match[1].trim(), match[2].trim()]),
+				)
+			: undefined;
+	const range = (line: number, from: number, to: number) => ({
+		start: { line, col: from, offset: starts[line] + from },
+		end: { line, col: to, offset: starts[line] + to },
+	});
+	const listItems: ListItemCache[] = lines.flatMap((line, n) => {
+		const match = n > end ? line.match(LIST_ITEM) : null;
+		if (!match) return [];
+		const item = { position: range(n, match[1].length, line.length), parent: -1 };
+		return [match[3] === undefined ? item : { ...item, task: match[3] }];
+	});
+	const tags: TagCache[] = lines.flatMap((line, n) =>
+		n <= end
+			? []
+			: [...line.matchAll(TAG)].map((match) => {
+					const from = (match.index ?? 0) + match[1].length;
+					return { tag: match[2], position: range(n, from, from + match[2].length) };
+				}),
+	);
+	return {
+		...(listItems.length > 0 ? { listItems } : {}),
+		...(tags.length > 0 ? { tags } : {}),
+		...(frontmatter ? { frontmatter } : {}),
+	};
+}
+
+class FakeMetadataCache extends Events {
+	constructor(private readonly caches: Map<string, CachedMetadata>) {
+		super();
+	}
+
+	/** As in Obsidian: nothing for a path it has no metadata of, and empty metadata for a file that is not a note. */
+	getFileCache(file: TAbstractFile | null): CachedMetadata | null {
+		if (!file || !this.caches.has(file.path)) return null;
+		return file instanceof TFile && file.extension === "md" ? (this.caches.get(file.path) ?? null) : {};
+	}
+}
+
+/** A leaf of the workspace, with the view opened in it. */
+export interface FakeLeaf {
+	readonly app: unknown;
+	view: { getViewType(): string } | null;
+}
+
+class FakeWorkspace extends Events {
+	private leaves: readonly FakeLeaf[] = [];
+
+	constructor(private readonly appOf: () => unknown) {
+		super();
+	}
+
+	/** Not in Obsidian: a new leaf to open a view in. */
+	addLeaf(): FakeLeaf {
+		const leaf: FakeLeaf = { app: this.appOf(), view: null };
+		this.leaves = [...this.leaves, leaf];
+		return leaf;
+	}
+
+	/** Not in Obsidian: the leaf is gone, as after closing its tab. */
+	removeLeaf(leaf: FakeLeaf): void {
+		this.leaves = this.leaves.filter((other) => other !== leaf);
+	}
+
+	getLeavesOfType(type: string): FakeLeaf[] {
+		return this.leaves.filter((leaf) => leaf.view?.getViewType() === type);
+	}
+}
+
+/** Gives a file or folder its path, as Obsidian does on a rename; Obsidian's typings do not declare it. */
+const setPath = (file: TAbstractFile, path: string) =>
+	(file as unknown as { setPath(path: string): void }).setPath(path);
+
+const fileAt = (path: string) => {
+	const file = new TFile();
+	setPath(file, path);
+	return file;
+};
+
+const folderAt = (path: string) => {
+	const folder = new TFolder();
+	setPath(folder, path);
+	return folder;
+};
+
+/** A vault with these notes, by path, and the app the timeline sees it through. */
+export function fakeVault(notes: Record<string, string>) {
+	const contents = new Map<string, string>();
+	const caches = new Map<string, CachedMetadata>();
+	const files = new Map<string, TAbstractFile>();
+	const failing = new Set<string>();
+	const reads: string[] = [];
+	let listings = 0;
+
+	const metadataCache = new FakeMetadataCache(caches);
+	const vault = Object.assign(new Events(), {
+		getMarkdownFiles(): TFile[] {
+			listings += 1;
+			return [...files.values()].filter(
+				(file): file is TFile => file instanceof TFile && file.extension === "md",
+			);
+		},
+		async cachedRead(file: TFile): Promise<string> {
+			reads.push(file.path);
+			if (failing.has(file.path)) throw new Error(`could not read ${file.path}`);
+			const content = contents.get(file.path);
+			if (content === undefined) throw new Error(`${file.path} does not exist`);
+			return content;
+		},
+		getAbstractFileByPath(path: string): TAbstractFile | null {
+			return files.get(path) ?? null;
+		},
+	});
+	const workspace: FakeWorkspace = new FakeWorkspace(() => app);
+	const app = { vault, metadataCache, workspace };
+
+	/** Adds the folders a path is in, as Obsidian has them. */
+	const addFolders = (path: string) => {
+		const parts = path.split("/").slice(0, -1);
+		parts.forEach((_, n) => {
+			const folder = parts.slice(0, n + 1).join("/");
+			if (!files.has(folder)) files.set(folder, folderAt(folder));
+		});
+	};
+	for (const [path, content] of Object.entries(notes)) {
+		addFolders(path);
+		files.set(path, fileAt(path));
+		contents.set(path, content);
+		caches.set(path, path.endsWith(".md") ? metadataOf(content) : {});
+	}
+
+	return {
+		app,
+		/** The paths read, in order. */
+		reads,
+		/** How often the notes were listed, which readTasks does once per reload. */
+		listings: () => listings,
+		/** Writes a note, as an editor saving it does: "modify", or "create" for a new note, then "changed". */
+		write(path: string, content: string): void {
+			const existing = files.get(path);
+			const file = existing instanceof TFile ? existing : fileAt(path);
+			if (!existing) {
+				addFolders(path);
+				files.set(path, file);
+			}
+			contents.set(path, content);
+			vault.trigger(existing ? "modify" : "create", file);
+			if (file.extension !== "md") {
+				caches.set(path, {});
+				return;
+			}
+			caches.set(path, metadataOf(content));
+			metadataCache.trigger("changed", file, content, caches.get(path));
+			metadataCache.trigger("resolved");
+		},
+		/** Deletes a note: "deleted" with the metadata it had, then "delete". */
+		remove(path: string): void {
+			const file = files.get(path);
+			if (!(file instanceof TFile)) throw new Error(`there is no note ${path}`);
+			files.delete(path);
+			metadataCache.trigger("deleted", file, metadataCache.getFileCache(file));
+			caches.delete(path);
+			contents.delete(path);
+			vault.trigger("delete", file);
+			metadataCache.trigger("resolved");
+		},
+		/** Renames a note or a folder. A folder's files and folders are renamed after it, each with its own event. */
+		rename(oldPath: string, newPath: string): void {
+			const target = files.get(oldPath);
+			if (!target) throw new Error(`there is nothing at ${oldPath}`);
+			const inside = [...files.keys()].filter((path) => path.startsWith(oldPath + "/")).sort();
+			addFolders(newPath);
+			for (const from of [oldPath, ...inside]) {
+				const to = newPath + from.slice(oldPath.length);
+				const file = files.get(from) as TAbstractFile;
+				files.delete(from);
+				setPath(file, to);
+				files.set(to, file);
+				// Obsidian's metadata cache moves the metadata on "rename" before the plugins hear of it.
+				for (const map of [caches, contents] as Map<string, unknown>[]) {
+					if (map.has(from)) {
+						map.set(to, map.get(from));
+						map.delete(from);
+					}
+				}
+				vault.trigger("rename", file, from);
+			}
+			metadataCache.trigger("resolved");
+		},
+		/** Obsidian has resolved the links of every note again, as it does after changes and once after starting. */
+		resolve(): void {
+			metadataCache.trigger("resolved");
+		},
+		/** A new Obsidian window opened. */
+		openWindow(): void {
+			app.workspace.trigger("window-open", {}, {});
+		},
+		/** Makes reading the note fail, as when the file cannot be read from disk. */
+		failReads(path: string): void {
+			failing.add(path);
+		},
+	};
+}
+
+export type FakeVault = ReturnType<typeof fakeVault>;
