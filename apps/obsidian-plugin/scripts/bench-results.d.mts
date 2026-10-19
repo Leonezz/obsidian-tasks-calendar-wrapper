@@ -59,4 +59,6 @@ export function compare(
 		readonly initialLoad: { readonly rows?: unknown };
 		readonly saveWithoutTasks: { readonly runs?: unknown; readonly reloads?: unknown };
 	},
+	scale?: number,
 ): { lines: string[]; warnings: string[]; slower: number };
+export function notJudgedAt(scale: number): Set<string>;

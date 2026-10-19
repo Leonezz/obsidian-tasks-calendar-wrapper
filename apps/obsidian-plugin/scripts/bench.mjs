@@ -642,7 +642,7 @@ await runScript("bench", async () => {
 			);
 		}
 	}
-	const { lines, warnings, slower } = compare(baseline, results);
+	const { lines, warnings, slower } = compare(baseline, results, scale);
 	lines.forEach((line) => console.log(line));
 	warnings.forEach((warning) => console.warn(warning));
 	console.log(

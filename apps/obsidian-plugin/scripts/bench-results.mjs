@@ -74,24 +74,31 @@ export function splitLoad(raw, burstGapMs) {
 }
 
 /**
- * The timings that are shown but not judged, as the plugin does not decide them:
- * - indexedMs: how long Obsidian takes to read a saved note;
- * - laterBlockedMs: the work after a load's first render. The plugin pushes its options to the view 200 ms after it
- *   loads, and whether that lands before the first render or after it is a race. After it, the timeline reloads and
- *   renders again; in the 40,000-task vault that moved this by seconds between runs of the same build. The whole
- *   load's work, totalBlockedMs, changes by a few per cent either way, and is judged instead.
+ * The timings shown but not judged in the vault at a scale:
+ * - indexedMs: how long Obsidian takes to read a saved note, which is not up to the plugin;
+ * - laterBlockedMs in the 40,000-task vault: the work after a load's first render. The plugin pushes its options to
+ *   the view 200 ms after it loads; whether that lands before the first render is painted or after it is a race, and
+ *   after it the timeline reloads and renders again. With the noise of a busy machine on top, this moved between
+ *   1.7 s and 7.1 s across loads of the same build. The whole load's work, totalBlockedMs, moved 1.6 %, and is judged
+ *   instead; the push's own reload and render are also judged in optionChange, which runs the same code. In the
+ *   4,000-task vault laterBlockedMs stayed within 230-245 ms over 20 loads, and is judged.
  */
-const NOT_JUDGED = new Set(["indexedMs", "laterBlockedMs"]);
+export function notJudgedAt(scale) {
+	return new Set(scale === 1 ? ["indexedMs"] : ["indexedMs", "laterBlockedMs"]);
+}
 
 const isTiming = (value) => typeof value === "object" && value !== null && "minMs" in value;
 const isCount = (value) => typeof value === "object" && value !== null && "min" in value && "samples" in value;
 
 /**
- * The fastest and the median run next to the baseline's, and how many got slower. Judged by the fastest run: other
- * work on the machine only adds time, and moved the medians of the same build by up to 25 % between runs, the fastest
- * runs by under 5 %. Counts are shown and not judged.
+ * The fastest and the median run next to the baseline's, and how many got slower, for the vault at `scale`. Judged by
+ * the fastest run: other work on the machine only adds time, and moved the medians of the same build by up to 25 %
+ * between runs, the fastest runs by under 5 %. Counts are shown and not judged; so are timings the baseline does not
+ * have, which a warning names.
  */
-export function compare(baseline, results) {
+export function compare(baseline, results, scale = 1) {
+	const notJudged = notJudgedAt(scale);
+	const missing = [];
 	const lines = [];
 	const warnings = [];
 	let slower = 0;
@@ -110,10 +117,11 @@ export function compare(baseline, results) {
 			}
 			if (!isTiming(value)) continue;
 			if (!isTiming(before)) {
-				lines.push(row(name, null, value.minMs, "", null, value.medianMs));
+				lines.push(row(name, null, value.minMs, "", null, value.medianMs) + "  no baseline");
+				missing.push(name);
 				continue;
 			}
-			const judged = !NOT_JUDGED.has(metric);
+			const judged = !notJudged.has(metric);
 			const isSlower =
 				judged && value.minMs > before.minMs * SLOWER_RATIO && value.minMs - before.minMs > SLOWER_MS;
 			if (isSlower) slower++;
@@ -126,6 +134,11 @@ export function compare(baseline, results) {
 					(isSlower ? "  SLOWER" : judged ? "" : "  not judged"),
 			);
 		}
+	}
+	if (missing.length) {
+		warnings.push(
+			`bench: warning: the baseline has no ${missing.join(", ")}; they are not judged until it is recorded again with \`pnpm bench --update${scale === 1 ? "" : ` --scale ${scale}`}\`.`,
+		);
 	}
 	if (results.initialLoad.rows !== baseline.results.initialLoad?.rows) {
 		warnings.push(
