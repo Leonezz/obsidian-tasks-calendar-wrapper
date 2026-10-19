@@ -36,7 +36,11 @@ try {
 		format: "cjs",
 		target: "node18",
 		logLevel: "warning",
-		alias: { obsidian: path.join(testDir, "stubs", "obsidian.ts") },
+		alias: {
+			obsidian: path.join(testDir, "stubs", "obsidian.ts"),
+			// The view mounts the bridge with createRoot, which needs a DOM; see the stub.
+			"react-dom/client": path.join(testDir, "stubs", "react-dom-client.ts"),
+		},
 	});
 	const bundles = readdirSync(outdir)
 		.filter((name) => name.endsWith(".js"))
