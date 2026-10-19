@@ -496,6 +496,8 @@ function measureAll(cli, notes, scale) {
 			// Renders after the first one, such as the reload after the options push 200 ms after loading.
 			laterRenders: counts(loads.map((load) => load.laterRenders)),
 			laterBlockedMs: summary(loads.map((load) => load.laterBlockedMs)),
+			// All of the load's work: the first render, and what the options push adds before or after it.
+			totalBlockedMs: summary(loads.map((load) => load.totalBlockedMs)),
 			filesRead: counts(loads.map((load) => load.filesRead)),
 		},
 		saveWithTasks: {

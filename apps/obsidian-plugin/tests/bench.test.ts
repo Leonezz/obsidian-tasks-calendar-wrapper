@@ -53,6 +53,7 @@ test("a load's first render ends at the first pause, and what comes later is cou
 		longTasks: 2,
 		laterRenders: 2,
 		laterBlockedMs: 150,
+		totalBlockedMs: 330,
 	});
 });
 
@@ -102,7 +103,25 @@ test("how long Obsidian takes to read a note is shown but not judged", () => {
 	const base = baselineWith({ saveWithTasks: { indexedMs: timing(2) } });
 	const result = compare(base, resultsWith({ saveWithTasks: { indexedMs: timing(500) } }));
 	assert.equal(result.slower, 0);
-	assert.ok(result.lines.some((line) => line.includes("saveWithTasks.indexedMs") && !line.includes("SLOWER")));
+	const line = result.lines.find((candidate) => candidate.includes("saveWithTasks.indexedMs"));
+	assert.ok(line && !line.includes("SLOWER") && line.endsWith("  not judged"), line);
+});
+
+test("the work after a load's first render is shown but not judged; the whole load's work is", () => {
+	// Whether the options push lands before the first render or after it is a race, which moved this by seconds
+	// between runs of the same build in the 40,000-task vault.
+	const base = baselineWith({
+		initialLoad: { rows: 100, laterBlockedMs: timing(1658), totalBlockedMs: timing(1000) },
+	});
+	const result = compare(
+		base,
+		resultsWith({ initialLoad: { rows: 100, laterBlockedMs: timing(3488), totalBlockedMs: timing(1300) } }),
+	);
+	assert.equal(result.slower, 1);
+	const later = result.lines.find((line) => line.includes("initialLoad.laterBlockedMs"));
+	assert.ok(later && later.endsWith("  not judged"), later);
+	const total = result.lines.find((line) => line.includes("initialLoad.totalBlockedMs"));
+	assert.ok(total && total.endsWith("  SLOWER"), total);
 });
 
 test("a measurement the baseline does not have is shown and not judged", () => {
@@ -128,7 +147,7 @@ test("the table's columns line up, with and without a baseline", () => {
 			optionChange: { appliedMs: timing(600), externalSettingsCalls: counts([0]) },
 		}),
 	);
-	const table = lines.map((line) => line.replace(/ {2}SLOWER$/, ""));
+	const table = lines.map((line) => line.replace(/ {2}(SLOWER|not judged)$/, ""));
 	assert.equal(table.length, 5);
 	assert.equal(new Set(table.map((line) => line.length)).size, 1, table.join("\n"));
 });

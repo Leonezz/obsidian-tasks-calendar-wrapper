@@ -42,6 +42,7 @@ export interface Load {
 	readonly longTasks: number;
 	readonly laterRenders: number;
 	readonly laterBlockedMs: number;
+	readonly totalBlockedMs: number;
 }
 
 export const SLOWER_RATIO: number;

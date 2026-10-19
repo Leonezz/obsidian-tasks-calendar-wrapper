@@ -49,7 +49,8 @@ export function paintedAfter(frames, time) {
 /**
  * A load, from the times measured in Obsidian, all in milliseconds from enabling the plugin: the first render with
  * task rows ends at the first pause of `burstGapMs` after the rows appear, and is on screen when the next frame is
- * painted; what changes the timeline after that are later renders, such as the reload after the options push.
+ * painted; what changes the timeline after that are later renders, such as the reload after the options push. The
+ * long tasks are summed for the first render, for what comes after it, and for the whole load.
  */
 export function splitLoad(raw, burstGapMs) {
 	if (raw.rowsAt === null) throw new Error("the timeline rendered no task rows (.task)");
@@ -68,8 +69,19 @@ export function splitLoad(raw, burstGapMs) {
 		...sumTasks(raw.tasks.filter((task) => task.start >= 0 && task.start < painted)),
 		laterRenders: later.filter((time, i) => i === 0 || time - later[i - 1] >= burstGapMs).length,
 		laterBlockedMs: sumTasks(raw.tasks.filter((task) => task.start >= painted)).blockedMs,
+		totalBlockedMs: sumTasks(raw.tasks.filter((task) => task.start >= 0)).blockedMs,
 	};
 }
+
+/**
+ * The timings that are shown but not judged, as the plugin does not decide them:
+ * - indexedMs: how long Obsidian takes to read a saved note;
+ * - laterBlockedMs: the work after a load's first render. The plugin pushes its options to the view 200 ms after it
+ *   loads, and whether that lands before the first render or after it is a race. After it, the timeline reloads and
+ *   renders again; in the 40,000-task vault that moved this by seconds between runs of the same build. The whole
+ *   load's work, totalBlockedMs, changes by a few per cent either way, and is judged instead.
+ */
+const NOT_JUDGED = new Set(["indexedMs", "laterBlockedMs"]);
 
 const isTiming = (value) => typeof value === "object" && value !== null && "minMs" in value;
 const isCount = (value) => typeof value === "object" && value !== null && "min" in value && "samples" in value;
@@ -101,11 +113,9 @@ export function compare(baseline, results) {
 				lines.push(row(name, null, value.minMs, "", null, value.medianMs));
 				continue;
 			}
-			// How long Obsidian takes to read a note is not up to the plugin, so it is shown but not judged.
+			const judged = !NOT_JUDGED.has(metric);
 			const isSlower =
-				metric !== "indexedMs" &&
-				value.minMs > before.minMs * SLOWER_RATIO &&
-				value.minMs - before.minMs > SLOWER_MS;
+				judged && value.minMs > before.minMs * SLOWER_RATIO && value.minMs - before.minMs > SLOWER_MS;
 			if (isSlower) slower++;
 			const change =
 				before.minMs === 0
@@ -113,7 +123,7 @@ export function compare(baseline, results) {
 					: `${value.minMs >= before.minMs ? "+" : ""}${Math.round((100 * (value.minMs - before.minMs)) / before.minMs)} %`;
 			lines.push(
 				row(name, before.minMs, value.minMs, change, before.medianMs, value.medianMs) +
-					(isSlower ? "  SLOWER" : ""),
+					(isSlower ? "  SLOWER" : judged ? "" : "  not judged"),
 			);
 		}
 	}
