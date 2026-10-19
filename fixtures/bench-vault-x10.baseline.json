@@ -1,0 +1,287 @@
+{
+	"note": "Measured by apps/obsidian-plugin/scripts/bench.mjs (`pnpm bench --update --scale 10`). Do not edit by hand.",
+	"measuredAt": "2026-10-19",
+	"obsidianVersion": "1.14.4 (installer 1.13.7)",
+	"electron": "43.3.0",
+	"chrome": "150.0.7871.212",
+	"machine": {
+		"cpu": "Apple M4 Pro",
+		"cores": 14,
+		"memoryGB": 48,
+		"os": "macOS 26.4 (Darwin 25.4.0)",
+		"arch": "arm64"
+	},
+	"viewport": {
+		"width": 1280,
+		"height": 800,
+		"deviceScaleFactor": 2,
+		"mobile": false
+	},
+	"today": "2026-01-15 Thursday",
+	"windowVisibility": "hidden",
+	"loadAverage": {
+		"before": 1.9,
+		"after": 3,
+		"cores": 14
+	},
+	"plugin": {
+		"version": "0.3.7",
+		"commit": "5dbd454",
+		"uncommittedChanges": false
+	},
+	"vault": {
+		"name": "bench-vault-x10",
+		"notes": 20000,
+		"tasks": 40000,
+		"withTasks": "Projects/Work/Project 0010.md",
+		"withoutTasks": "Reference/Note 0001.md"
+	},
+	"settings": {
+		"quietMs": 1000,
+		"noReloadWindowMs": 3000,
+		"loadWatchMs": 2000,
+		"warmupSaves": 2,
+		"warmupOptionChanges": 1,
+		"runs": {
+			"loads": 3,
+			"saves": 3,
+			"optionChanges": 3
+		}
+	},
+	"results": {
+		"initialLoad": {
+			"runs": 3,
+			"rows": 34957,
+			"renderedMs": {
+				"medianMs": 24572.3,
+				"minMs": 23483.7,
+				"maxMs": 24794.5,
+				"samplesMs": [
+					23483.7,
+					24794.5,
+					24572.3
+				]
+			},
+			"blockedMs": {
+				"medianMs": 24550,
+				"minMs": 23428,
+				"maxMs": 24775,
+				"samplesMs": [
+					23428,
+					24775,
+					24550
+				]
+			},
+			"longestTaskMs": {
+				"medianMs": 15037,
+				"minMs": 14605,
+				"maxMs": 15171,
+				"samplesMs": [
+					14605,
+					15037,
+					15171
+				]
+			},
+			"laterRenders": {
+				"median": 1,
+				"min": 1,
+				"max": 1,
+				"samples": [
+					1,
+					1,
+					1
+				]
+			},
+			"laterBlockedMs": {
+				"medianMs": 3595,
+				"minMs": 3114,
+				"maxMs": 3617,
+				"samplesMs": [
+					3114,
+					3617,
+					3595
+				]
+			},
+			"totalBlockedMs": {
+				"medianMs": 28145,
+				"minMs": 26542,
+				"maxMs": 28392,
+				"samplesMs": [
+					26542,
+					28392,
+					28145
+				]
+			},
+			"filesRead": {
+				"median": 40000,
+				"min": 40000,
+				"max": 40000,
+				"samples": [
+					40000,
+					40000,
+					40000
+				]
+			}
+		},
+		"saveWithTasks": {
+			"runs": 3,
+			"indexedMs": {
+				"medianMs": 5.6,
+				"minMs": 5.4,
+				"maxMs": 6,
+				"samplesMs": [
+					5.6,
+					6,
+					5.4
+				]
+			},
+			"renderedMs": {
+				"medianMs": 3392.8,
+				"minMs": 3226.9,
+				"maxMs": 3477.9,
+				"samplesMs": [
+					3226.9,
+					3477.9,
+					3392.8
+				]
+			},
+			"blockedMs": {
+				"medianMs": 3162,
+				"minMs": 2963,
+				"maxMs": 3246,
+				"samplesMs": [
+					2963,
+					3246,
+					3162
+				]
+			},
+			"longestTaskMs": {
+				"medianMs": 1435,
+				"minMs": 1391,
+				"maxMs": 1456,
+				"samplesMs": [
+					1435,
+					1456,
+					1391
+				]
+			},
+			"filesRead": {
+				"median": 20000,
+				"min": 20000,
+				"max": 20000,
+				"samples": [
+					20000,
+					20000,
+					20000
+				]
+			}
+		},
+		"saveWithoutTasks": {
+			"runs": 3,
+			"reloads": 0,
+			"indexedMs": {
+				"medianMs": 5.2,
+				"minMs": 4.3,
+				"maxMs": 5.5,
+				"samplesMs": [
+					5.5,
+					5.2,
+					4.3
+				]
+			},
+			"blockedMs": {
+				"medianMs": 319,
+				"minMs": 292,
+				"maxMs": 320,
+				"samplesMs": [
+					319,
+					320,
+					292
+				]
+			},
+			"longestTaskMs": {
+				"medianMs": 319,
+				"minMs": 292,
+				"maxMs": 320,
+				"samplesMs": [
+					319,
+					320,
+					292
+				]
+			},
+			"filesRead": {
+				"median": 0,
+				"min": 0,
+				"max": 0,
+				"samples": [
+					0,
+					0,
+					0
+				]
+			}
+		},
+		"optionChange": {
+			"runs": 3,
+			"appliedMs": {
+				"medianMs": 4867.3,
+				"minMs": 4838,
+				"maxMs": 5805.8,
+				"samplesMs": [
+					4838,
+					4867.3,
+					5805.8
+				]
+			},
+			"blockedMs": {
+				"medianMs": 4664,
+				"minMs": 4634,
+				"maxMs": 5598,
+				"samplesMs": [
+					4634,
+					4664,
+					5598
+				]
+			},
+			"longestTaskMs": {
+				"medianMs": 2130,
+				"minMs": 2101,
+				"maxMs": 2134,
+				"samplesMs": [
+					2101,
+					2130,
+					2134
+				]
+			},
+			"reloadCalls": {
+				"median": 1,
+				"min": 1,
+				"max": 1,
+				"samples": [
+					1,
+					1,
+					1
+				]
+			},
+			"filesRead": {
+				"median": 20000,
+				"min": 20000,
+				"max": 20000,
+				"samples": [
+					20000,
+					20000,
+					20000
+				]
+			},
+			"externalSettingsCalls": {
+				"median": 0,
+				"min": 0,
+				"max": 0,
+				"samples": [
+					0,
+					0,
+					0
+				]
+			}
+		}
+	}
+}

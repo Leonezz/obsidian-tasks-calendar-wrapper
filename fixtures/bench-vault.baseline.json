@@ -1,6 +1,6 @@
 {
 	"note": "Measured by apps/obsidian-plugin/scripts/bench.mjs (`pnpm bench --update`). Do not edit by hand.",
-	"measuredAt": "2026-10-17",
+	"measuredAt": "2026-10-19",
 	"obsidianVersion": "1.14.4 (installer 1.13.7)",
 	"electron": "43.3.0",
 	"chrome": "150.0.7871.212",
@@ -18,18 +18,19 @@
 		"mobile": false
 	},
 	"today": "2026-01-15 Thursday",
-	"windowVisibility": "visible",
+	"windowVisibility": "hidden",
 	"loadAverage": {
-		"before": 2,
-		"after": 1.8,
+		"before": 2.6,
+		"after": 2,
 		"cores": 14
 	},
 	"plugin": {
 		"version": "0.3.7",
-		"commit": "fa6c961",
+		"commit": "5dbd454",
 		"uncommittedChanges": false
 	},
 	"vault": {
+		"name": "bench-vault",
 		"notes": 2000,
 		"tasks": 4000,
 		"withTasks": "Projects/Work/Project 0010.md",
@@ -38,137 +39,189 @@
 	"settings": {
 		"quietMs": 1000,
 		"noReloadWindowMs": 3000,
-		"warmupSaves": 2
+		"loadWatchMs": 2000,
+		"warmupSaves": 2,
+		"warmupOptionChanges": 1,
+		"runs": {
+			"loads": 5,
+			"saves": 10,
+			"optionChanges": 5
+		}
 	},
 	"results": {
 		"initialLoad": {
 			"runs": 5,
 			"rows": 3486,
-			"reachedSettingsTimer": 0,
 			"renderedMs": {
-				"medianMs": 1905.5,
-				"minMs": 1886.1,
-				"maxMs": 1918.3,
+				"medianMs": 1810.3,
+				"minMs": 1797,
+				"maxMs": 1998.4,
 				"samplesMs": [
-					1912.1,
-					1905.5,
-					1918.3,
-					1898.1,
-					1886.1
+					1998.4,
+					1810.3,
+					1797.6,
+					1819.9,
+					1797
 				]
 			},
 			"blockedMs": {
-				"medianMs": 1894,
-				"minMs": 1874,
-				"maxMs": 1907,
+				"medianMs": 1789,
+				"minMs": 1779,
+				"maxMs": 1947,
 				"samplesMs": [
-					1897,
-					1894,
-					1907,
-					1886,
-					1874
+					1947,
+					1789,
+					1780,
+					1803,
+					1779
 				]
 			},
 			"longestTaskMs": {
-				"medianMs": 1212,
-				"minMs": 1203,
-				"maxMs": 1280,
+				"medianMs": 1087,
+				"minMs": 1072,
+				"maxMs": 1225,
 				"samplesMs": [
-					1280,
-					1204,
-					1222,
-					1212,
-					1203
+					1225,
+					1072,
+					1105,
+					1087,
+					1073
 				]
 			},
-			"laterRenders": [
-				1,
-				1,
-				1,
-				1,
-				1
-			],
+			"laterRenders": {
+				"median": 1,
+				"min": 1,
+				"max": 1,
+				"samples": [
+					1,
+					1,
+					1,
+					1,
+					1
+				]
+			},
 			"laterBlockedMs": {
-				"medianMs": 290,
-				"minMs": 287,
-				"maxMs": 293,
+				"medianMs": 224,
+				"minMs": 222,
+				"maxMs": 243,
 				"samplesMs": [
-					293,
-					288,
-					287,
-					290,
-					290
+					243,
+					223,
+					227,
+					224,
+					222
+				]
+			},
+			"totalBlockedMs": {
+				"medianMs": 2012,
+				"minMs": 2001,
+				"maxMs": 2190,
+				"samplesMs": [
+					2190,
+					2012,
+					2007,
+					2027,
+					2001
+				]
+			},
+			"filesRead": {
+				"median": 4000,
+				"min": 4000,
+				"max": 4000,
+				"samples": [
+					4000,
+					4000,
+					4000,
+					4000,
+					4000
 				]
 			}
 		},
 		"saveWithTasks": {
 			"runs": 10,
 			"indexedMs": {
-				"medianMs": 2.8,
-				"minMs": 2.6,
-				"maxMs": 3,
+				"medianMs": 5.6,
+				"minMs": 5,
+				"maxMs": 6.1,
 				"samplesMs": [
-					2.6,
-					2.9,
-					2.6,
-					2.9,
-					2.7,
-					2.9,
-					2.8,
-					2.6,
-					3,
-					2.6
+					5.7,
+					5.3,
+					5.5,
+					5,
+					5.7,
+					5.2,
+					6.1,
+					5.1,
+					5.8,
+					5.9
 				]
 			},
 			"renderedMs": {
-				"medianMs": 780.6,
-				"minMs": 779.8,
-				"maxMs": 792.2,
+				"medianMs": 739.1,
+				"minMs": 708.3,
+				"maxMs": 761.7,
 				"samplesMs": [
-					785.7,
-					781.7,
-					784.3,
-					792.2,
-					780.3,
-					779.8,
-					780.1,
-					780.7,
-					780.2,
-					780.6
+					741.9,
+					708.3,
+					709.5,
+					736.3,
+					761.7,
+					757.4,
+					746.1,
+					742.2,
+					716.2,
+					711.8
 				]
 			},
 			"blockedMs": {
-				"medianMs": 255,
-				"minMs": 253,
-				"maxMs": 260,
+				"medianMs": 184.5,
+				"minMs": 181,
+				"maxMs": 232,
 				"samplesMs": [
-					260,
-					255,
-					253,
-					259,
-					255,
-					256,
-					254,
-					255,
-					254,
-					255
+					185,
+					183,
+					183,
+					184,
+					232,
+					203,
+					192,
+					186,
+					181,
+					183
 				]
 			},
 			"longestTaskMs": {
-				"medianMs": 163,
-				"minMs": 161,
-				"maxMs": 164,
+				"medianMs": 111.5,
+				"minMs": 109,
+				"maxMs": 128,
 				"samplesMs": [
-					163,
-					164,
-					162,
-					164,
-					161,
-					163,
-					163,
-					163,
-					163,
-					164
+					112,
+					111,
+					109,
+					114,
+					128,
+					119,
+					115,
+					110,
+					110,
+					110
+				]
+			},
+			"filesRead": {
+				"median": 2000,
+				"min": 2000,
+				"max": 2000,
+				"samples": [
+					2000,
+					2000,
+					2000,
+					2000,
+					2000,
+					2000,
+					2000,
+					2000,
+					2000,
+					2000
 				]
 			}
 		},
@@ -176,20 +229,20 @@
 			"runs": 10,
 			"reloads": 0,
 			"indexedMs": {
-				"medianMs": 2.6,
-				"minMs": 2.1,
-				"maxMs": 3.2,
+				"medianMs": 5.2,
+				"minMs": 5.1,
+				"maxMs": 5.6,
 				"samplesMs": [
-					2.1,
-					2.3,
-					2.7,
-					2.6,
-					2.5,
-					2.9,
-					2.5,
-					3.2,
-					2.6,
-					2.7
+					5.6,
+					5.1,
+					5.1,
+					5.1,
+					5.1,
+					5.2,
+					5.5,
+					5.4,
+					5.4,
+					5.2
 				]
 			},
 			"blockedMs": {
@@ -219,6 +272,98 @@
 					0,
 					0,
 					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				]
+			},
+			"filesRead": {
+				"median": 0,
+				"min": 0,
+				"max": 0,
+				"samples": [
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				]
+			}
+		},
+		"optionChange": {
+			"runs": 5,
+			"appliedMs": {
+				"medianMs": 587.5,
+				"minMs": 584.9,
+				"maxMs": 594.5,
+				"samplesMs": [
+					587.5,
+					584.9,
+					594.5,
+					586.9,
+					592.1
+				]
+			},
+			"blockedMs": {
+				"medianMs": 384,
+				"minMs": 383,
+				"maxMs": 391,
+				"samplesMs": [
+					384,
+					383,
+					391,
+					384,
+					388
+				]
+			},
+			"longestTaskMs": {
+				"medianMs": 162,
+				"minMs": 158,
+				"maxMs": 163,
+				"samplesMs": [
+					158,
+					160,
+					163,
+					162,
+					162
+				]
+			},
+			"reloadCalls": {
+				"median": 1,
+				"min": 1,
+				"max": 1,
+				"samples": [
+					1,
+					1,
+					1,
+					1,
+					1
+				]
+			},
+			"filesRead": {
+				"median": 2000,
+				"min": 2000,
+				"max": 2000,
+				"samples": [
+					2000,
+					2000,
+					2000,
+					2000,
+					2000
+				]
+			},
+			"externalSettingsCalls": {
+				"median": 0,
+				"min": 0,
+				"max": 0,
+				"samples": [
 					0,
 					0,
 					0,
