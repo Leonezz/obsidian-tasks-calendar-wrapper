@@ -1,0 +1,929 @@
+[
+  {
+    "row": "Open View On Startup",
+    "type": "toggle",
+    "input": true,
+    "writes": [
+      {
+        "openViewOnStartup": true
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Show What's New After Updates",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "showWhatsNewOnUpdate": false
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Use Builtin Style",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "useBuiltinStyle": false
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Enable Counters and Filters Panel",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "useCounters": false
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Behavior of Counters and Filters Panel",
+    "type": "dropdown",
+    "input": "Focus",
+    "writes": [
+      {
+        "counterBehavior": "Focus"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Enable Quick Entry Panel",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "useQuickEntry": false
+      }
+    ],
+    "redrawn": true
+  },
+  {
+    "row": "Quick Entry Panel Position",
+    "type": "dropdown",
+    "input": "top",
+    "writes": [
+      {
+        "entryPosition": "top"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Quick Entry Panel Position",
+    "type": "dropdown",
+    "input": "bottom",
+    "writes": [
+      {
+        "entryPosition": "bottom"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Tasks Files",
+    "type": "textarea",
+    "input": "",
+    "writes": [
+      {
+        "taskFiles": [
+          ""
+        ]
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Tasks Files",
+    "type": "textarea",
+    "input": " a , b ,, c ",
+    "writes": [
+      {
+        "taskFiles": [
+          "a",
+          "b",
+          "",
+          "c"
+        ]
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Tasks Files",
+    "type": "textarea",
+    "input": "x, -, [ ]",
+    "writes": [
+      {
+        "taskFiles": [
+          "x",
+          "-",
+          "[ ]"
+        ]
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Tasks Files",
+    "type": "textarea",
+    "input": "status: archived, done\npriority: low",
+    "writes": [
+      {
+        "taskFiles": [
+          "status: archived",
+          "done\npriority: low"
+        ]
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Inbox",
+    "type": "text",
+    "input": "",
+    "writes": [
+      {
+        "inbox": ""
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Inbox",
+    "type": "text",
+    "input": " a , b ,, c ",
+    "writes": [
+      {
+        "inbox": "a , b ,, c"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Inbox",
+    "type": "text",
+    "input": "x, -, [ ]",
+    "writes": [
+      {
+        "inbox": "x, -, [ ]"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Inbox",
+    "type": "text",
+    "input": "status: archived, done\npriority: low",
+    "writes": [
+      {
+        "inbox": "status: archived, done\npriority: low"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Section For New Tasks",
+    "type": "text",
+    "input": "",
+    "writes": [
+      {
+        "sectionForNewTasks": ""
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Section For New Tasks",
+    "type": "text",
+    "input": " a , b ,, c ",
+    "writes": [
+      {
+        "sectionForNewTasks": " a , b ,, c "
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Section For New Tasks",
+    "type": "text",
+    "input": "x, -, [ ]",
+    "writes": [
+      {
+        "sectionForNewTasks": "x, -, [ ]"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Section For New Tasks",
+    "type": "text",
+    "input": "status: archived, done\npriority: low",
+    "writes": [
+      {
+        "sectionForNewTasks": "status: archived, done\npriority: low"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Daily Note Folder",
+    "type": "text",
+    "input": "",
+    "writes": [
+      {
+        "dailyNoteFolder": ""
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Daily Note Folder",
+    "type": "text",
+    "input": " a , b ,, c ",
+    "writes": [
+      {
+        "dailyNoteFolder": " a , b ,, c "
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Daily Note Folder",
+    "type": "text",
+    "input": "x, -, [ ]",
+    "writes": [
+      {
+        "dailyNoteFolder": "x, -, [ ]"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Daily Note Folder",
+    "type": "text",
+    "input": "status: archived, done\npriority: low",
+    "writes": [
+      {
+        "dailyNoteFolder": "status: archived, done\npriority: low"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Daily Note Format",
+    "type": "moment-format",
+    "input": "",
+    "writes": [
+      {
+        "dailyNoteFormat": ""
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Daily Note Format",
+    "type": "moment-format",
+    "input": " a , b ,, c ",
+    "writes": [
+      {
+        "dailyNoteFormat": " a , b ,, c "
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Daily Note Format",
+    "type": "moment-format",
+    "input": "x, -, [ ]",
+    "writes": [
+      {
+        "dailyNoteFormat": "x, -, [ ]"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Daily Note Format",
+    "type": "moment-format",
+    "input": "status: archived, done\npriority: low",
+    "writes": [
+      {
+        "dailyNoteFormat": "status: archived, done\npriority: low"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Enable Year Header",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "useYearHeader": false
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Newest First",
+    "type": "toggle",
+    "input": true,
+    "writes": [
+      {
+        "newestFirst": true
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Hide tasks of specific status.",
+    "type": "text",
+    "input": "",
+    "writes": [
+      {
+        "hideStatusTasks": [
+          ""
+        ]
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Hide tasks of specific status.",
+    "type": "text",
+    "input": " a , b ,, c ",
+    "writes": [
+      {
+        "hideStatusTasks": [
+          "a",
+          "b",
+          "",
+          "c"
+        ]
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Hide tasks of specific status.",
+    "type": "text",
+    "input": "x, -, [ ]",
+    "writes": [
+      {
+        "hideStatusTasks": [
+          "x",
+          "-",
+          " "
+        ]
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Hide tasks of specific status.",
+    "type": "text",
+    "input": "status: archived, done\npriority: low",
+    "writes": [
+      {
+        "hideStatusTasks": [
+          "status: archived",
+          "done\npriority: low"
+        ]
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Forward Tasks From Past",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "forward": false
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Forward Started And Scheduled Tasks",
+    "type": "toggle",
+    "input": true,
+    "writes": [
+      {
+        "forwardPastStartAndScheduled": true
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Hide Subtasks",
+    "type": "toggle",
+    "input": true,
+    "writes": [
+      {
+        "hideSubTasks": true
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Today Focus On Load",
+    "type": "toggle",
+    "input": true,
+    "writes": [
+      {
+        "defaultTodayFocus": true
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Activate Filter On Load",
+    "type": "dropdown",
+    "input": "todoFilter",
+    "writes": [
+      {
+        "defaultFilters": "todoFilter"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Activate Filter On Load",
+    "type": "dropdown",
+    "input": "overdueFilter",
+    "writes": [
+      {
+        "defaultFilters": "overdueFilter"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Activate Filter On Load",
+    "type": "dropdown",
+    "input": "unplannedFilter",
+    "writes": [
+      {
+        "defaultFilters": "unplannedFilter"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Use Relative Date",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "useRelative": false
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Use Recurrence",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "useRecurrence": false
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Use Priority",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "usePriority": false
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Use Tags",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "useTags": false
+      }
+    ],
+    "redrawn": true
+  },
+  {
+    "row": "Use Filename",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "useFileBadge": false
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Use Section",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "useSection": false
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Use Modify Badge",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "useModifyBadge": false
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Date Format",
+    "type": "moment-format",
+    "input": "",
+    "writes": [
+      {
+        "dateFormat": ""
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Date Format",
+    "type": "moment-format",
+    "input": " a , b ,, c ",
+    "writes": [
+      {
+        "dateFormat": " a , b ,, c "
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Date Format",
+    "type": "moment-format",
+    "input": "x, -, [ ]",
+    "writes": [
+      {
+        "dateFormat": "x, -, [ ]"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Date Format",
+    "type": "moment-format",
+    "input": "status: archived, done\npriority: low",
+    "writes": [
+      {
+        "dateFormat": "status: archived, done\npriority: low"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Sort By",
+    "type": "dropdown",
+    "input": "status-desc",
+    "writes": [
+      {
+        "sort": "status-desc"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Sort By",
+    "type": "dropdown",
+    "input": "text-asc",
+    "writes": [
+      {
+        "sort": "text-asc"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Sort By",
+    "type": "dropdown",
+    "input": "text-desc",
+    "writes": [
+      {
+        "sort": "text-desc"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Sort By",
+    "type": "dropdown",
+    "input": "start-asc",
+    "writes": [
+      {
+        "sort": "start-asc"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Sort By",
+    "type": "dropdown",
+    "input": "start-desc",
+    "writes": [
+      {
+        "sort": "start-desc"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Sort By",
+    "type": "dropdown",
+    "input": "due-asc",
+    "writes": [
+      {
+        "sort": "due-asc"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Sort By",
+    "type": "dropdown",
+    "input": "due-desc",
+    "writes": [
+      {
+        "sort": "due-desc"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Sort By",
+    "type": "dropdown",
+    "input": "priority-desc",
+    "writes": [
+      {
+        "sort": "priority-desc"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Sort By",
+    "type": "dropdown",
+    "input": "priority-asc",
+    "writes": [
+      {
+        "sort": "priority-asc"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Sort By",
+    "type": "dropdown",
+    "input": "tags-asc",
+    "writes": [
+      {
+        "sort": "tags-asc"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Sort By",
+    "type": "dropdown",
+    "input": "tags-desc",
+    "writes": [
+      {
+        "sort": "tags-desc"
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Convert Time Prefix",
+    "type": "toggle",
+    "input": true,
+    "writes": [
+      {
+        "convert24HourTimePrefix": true
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Use Include Tags",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "useIncludeTags": false
+      }
+    ],
+    "redrawn": true
+  },
+  {
+    "row": "Use Exclude Tags",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "useExcludeTags": false
+      }
+    ],
+    "redrawn": true
+  },
+  {
+    "row": "Exclude Paths",
+    "type": "textarea",
+    "input": "",
+    "writes": [
+      {
+        "excludePaths": []
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Exclude Paths",
+    "type": "textarea",
+    "input": " a , b ,, c ",
+    "writes": [
+      {
+        "excludePaths": [
+          "a",
+          "b",
+          "c"
+        ]
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Exclude Paths",
+    "type": "textarea",
+    "input": "x, -, [ ]",
+    "writes": [
+      {
+        "excludePaths": [
+          "x",
+          "-",
+          "[ ]"
+        ]
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Exclude Paths",
+    "type": "textarea",
+    "input": "status: archived, done\npriority: low",
+    "writes": [
+      {
+        "excludePaths": [
+          "status: archived",
+          "done\npriority: low"
+        ]
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Exclude Properties",
+    "type": "textarea",
+    "input": "",
+    "writes": [
+      {
+        "excludeProperties": {}
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Exclude Properties",
+    "type": "textarea",
+    "input": " a , b ,, c ",
+    "writes": [
+      {
+        "excludeProperties": {}
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Exclude Properties",
+    "type": "textarea",
+    "input": "x, -, [ ]",
+    "writes": [
+      {
+        "excludeProperties": {}
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Exclude Properties",
+    "type": "textarea",
+    "input": "status: archived, done\npriority: low",
+    "writes": [
+      {
+        "excludeProperties": {
+          "status": [
+            "archived",
+            "done"
+          ],
+          "priority": [
+            "low"
+          ]
+        }
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Include Paths",
+    "type": "textarea",
+    "input": "",
+    "writes": [
+      {
+        "includePaths": []
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Include Paths",
+    "type": "textarea",
+    "input": " a , b ,, c ",
+    "writes": [
+      {
+        "includePaths": [
+          "a",
+          "b",
+          "c"
+        ]
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Include Paths",
+    "type": "textarea",
+    "input": "x, -, [ ]",
+    "writes": [
+      {
+        "includePaths": [
+          "x",
+          "-",
+          "[ ]"
+        ]
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Include Paths",
+    "type": "textarea",
+    "input": "status: archived, done\npriority: low",
+    "writes": [
+      {
+        "includePaths": [
+          "status: archived",
+          "done\npriority: low"
+        ]
+      }
+    ],
+    "redrawn": false
+  },
+  {
+    "row": "Filter Empty",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "filterEmpty": false
+      }
+    ],
+    "redrawn": false
+  }
+]

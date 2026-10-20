@@ -1,0 +1,482 @@
+[
+  {
+    "name": "Interface",
+    "desc": "",
+    "heading": true,
+    "controls": []
+  },
+  {
+    "name": "Open View On Startup",
+    "desc": "Open the view on startup or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": false
+      }
+    ]
+  },
+  {
+    "name": "Show What's New After Updates",
+    "desc": "Show the release notes once after the plugin is updated. They can always be opened with the \"Show what's new\" command.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": false
+      }
+    ]
+  },
+  {
+    "name": "Use Builtin Style",
+    "desc": "Use builtin styles (the marker icons for task status) or not.\n                If disabled, styles defined by the theme you are using will be used.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Enable Counters and Filters Panel",
+    "desc": "Use counters and filters on the quick entry panel or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Behavior of Counters and Filters Panel",
+    "desc": "Set the default behavior of the counter and filter buttons.                Available choices are: *Filter* to filter other items out,                or *Focus* to make selected items more clear.",
+    "controls": [
+      {
+        "type": "dropdown",
+        "value": "Filter",
+        "options": [
+          "Filter",
+          "Focus"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Enable Quick Entry Panel",
+    "desc": "Use quick entry panel or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Quick Entry Panel Position",
+    "desc": "Where you like the entry panel to be,                * Top means on top of the view,                * Bottom means on bottom of the view,                * Today means in today's view.",
+    "controls": [
+      {
+        "type": "dropdown",
+        "value": "today",
+        "options": [
+          "today",
+          "top",
+          "bottom"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Tasks Files",
+    "desc": "Task Files you would like to specify explicitly for quick entry panel.                    make sure paths are separated by , .",
+    "controls": [
+      {
+        "type": "textarea",
+        "value": "",
+        "placeholder": "comma separated file paths, e.g.: path1,path2"
+      }
+    ]
+  },
+  {
+    "name": "Inbox",
+    "desc": "Set a file as an 'Inbox' for task items from the quick entry panel.                    This file will be displayed on top of the file list.",
+    "controls": [
+      {
+        "type": "text",
+        "value": "Inbox.md"
+      }
+    ]
+  },
+  {
+    "name": "Section For New Tasks",
+    "desc": "Specify under which section the new task items should be appended.",
+    "controls": [
+      {
+        "type": "text",
+        "value": "## Tasks"
+      }
+    ]
+  },
+  {
+    "name": "Daily Note Folder",
+    "desc": "Specify the folder where the daily notes are saved.",
+    "controls": [
+      {
+        "type": "text",
+        "value": ""
+      }
+    ]
+  },
+  {
+    "name": "Daily Note Format",
+    "desc": "Daily note file format. The format sould be of moment format, see <a href=\"https://momentjs.com/docs/#/displaying/format/\">docs of moment.js</a> for more details.",
+    "controls": [
+      {
+        "type": "moment-format",
+        "value": "YYYY, MMMM DD - dddd"
+      }
+    ]
+  },
+  {
+    "name": "Enable Year Header",
+    "desc": "Display the year on top of tasks of that year or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Newest First",
+    "desc": "Show the latest dates on top instead of the earliest.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": false
+      }
+    ]
+  },
+  {
+    "name": "Hide tasks of specific status.",
+    "desc": "Provide comma split status markers, e.g.,: x, - \n                Use [ ] if you would like to hide all tasks with marker [ ] or status todo.",
+    "controls": [
+      {
+        "type": "text",
+        "value": "x,-",
+        "placeholder": "Status markers split by comma. e.g.,: x, -."
+      }
+    ]
+  },
+  {
+    "name": "Forward Tasks From Past",
+    "desc": "Forward overdue tasks from the past and all unplanned tasks to display them on the today panel or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Forward Started And Scheduled Tasks",
+    "desc": "Also show tasks that have started or were scheduled before today on the today panel. They are shown there instead of on their own date.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": false
+      }
+    ]
+  },
+  {
+    "name": "Hide Subtasks",
+    "desc": "Hide task items that are nested under another list item.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": false
+      }
+    ]
+  },
+  {
+    "name": "Today Focus On Load",
+    "desc": "Activate today focus on load or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": false
+      }
+    ]
+  },
+  {
+    "name": "Activate Filter On Load",
+    "desc": "Activate a filter or not",
+    "controls": [
+      {
+        "type": "dropdown",
+        "value": "",
+        "options": [
+          "",
+          "todoFilter",
+          "overdueFilter",
+          "unplannedFilter"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Task items",
+    "desc": "",
+    "heading": true,
+    "controls": []
+  },
+  {
+    "name": "Use Relative Date",
+    "desc": "Use relative date to describe the task dates or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Use Recurrence",
+    "desc": "Display the recurrence information of tasks or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Use Priority",
+    "desc": "Display the priority information of tasks or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Use Tags",
+    "desc": "Display the tags of tasks or not. Color palette can be defined for tags!",
+    "controls": [
+      {
+        "type": "rows",
+        "rows": [
+          {
+            "name": "",
+            "desc": "",
+            "controls": [
+              {
+                "type": "tag",
+                "text": "#TODO",
+                "style": "color: #339988"
+              },
+              {
+                "type": "extra-button",
+                "icon": "cross",
+                "tooltip": "Delete"
+              },
+              {
+                "type": "extra-button",
+                "icon": "pencil",
+                "tooltip": "Edit"
+              },
+              {
+                "type": "tag",
+                "text": "#TEST",
+                "style": "color: #998877"
+              },
+              {
+                "type": "extra-button",
+                "icon": "cross",
+                "tooltip": "Delete"
+              },
+              {
+                "type": "extra-button",
+                "icon": "pencil",
+                "tooltip": "Edit"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "extra-button",
+        "icon": "plus-with-circle",
+        "tooltip": "Add a palette"
+      },
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Hide Tags",
+    "desc": "Specify which tags are not necessary to display with a tag badge,            note that all tag texts are remove from the displayed item text by default.            Also note that the tags are just hided, not removed from the item.",
+    "controls": [
+      {
+        "type": "rows",
+        "rows": [
+          {
+            "name": "",
+            "desc": "",
+            "controls": []
+          }
+        ]
+      },
+      {
+        "type": "extra-button",
+        "icon": "plus-with-circle",
+        "tooltip": ""
+      }
+    ]
+  },
+  {
+    "name": "Use Filename",
+    "desc": "Display which file the task is from or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Use Section",
+    "desc": "Display which section the task is from or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Use Modify Badge",
+    "desc": "Display the badge that opens a task in the Tasks plugin dialog or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Formats and filters",
+    "desc": "",
+    "heading": true,
+    "controls": []
+  },
+  {
+    "name": "Date Format",
+    "desc": "Specify format you would like to use for dates. Note that the format should be of moment format. See <a href=\"https://momentjs.com/docs/#/displaying/format/\">docs of moment.js</a> for more details.",
+    "controls": [
+      {
+        "type": "moment-format",
+        "value": "dddd, MMM, D",
+        "placeholder": "e.g.: YYYY-MM-DD"
+      }
+    ]
+  },
+  {
+    "name": "Sort By",
+    "desc": "Specify how you would like the taks item to be sorted inside a date.",
+    "controls": [
+      {
+        "type": "dropdown",
+        "value": "status-asc",
+        "options": [
+          "status-asc",
+          "status-desc",
+          "text-asc",
+          "text-desc",
+          "start-asc",
+          "start-desc",
+          "due-asc",
+          "due-desc",
+          "priority-desc",
+          "priority-asc",
+          "tags-asc",
+          "tags-desc"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Convert Time Prefix",
+    "desc": "Convert 24 hour time prefix to 12 hour time with am/pm. \n\t\t\t    For example, 15:30 at the beginning of a task will become 3:30 pm.\n\t\t\t    This is applied after sorting, enabling a chronological ordering.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": false
+      }
+    ]
+  },
+  {
+    "name": "Use Include Tags",
+    "desc": "Use tags filters to filter tasks without specific tags out or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": false
+      }
+    ]
+  },
+  {
+    "name": "Use Exclude Tags",
+    "desc": "Use tags filters to filters tasks with specific tags out or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": false
+      }
+    ]
+  },
+  {
+    "name": "Exclude Paths",
+    "desc": "Exclude tasks match specific paths (folders, files).<p class=\"tasks-calendar-wrapper-setting-warning\">NOTE that no prefix or trailing '/' needed, unless you want to filter the entire vault out.</p>",
+    "controls": [
+      {
+        "type": "textarea",
+        "value": "",
+        "placeholder": "comma separated file paths, e.g.: path1,path2/path3,path4.md"
+      }
+    ]
+  },
+  {
+    "name": "Exclude Properties",
+    "desc": "Exclude tasks of files whose frontmatter property has one of these values. One property per line, values separated by commas.",
+    "controls": [
+      {
+        "type": "textarea",
+        "value": "",
+        "placeholder": "status: archived, done"
+      }
+    ]
+  },
+  {
+    "name": "Include Paths",
+    "desc": "Include tasks match specific paths (folders, files).<p class=\"tasks-calendar-wrapper-setting-warning\">NOTE that no prefix or trailing '/' needed, unless you want to filter the entire vault out.</p>",
+    "controls": [
+      {
+        "type": "textarea",
+        "value": "",
+        "placeholder": "comma separated file paths, e.g.: path1,path2/path3,path4.md"
+      }
+    ]
+  },
+  {
+    "name": "Filter Empty",
+    "desc": "Filter empty items out or not. If not, the raw text will be displayed.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  }
+]

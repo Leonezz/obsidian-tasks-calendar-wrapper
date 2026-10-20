@@ -8,3 +8,6 @@ fixtures/golden/** -text
 # The screenshot baselines are compared too, the visible/*.txt snapshots byte for byte, see
 # apps/obsidian-plugin/scripts/screenshots.mjs. Git still finds the PNGs binary by their content.
 fixtures/screenshots/** -text
+# The data.json shapes are read as Obsidian reads data.json, and the snapshots of what the plugin writes back and the
+# settings tab shows are compared byte for byte, see apps/obsidian-plugin/tests/settings-fixtures.ts.
+fixtures/settings/** -text

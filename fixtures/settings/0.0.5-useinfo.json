@@ -1,0 +1,39 @@
+{
+  "fileFilter": "",
+  "useTagFilter": true,
+  "taskTagFilters": [
+    "#work"
+  ],
+  "fileTagFilters": [],
+  "styles": [
+    "style1"
+  ],
+  "dailyNoteFolder": "Daily",
+  "dailyNoteFormat": "YYYY-MM-DD",
+  "sectionForNewTasks": "## Tasks",
+  "hideTags": [],
+  "forward": true,
+  "sort": "(t: TaskDataModel) => t.order",
+  "dateFormat": "dddd, MMM, D",
+  "inbox": "Inbox.md",
+  "taskFiles": [],
+  "tagColorPalette": {
+    "#TODO": "#339988",
+    "#TEST": "#998877",
+    "#work": "#e03131"
+  },
+  "useCounters": true,
+  "useQuickEntry": true,
+  "useYearHeader": true,
+  "useInfo": {
+    "useRelative": true,
+    "useRecurrence": false,
+    "usePriority": true,
+    "useTags": true,
+    "useFileBadge": false,
+    "useSection": true
+  },
+  "useCompletedTasks": false,
+  "defaultTodayFocus": false,
+  "defaultFilters": ""
+}

@@ -1,0 +1,52 @@
+{
+  "filterEmpty": true,
+  "excludePaths": [
+    "Templates",
+    "Archive"
+  ],
+  "fileFilter": "",
+  "useIncludeTags": false,
+  "taskIncludeTags": [],
+  "fileIncludeTags": [],
+  "useExcludeTags": false,
+  "taskExcludeTags": [],
+  "fileExcludeTags": [],
+  "styles": [
+    "style1"
+  ],
+  "dailyNoteFolder": "",
+  "dailyNoteFormat": "YYYY, MMMM DD - dddd",
+  "sectionForNewTasks": "## Tasks",
+  "hideTags": [],
+  "forward": true,
+  "sort": "(t1, t2) => t1.order - t2.order",
+  "taskStatusOrder": [
+    "overdue",
+    "due",
+    "scheduled",
+    "start",
+    "process",
+    "unplanned",
+    "done",
+    "cancelled"
+  ],
+  "dateFormat": "dddd, MMM, D",
+  "inbox": "Inbox.md",
+  "taskFiles": [],
+  "tagColorPalette": {
+    "#TODO": "#339988",
+    "#TEST": "#998877"
+  },
+  "useCounters": true,
+  "useQuickEntry": true,
+  "useYearHeader": true,
+  "useRelative": true,
+  "useRecurrence": true,
+  "usePriority": true,
+  "useTags": true,
+  "useFileBadge": true,
+  "useSection": true,
+  "useCompletedTasks": true,
+  "defaultTodayFocus": false,
+  "defaultFilters": ""
+}

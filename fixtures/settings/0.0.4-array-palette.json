@@ -1,0 +1,15 @@
+{
+  "fileFilter": "",
+  "styles": [
+    "style1"
+  ],
+  "dailyNoteFolder": "",
+  "dailyNoteFormat": "YYYY, MMMM DD - dddd",
+  "sectionForNewTasks": "## Tasks",
+  "hideTags": [],
+  "forward": true,
+  "dateFormat": "dddd, MMM, D",
+  "inbox": "Inbox.md",
+  "taskFiles": [],
+  "tagColorPalette": []
+}
