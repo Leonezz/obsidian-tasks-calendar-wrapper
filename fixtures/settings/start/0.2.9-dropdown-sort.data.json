@@ -60,5 +60,6 @@
   "defaultTodayFocus": false,
   "defaultFilters": "",
   "useBuiltinStyle": true,
-  "convert24HourTimePrefix": false
+  "convert24HourTimePrefix": false,
+  "settingsVersion": 1
 }

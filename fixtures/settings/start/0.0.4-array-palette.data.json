@@ -58,5 +58,6 @@
   "defaultFilters": "",
   "useBuiltinStyle": true,
   "convert24HourTimePrefix": false,
-  "fileFilter": ""
+  "fileFilter": "",
+  "settingsVersion": 1
 }

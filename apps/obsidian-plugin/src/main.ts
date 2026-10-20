@@ -2,11 +2,18 @@ import { Notice, Plugin } from "obsidian";
 
 import { TasksTimelineView, TIMELINE_VIEW } from "./views";
 
-import { copyJsonValue, notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
+import { notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
 import { RELEASE_NOTES, SUPPORT_LINKS } from "../utils/whatsnew";
 import { WhatsNewModal } from "./whatsnew-modal";
 import { TasksCalendarSettingTab, UserOption } from "./settings";
-import { createSettingsStore, loadedSettings, type Settings, withChanges } from "./state/settings";
+import {
+	changedState,
+	createSettingsStore,
+	loadedState,
+	savedForm,
+	type Settings,
+	settingWarnings,
+} from "./state/settings";
 import { debounceOptionUpdates } from "../utils/refresh";
 
 export default class TasksCalendarWrapper extends Plugin {
@@ -21,7 +28,7 @@ export default class TasksCalendarWrapper extends Plugin {
 
 	/** The options, frozen; every load and every change replaces them, see state/settings.ts. */
 	get userOptions(): Settings {
-		return this.settingsStore.getSnapshot();
+		return this.settingsStore.getSnapshot().options;
 	}
 
 	async onload() {
@@ -79,7 +86,9 @@ export default class TasksCalendarWrapper extends Plugin {
 
 	async loadOptions(): Promise<void> {
 		const savedOptions = (await this.loadData()) as Partial<UserOption> | null;
-		this.settingsStore.setState(loadedSettings(savedOptions));
+		const state = loadedState(savedOptions);
+		for (const warning of settingWarnings(savedOptions, state.options)) console.warn(warning);
+		this.settingsStore.setState(state);
 		this.pushOptionsToViews();
 	}
 
@@ -92,11 +101,9 @@ export default class TasksCalendarWrapper extends Plugin {
 	}
 
 	async writeOptions(changedOpts: Partial<UserOption>): Promise<void> {
-		this.settingsStore.setState((settings) => withChanges(settings, changedOpts));
+		this.settingsStore.setState((state) => changedState(state, changedOpts));
 		this.pushOptionsToViews();
-		// Saved as a copy made by assignment, as before. Assignment drops a "__proto__" key a hand-edited data.json may
-		// hold, and a copy that is not frozen keeps the keys after one from failing to be assigned.
-		await this.saveData(Object.assign({}, copyJsonValue(this.userOptions)));
+		await this.saveData(savedForm(this.settingsStore.getSnapshot()));
 	}
 
 	async activateView(type: string) {

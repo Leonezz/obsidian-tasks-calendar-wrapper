@@ -4,7 +4,17 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { migrateSortOption } from "@tasks-calendar-wrapper/core";
-import { createSettingsStore, loadedSettings, withChanges } from "../src/state/settings";
+import {
+	createSettingsStore,
+	loadedSettings,
+	loadedState,
+	MIGRATIONS,
+	savedForm,
+	SETTINGS_VERSION,
+	settingWarnings,
+	storedVersionOf,
+	withChanges,
+} from "../src/state/settings";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { deeplyFrozen, nothingFrozen } from "./frozen";
 import { readFixture } from "./settings-fixtures";
@@ -13,10 +23,10 @@ import { readFixture } from "./settings-fixtures";
 
 const pristineDefaults = JSON.stringify(defaultUserOptions);
 
-test("the store starts with no options, as the plugin did before loading them", () => {
+test("the store starts with no options, as the plugin did before loading them, and no version", () => {
 	const snapshot = createSettingsStore().getSnapshot();
-	assert.deepEqual(snapshot, {});
-	assert.ok(Object.isFrozen(snapshot));
+	assert.deepEqual(snapshot, { options: {}, storedVersion: 0 });
+	assert.ok(deeplyFrozen(snapshot));
 });
 
 test("without saved options, loading gives the defaults, frozen, sharing no list or map with them", () => {
@@ -91,4 +101,82 @@ test("options a change adds come after the others, and one set to nothing is kep
 	assert.deepEqual(Object.keys(settings), [...Object.keys(defaultUserOptions), "added"]);
 	assert.ok("inbox" in settings);
 	assert.equal(settings.inbox, undefined);
+});
+
+// Step 8: data.json says which version of the options' shape it holds, and the options of the wrong type are reported.
+
+const LAMBDA_SORT = (JSON.parse(readFixture("0.1.2-freetext-sort.json")) as { sort: string }).sort;
+
+test("settingsVersion is not an option: loading leaves it out, wherever the file has it", () => {
+	const settings = loadedSettings({ dateFormat: "YYYY", settingsVersion: 1, legacy: 2 } as never);
+	assert.deepEqual(Object.keys(settings), [...Object.keys(defaultUserOptions), "legacy"]);
+	assert.equal(settings.dateFormat, "YYYY");
+});
+
+test("the version saved is read as it is when it is a number, and as 0 when there is none or it is not one", () => {
+	assert.equal(SETTINGS_VERSION, 1);
+	for (const saved of [null, undefined, {}, [], 5, "text"]) assert.equal(storedVersionOf(saved), 0, String(saved));
+	assert.equal(storedVersionOf({ settingsVersion: 1 }), 1);
+	assert.equal(storedVersionOf({ settingsVersion: 3 }), 3);
+	assert.equal(storedVersionOf({ settingsVersion: "2" }), 0);
+	assert.equal(storedVersionOf({ settingsVersion: null }), 0);
+});
+
+test("the state loaded holds the options and the version saved, frozen", () => {
+	const saved = { settingsVersion: 3, dateFormat: "YYYY" };
+	const state = loadedState(saved);
+	assert.deepEqual(state, { options: loadedSettings(saved as never), storedVersion: 3 });
+	assert.ok(deeplyFrozen(state));
+	assert.ok(nothingFrozen(saved));
+});
+
+test("what is saved is the options, then settingsVersion last, never lower than the version the file had", () => {
+	const options = withChanges(loadedSettings({ legacy: 1 } as never), { added: 2 } as never);
+	const saved = savedForm({ options, storedVersion: 0 });
+	assert.deepEqual(Object.keys(saved), [...Object.keys(defaultUserOptions), "legacy", "added", "settingsVersion"]);
+	assert.deepEqual(saved, { ...options, settingsVersion: SETTINGS_VERSION });
+	assert.ok(nothingFrozen(saved), "a copy");
+	assert.equal(savedForm({ options, storedVersion: 1 }).settingsVersion, 1);
+	assert.equal(savedForm({ options, storedVersion: 3 }).settingsVersion, 3, "a newer device's version stays");
+});
+
+test("every migration runs on every load whatever version the file has, and running them again changes nothing", () => {
+	assert.deepEqual(
+		MIGRATIONS.map((migration) => migration.id),
+		["sort-lambda-to-key"],
+	);
+	// A 0.3.x device writes the old shape back, with the version a newer one saved.
+	const settings = loadedSettings({ settingsVersion: 1, sort: LAMBDA_SORT } as never);
+	assert.equal(settings.sort, migrateSortOption(LAMBDA_SORT));
+	for (const migration of MIGRATIONS) assert.deepEqual(migration.apply(settings), settings, migration.id);
+	assert.deepEqual(Object.keys(settings), Object.keys(defaultUserOptions));
+});
+
+test("each option of the wrong type warns once, saying what data.json holds and what it should be", () => {
+	const saved = { useTags: "yes", hideTags: "#later", lastSeenVersion: null, sort: ["due-asc"], tagColorPalette: [] };
+	const warnings = settingWarnings(saved, loadedSettings(saved as never));
+	assert.deepEqual(warnings, [
+		'Tasks Calendar Wrapper: data.json holds null for "lastSeenVersion", which should be text. It is used as it is.',
+		'Tasks Calendar Wrapper: data.json holds a string for "hideTags", which should be a list of texts. It is used as it is.',
+		'Tasks Calendar Wrapper: data.json holds an array for "sort", which should be text. It is used as it is.',
+		'Tasks Calendar Wrapper: data.json holds an array for "tagColorPalette", which should be a map of texts. It is used as it is.',
+		'Tasks Calendar Wrapper: data.json holds a string for "useTags", which should be true or false. It is used as it is.',
+	]);
+	const rules = { excludeProperties: { status: "archived" } };
+	assert.deepEqual(settingWarnings(rules, loadedSettings(rules as never)), [
+		'Tasks Calendar Wrapper: data.json holds an object with a string for "excludeProperties", which should be a map of lists of texts. It is used as it is.',
+	]);
+	for (const fixture of ["0.3.7-full.json", "quiet.json", "0.1.2-freetext-sort.json"]) {
+		const text = JSON.parse(readFixture(fixture));
+		assert.deepEqual(settingWarnings(text, loadedSettings(text)), [], fixture);
+	}
+	assert.deepEqual(settingWarnings(null, loadedSettings(null)), []);
+});
+
+test("a settingsVersion that is not a number warns, and counts as no version", () => {
+	const saved = { settingsVersion: "2" };
+	assert.deepEqual(settingWarnings(saved, loadedSettings(saved as never)), [
+		'Tasks Calendar Wrapper: data.json holds a string for "settingsVersion", which should be a number. It is read as 0.',
+	]);
+	assert.deepEqual(settingWarnings({ settingsVersion: 2 }, loadedSettings(null)), []);
 });

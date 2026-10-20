@@ -86,7 +86,8 @@ test("options this version does not know are kept after its own, in the file's o
 	// The first start of a version saves the options, the unknown ones too, in the same order.
 	vault.app.workspace.finishLayout();
 	await settle();
-	assert.deepEqual(savedKeys(plugin), [...Object.keys(defaultUserOptions), ...legacy]);
+	// Then settingsVersion, which says which shape of the options the file holds.
+	assert.deepEqual(savedKeys(plugin), [...Object.keys(defaultUserOptions), ...legacy, "settingsVersion"]);
 	assert.deepEqual(JSON.parse(plugin.dataJson ?? "null").useInfo, saved.useInfo);
 });
 
@@ -202,13 +203,64 @@ test("every change of an option saves all the options, even one that changes not
 	await plugin.writeOptions({});
 	assert.equal(saves.mock.callCount(), 3);
 	const last = saves.mock.calls[2].arguments[0];
-	assert.deepEqual(last, plugin.userOptions);
-	assert.deepEqual(savedKeys(plugin), Object.keys(defaultUserOptions));
-	assert.equal(plugin.dataJson, JSON.stringify(plugin.userOptions, undefined, 2));
+	assert.deepEqual(last, { ...plugin.userOptions, settingsVersion: 1 });
+	assert.deepEqual(savedKeys(plugin), [...Object.keys(defaultUserOptions), "settingsVersion"]);
+	assert.equal(plugin.dataJson, JSON.stringify({ ...plugin.userOptions, settingsVersion: 1 }, undefined, 2));
 	// What was saved is not changed by a later change.
 	const saved = last.dateFormat;
 	await plugin.writeOptions({ dateFormat: "QQQ" });
 	assert.equal(last.dateFormat, saved);
+});
+
+test("settingsVersion is saved last, and one a newer version saved stays, wherever the file had it", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin } = await startPlugin('{ "settingsVersion": 3, "dateFormat": "YYYY", "legacy": true }');
+	assert.ok(!("settingsVersion" in plugin.userOptions), "it is not an option");
+	await plugin.writeOptions({});
+	assert.deepEqual(savedKeys(plugin), [...Object.keys(defaultUserOptions), "legacy", "settingsVersion"]);
+	assert.equal(JSON.parse(plugin.dataJson ?? "null").settingsVersion, 3);
+	// A file of this version, or of none, gets this version's.
+	for (const dataJson of ['{ "settingsVersion": 1 }', "{}", null]) {
+		const started = await startPlugin(dataJson);
+		await started.plugin.writeOptions({});
+		assert.equal(JSON.parse(started.plugin.dataJson ?? "null").settingsVersion, 1, String(dataJson));
+	}
+});
+
+test("a file a 0.3.x device wrote back, with the version and a lambda sort, is migrated all the same", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const lambda = JSON.parse(readFixture("0.1.2-freetext-sort.json")).sort;
+	const { plugin } = await startPlugin(JSON.stringify({ settingsVersion: 1, sort: lambda }));
+	assert.equal(plugin.userOptions.sort, "status-asc");
+});
+
+test("each option of the wrong type warns once at every load, and is used as it is", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const warns = t.mock.method(console, "warn", () => {});
+	const ours = () =>
+		warns.mock.calls.map((call) => String(call.arguments[0])).filter((m) => m.startsWith("Tasks Calendar Wrapper"));
+	const odd = JSON.stringify({ useTags: "yes", hideTags: "#later", lastSeenVersion: "0.3.7", sort: ["due-asc"] });
+	const { plugin } = await startPlugin(odd);
+	assert.deepEqual(
+		ours().map((message) => message.match(/for "(\w+)"/)?.[1]),
+		["hideTags", "sort", "useTags"],
+	);
+	assert.equal((plugin.userOptions as unknown as Record<string, unknown>).useTags, "yes");
+	assert.equal((plugin.userOptions as unknown as Record<string, unknown>).hideTags, "#later");
+	// Reading data.json again, as after Sync changed it, warns again.
+	await plugin.onExternalSettingsChange();
+	assert.equal(ours().length, 6);
+	// Saving does not warn, and the values are saved as they are.
+	await plugin.writeOptions({});
+	assert.equal(ours().length, 6);
+	assert.equal(JSON.parse(plugin.dataJson ?? "null").useTags, "yes");
+	warns.mock.resetCalls();
+	for (const fixture of FIXTURE_NAMES) await startPlugin(readFixture(fixture));
+	assert.deepEqual(
+		ours().map((message) => message.match(/for "(\w+)"/)?.[1]),
+		["tagColorPalette"],
+		"of the fixtures, only the palette saved as a list",
+	);
 });
 
 test("the options are one frozen snapshot, which every load and every change replaces, and the defaults stay", async (t) => {
@@ -256,7 +308,7 @@ test("a data.json changed outside replaces the options as a whole, without the o
 	});
 	assert.deepEqual(Object.keys(plugin.userOptions), Object.keys(defaultUserOptions));
 	await plugin.writeOptions({});
-	assert.deepEqual(savedKeys(plugin), Object.keys(defaultUserOptions));
+	assert.deepEqual(savedKeys(plugin), [...Object.keys(defaultUserOptions), "settingsVersion"]);
 });
 
 test('a hand-edited data.json with a "__proto__" key is saved without it, and the keys after it, as before', async (t) => {

@@ -65,5 +65,6 @@
   "useBuiltinStyle": true,
   "convert24HourTimePrefix": false,
   "fileFilter": "",
-  "useCompletedTasks": true
+  "useCompletedTasks": true,
+  "settingsVersion": 1
 }

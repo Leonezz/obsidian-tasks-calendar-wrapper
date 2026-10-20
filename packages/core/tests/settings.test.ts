@@ -4,13 +4,16 @@ import assert from "node:assert/strict";
 import { deepFreeze } from "../src/options";
 import { formatPropertyRules, parsePropertyRules } from "../src/properties";
 import {
+	describedValue,
 	fileListCodec,
+	migrated,
 	pathListCodec,
 	plainTextCodec,
 	propertyRulesCodec,
 	settingIssues,
 	statusListCodec,
 	trimmedTextCodec,
+	type Migration,
 	type SettingSpec,
 } from "../src/settings";
 
@@ -116,30 +119,30 @@ test("each value of another type is one issue, in the schema's order, saying wha
 		on: "yes",
 	};
 	assert.deepEqual(settingIssues(values, schema), [
-		{ key: "on", expected: "boolean", found: "string" },
+		{ key: "on", expected: "boolean", found: "a string" },
 		{ key: "name", expected: "string", found: "null" },
-		{ key: "paths", expected: "stringList", found: "array with a number" },
-		{ key: "colors", expected: "stringMap", found: "array" },
-		{ key: "rules", expected: "stringListMap", found: "object with a string" },
+		{ key: "paths", expected: "stringList", found: "an array with a number" },
+		{ key: "colors", expected: "stringMap", found: "an array" },
+		{ key: "rules", expected: "stringListMap", found: "an object with a string" },
 	]);
 	assert.deepEqual(
 		settingIssues({ colors: { "#a": 1 } }, schema).find((issue) => issue.key === "colors"),
 		{
 			key: "colors",
 			expected: "stringMap",
-			found: "object with a number",
+			found: "an object with a number",
 		},
 	);
 	const foundFor = (values: Record<string, unknown>, key: string) =>
 		settingIssues(values, schema).find((issue) => issue.key === key)?.found;
-	assert.equal(foundFor({ colors: { "#a": {} } }, "colors"), "object with an object");
-	assert.equal(foundFor({ paths: ["a", null] }, "paths"), "array with null");
+	assert.equal(foundFor({ colors: { "#a": {} } }, "colors"), "an object with an object");
+	assert.equal(foundFor({ paths: ["a", null] }, "paths"), "an array with null");
 	assert.equal(
 		foundFor({ paths: ["a", 1, null] }, "paths"),
-		"array with a number",
+		"an array with a number",
 		"the first item that does not fit",
 	);
-	assert.equal(foundFor({ rules: { status: ["done", 2] } }, "rules"), "object with an array with a number");
+	assert.equal(foundFor({ rules: { status: ["done", 2] } }, "rules"), "an object with an array with a number");
 	assert.equal(foundFor({ colors: null }, "colors"), "null");
 	assert.equal(foundFor({ rules: null }, "rules"), "null");
 	assert.deepEqual(
@@ -147,7 +150,7 @@ test("each value of another type is one issue, in the schema's order, saying wha
 		{
 			key: "rules",
 			expected: "stringListMap",
-			found: "array",
+			found: "an array",
 		},
 	);
 });
@@ -164,4 +167,29 @@ test("the check never changes the values, and its issues cannot be changed", () 
 	const issues = settingIssues(values, schema);
 	assert.equal(JSON.stringify(values), text);
 	assert.ok(Object.isFrozen(issues) && issues.every((issue) => Object.isFrozen(issue)));
+});
+
+test("a value is described as data.json holds it, with its article", () => {
+	assert.deepEqual(["x", 2, true, null, undefined, [], {}].map(describedValue), [
+		"a string",
+		"a number",
+		"a boolean",
+		"null",
+		"undefined",
+		"an array",
+		"an object",
+	]);
+});
+
+test("migrations run in order, and the values handed in stay as they were", () => {
+	const order: string[] = [];
+	const migrations: readonly Migration<{ sort: string; size?: number }>[] = [
+		{ id: "first", apply: (values) => (order.push("first"), { ...values, sort: values.sort.toUpperCase() }) },
+		{ id: "second", apply: (values) => (order.push("second"), { ...values, size: values.sort.length }) },
+	];
+	const values = deepFreeze({ sort: "due" });
+	assert.deepEqual(migrated(values, migrations), { sort: "DUE", size: 3 });
+	assert.deepEqual(order, ["first", "second"]);
+	assert.deepEqual(values, { sort: "due" });
+	assert.equal(migrated(values, []), values, "no migrations, the same values");
 });

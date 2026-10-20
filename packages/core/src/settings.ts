@@ -100,20 +100,20 @@ export function settingIssues(
 	return Object.freeze(issues);
 }
 
-/** What the value is, when it is not of the type; undefined when it is. */
+/** What the value is, when it is not of the type, as "a string" or "an array with a number"; undefined when it is. */
 function mismatchOf(value: unknown, type: SettingType): string | undefined {
 	switch (type) {
 		case "boolean":
 		case "string":
-			return typeof value === type ? undefined : kindOf(value);
+			return typeof value === type ? undefined : describedValue(value);
 		case "stringList":
-			return Array.isArray(value) ? badItemIn("array", value, isString) : kindOf(value);
+			return Array.isArray(value) ? badItemIn(value, value, isString) : describedValue(value);
 		case "stringMap":
-			return isPlainObject(value) ? badItemIn("object", Object.values(value), isString) : kindOf(value);
+			return isPlainObject(value) ? badItemIn(value, Object.values(value), isString) : describedValue(value);
 		case "stringListMap":
 			return isPlainObject(value)
-				? badItemIn("object", Object.values(value), isStringList, listOrKind)
-				: kindOf(value);
+				? badItemIn(value, Object.values(value), isStringList, listOrValue)
+				: describedValue(value);
 	}
 }
 
@@ -121,34 +121,44 @@ const isString = (item: unknown) => typeof item === "string";
 
 const isStringList = (item: unknown) => Array.isArray(item) && item.every(isString);
 
-/** The first item that does not fit, as "array with a number"; undefined when they all fit. */
+/** The container with the first item that does not fit, as "an array with a number"; undefined when they all fit. */
 function badItemIn(
-	container: string,
+	container: object,
 	items: readonly unknown[],
 	fits: (item: unknown) => boolean,
-	describe: (item: unknown) => string = (item) => withArticle(kindOf(item)),
+	describe: (item: unknown) => string = describedValue,
 ): string | undefined {
 	const at = items.findIndex((item) => !fits(item));
-	return at < 0 ? undefined : `${container} with ${describe(items[at])}`;
+	return at < 0 ? undefined : `${describedValue(container)} with ${describe(items[at])}`;
 }
 
-/** A list that should hold only text, by what is wrong in it, as "an array with a number"; else its kind. */
-function listOrKind(item: unknown): string {
-	return Array.isArray(item) ? `an ${badItemIn("array", item, isString)}` : withArticle(kindOf(item));
+/** A list that should hold only text, by what is wrong in it, as "an array with a number"; else the value. */
+function listOrValue(item: unknown): string {
+	return (Array.isArray(item) && badItemIn(item, item, isString)) || describedValue(item);
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-/** The kind of a value as data.json holds it: null and arrays apart from other objects. */
-function kindOf(value: unknown): string {
+/** A value as data.json holds it, with its article: "a string", "an array", "null"; arrays apart from other objects. */
+export function describedValue(value: unknown): string {
 	if (value === null) return "null";
-	if (Array.isArray(value)) return "array";
-	return typeof value;
+	if (value === undefined) return "undefined";
+	const kind = Array.isArray(value) ? "array" : typeof value;
+	return /^[aeiou]/.test(kind) ? `an ${kind}` : `a ${kind}`;
 }
 
-function withArticle(kind: string): string {
-	if (kind === "null" || kind === "undefined") return kind;
-	return /^[aeiou]/.test(kind) ? `an ${kind}` : `a ${kind}`;
+/**
+ * A change of saved settings from an older shape to today's. It is pure and idempotent, and judges by the value's
+ * shape, not by a version, as an older device can write an old shape back next to a newer version.
+ */
+export interface Migration<T> {
+	readonly id: string;
+	apply(values: T): T;
+}
+
+/** The values after each migration in turn. */
+export function migrated<T>(values: T, migrations: readonly Migration<T>[]): T {
+	return migrations.reduce((current, migration) => migration.apply(current), values);
 }
