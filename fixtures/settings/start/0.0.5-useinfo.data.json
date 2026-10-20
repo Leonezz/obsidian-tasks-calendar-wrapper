@@ -76,5 +76,6 @@
     "useFileBadge": false,
     "useSection": true
   },
-  "useCompletedTasks": false
+  "useCompletedTasks": false,
+  "settingsVersion": 1
 }
