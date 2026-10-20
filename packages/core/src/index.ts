@@ -13,6 +13,7 @@ export * from "./properties";
 export * from "./quickentry";
 export * from "./resolve";
 export * from "./row";
+export * from "./settings";
 export * from "./sort";
 export * from "./store";
 export * from "./status";
