@@ -2,29 +2,34 @@ import { Notice, Plugin } from "obsidian";
 
 import { TasksTimelineView, TIMELINE_VIEW } from "./views";
 
-import { mergeOptions } from "../utils/options";
-import { migrateSortOption } from "@tasks-calendar-wrapper/core";
-import { notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
+import { copyJsonValue, notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
 import { RELEASE_NOTES, SUPPORT_LINKS } from "../utils/whatsnew";
 import { WhatsNewModal } from "./whatsnew-modal";
-import { defaultUserOptions, TasksCalendarSettingTab, UserOption } from "./settings";
+import { TasksCalendarSettingTab, UserOption } from "./settings";
+import { createSettingsStore, loadedSettings, type Settings, withChanges } from "./state/settings";
 import { debounceOptionUpdates } from "../utils/refresh";
 
 export default class TasksCalendarWrapper extends Plugin {
-	userOptions: UserOption = {} as UserOption;
+	private readonly settingsStore = createSettingsStore();
 	private readonly pushOptionsToViews = debounceOptionUpdates(() => {
 		this.app.workspace.getLeavesOfType(TIMELINE_VIEW).forEach((leaf) => {
 			if (leaf.view instanceof TasksTimelineView) {
-				leaf.view.onUpdateOptions({ ...this.userOptions });
+				leaf.view.onUpdateOptions(this.userOptions);
 			}
 		});
 	});
+
+	/** The options, frozen; every load and every change replaces them, see state/settings.ts. */
+	get userOptions(): Settings {
+		return this.settingsStore.getSnapshot();
+	}
+
 	async onload() {
 		this.register(() => this.pushOptionsToViews.cancel());
 		await this.loadOptions();
 		this.registerView(TIMELINE_VIEW, (leaf) => {
 			const view = new TasksTimelineView(leaf);
-			view.onUpdateOptions({ ...this.userOptions });
+			view.onUpdateOptions(this.userOptions);
 			return view;
 		});
 		if (this.userOptions.openViewOnStartup)
@@ -72,16 +77,10 @@ export default class TasksCalendarWrapper extends Plugin {
 		if (lastSeenVersion !== currentVersion) await this.writeOptions({ lastSeenVersion: currentVersion });
 	}
 
-	private updateOptions(updatedOpts: Partial<UserOption>) {
-		Object.assign(this.userOptions, { ...updatedOpts });
-		this.pushOptionsToViews();
-	}
-
 	async loadOptions(): Promise<void> {
 		const savedOptions = (await this.loadData()) as Partial<UserOption> | null;
-		this.userOptions = mergeOptions(defaultUserOptions, savedOptions);
-		this.userOptions.sort = migrateSortOption(this.userOptions.sort);
-		this.updateOptions(this.userOptions);
+		this.settingsStore.setState(loadedSettings(savedOptions));
+		this.pushOptionsToViews();
 	}
 
 	/**
@@ -93,8 +92,11 @@ export default class TasksCalendarWrapper extends Plugin {
 	}
 
 	async writeOptions(changedOpts: Partial<UserOption>): Promise<void> {
-		this.updateOptions(changedOpts);
-		await this.saveData(Object.assign({}, this.userOptions));
+		this.settingsStore.setState((settings) => withChanges(settings, changedOpts));
+		this.pushOptionsToViews();
+		// Saved as a copy made by assignment, as before. Assignment drops a "__proto__" key a hand-edited data.json may
+		// hold, and a copy that is not frozen keeps the keys after one from failing to be assigned.
+		await this.saveData(Object.assign({}, copyJsonValue(this.userOptions)));
 	}
 
 	async activateView(type: string) {

@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { TasksTimelineView, TIMELINE_VIEW } from "../src/views";
 import type { FakeVault } from "./fakevault";
+import { deeplyFrozen, nothingFrozen } from "./frozen";
 import { FIXTURE_NAMES, readFixture, snapshotsIn, startPlugin, type StartedPlugin } from "./settings-fixtures";
 import { FakeElement, Modal } from "./stubs/obsidian";
 
@@ -210,6 +211,75 @@ test("every change of an option saves all the options, even one that changes not
 	assert.equal(last.dateFormat, saved);
 });
 
+test("the options are one frozen snapshot, which every load and every change replaces, and the defaults stay", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const pristine = JSON.stringify(defaultUserOptions);
+	const { plugin } = await startPlugin(readFixture("0.3.7-full.json"));
+	const loaded = plugin.userOptions;
+	assert.ok(deeplyFrozen(loaded));
+	assert.equal(plugin.userOptions, loaded, "the same options until something changes");
+	const loadedFormat = loaded.dateFormat;
+	await plugin.writeOptions({ dateFormat: "QQQ" });
+	const changed = plugin.userOptions;
+	assert.notEqual(changed, loaded);
+	assert.ok(deeplyFrozen(changed));
+	assert.equal(loaded.dateFormat, loadedFormat, "the options before are as they were");
+	plugin.dataJson = readFixture("quiet.json");
+	await plugin.onExternalSettingsChange();
+	assert.notEqual(plugin.userOptions, changed);
+	assert.ok(deeplyFrozen(plugin.userOptions));
+	assert.equal(changed.dateFormat, "QQQ");
+	assert.equal(JSON.stringify(defaultUserOptions), pristine);
+	assert.ok(nothingFrozen(defaultUserOptions));
+});
+
+test("changing the options in place fails at once, instead of being lost or reaching some views only", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin } = await startPlugin(readFixture("quiet.json"));
+	assert.throws(() => {
+		(plugin.userOptions as { dateFormat: string }).dateFormat = "QQQ";
+	}, TypeError);
+	assert.throws(() => (plugin.userOptions.hideTags as string[]).push("#later"), TypeError);
+	assert.equal(plugin.userOptions.dateFormat, defaultUserOptions.dateFormat);
+	assert.deepEqual(plugin.userOptions.hideTags, []);
+});
+
+test("a data.json changed outside replaces the options as a whole, without the options the new file lacks", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin } = await startPlugin(readFixture("0.0.5-useinfo.json"));
+	plugin.dataJson = readFixture("quiet.json");
+	await plugin.onExternalSettingsChange();
+	assert.deepEqual(plugin.userOptions, {
+		...defaultUserOptions,
+		showWhatsNewOnUpdate: false,
+		lastSeenVersion: "0.3.7",
+	});
+	assert.deepEqual(Object.keys(plugin.userOptions), Object.keys(defaultUserOptions));
+	await plugin.writeOptions({});
+	assert.deepEqual(savedKeys(plugin), Object.keys(defaultUserOptions));
+});
+
+test('a hand-edited data.json with a "__proto__" key is saved without it, and the keys after it, as before', async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin } = await startPlugin('{ "__proto__": { "later": 1 }, "later": 2, "dateFormat": "YYYY" }');
+	await plugin.writeOptions({});
+	assert.ok(!plugin.dataJson?.includes("__proto__"), plugin.dataJson ?? "");
+	const saved = JSON.parse(plugin.dataJson ?? "null");
+	assert.equal(saved.later, 2);
+	assert.equal(saved.dateFormat, "YYYY");
+});
+
+test("a change copies the lists it is handed, so changing them afterwards changes no option", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin } = await startPlugin(readFixture("quiet.json"));
+	const tags = ["#later"];
+	await plugin.writeOptions({ hideTags: tags });
+	assert.ok(nothingFrozen(tags));
+	tags.push("#someday");
+	assert.deepEqual(plugin.userOptions.hideTags, ["#later"]);
+	assert.deepEqual(JSON.parse(plugin.dataJson ?? "null").hideTags, ["#later"]);
+});
+
 test("the view factory hands a new timeline the options at once, which later changes leave as they were", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const updates = countUpdates(t);
@@ -220,6 +290,7 @@ test("the view factory hands a new timeline the options at once, which later cha
 	const [handed] = updates.mock.calls[0].arguments;
 	assert.equal(updates.mock.calls[0].this, view);
 	assert.deepEqual(handed, plugin.userOptions);
+	assert.ok(deeplyFrozen(handed));
 	const before = handed.dateFormat;
 	await plugin.writeOptions({ dateFormat: "QQQ" });
 	assert.equal(handed.dateFormat, before);
@@ -254,11 +325,31 @@ test("changed options reach the timelines 200 ms after the last change, once a b
 		[first, second],
 	);
 	for (const call of updates.mock.calls) assert.equal(call.arguments[0].dateFormat, "DD.MM.YYYY");
+	for (const call of updates.mock.calls) assert.ok(deeplyFrozen(call.arguments[0]));
 	await wait(t, 10 * OPTIONS_DELAY_MS);
 	assert.equal(updates.mock.callCount(), 2);
 	// What the timelines were handed is not changed by a later change.
 	await plugin.writeOptions({ dateFormat: "QQQ" });
 	for (const call of updates.mock.calls.slice(0, 2)) assert.equal(call.arguments[0].dateFormat, "DD.MM.YYYY");
+});
+
+test("a change reaches the timelines 200 ms after it while its save is still written, and so does one of nothing", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const updates = countUpdates(t);
+	const { vault, plugin } = await startPlugin(readFixture("quiet.json"), { layoutReady: true });
+	const view = await openTimeline(vault);
+	await wait(t, 10 * OPTIONS_DELAY_MS);
+	updates.mock.resetCalls();
+	t.mock.method(plugin, "saveData", () => new Promise<void>(() => {}));
+	void plugin.writeOptions({ dateFormat: "YYYY" });
+	await wait(t, OPTIONS_DELAY_MS);
+	assert.deepEqual(
+		updates.mock.calls.map((call) => [call.this, call.arguments[0].dateFormat]),
+		[[view, "YYYY"]],
+	);
+	void plugin.writeOptions({});
+	await wait(t, OPTIONS_DELAY_MS);
+	assert.equal(updates.mock.callCount(), 2, "a change that changes nothing reaches them too");
 });
 
 test("a leaf of the timeline's type whose view is not loaded yet is skipped", async (t) => {

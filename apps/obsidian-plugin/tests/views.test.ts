@@ -15,6 +15,7 @@ import { heldOf, TasksTimelineView } from "../src/views";
 import { ObsidianBridge, quickFilterOf } from "../timeline/src/obsidianbridge";
 import { readTasks } from "../timeline/src/taskadapter";
 import { moment } from "../utils/moment";
+import { deeplyFrozen } from "./frozen";
 import { goldenApp, loadVault } from "./golden-vault";
 import { rowsOf } from "./markup";
 
@@ -130,6 +131,20 @@ test("a reload of the same notes changes nothing, and so does a setting that cha
 	assert.equal(changes(), 1);
 	await view.onUpdateOptions({ ...defaultUserOptions, sort: "text-desc" });
 	assert.equal(changes(), 2);
+});
+
+test("every reload hands the bridge new frozen tasks, also when nothing changed, and the options frozen", async () => {
+	// The timeline remembers what it worked out by the tasks array, and whether a done task counts as done depends on
+	// the moment it is worked out, so each reload must hand over a new array.
+	const { view, store } = openView(goldenApp(loadVault()));
+	await view.onUpdateOptions({ ...defaultUserOptions });
+	const first = store.getSnapshot().tasks;
+	await view.onReloadTasks();
+	const second = store.getSnapshot().tasks;
+	assert.notEqual(second, first);
+	assert.deepEqual(ids(second), ids(first));
+	assert.ok(Object.isFrozen(first) && Object.isFrozen(second));
+	assert.ok(deeplyFrozen(store.getSnapshot().options));
 });
 
 test("on another day, the list shown changes when a status does, and not when only today's day does", async () => {
