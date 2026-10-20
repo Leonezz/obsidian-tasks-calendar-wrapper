@@ -32,15 +32,15 @@ importers:
       '@tasks-calendar-wrapper/core':
         specifier: workspace:*
         version: link:../../packages/core
-      backbone:
-        specifier: 1.6.1
-        version: 1.6.1
       react:
         specifier: 18.3.1
         version: 18.3.1
       react-dom:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
+      underscore:
+        specifier: 1.13.7
+        version: 1.13.7
     devDependencies:
       '@types/backbone':
         specifier: 1.4.23
@@ -54,6 +54,9 @@ importers:
       '@types/react-dom':
         specifier: 18.3.7
         version: 18.3.7(@types/react@18.3.27)
+      backbone:
+        specifier: 1.6.1
+        version: 1.6.1
       esbuild:
         specifier: 0.28.2
         version: 0.28.2

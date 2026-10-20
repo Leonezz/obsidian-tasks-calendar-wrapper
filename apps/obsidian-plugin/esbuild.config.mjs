@@ -49,6 +49,23 @@ const forbidNpmMoment = {
 	},
 };
 
+/**
+ * Fails the build if anything would bundle all of underscore, or Backbone, which brings it along. The plugin needs one
+ * function of it, the comparison Backbone made of the timeline's list: underscore/modules/isEqual.js.
+ */
+const forbidWholeUnderscore = {
+	name: "forbid-whole-underscore",
+	setup(build) {
+		build.onResolve({ filter: /^(underscore|backbone)$/ }, (args) => ({
+			errors: [
+				{
+					text: `${args.importer} imports "${args.path}"; import the function from underscore/modules/<name>.js, so the bundle does not carry the whole library.`,
+				},
+			],
+		}));
+	},
+};
+
 const context = await esbuild.context({
 	banner: {
 		js: banner,
@@ -76,7 +93,9 @@ const context = await esbuild.context({
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
 	outfile: `${prod ? releaseDir : devPluginDir}/main.js`,
-	plugins: prod ? [forbidNpmMoment] : [forbidNpmMoment, copyPluginFilesAfterBuild],
+	plugins: prod
+		? [forbidNpmMoment, forbidWholeUnderscore]
+		: [forbidNpmMoment, forbidWholeUnderscore, copyPluginFilesAfterBuild],
 });
 
 if (prod) {

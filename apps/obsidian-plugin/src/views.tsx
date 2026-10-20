@@ -1,60 +1,24 @@
-import { Model } from "backbone";
 import { CachedMetadata, debounce, ItemView, Notice, TFile, WorkspaceLeaf } from "obsidian";
-import { resolveTasks, type ResolvedTask, type Task } from "@tasks-calendar-wrapper/core";
+import { createStore, resolveTasks } from "@tasks-calendar-wrapper/core";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
 import { readTasks } from "../timeline/src/taskadapter";
 import { createRoot, Root } from "react-dom/client";
 import { moment } from "../utils/moment";
 import { changeAffectsTasks } from "../utils/refresh";
-import { defaultUserOptions, UserOption } from "./useroptions";
+import { heldOf, initialTimelineState, type TimelineState, withOptions, withReload } from "./state/timeline";
+import { UserOption } from "./useroptions";
 
 export const TIMELINE_VIEW = "tasks_timeline_view";
 
-/**
- * What the old view's list held of a task it showed. Backbone compared that list to decide whether the timeline had
- * changed, and replacing it cleared the quick filter. It kept a task's forwarded and other dates in a Map, which
- * Backbone's comparison does not look into, and it had neither the note's tags nor what comes before the list marker.
- */
-export function heldOf(resolved: ResolvedTask) {
-	const { task } = resolved;
-	return {
-		id: task.id,
-		position: task.position,
-		lineCount: task.lineCount,
-		text: task.text,
-		symbol: task.symbol,
-		statusMarker: task.statusMarker,
-		completed: task.completed,
-		fullyCompleted: task.fullyCompleted,
-		checked: task.checked,
-		isTasksTask: task.isTasksTask,
-		priority: task.priority,
-		recurrence: task.recurrence,
-		tags: task.tags,
-		section: task.section,
-		outlinks: task.outlinks,
-		frontmatter: task.note.frontmatter,
-		status: resolved.status,
-		order: resolved.order,
-		dailyNote: resolved.dailyNote,
-		dates: resolved.dates,
-		visual: resolved.visual,
-	};
-}
+export { heldOf } from "./state/timeline";
 
 /** Changes that arrive within this time of each other are applied in one reload. */
 const RELOAD_DELAY_MS = 500;
 
 export class TasksTimelineView extends ItemView {
 	private root?: Root;
-	/**
-	 * The tasks read at the last reload, and what the old view's list held of the ones shown then, see heldOf. The
-	 * bridge renders again when either changes, and clears the quick filter when the list shown changes, as before.
-	 */
-	private taskListModel = new Model({
-		tasks: [] as readonly Task[],
-		shown: [] as ReturnType<typeof heldOf>[],
-	});
+	/** The options, the tasks read last and the list shown, see TimelineState, which the bridge renders. */
+	private readonly store = createStore<TimelineState>(initialTimelineState());
 
 	private isReloading = false;
 	/** A reload was asked for while one was running, so the list is loaded again when it is done. */
@@ -62,7 +26,6 @@ export class TasksTimelineView extends ItemView {
 	/** The files that had tasks at the last reload. */
 	private filesWithTasks: ReadonlySet<string> = new Set();
 	private readonly requestReload = debounce(() => this.onReloadTasks(), RELOAD_DELAY_MS, true);
-	private userOptionModel = new Model({ ...defaultUserOptions });
 	static view: TasksTimelineView | null = null;
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
@@ -97,9 +60,7 @@ export class TasksTimelineView extends ItemView {
 
 		container.empty();
 		this.root = createRoot(container);
-		this.root.render(
-			<ObsidianBridge plugin={this} userOptionModel={this.userOptionModel} taskListModel={this.taskListModel} />,
-		);
+		this.root.render(<ObsidianBridge plugin={this} store={this.store} />);
 	}
 
 	async onClose(): Promise<void> {
@@ -124,8 +85,7 @@ export class TasksTimelineView extends ItemView {
 
 	/** Reloads the tasks with the options. Returns once the reload is done. */
 	onUpdateOptions(opt: UserOption): Promise<void> {
-		this.userOptionModel.clear();
-		this.userOptionModel.set({ ...opt });
+		this.store.setState((state) => withOptions(state, opt));
 		return this.onReloadTasks();
 	}
 
@@ -136,14 +96,12 @@ export class TasksTimelineView extends ItemView {
 			return Promise.resolve();
 		}
 		this.isReloading = true;
-		const options = this.userOptionModel.toJSON();
+		const { options } = this.store.getSnapshot();
 		return readTasks(this.app, options, moment)
 			.then((tasks) => {
 				this.filesWithTasks = new Set(tasks.map((task) => task.path));
-				const taskfiles = this.userOptionModel.get("taskFiles");
 				const { shown } = resolveTasks(tasks, options, { now: moment(), moment });
-				this.taskListModel.set({ tasks, shown: shown.map(heldOf) });
-				this.userOptionModel.set({ taskFiles: taskfiles || [] });
+				this.store.setState((state) => withReload(state, tasks, shown.map(heldOf)));
 			})
 			.catch((reason) => {
 				new Notice("Error when generating tasks from files: " + reason, 5000);
