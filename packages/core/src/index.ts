@@ -14,6 +14,7 @@ export * from "./quickentry";
 export * from "./resolve";
 export * from "./row";
 export * from "./sort";
+export * from "./store";
 export * from "./status";
 export * from "./syntax";
 export * from "./tags";

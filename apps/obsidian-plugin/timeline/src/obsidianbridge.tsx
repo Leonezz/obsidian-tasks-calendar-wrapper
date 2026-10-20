@@ -1,8 +1,8 @@
-import { Model } from "backbone";
 import { App, ItemView, Notice, normalizePath, Pos } from "obsidian";
-import { normalizeNotePath, type QuickFilter, type Task } from "@tasks-calendar-wrapper/core";
+import { createStore, normalizeNotePath, type QuickFilter, type Store, type Task } from "@tasks-calendar-wrapper/core";
 import * as React from "react";
-import { UserOption, defaultUserOptions } from "../../src/useroptions";
+import { initialTimelineState, type TimelineState } from "../../src/state/timeline";
+import { UserOption } from "../../src/useroptions";
 import { ConfirmModal } from "../../src/confirm-modal";
 import { tagSearchUri, tasksPluginCommand } from "../../utils/utils";
 import { appendTaskToNote } from "./appendtask";
@@ -11,8 +11,8 @@ import { TimelineView } from "./components/timelineview";
 
 const defaultObsidianBridgeProps = {
 	plugin: {} as ItemView,
-	userOptionModel: new Model({ ...defaultUserOptions }) as Model,
-	taskListModel: new Model({ tasks: [] as readonly Task[], shown: [] }) as Model,
+	/** The view's state: the bridge renders its options, and the tasks read when the list shown last changed. */
+	store: createStore<TimelineState>(initialTimelineState()) as Store<TimelineState>,
 };
 type ObsidianBridgeProps = Readonly<typeof defaultObsidianBridgeProps>;
 interface ObsidianBridgeState {
@@ -42,6 +42,9 @@ export function withNewList(state: ObsidianBridgeState, tasks: readonly Task[]):
 export class ObsidianBridge extends React.Component<ObsidianBridgeProps, ObsidianBridgeState> {
 	private readonly app: App;
 	private taskItemHandlers?: React.ContextType<typeof TaskItemEventHandlersContext>;
+	/** The view's state the bridge last took its own from. */
+	private seen: TimelineState;
+	private unsubscribe?: () => void;
 	constructor(props: ObsidianBridgeProps) {
 		super(props);
 
@@ -53,46 +56,43 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		this.handleOpenFile = this.handleOpenFile.bind(this);
 		this.handleCompleteTask = this.handleCompleteTask.bind(this);
 		this.onUpdateTasks = this.onUpdateTasks.bind(this);
-		this.onTasksChanged = this.onTasksChanged.bind(this);
-		this.onUpdateUserOption = this.onUpdateUserOption.bind(this);
+		this.onStateChanged = this.onStateChanged.bind(this);
 		this.handleModifyTask = this.handleModifyTask.bind(this);
 		this.handleFilterEnable = this.handleFilterEnable.bind(this);
 
-		this.state = {
-			userOptions: { ...(this.props.userOptionModel.pick(this.props.userOptionModel.keys()) as UserOption) },
-			tasks: this.props.taskListModel.get("tasks"),
-		};
+		this.seen = this.props.store.getSnapshot();
+		this.state = { userOptions: this.seen.options, tasks: this.seen.tasks };
 	}
 
 	componentDidMount(): void {
-		this.props.taskListModel.on("change", this.onTasksChanged);
-		this.props.userOptionModel.on("change", this.onUpdateUserOption);
+		this.unsubscribe = this.props.store.subscribe(this.onStateChanged);
+		// A change between reading the state and subscribing would not be heard of otherwise.
+		this.onStateChanged();
 	}
 
 	componentWillUnmount(): void {
-		this.props.taskListModel.off("change", this.onTasksChanged);
-		this.props.userOptionModel.off("change", this.onUpdateUserOption);
-	}
-
-	onUpdateUserOption() {
-		this.setState({
-			userOptions: { ...(this.props.userOptionModel.pick(this.props.userOptionModel.keys()) as UserOption) },
-		});
+		this.unsubscribe?.();
 	}
 
 	/**
-	 * After a reload that changed the model. Only a change in the list shown renders the timeline again, as only a
-	 * changed list did before: the other tasks are hidden, and the next change or the quick entry brings them along.
+	 * After the view's state changed. New options render the timeline again. Of a reload, only a change in the list
+	 * shown does, as only a changed list did before: the other tasks are hidden, and the next change or the quick entry
+	 * brings them along.
 	 */
-	onTasksChanged() {
-		const model = this.props.taskListModel;
-		if (!model.hasChanged("shown")) return;
-		this.setState((state) => withNewList(state, model.get("tasks")));
+	onStateChanged() {
+		const next = this.props.store.getSnapshot();
+		const before = this.seen;
+		this.seen = next;
+		if (next.options !== before.options) this.setState({ userOptions: next.options });
+		// The tasks are read when React applies the change, as the old view's model was, so a reload that ends before
+		// then with the same list shown brings its tasks along.
+		if (next.shown !== before.shown)
+			this.setState((state) => withNewList(state, this.props.store.getSnapshot().tasks));
 	}
 
 	/** Shows the tasks read last, without the quick filter, as adding a task through the quick entry always did. */
 	onUpdateTasks() {
-		this.setState((state) => withNewList(state, this.props.taskListModel.get("tasks")));
+		this.setState((state) => withNewList(state, this.props.store.getSnapshot().tasks));
 	}
 
 	/** The quick entry panel's filter, which core applies, see QuickFilter. */
