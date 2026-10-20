@@ -34,7 +34,7 @@ export interface SettingSpec<K extends string = string, G extends string = strin
 	readonly group?: G;
 	/** The setting shows only while this one is on. */
 	readonly shownWhen?: K;
-	/** Changing the setting draws the tab again, as it shows or hides other settings. */
+	/** Changing the setting draws the tab again: it shows or hides other settings, or its own tags change. */
 	readonly redrawsTab: boolean;
 	readonly readWhen: ReadWhen;
 }
@@ -111,7 +111,9 @@ function mismatchOf(value: unknown, type: SettingType): string | undefined {
 		case "stringMap":
 			return isPlainObject(value) ? badItemIn("object", Object.values(value), isString) : kindOf(value);
 		case "stringListMap":
-			return isPlainObject(value) ? badItemIn("object", Object.values(value), isStringList) : kindOf(value);
+			return isPlainObject(value)
+				? badItemIn("object", Object.values(value), isStringList, listOrKind)
+				: kindOf(value);
 	}
 }
 
@@ -120,9 +122,19 @@ const isString = (item: unknown) => typeof item === "string";
 const isStringList = (item: unknown) => Array.isArray(item) && item.every(isString);
 
 /** The first item that does not fit, as "array with a number"; undefined when they all fit. */
-function badItemIn(container: string, items: readonly unknown[], fits: (item: unknown) => boolean): string | undefined {
+function badItemIn(
+	container: string,
+	items: readonly unknown[],
+	fits: (item: unknown) => boolean,
+	describe: (item: unknown) => string = (item) => withArticle(kindOf(item)),
+): string | undefined {
 	const at = items.findIndex((item) => !fits(item));
-	return at < 0 ? undefined : `${container} with ${withArticle(kindOf(items[at]))}`;
+	return at < 0 ? undefined : `${container} with ${describe(items[at])}`;
+}
+
+/** A list that should hold only text, by what is wrong in it, as "an array with a number"; else its kind. */
+function listOrKind(item: unknown): string {
+	return Array.isArray(item) ? `an ${badItemIn("array", item, isString)}` : withArticle(kindOf(item));
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

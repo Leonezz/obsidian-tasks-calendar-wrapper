@@ -130,6 +130,18 @@ test("each value of another type is one issue, in the schema's order, saying wha
 			found: "object with a number",
 		},
 	);
+	const foundFor = (values: Record<string, unknown>, key: string) =>
+		settingIssues(values, schema).find((issue) => issue.key === key)?.found;
+	assert.equal(foundFor({ colors: { "#a": {} } }, "colors"), "object with an object");
+	assert.equal(foundFor({ paths: ["a", null] }, "paths"), "array with null");
+	assert.equal(
+		foundFor({ paths: ["a", 1, null] }, "paths"),
+		"array with a number",
+		"the first item that does not fit",
+	);
+	assert.equal(foundFor({ rules: { status: ["done", 2] } }, "rules"), "object with an array with a number");
+	assert.equal(foundFor({ colors: null }, "colors"), "null");
+	assert.equal(foundFor({ rules: null }, "rules"), "null");
 	assert.deepEqual(
 		settingIssues({ rules: [] }, schema).find((issue) => issue.key === "rules"),
 		{

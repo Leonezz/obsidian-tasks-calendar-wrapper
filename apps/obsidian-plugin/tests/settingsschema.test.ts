@@ -9,6 +9,7 @@ import { settingIssues, type SettingControl, type SettingSpec } from "@tasks-cal
 import type { TasksCalendarSettingTab } from "../src/settings";
 import { settingsSchema } from "../src/settings-schema";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
+import { TimelineView } from "../timeline/src/components/timelineview";
 import { FIXTURE_NAMES, readFixture, rowsOf, startPlugin, type Control, type Row } from "./settings-fixtures";
 import type { FakeElement } from "./stubs/obsidian";
 
@@ -84,6 +85,18 @@ test("the values of the wrong type users have are found, and only those", () => 
 	]);
 	// A literal [ ] among the statuses to hide is text all the same.
 	assert.deepEqual(issues(JSON.parse(readFixture("0.3.1-hide-literal-todo.json"))), []);
+	// Property rules are lists of values by property, and the null maps the tab cannot draw are found too.
+	assert.deepEqual(issues({ excludeProperties: { status: ["archived", "done"], priority: ["low"] } }), []);
+	assert.deepEqual(issues({ excludeProperties: { status: "archived" } }), ["excludeProperties"]);
+	assert.deepEqual(issues({ tagColorPalette: null, excludeProperties: null }), [
+		"excludeProperties",
+		"tagColorPalette",
+	]);
+});
+
+test("every value the tab was recorded saving is of the type the schema gives", () => {
+	for (const change of recorded)
+		assert.deepEqual(settingIssues({ ...defaultUserOptions, ...change.writes[0] }, settingsSchema), [], change.row);
 });
 
 test("options the plugin manages itself have no control, no group and no codec", () => {
@@ -212,15 +225,36 @@ test("each row shows under the heading of its option's group", async (t) => {
 	assert.equal(specOf("tagColorPalette").group, specOf("useTags").group);
 });
 
-test("the options read once, or when a timeline opens, are the ones the code reads so", () => {
+test("the schema records the options read only when the plugin loads or a timeline opens, and the one never read", () => {
 	const readAt = (when: SettingSpec["readWhen"]) =>
 		settingsSchema.filter((spec) => spec.readWhen === when).map((spec) => spec.key);
-	// main.ts reads these when the plugin loads; TimelineView's constructor reads the next two.
+	// main.ts reads these in onload and when the layout is ready, see plugin.test.ts for opening on start and for what
+	// is new; TimelineView's constructor reads the next two, see the test below.
 	assert.deepEqual(readAt("pluginLoad"), ["openViewOnStartup", "showWhatsNewOnUpdate", "lastSeenVersion"]);
 	assert.deepEqual(readAt("viewOpen"), ["defaultTodayFocus", "defaultFilters"]);
-	// Nothing reads styles any more.
+	// Nothing in the plugin or its packages reads styles.
 	assert.deepEqual(readAt("never"), ["styles"]);
-	assert.equal(readAt("push").length, 45 - 6);
+});
+
+test("an open timeline keeps the filter and today focus it opened with, and takes other options when they change", async () => {
+	// React keeps a component's state across renders, unless getDerivedStateFromProps or componentDidUpdate copies the
+	// new props into it. TimelineView has neither, so a push sets its props, as here, and its state stays.
+	assert.equal((TimelineView as { getDerivedStateFromProps?: unknown }).getDerivedStateFromProps, undefined);
+	assert.equal((TimelineView.prototype as { componentDidUpdate?: unknown }).componentDidUpdate, undefined);
+	const opened: UserOption = { ...defaultUserOptions, defaultFilters: "todoFilter", defaultTodayFocus: true };
+	const pushed: UserOption = { ...defaultUserOptions, useCounters: false };
+	const classOf = (view: TimelineView) => (view.render() as { props: { className: string } }).props.className;
+	const view = new TimelineView({ userOptions: opened, tasks: [] });
+	const atOpen = classOf(view);
+	assert.match(atOpen, /todoFilter/);
+	assert.match(atOpen, /todayFocus/);
+	(view as { props: object }).props = { userOptions: pushed, tasks: [] };
+	const afterPush = classOf(view);
+	assert.match(afterPush, /todoFilter/, "the filter it opened with");
+	assert.match(afterPush, /todayFocus/, "the today focus it opened with");
+	assert.match(afterPush, /noCounters/, "an option read on every push");
+	const reopened = classOf(new TimelineView({ userOptions: pushed, tasks: [] }));
+	assert.doesNotMatch(reopened, /todoFilter|todayFocus/, "a timeline opened after the change");
 });
 
 /** Whether a control is a tag, or holds rows with one, as the palette's rows in the row of Use Tags. */
