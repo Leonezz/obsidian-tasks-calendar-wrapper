@@ -120,6 +120,9 @@ test("the version saved is read as it is when it is a number, and as 0 when ther
 	assert.equal(storedVersionOf({ settingsVersion: 3 }), 3);
 	assert.equal(storedVersionOf({ settingsVersion: "2" }), 0);
 	assert.equal(storedVersionOf({ settingsVersion: null }), 0);
+	assert.equal(storedVersionOf(JSON.parse('{ "settingsVersion": 1e400 }')), 0, "Infinity");
+	assert.equal(storedVersionOf({ settingsVersion: -Infinity }), 0);
+	assert.equal(storedVersionOf({ settingsVersion: 1.5 }), 1.5, "a number is taken as it is");
 });
 
 test("the state loaded holds the options and the version saved, frozen", () => {
@@ -138,6 +141,8 @@ test("what is saved is the options, then settingsVersion last, never lower than 
 	assert.ok(nothingFrozen(saved), "a copy");
 	assert.equal(savedForm({ options, storedVersion: 1 }).settingsVersion, 1);
 	assert.equal(savedForm({ options, storedVersion: 3 }).settingsVersion, 3, "a newer device's version stays");
+	assert.equal(savedForm({ options, storedVersion: -1 }).settingsVersion, SETTINGS_VERSION);
+	assert.equal(savedForm({ options, storedVersion: 0.5 }).settingsVersion, SETTINGS_VERSION);
 });
 
 test("every migration runs on every load whatever version the file has, and running them again changes nothing", () => {
@@ -145,7 +150,12 @@ test("every migration runs on every load whatever version the file has, and runn
 		MIGRATIONS.map((migration) => migration.id),
 		["sort-lambda-to-key"],
 	);
-	// A 0.3.x device writes the old shape back, with the version a newer one saved.
+	// A 0.3.x device writes the old shape back, with the version a newer one saved, this one's or a later one's.
+	const lambda = "(t1, t2) => t1.start >= t2.start ? -1 : 1";
+	for (const settingsVersion of [undefined, 0, SETTINGS_VERSION, SETTINGS_VERSION + 2, "2"]) {
+		const state = loadedState({ settingsVersion, sort: lambda } as never);
+		assert.equal(state.options.sort, "start-desc", String(settingsVersion));
+	}
 	const settings = loadedSettings({ settingsVersion: 1, sort: LAMBDA_SORT } as never);
 	assert.equal(settings.sort, migrateSortOption(LAMBDA_SORT));
 	for (const migration of MIGRATIONS) assert.deepEqual(migration.apply(settings), settings, migration.id);
@@ -174,9 +184,19 @@ test("each option of the wrong type warns once, saying what data.json holds and 
 });
 
 test("a settingsVersion that is not a number warns, and counts as no version", () => {
-	const saved = { settingsVersion: "2" };
+	const saved = { settingsVersion: "2", legacy: 1 };
 	assert.deepEqual(settingWarnings(saved, loadedSettings(saved as never)), [
-		'Tasks Calendar Wrapper: data.json holds a string for "settingsVersion", which should be a number. It is read as 0.',
+		'Tasks Calendar Wrapper: data.json holds a string for "settingsVersion", which should be a finite number. It is read as 0.',
+	]);
+	const huge = JSON.parse('{ "settingsVersion": 1e400 }');
+	assert.deepEqual(settingWarnings(huge, loadedSettings(huge)), [
+		'Tasks Calendar Wrapper: data.json holds Infinity for "settingsVersion", which should be a finite number. It is read as 0.',
 	]);
 	assert.deepEqual(settingWarnings({ settingsVersion: 2 }, loadedSettings(null)), []);
+	// It is not an option either, and the version this plugin writes goes last.
+	const state = loadedState(saved as never);
+	assert.ok(!("settingsVersion" in state.options));
+	assert.equal(state.storedVersion, 0);
+	assert.deepEqual(Object.keys(savedForm(state)), [...Object.keys(defaultUserOptions), "legacy", "settingsVersion"]);
+	assert.equal(savedForm(state).settingsVersion, SETTINGS_VERSION);
 });

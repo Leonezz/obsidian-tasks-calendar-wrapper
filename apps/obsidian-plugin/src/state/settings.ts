@@ -64,11 +64,13 @@ export function loadedSettings(saved: Partial<UserOption> | null | undefined): S
 	return deepFreeze(migrated(options, MIGRATIONS));
 }
 
-/** The version data.json holds: its settingsVersion when that is a number, else 0. */
+/** The version data.json holds: its settingsVersion when that is a finite number, else 0. */
 export function storedVersionOf(saved: unknown): number {
 	const version = isRecord(saved) ? saved.settingsVersion : undefined;
-	return typeof version === "number" && Number.isFinite(version) ? version : 0;
+	return isVersion(version) ? version : 0;
 }
+
+const isVersion = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 
 /** The state read from data.json, frozen. */
 export function loadedState(saved: Partial<UserOption> | null | undefined): SettingsState {
@@ -110,15 +112,17 @@ const EXPECTED: Readonly<Record<SettingType, string>> = {
 
 /**
  * One warning for each option of the wrong type in the loaded options, in the schema's order, and for a settingsVersion
- * that is not a number. The values are used as they are; the warnings only say so in the developer console.
+ * that is not a finite number. The values are used as they are; the warnings only say so in the developer console.
  */
 export function settingWarnings(saved: unknown, settings: Settings): readonly string[] {
 	const version = isRecord(saved) && "settingsVersion" in saved ? saved.settingsVersion : undefined;
+	// JSON reads a number too large for a double, such as 1e400, as Infinity, which is named as it is.
+	const found = typeof version === "number" ? String(version) : describedValue(version);
 	const versionWarnings =
-		version === undefined || (typeof version === "number" && Number.isFinite(version))
+		version === undefined || isVersion(version)
 			? []
 			: [
-					`Tasks Calendar Wrapper: data.json holds ${describedValue(version)} for "settingsVersion", which should be a number. It is read as 0.`,
+					`Tasks Calendar Wrapper: data.json holds ${found} for "settingsVersion", which should be a finite number. It is read as 0.`,
 				];
 	const optionWarnings = settingIssues(settings, settingsSchema).map(
 		({ key, expected, found }) =>

@@ -227,6 +227,28 @@ test("settingsVersion is saved last, and one a newer version saved stays, wherev
 	}
 });
 
+test("the version a data.json changed outside holds is the one saved next, never lower than this one's", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin } = await startPlugin('{ "settingsVersion": 1 }');
+	const saves = t.mock.method(plugin, "saveData");
+	// Sync brings the file of a newer device.
+	plugin.dataJson = '{ "settingsVersion": 2, "dateFormat": "YYYY" }';
+	await plugin.onExternalSettingsChange();
+	assert.equal(saves.mock.callCount(), 0, "loading saves nothing");
+	await plugin.writeOptions({});
+	assert.equal(JSON.parse(plugin.dataJson ?? "null").settingsVersion, 2);
+	// Then the file of a device of this version, or of none.
+	for (const [dataJson, expected] of [
+		['{ "settingsVersion": 1 }', 1],
+		["{}", 1],
+	] as const) {
+		plugin.dataJson = dataJson;
+		await plugin.onExternalSettingsChange();
+		await plugin.writeOptions({});
+		assert.equal(JSON.parse(plugin.dataJson ?? "null").settingsVersion, expected, dataJson);
+	}
+});
+
 test("a file a 0.3.x device wrote back, with the version and a lambda sort, is migrated all the same", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const lambda = JSON.parse(readFixture("0.1.2-freetext-sort.json")).sort;
@@ -254,6 +276,10 @@ test("each option of the wrong type warns once at every load, and is used as it 
 	await plugin.writeOptions({});
 	assert.equal(ours().length, 6);
 	assert.equal(JSON.parse(plugin.dataJson ?? "null").useTags, "yes");
+	// The file saved now has the version, and loading it warns all the same.
+	assert.equal(JSON.parse(plugin.dataJson ?? "null").settingsVersion, 1);
+	await plugin.onExternalSettingsChange();
+	assert.equal(ours().length, 9);
 	warns.mock.resetCalls();
 	for (const fixture of FIXTURE_NAMES) await startPlugin(readFixture(fixture));
 	assert.deepEqual(
