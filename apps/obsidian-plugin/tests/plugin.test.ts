@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { TasksTimelineView, TIMELINE_VIEW } from "../src/views";
 import type { FakeVault } from "./fakevault";
+import { deeplyFrozen, nothingFrozen } from "./frozen";
 import { FIXTURE_NAMES, readFixture, snapshotsIn, startPlugin, type StartedPlugin } from "./settings-fixtures";
 import { FakeElement, Modal } from "./stubs/obsidian";
 
@@ -210,6 +211,50 @@ test("every change of an option saves all the options, even one that changes not
 	assert.equal(last.dateFormat, saved);
 });
 
+test("the options are one frozen snapshot, which every load and every change replaces, and the defaults stay", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const pristine = JSON.stringify(defaultUserOptions);
+	const { plugin } = await startPlugin(readFixture("0.3.7-full.json"));
+	const loaded = plugin.userOptions;
+	assert.ok(deeplyFrozen(loaded));
+	assert.equal(plugin.userOptions, loaded, "the same options until something changes");
+	const loadedFormat = loaded.dateFormat;
+	await plugin.writeOptions({ dateFormat: "QQQ" });
+	const changed = plugin.userOptions;
+	assert.notEqual(changed, loaded);
+	assert.ok(deeplyFrozen(changed));
+	assert.equal(loaded.dateFormat, loadedFormat, "the options before are as they were");
+	plugin.dataJson = readFixture("quiet.json");
+	await plugin.onExternalSettingsChange();
+	assert.notEqual(plugin.userOptions, changed);
+	assert.ok(deeplyFrozen(plugin.userOptions));
+	assert.equal(changed.dateFormat, "QQQ");
+	assert.equal(JSON.stringify(defaultUserOptions), pristine);
+	assert.ok(nothingFrozen(defaultUserOptions));
+});
+
+test("changing the options in place fails at once, instead of being lost or reaching some views only", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin } = await startPlugin(readFixture("quiet.json"));
+	assert.throws(() => {
+		(plugin.userOptions as { dateFormat: string }).dateFormat = "QQQ";
+	}, TypeError);
+	assert.throws(() => (plugin.userOptions.hideTags as string[]).push("#later"), TypeError);
+	assert.equal(plugin.userOptions.dateFormat, defaultUserOptions.dateFormat);
+	assert.deepEqual(plugin.userOptions.hideTags, []);
+});
+
+test("a change copies the lists it is handed, so changing them afterwards changes no option", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin } = await startPlugin(readFixture("quiet.json"));
+	const tags = ["#later"];
+	await plugin.writeOptions({ hideTags: tags });
+	assert.ok(nothingFrozen(tags));
+	tags.push("#someday");
+	assert.deepEqual(plugin.userOptions.hideTags, ["#later"]);
+	assert.deepEqual(JSON.parse(plugin.dataJson ?? "null").hideTags, ["#later"]);
+});
+
 test("the view factory hands a new timeline the options at once, which later changes leave as they were", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const updates = countUpdates(t);
@@ -220,6 +265,7 @@ test("the view factory hands a new timeline the options at once, which later cha
 	const [handed] = updates.mock.calls[0].arguments;
 	assert.equal(updates.mock.calls[0].this, view);
 	assert.deepEqual(handed, plugin.userOptions);
+	assert.ok(deeplyFrozen(handed));
 	const before = handed.dateFormat;
 	await plugin.writeOptions({ dateFormat: "QQQ" });
 	assert.equal(handed.dateFormat, before);
@@ -254,6 +300,7 @@ test("changed options reach the timelines 200 ms after the last change, once a b
 		[first, second],
 	);
 	for (const call of updates.mock.calls) assert.equal(call.arguments[0].dateFormat, "DD.MM.YYYY");
+	for (const call of updates.mock.calls) assert.ok(deeplyFrozen(call.arguments[0]));
 	await wait(t, 10 * OPTIONS_DELAY_MS);
 	assert.equal(updates.mock.callCount(), 2);
 	// What the timelines were handed is not changed by a later change.

@@ -7,9 +7,11 @@ import assert from "node:assert/strict";
 import { Model } from "backbone";
 
 import { parseTaskLine } from "@tasks-calendar-wrapper/core";
+import { loadedSettings } from "../src/state/settings";
 import { initialTimelineState, withOptions, withReload, type TimelineState } from "../src/state/timeline";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { moment } from "../utils/moment";
+import { deeplyFrozen, nothingFrozen } from "./frozen";
 
 // The timeline view's state, which replaced two Backbone models. A reload hands the bridge a new list shown exactly
 // when Backbone saw the list change, which is when the old view rendered again and dropped the quick filter.
@@ -36,11 +38,17 @@ test("new options make a new state, also when they are the same, and keep the ta
 	const after = withOptions(before, options);
 	assert.deepEqual(after.options, options);
 	assert.notEqual(after.options, options, "a copy of what was handed in");
+	assert.ok(deeplyFrozen(after.options));
+	assert.ok(nothingFrozen(options), "what was handed in is not frozen");
 	assert.equal(after.tasks, before.tasks);
 	assert.equal(after.shown, before.shown);
 	const again = withOptions(after, options);
 	assert.notEqual(again, after);
 	assert.notEqual(again.options, after.options);
+	// Frozen options, as the plugin hands them, are copied too, so every push renders again.
+	const frozen = loadedSettings({ dateFormat: "YYYY" });
+	assert.notEqual(withOptions(after, frozen).options, frozen);
+	assert.deepEqual(withOptions(after, frozen).options, frozen);
 });
 
 test("a reload takes the tasks read, and keeps the list shown when it holds the same", () => {
@@ -50,7 +58,11 @@ test("a reload takes the tasks read, and keeps the list shown when it holds the 
 	const before = state({ tasks, shown: shown as never });
 	const reread = [task("- [ ] call 📅 2026-01-20")];
 	const same = withReload(before, reread, held() as never);
-	assert.equal(same.tasks, reread, "the tasks read last, though they are the same");
+	assert.deepEqual(same.tasks, reread, "the tasks read last, though they are the same");
+	assert.notEqual(same.tasks, reread, "in a new array");
+	assert.notEqual(same.tasks, before.tasks);
+	assert.ok(Object.isFrozen(same.tasks));
+	assert.ok(!Object.isFrozen(reread), "what was handed in is not frozen");
 	assert.equal(same.shown, before.shown, "the list shown is the one before");
 	const changed = [{ ...shown[0], text: "call again" }];
 	const after = withReload(before, reread, changed as never);

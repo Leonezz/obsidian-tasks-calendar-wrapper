@@ -1,5 +1,5 @@
 import isEqual from "underscore/modules/isEqual.js";
-import type { ResolvedTask, Task } from "@tasks-calendar-wrapper/core";
+import { copyJsonValue, deepFreeze, type ResolvedTask, type Task } from "@tasks-calendar-wrapper/core";
 import { defaultUserOptions, type UserOption } from "../useroptions";
 
 /**
@@ -47,25 +47,32 @@ export interface TimelineState {
 	readonly shown: readonly HeldTask[];
 }
 
-/** Copies of the default options, and nothing read yet. */
+/** A frozen copy of the default options, and nothing read yet. */
 export function initialTimelineState(): TimelineState {
-	return { options: { ...defaultUserOptions }, tasks: [], shown: [] };
-}
-
-/** The state with a copy of these options; a new one also for the same options, as each push renders again. */
-export function withOptions(state: TimelineState, options: UserOption): TimelineState {
-	return { ...state, options: { ...options } };
+	return {
+		options: deepFreeze(copyJsonValue(defaultUserOptions)),
+		tasks: Object.freeze([]),
+		shown: Object.freeze([]),
+	};
 }
 
 /**
- * The state after a reload: the tasks read, and the list shown, which stays the one before when it holds the same,
- * compared as Backbone compared it, with underscore's isEqual. Task files that are not set become none, as the old
- * view set them after every reload.
+ * The state with a frozen copy of these options; a new one also for the same options, as each push renders again.
+ * What was handed in is not frozen.
+ */
+export function withOptions(state: TimelineState, options: Readonly<UserOption>): TimelineState {
+	return { ...state, options: deepFreeze(copyJsonValue(options)) };
+}
+
+/**
+ * The state after a reload: the tasks read, in a new frozen array, and the list shown, which stays the one before when
+ * it holds the same, compared as Backbone compared it, with underscore's isEqual. Task files that are not set become
+ * none, as the old view set them after every reload.
  */
 export function withReload(state: TimelineState, tasks: readonly Task[], shown: readonly HeldTask[]): TimelineState {
 	return {
-		options: state.options.taskFiles ? state.options : { ...state.options, taskFiles: [] },
-		tasks,
+		options: state.options.taskFiles ? state.options : deepFreeze({ ...state.options, taskFiles: [] }),
+		tasks: Object.freeze([...tasks]),
 		shown: isEqual(state.shown, shown) ? state.shown : shown,
 	};
 }
