@@ -2,7 +2,7 @@ import { Notice, Plugin } from "obsidian";
 
 import { TasksTimelineView, TIMELINE_VIEW } from "./views";
 
-import { notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
+import { copyJsonValue, notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
 import { RELEASE_NOTES, SUPPORT_LINKS } from "../utils/whatsnew";
 import { WhatsNewModal } from "./whatsnew-modal";
 import { TasksCalendarSettingTab, UserOption } from "./settings";
@@ -94,7 +94,9 @@ export default class TasksCalendarWrapper extends Plugin {
 	async writeOptions(changedOpts: Partial<UserOption>): Promise<void> {
 		this.settingsStore.setState((settings) => withChanges(settings, changedOpts));
 		this.pushOptionsToViews();
-		await this.saveData(this.userOptions);
+		// Saved as a copy made by assignment, as before. Assignment drops a "__proto__" key a hand-edited data.json may
+		// hold, and a copy that is not frozen keeps the keys after one from failing to be assigned.
+		await this.saveData(Object.assign({}, copyJsonValue(this.userOptions)));
 	}
 
 	async activateView(type: string) {

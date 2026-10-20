@@ -30,6 +30,8 @@ test("the state starts with copies of the defaults and nothing read", () => {
 	assert.deepEqual(first, { options: defaultUserOptions, tasks: [], shown: [] });
 	assert.notEqual(first.options, defaultUserOptions);
 	assert.notEqual(initialTimelineState().options, first.options);
+	assert.ok(deeplyFrozen(first.options) && Object.isFrozen(first.tasks) && Object.isFrozen(first.shown));
+	assert.ok(nothingFrozen(defaultUserOptions), "the defaults are not frozen");
 });
 
 test("new options make a new state, also when they are the same, and keep the tasks and the list shown", () => {
@@ -73,6 +75,7 @@ test("a reload sets missing task files to none, as the old view did, and keeps t
 	for (const missing of [undefined, null, ""]) {
 		const before = state({ options: { ...defaultUserOptions, taskFiles: missing as never } });
 		assert.deepEqual(withReload(before, [], []).options.taskFiles, [], String(missing));
+		assert.ok(deeplyFrozen(withReload(before, [], []).options), String(missing));
 	}
 	const files = ["Inbox.md"];
 	const before = state({ options: { ...defaultUserOptions, taskFiles: files } });
