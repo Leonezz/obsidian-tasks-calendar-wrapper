@@ -73,22 +73,103 @@ class FakeMetadataCache extends Events {
 	}
 }
 
+/** The timer of the module's start, which a test's mocked clock does not replace. */
+const realSetTimeout = setTimeout;
+
+/** What the workspace uses of a view opened in a leaf. */
+export interface LeafView {
+	getViewType(): string;
+	open?(): Promise<void>;
+	close?(): Promise<void>;
+}
+
+/**
+ * As Obsidian's view registry: each view type is registered once, with the function that makes its views. When a type
+ * is unregistered, the workspace closes the views of that type and keeps a stand-in for each, as Obsidian does.
+ */
+class FakeViewRegistry {
+	private creators: Readonly<Record<string, (leaf: FakeLeaf) => LeafView>> = {};
+	private unregistered: (type: string) => void = () => {};
+
+	/** Not in Obsidian's typings: what the workspace does when a type is unregistered. */
+	whenUnregistered(listener: (type: string) => void): void {
+		this.unregistered = listener;
+	}
+
+	registerView(type: string, creator: (leaf: FakeLeaf) => LeafView): void {
+		if (Object.prototype.hasOwnProperty.call(this.creators, type))
+			throw new Error(`Attempting to register an existing view type "${type}"`);
+		this.creators = { ...this.creators, [type]: creator };
+	}
+
+	unregisterView(type: string): void {
+		if (!Object.prototype.hasOwnProperty.call(this.creators, type)) return;
+		this.creators = Object.fromEntries(Object.entries(this.creators).filter(([other]) => other !== type));
+		this.unregistered(type);
+	}
+
+	/** Not in Obsidian's typings: the function that makes views of the type, if one is registered. */
+	creatorOf(type: string): ((leaf: FakeLeaf) => LeafView) | undefined {
+		return this.creators[type];
+	}
+}
+
 /** A leaf of the workspace, with the view opened in it. */
-export interface FakeLeaf {
-	readonly app: unknown;
-	view: { getViewType(): string } | null;
+export class FakeLeaf {
+	view: LeafView | null = null;
+
+	constructor(
+		readonly app: unknown,
+		private readonly workspace: FakeWorkspace,
+		private readonly registry: FakeViewRegistry,
+	) {}
+
+	/** As in Obsidian: makes the view with the function registered for its type, then opens it. */
+	async setViewState(state: { type: string; active?: boolean }): Promise<void> {
+		const creator = this.registry.creatorOf(state.type);
+		if (!creator) throw new Error(`no view type "${state.type}" is registered`);
+		await this.view?.close?.();
+		const view = creator(this);
+		this.view = view;
+		await view.open?.();
+	}
+
+	/**
+	 * As in Obsidian when a view type goes: the view closes, staying in the leaf while it does, and then a stand-in that
+	 * reports the type takes its place.
+	 */
+	async standIn(type: string): Promise<void> {
+		await this.view?.close?.();
+		this.view = { getViewType: () => type };
+	}
+
+	/** As in Obsidian: the leaf leaves the workspace and its view closes. */
+	async detach(): Promise<void> {
+		const view = this.view;
+		this.workspace.removeLeaf(this);
+		await view?.close?.();
+	}
 }
 
 class FakeWorkspace extends Events {
 	private leaves: readonly FakeLeaf[] = [];
+	/** The callbacks waiting for the layout, or null once it is ready. */
+	private layoutCallbacks: readonly (() => unknown)[] | null;
+	/** Not in Obsidian: the leaves revealLeaf was called with, in order. */
+	revealed: readonly FakeLeaf[] = [];
 
-	constructor(private readonly appOf: () => unknown) {
+	constructor(
+		private readonly appOf: () => unknown,
+		private readonly registry: FakeViewRegistry,
+		layoutReady: boolean,
+	) {
 		super();
+		this.layoutCallbacks = layoutReady ? null : [];
 	}
 
 	/** Not in Obsidian: a new leaf to open a view in. */
 	addLeaf(): FakeLeaf {
-		const leaf: FakeLeaf = { app: this.appOf(), view: null };
+		const leaf = new FakeLeaf(this.appOf(), this, this.registry);
 		this.leaves = [...this.leaves, leaf];
 		return leaf;
 	}
@@ -100,6 +181,43 @@ class FakeWorkspace extends Events {
 
 	getLeavesOfType(type: string): FakeLeaf[] {
 		return this.leaves.filter((leaf) => leaf.view?.getViewType() === type);
+	}
+
+	/** As in Obsidian: once the layout is ready the callback runs at once; before, it waits for the layout. */
+	onLayoutReady(callback: () => unknown): void {
+		if (this.layoutCallbacks === null) callback();
+		else this.layoutCallbacks = [...this.layoutCallbacks, callback];
+	}
+
+	/**
+	 * Not in Obsidian: the layout is ready, as when Obsidian has started. The waiting callbacks run in order; one that
+	 * throws does not stop the others, and its error is thrown again from a timer.
+	 */
+	finishLayout(): void {
+		const callbacks = this.layoutCallbacks ?? [];
+		this.layoutCallbacks = null;
+		for (const callback of callbacks) {
+			try {
+				callback();
+			} catch (error) {
+				realSetTimeout(() => {
+					throw error;
+				}, 0);
+			}
+		}
+	}
+
+	/** As in Obsidian: a new leaf in the right sidebar. */
+	getRightLeaf(_split: boolean): FakeLeaf {
+		return this.addLeaf();
+	}
+
+	async revealLeaf(leaf: FakeLeaf): Promise<void> {
+		this.revealed = [...this.revealed, leaf];
+	}
+
+	detachLeavesOfType(type: string): void {
+		for (const leaf of this.getLeavesOfType(type)) void leaf.detach();
 	}
 }
 
@@ -119,8 +237,11 @@ const folderAt = (path: string) => {
 	return folder;
 };
 
-/** A vault with these notes, by path, and the app the timeline sees it through. */
-export function fakeVault(notes: Record<string, string>) {
+/**
+ * A vault with these notes, by path, and the app the timeline sees it through. With `layoutReady: false` the app is
+ * still starting: onLayoutReady waits for finishLayout.
+ */
+export function fakeVault(notes: Record<string, string>, { layoutReady = true } = {}) {
 	const contents = new Map<string, string>();
 	const caches = new Map<string, CachedMetadata>();
 	const files = new Map<string, TAbstractFile>();
@@ -147,8 +268,12 @@ export function fakeVault(notes: Record<string, string>) {
 			return files.get(path) ?? null;
 		},
 	});
-	const workspace: FakeWorkspace = new FakeWorkspace(() => app);
-	const app = { vault, metadataCache, workspace };
+	const viewRegistry = new FakeViewRegistry();
+	const workspace: FakeWorkspace = new FakeWorkspace(() => app, viewRegistry, layoutReady);
+	viewRegistry.whenUnregistered((type) => {
+		for (const leaf of workspace.getLeavesOfType(type)) if (leaf.view?.close) void leaf.standIn(type);
+	});
+	const app = { vault, metadataCache, workspace, viewRegistry };
 
 	/** Adds the folders a path is in, as Obsidian has them. */
 	const addFolders = (path: string) => {

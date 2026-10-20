@@ -34,14 +34,41 @@ export class Notice {
 	}
 }
 
-/** Stands in for the DOM elements a modal is built from. Keeps the text, the children and whether it got the focus. */
+/** What Obsidian's createEl and createDiv take: a class, or the class, the text and the attributes. */
+export type FakeElementInfo =
+	string | { cls?: string; text?: string; attr?: Record<string, string | number | boolean | null>; href?: string };
+
+/**
+ * Stands in for the DOM elements a modal or a settings tab is built from. Keeps the tag, the class, the text, the
+ * attributes, the children and whether it got the focus.
+ */
 export class FakeElement {
 	text = "";
+	cls: string;
 	children: (FakeElement | ButtonComponent)[] = [];
 	focused = false;
+	readonly attr: Readonly<Record<string, string | number | boolean | null>>;
+
+	constructor(
+		readonly tag = "div",
+		info: FakeElementInfo = {},
+	) {
+		const { cls = "", text = "", attr = {}, href } = typeof info === "string" ? { cls: info } : info;
+		this.cls = cls;
+		this.text = text;
+		this.attr = href === undefined ? attr : { ...attr, href };
+	}
+
+	get firstChild(): FakeElement | ButtonComponent | null {
+		return this.children[0] ?? null;
+	}
 
 	focus(): void {
 		this.focused = true;
+	}
+
+	addClass(cls: string): void {
+		this.cls = this.cls ? `${this.cls} ${cls}` : cls;
 	}
 
 	setText(text: string): void {
@@ -49,17 +76,35 @@ export class FakeElement {
 		this.children = [];
 	}
 
-	createDiv(): FakeElement {
-		const div = new FakeElement();
-		this.children = [...this.children, div];
-		return div;
+	empty(): void {
+		this.text = "";
+		this.children = [];
+	}
+
+	appendChild<T extends FakeElement>(child: T): T {
+		this.children = [...this.children, child];
+		return child;
+	}
+
+	appendText(text: string): void {
+		this.appendChild(new FakeElement("#text", { text }));
+	}
+
+	createEl(tag: string, info?: FakeElementInfo): FakeElement {
+		return this.appendChild(new FakeElement(tag, info));
+	}
+
+	createDiv(info?: FakeElementInfo): FakeElement {
+		return this.createEl("div", info);
 	}
 }
 
 /** Keeps what a test needs to find a button and press it. */
 export class ButtonComponent {
-	readonly buttonEl = new FakeElement();
+	readonly buttonEl = new FakeElement("button");
 	buttonText = "";
+	icon = "";
+	tooltip = "";
 	private clickHandler?: () => unknown;
 
 	constructor(containerEl: FakeElement) {
@@ -75,14 +120,24 @@ export class ButtonComponent {
 		return this;
 	}
 
+	setIcon(icon: string): this {
+		this.icon = icon;
+		return this;
+	}
+
+	setTooltip(tooltip: string): this {
+		this.tooltip = tooltip;
+		return this;
+	}
+
 	onClick(handler: () => unknown): this {
 		this.clickHandler = handler;
 		return this;
 	}
 
-	/** Not in Obsidian: presses the button. */
-	click(): void {
-		this.clickHandler?.();
+	/** Not in Obsidian: presses the button. Returns what the handler returns. */
+	click(): unknown {
+		return this.clickHandler?.();
 	}
 }
 
@@ -125,6 +180,244 @@ export class Modal {
 		this.closeCallback = callback;
 		return this;
 	}
+}
+
+/** Not in Obsidian: the element of a setting row. It keeps its Setting, so a test reads the rows in the order they show. */
+export class SettingItemElement extends FakeElement {
+	constructor(readonly setting: Setting) {
+		super("div", "setting-item");
+	}
+}
+
+/** Not in Obsidian: the element of a control. It keeps its component, so a test reads a row's controls in order. */
+export class ControlElement extends FakeElement {
+	constructor(readonly component: SettingControl | ExtraButtonComponent) {
+		super(component.type);
+	}
+}
+
+/** A control of a setting row, as Obsidian's value components: keeps the value, the placeholder and the change handler. */
+export class SettingControl {
+	readonly el: ControlElement;
+	placeholder?: string;
+	protected changeHandler?: (value: unknown) => unknown;
+
+	constructor(
+		containerEl: FakeElement,
+		readonly type: string,
+		public value: unknown,
+	) {
+		this.el = containerEl.appendChild(new ControlElement(this));
+	}
+
+	setValue(value: unknown): this {
+		this.value = value;
+		return this;
+	}
+
+	setPlaceholder(placeholder: string): this {
+		this.placeholder = placeholder;
+		return this;
+	}
+
+	onChange(handler: (value: never) => unknown): this {
+		this.changeHandler = handler as (value: unknown) => unknown;
+		return this;
+	}
+
+	/** Not in Obsidian: what typing, picking or switching does. Returns what the handler returns. */
+	change(value: unknown): unknown {
+		this.value = value;
+		return this.changeHandler?.(value);
+	}
+}
+
+/** As Obsidian's ToggleComponent: setting another value calls the change handler. */
+export class ToggleComponent extends SettingControl {
+	constructor(containerEl: FakeElement) {
+		super(containerEl, "toggle", false);
+	}
+
+	setValue(value: unknown): this {
+		if (this.value === value) return this;
+		this.value = value;
+		this.changeHandler?.(value);
+		return this;
+	}
+}
+
+/** As Obsidian's text inputs: a value that is not a string is ignored, and the input stays as it was. */
+export class TextComponent extends SettingControl {
+	constructor(containerEl: FakeElement, type = "text") {
+		super(containerEl, type, "");
+	}
+
+	setValue(value: unknown): this {
+		if (typeof value === "string") this.value = value;
+		return this;
+	}
+}
+
+export class TextAreaComponent extends TextComponent {
+	constructor(containerEl: FakeElement) {
+		super(containerEl, "textarea");
+	}
+}
+
+export class MomentFormatComponent extends TextComponent {
+	constructor(containerEl: FakeElement) {
+		super(containerEl, "moment-format");
+	}
+}
+
+/** As a select element: a value none of the options has selects nothing, and the dropdown shows "". */
+export class DropdownComponent extends SettingControl {
+	options: Readonly<Record<string, string>> = {};
+
+	constructor(containerEl: FakeElement) {
+		super(containerEl, "dropdown", "");
+	}
+
+	addOption(value: string, display: string): this {
+		this.options = { ...this.options, [value]: display };
+		return this;
+	}
+
+	addOptions(options: Record<string, string>): this {
+		this.options = { ...this.options, ...options };
+		return this;
+	}
+
+	setValue(value: unknown): this {
+		this.value = Object.prototype.hasOwnProperty.call(this.options, String(value)) ? String(value) : "";
+		return this;
+	}
+}
+
+export class ColorComponent extends SettingControl {
+	constructor(containerEl: FakeElement) {
+		super(containerEl, "color", "#000000");
+	}
+}
+
+/** Keeps the icon, the tooltip and what pressing it does. */
+export class ExtraButtonComponent {
+	readonly type = "extra-button";
+	readonly el: ControlElement;
+	icon = "lucide-settings";
+	tooltip = "";
+	private clickHandler?: () => unknown;
+
+	constructor(containerEl: FakeElement) {
+		this.el = containerEl.appendChild(new ControlElement(this));
+	}
+
+	setIcon(icon: string): this {
+		this.icon = icon;
+		return this;
+	}
+
+	setTooltip(tooltip: string): this {
+		this.tooltip = tooltip;
+		return this;
+	}
+
+	onClick(handler: () => unknown): this {
+		this.clickHandler = handler;
+		return this;
+	}
+
+	/** Not in Obsidian: presses the button. Returns what the handler returns. */
+	click(): unknown {
+		return this.clickHandler?.();
+	}
+}
+
+type SettingComponent = SettingControl | ExtraButtonComponent | ButtonComponent;
+
+/**
+ * As Obsidian's Setting: a row in the container, with a name, a description and its controls in controlEl. Each add
+ * method makes the control, hands it to the callback and drops what the callback returns, as Obsidian does.
+ */
+export class Setting {
+	readonly settingEl: SettingItemElement;
+	readonly controlEl: FakeElement;
+	components: readonly SettingComponent[] = [];
+	name: string | FakeElement = "";
+	desc: string | FakeElement = "";
+	heading = false;
+
+	constructor(containerEl: FakeElement) {
+		this.settingEl = containerEl.appendChild(new SettingItemElement(this));
+		this.controlEl = this.settingEl.createDiv("setting-item-control");
+	}
+
+	setName(name: string | FakeElement): this {
+		this.name = name;
+		return this;
+	}
+
+	setDesc(desc: string | FakeElement): this {
+		this.desc = desc;
+		return this;
+	}
+
+	setHeading(): this {
+		this.heading = true;
+		return this;
+	}
+
+	addToggle(cb: (toggle: ToggleComponent) => unknown): this {
+		return this.add(new ToggleComponent(this.controlEl), cb);
+	}
+
+	addText(cb: (text: TextComponent) => unknown): this {
+		return this.add(new TextComponent(this.controlEl), cb);
+	}
+
+	addTextArea(cb: (textArea: TextAreaComponent) => unknown): this {
+		return this.add(new TextAreaComponent(this.controlEl), cb);
+	}
+
+	addMomentFormat(cb: (format: MomentFormatComponent) => unknown): this {
+		return this.add(new MomentFormatComponent(this.controlEl), cb);
+	}
+
+	addDropdown(cb: (dropdown: DropdownComponent) => unknown): this {
+		return this.add(new DropdownComponent(this.controlEl), cb);
+	}
+
+	addColorPicker(cb: (color: ColorComponent) => unknown): this {
+		return this.add(new ColorComponent(this.controlEl), cb);
+	}
+
+	addExtraButton(cb: (button: ExtraButtonComponent) => unknown): this {
+		return this.add(new ExtraButtonComponent(this.controlEl), cb);
+	}
+
+	addButton(cb: (button: ButtonComponent) => unknown): this {
+		return this.add(new ButtonComponent(this.controlEl), cb);
+	}
+
+	private add<C extends SettingComponent>(component: C, cb: (component: C) => unknown): this {
+		this.components = [...this.components, component];
+		cb(component);
+		return this;
+	}
+}
+
+/** As Obsidian's PluginSettingTab: the tab draws itself into containerEl when Obsidian calls display(). */
+export class PluginSettingTab {
+	readonly containerEl = new FakeElement("div", "vertical-tab-content");
+
+	constructor(
+		public app: unknown,
+		public plugin: unknown,
+	) {}
+
+	display(): void {}
+
+	hide(): void {}
 }
 
 const escapeHtml = (text: string) =>
@@ -197,16 +490,16 @@ export class Events {
  * onunload runs. registerEvent registers taking the handler off again.
  */
 export class Component {
-	private loaded = false;
+	protected loaded = false;
 	private cleanups: (() => unknown)[] = [];
 
-	load(): void {
+	load(): void | Promise<void> {
 		if (this.loaded) return;
 		this.loaded = true;
-		this.onload();
+		void this.onload();
 	}
 
-	onload(): void {}
+	onload(): void | Promise<void> {}
 
 	unload(): void {
 		if (!this.loaded) return;
@@ -261,6 +554,98 @@ export class ItemView extends Component {
 	async onOpen(): Promise<void> {}
 
 	async onClose(): Promise<void> {}
+}
+
+/** What Obsidian reads of a plugin's manifest. */
+export interface PluginManifest {
+	readonly id: string;
+	readonly name: string;
+	readonly version: string;
+	readonly dir?: string;
+}
+
+/** What a plugin's registerView needs of the app: Obsidian's view registry, which tests/fakevault.ts provides. */
+interface ViewRegistry {
+	registerView(type: string, creator: (leaf: never) => unknown): void;
+	unregisterView(type: string): void;
+}
+
+/** A command as addCommand records it, with the id and the name Obsidian gives it. */
+export interface AddedCommand {
+	readonly id: string;
+	readonly name: string;
+	readonly callback?: () => unknown;
+}
+
+/**
+ * As Obsidian's Plugin (1.14.4). data.json is kept here as text, in `dataJson`, null when there is no file:
+ * - loadData parses it on every call, as Obsidian's readJson does: no file gives null, text that is not JSON gives
+ *   undefined after console.error;
+ * - saveData writes JSON.stringify(data, undefined, 2) and never fails, as Obsidian swallows write errors;
+ * - registerView registers with the app's view registry, addCommand prefixes the id and the name with the plugin's,
+ *   addSettingTab keeps the tab, and unloading undoes each, last first;
+ * - load runs onload once and waits for it.
+ */
+export class Plugin extends Component {
+	/** Not in Obsidian: the text of data.json, or null when there is none. */
+	dataJson: string | null = null;
+	/** Not in Obsidian: the commands added, as Obsidian names them. */
+	commands: readonly AddedCommand[] = [];
+	settingTab: PluginSettingTab | null = null;
+
+	constructor(
+		public app: unknown,
+		public manifest: PluginManifest,
+	) {
+		super();
+	}
+
+	async load(): Promise<void> {
+		if (this.loaded) return;
+		this.loaded = true;
+		await this.onload();
+	}
+
+	async loadData(): Promise<unknown> {
+		if (this.dataJson === null) return null;
+		try {
+			return JSON.parse(this.dataJson);
+		} catch (error) {
+			console.error("failed to read JSON", `${this.manifest.dir}/data.json`, error);
+			return undefined;
+		}
+	}
+
+	async saveData(data: unknown): Promise<void> {
+		this.dataJson = JSON.stringify(data, undefined, 2);
+	}
+
+	registerView(type: string, creator: (leaf: never) => unknown): void {
+		const registry = (this.app as { viewRegistry?: ViewRegistry }).viewRegistry;
+		if (!registry) throw new Error("the app has no viewRegistry; make it with fakeVault in tests/fakevault.ts");
+		registry.registerView(type, creator);
+		this.register(() => registry.unregisterView(type));
+	}
+
+	addCommand(command: { id: string; name: string; callback?: () => unknown }): AddedCommand {
+		const added: AddedCommand = {
+			...command,
+			id: `${this.manifest.id}:${command.id}`,
+			name: `${this.manifest.name}: ${command.name}`,
+		};
+		this.commands = [...this.commands, added];
+		this.register(() => {
+			this.commands = this.commands.filter((other) => other !== added);
+		});
+		return added;
+	}
+
+	addSettingTab(tab: PluginSettingTab): void {
+		this.settingTab = tab;
+		this.register(() => {
+			this.settingTab = null;
+		});
+	}
 }
 
 /** A file or folder of the vault. As in Obsidian, renaming one changes the path of the same object. */
