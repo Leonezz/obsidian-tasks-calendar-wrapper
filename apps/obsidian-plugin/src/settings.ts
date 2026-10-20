@@ -1,5 +1,12 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
-import { formatPropertyRules, parsePropertyRules } from "@tasks-calendar-wrapper/core";
+import {
+	fileListCodec,
+	pathListCodec,
+	plainTextCodec,
+	propertyRulesCodec,
+	statusListCodec,
+	trimmedTextCodec,
+} from "@tasks-calendar-wrapper/core";
 import { defaultSortKey, sortOptionLabels } from "@tasks-calendar-wrapper/core";
 import { TaskRegularExpressions } from "@tasks-calendar-wrapper/core";
 import TasksCalendarWrapper from "./main";
@@ -126,12 +133,8 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 				)
 				.addTextArea((ta) => {
 					ta.setPlaceholder("comma separated file paths, e.g.: path1,path2");
-					ta.setValue(this.plugin.userOptions.taskFiles.join(","));
-					ta.onChange(async (v) => {
-						const values = v.split(",");
-						const valuesTrimed = values.map((p) => p.trim());
-						await this.onOptionUpdate({ taskFiles: valuesTrimed });
-					});
+					ta.setValue(fileListCodec.format(this.plugin.userOptions.taskFiles));
+					ta.onChange(async (v) => await this.onOptionUpdate({ taskFiles: fileListCodec.parse(v) }));
 				});
 			new Setting(containerEl)
 				.setName("Inbox")
@@ -140,16 +143,16 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
                     This file will be displayed on top of the file list.",
 				)
 				.addText((t) => {
-					t.setValue(this.plugin.userOptions.inbox);
-					t.onChange(async (v) => await this.onOptionUpdate({ inbox: v.trim() }));
+					t.setValue(trimmedTextCodec.format(this.plugin.userOptions.inbox));
+					t.onChange(async (v) => await this.onOptionUpdate({ inbox: trimmedTextCodec.parse(v) }));
 				});
 
 			new Setting(containerEl)
 				.setName("Section For New Tasks")
 				.setDesc("Specify under which section the new task items should be appended.")
 				.addText((t) => {
-					t.setValue(this.plugin.userOptions.sectionForNewTasks);
-					t.onChange(async (v) => await this.onOptionUpdate({ sectionForNewTasks: v }));
+					t.setValue(plainTextCodec.format(this.plugin.userOptions.sectionForNewTasks));
+					t.onChange(async (v) => await this.onOptionUpdate({ sectionForNewTasks: plainTextCodec.parse(v) }));
 				});
 		}
 
@@ -157,8 +160,8 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 			.setName("Daily Note Folder")
 			.setDesc("Specify the folder where the daily notes are saved.")
 			.addText((t) => {
-				t.setValue(this.plugin.userOptions.dailyNoteFolder);
-				t.onChange(async (v) => await this.onOptionUpdate({ dailyNoteFolder: v }));
+				t.setValue(plainTextCodec.format(this.plugin.userOptions.dailyNoteFolder));
+				t.onChange(async (v) => await this.onOptionUpdate({ dailyNoteFolder: plainTextCodec.parse(v) }));
 			});
 
 		new Setting(containerEl)
@@ -170,8 +173,8 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 				),
 			)
 			.addMomentFormat((m) => {
-				m.setValue(this.plugin.userOptions.dailyNoteFormat);
-				m.onChange(async (v) => await this.onOptionUpdate({ dailyNoteFormat: v }));
+				m.setValue(plainTextCodec.format(this.plugin.userOptions.dailyNoteFormat));
+				m.onChange(async (v) => await this.onOptionUpdate({ dailyNoteFormat: plainTextCodec.parse(v) }));
 			});
 
 		new Setting(containerEl)
@@ -198,16 +201,8 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 			)
 			.addText(async (t) => {
 				t.setPlaceholder("Status markers split by comma. e.g.,: x, -.");
-				t.setValue(this.plugin.userOptions.hideStatusTasks.join(","));
-				t.onChange(
-					async (v) =>
-						await this.onOptionUpdate({
-							hideStatusTasks: v
-								.split(",")
-								.map((s) => s.trim())
-								.map((s) => (s === "[ ]" ? " " : s)),
-						}),
-				);
+				t.setValue(statusListCodec.format(this.plugin.userOptions.hideStatusTasks));
+				t.onChange(async (v) => await this.onOptionUpdate({ hideStatusTasks: statusListCodec.parse(v) }));
 			});
 
 		new Setting(containerEl)
@@ -418,8 +413,8 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 			)
 			.addMomentFormat(async (m) => {
 				m.setPlaceholder("e.g.: YYYY-MM-DD");
-				m.setValue(this.plugin.userOptions.dateFormat);
-				m.onChange(async (v) => await this.onOptionUpdate({ dateFormat: v }));
+				m.setValue(plainTextCodec.format(this.plugin.userOptions.dateFormat));
+				m.onChange(async (v) => await this.onOptionUpdate({ dateFormat: plainTextCodec.parse(v) }));
 			});
 
 		new Setting(containerEl)
@@ -574,12 +569,8 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 			)
 			.addTextArea((ta) => {
 				ta.setPlaceholder("comma separated file paths, e.g.: path1,path2/path3,path4.md");
-				ta.setValue(this.plugin.userOptions.excludePaths.join(","));
-				ta.onChange(async (v) => {
-					const values = v.split(",");
-					const valuesTrimed = values.map((p) => p.trim()).filter((p) => p.length > 0);
-					await this.onOptionUpdate({ excludePaths: valuesTrimed });
-				});
+				ta.setValue(pathListCodec.format(this.plugin.userOptions.excludePaths));
+				ta.onChange(async (v) => await this.onOptionUpdate({ excludePaths: pathListCodec.parse(v) }));
 			});
 
 		new Setting(containerEl)
@@ -590,10 +581,8 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 			)
 			.addTextArea((ta) => {
 				ta.setPlaceholder("status: archived, done");
-				ta.setValue(formatPropertyRules(this.plugin.userOptions.excludeProperties));
-				ta.onChange(async (v) => {
-					await this.onOptionUpdate({ excludeProperties: parsePropertyRules(v) });
-				});
+				ta.setValue(propertyRulesCodec.format(this.plugin.userOptions.excludeProperties));
+				ta.onChange(async (v) => await this.onOptionUpdate({ excludeProperties: propertyRulesCodec.parse(v) }));
 			});
 
 		new Setting(containerEl)
@@ -603,12 +592,8 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 			)
 			.addTextArea((ta) => {
 				ta.setPlaceholder("comma separated file paths, e.g.: path1,path2/path3,path4.md");
-				ta.setValue(this.plugin.userOptions.includePaths.join(","));
-				ta.onChange(async (v) => {
-					const values = v.split(",");
-					const valuesTrimed = values.map((p) => p.trim()).filter((p) => p.length > 0);
-					await this.onOptionUpdate({ includePaths: valuesTrimed });
-				});
+				ta.setValue(pathListCodec.format(this.plugin.userOptions.includePaths));
+				ta.onChange(async (v) => await this.onOptionUpdate({ includePaths: pathListCodec.parse(v) }));
 			});
 
 		new Setting(containerEl)
