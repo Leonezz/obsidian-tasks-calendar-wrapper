@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 
 import { migrateSortOption } from "@tasks-calendar-wrapper/core";
 import {
+	changedState,
 	createSettingsStore,
 	loadedSettings,
 	loadedState,
@@ -131,6 +132,15 @@ test("the state loaded holds the options and the version saved, frozen", () => {
 	assert.deepEqual(state, { options: loadedSettings(saved as never), storedVersion: 3 });
 	assert.ok(deeplyFrozen(state));
 	assert.ok(nothingFrozen(saved));
+});
+
+test("a change gives a new frozen state with the version the file had, and leaves the one before as it was", () => {
+	const before = loadedState({ settingsVersion: 3 } as never);
+	const after = changedState(before, { dateFormat: "YYYY" });
+	assert.notEqual(after, before);
+	assert.deepEqual(after, { options: withChanges(before.options, { dateFormat: "YYYY" }), storedVersion: 3 });
+	assert.equal(before.options.dateFormat, defaultUserOptions.dateFormat);
+	assert.ok(deeplyFrozen(after));
 });
 
 test("what is saved is the options, then settingsVersion last, never lower than the version the file had", () => {
