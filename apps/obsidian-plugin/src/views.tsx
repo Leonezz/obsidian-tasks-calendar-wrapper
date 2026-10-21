@@ -1,9 +1,11 @@
-import { CachedMetadata, debounce, ItemView, Notice, TFile, WorkspaceLeaf } from "obsidian";
+import { CachedMetadata, debounce, ItemView, Notice, WorkspaceLeaf } from "obsidian";
 import { createStore, resolveTasks } from "@tasks-calendar-wrapper/core";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
-import { readTasks } from "../timeline/src/taskadapter";
+import { reportNoteReads } from "../timeline/src/taskadapter";
+import { createTaskIndex, watchNotes } from "../timeline/src/taskindex";
 import { createRoot, Root } from "react-dom/client";
 import { moment } from "../utils/moment";
+import { parseKeyOf } from "../utils/parsekey";
 import { changeAffectsTasks } from "../utils/refresh";
 import { heldOf, initialTimelineState, type TimelineState, withOptions, withReload } from "./state/timeline";
 import { UserOption } from "./useroptions";
@@ -19,6 +21,12 @@ export class TasksTimelineView extends ItemView {
 	private root?: Root;
 	/** The options, the tasks read last and the list shown, see TimelineState, which the bridge renders. */
 	private readonly store = createStore<TimelineState>(initialTimelineState());
+	/**
+	 * The notes read at the last reload, so a reload reads only those that may have changed, see TaskIndex. A field,
+	 * not made in onOpen, as the plugin's view factory hands the view its options, which reloads, before it opens.
+	 * Obsidian's View has set this.app from the leaf by the time the fields are made.
+	 */
+	private readonly index = createTaskIndex({ app: this.app, moment, parseKey: () => parseKeyOf(moment) });
 
 	private isReloading = false;
 	/** A reload was asked for while one was running, so the list is loaded again when it is done. */
@@ -34,26 +42,27 @@ export class TasksTimelineView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
-		// Only changes to files that have or had tasks reload the list, see issue #63.
-		this.registerEvent(
-			this.app.metadataCache.on("changed", (file, _data, cache) => this.onFileChanged([file.path], cache)),
-		);
-		this.registerEvent(
-			this.app.metadataCache.on("deleted", (file, prevCache) => this.onFileChanged([file.path], prevCache)),
-		);
-		this.registerEvent(
-			this.app.vault.on("rename", (file, oldPath) => {
-				if (file instanceof TFile)
-					this.onFileChanged([file.path, oldPath], this.app.metadataCache.getFileCache(file));
-			}),
-		);
+		// Every change marks its notes for the next reload to read. Only changes to files that have or had tasks
+		// reload the list, see issue #63.
+		for (const ref of watchNotes(this.app, this.index, (paths, cache) => this.onFileChanged(paths, cache)))
+			this.registerEvent(ref);
+		// The changes before the view listened went unheard, so the next reload reads every note.
+		this.index.rereadAll();
 		// When the view opens while Obsidian starts, the metadata of some files may not be read yet.
 		const firstResolved = this.app.metadataCache.on("resolved", () => {
 			this.app.metadataCache.offref(firstResolved);
+			this.index.rereadAll();
 			this.requestReload();
 		});
 		this.registerEvent(firstResolved);
-		this.registerEvent(this.app.workspace.on("window-open", () => this.onReloadTasks()));
+		// A new window reloads at once and reads every note again, in case a change went unheard. The full read is asked
+		// for before the reload starts, so that this reload is the one that does it.
+		this.registerEvent(
+			this.app.workspace.on("window-open", () => {
+				this.index.rereadAll();
+				return this.onReloadTasks();
+			}),
+		);
 
 		const { containerEl } = this;
 		const container = containerEl.children[1];
@@ -89,7 +98,10 @@ export class TasksTimelineView extends ItemView {
 		return this.onReloadTasks();
 	}
 
-	/** Reads the tasks of the notes again. Returns once this reload, and one asked for while it ran, are done. */
+	/**
+	 * Reads the tasks of the notes that may have changed, see TaskIndex, and tells of the notes that warn or cannot be
+	 * read, on every reload. Returns once this reload, and one asked for while it ran, are done.
+	 */
 	onReloadTasks(): Promise<void> {
 		if (this.isReloading) {
 			this.reloadAgain = true;
@@ -97,8 +109,10 @@ export class TasksTimelineView extends ItemView {
 		}
 		this.isReloading = true;
 		const { options } = this.store.getSnapshot();
-		return readTasks(this.app, options, moment)
-			.then((tasks) => {
+		return this.index
+			.update(options)
+			.then(({ tasks, warnings, failures }) => {
+				reportNoteReads(warnings, failures);
 				this.filesWithTasks = new Set(tasks.map((task) => task.path));
 				const { shown } = resolveTasks(tasks, options, { now: moment(), moment });
 				this.store.setState((state) => withReload(state, tasks, shown.map(heldOf)));
