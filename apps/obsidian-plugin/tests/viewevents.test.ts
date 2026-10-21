@@ -476,7 +476,7 @@ test("the approved change: a note read before that starts failing with no change
 	assert.equal(lines.length, 1);
 });
 
-test("reloads asked for while one reads the notes run once more when it is done, and read what changed meanwhile", async (t) => {
+test("reloads asked for while one reads the notes run once more, and a new window asked for meanwhile reads every note", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const vault = fakeVault(notes());
 	const timeline = await openTimeline(t, vault);
@@ -500,4 +500,109 @@ test("reloads asked for while one reads the notes run once more when it is done,
 	assert.deepEqual(linesIn(timeline.view, "Projects/Garden.md"), ["- [ ] plant the roses"]);
 	await wait(t, 10 * RELOAD_DELAY_MS);
 	assert.equal(timeline.reloads(), 2);
+});
+
+test("a reload asked for while one reads the notes reads, when it runs, the note saved meanwhile and no other", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const vault = fakeVault(notes());
+	const timeline = await openTimeline(t, vault);
+	const read = readsOf(vault);
+	const release = vault.holdReads();
+	vault.write("Inbox.md", "- [ ] call the plumber again");
+	await wait(t, RELOAD_DELAY_MS);
+	assert.deepEqual(read(), ["Inbox.md"], "the reload's read is held");
+	vault.write("Projects/Garden.md", "- [ ] plant the roses");
+	await wait(t, RELOAD_DELAY_MS);
+	assert.equal(timeline.reloads(), 1, "it waits for the reload that runs");
+	release();
+	await settle();
+	assert.equal(timeline.reloads(), 2);
+	assert.deepEqual(read(), ["Projects/Garden.md"]);
+	assert.deepEqual(linesIn(timeline.view, "Inbox.md"), ["- [ ] call the plumber again"]);
+	assert.deepEqual(linesIn(timeline.view, "Projects/Garden.md"), ["- [ ] plant the roses"]);
+});
+
+test("a task whose date cannot be read is warned about also on a reload that reads only another note", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const lines = ourLines(t);
+	const vault = fakeVault({ ...notes(), "Dates.md": "# Dates\n- [ ] pay the rent [due:: soon]" });
+	const timeline = await openTimeline(t, vault);
+	const before = lines.length;
+	const read = readsOf(vault);
+	vault.write("Inbox.md", "- [ ] call the plumber again");
+	await wait(t, RELOAD_DELAY_MS);
+	assert.equal(timeline.reloads(), 1);
+	assert.deepEqual(read(), ["Inbox.md"]);
+	assert.deepEqual(lines.slice(before), [
+		["warn", 'Tasks Calendar Wrapper: Dates.md, line 2: could not read the date " soon" of [due:: ]'],
+	]);
+});
+
+test("an option change reads no note and keeps an unchanged failing note's tasks; a note filter reads what it keeps", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const vault = fakeVault(notes());
+	const timeline = await openTimeline(t, vault);
+	const read = readsOf(vault);
+	shownNotices.length = 0;
+	vault.failReads("Projects/Garden.md");
+	await timeline.view.onUpdateOptions({ ...defaultUserOptions, dateFormat: "YYYY-MM-DD", sort: "text-desc" });
+	assert.deepEqual(read(), []);
+	assert.deepEqual(linesIn(timeline.view, "Projects/Garden.md"), ["- [ ] plant the tulips", "- [x] buy bulbs"]);
+	assert.deepEqual(shownNotices, []);
+	vault.healReads("Projects/Garden.md");
+	await timeline.view.onUpdateOptions({ ...defaultUserOptions, excludePaths: ["Archive"] });
+	assert.deepEqual(read(), ["Inbox.md", "Projects/Garden.md", "Reference/Plain.md"]);
+	assert.deepEqual(linesIn(timeline.view, "Archive/Old.md"), []);
+});
+
+test("notes swapped through a third name show each other's tasks after the reload", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const vault = fakeVault({ ...notes(), "A.md": "- [ ] alpha", "B.md": "- [ ] beta" });
+	const timeline = await openTimeline(t, vault);
+	const read = readsOf(vault);
+	vault.rename("A.md", "T.md");
+	vault.rename("B.md", "A.md");
+	vault.rename("T.md", "B.md");
+	await wait(t, RELOAD_DELAY_MS);
+	assert.equal(timeline.reloads(), 1);
+	assert.deepEqual(read(), ["A.md", "B.md"]);
+	assert.deepEqual(linesIn(timeline.view, "A.md"), ["- [ ] beta"]);
+	assert.deepEqual(linesIn(timeline.view, "B.md"), ["- [ ] alpha"]);
+});
+
+test("a reload after the time zone changed reads every note again, as their dates may fall on other days", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const vault = fakeVault(notes());
+	const timeline = await openTimeline(t, vault);
+	const read = readsOf(vault);
+	const zone = process.env.TZ;
+	try {
+		process.env.TZ = "America/New_York";
+		await timeline.view.onReloadTasks();
+		assert.deepEqual(read(), ALL);
+		await timeline.view.onReloadTasks();
+		assert.deepEqual(read(), [], "the next one reads none");
+	} finally {
+		process.env.TZ = zone;
+	}
+});
+
+test("a save Obsidian's metadata cache gives no metadata for is read by the next reload, of another note's change", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const vault = fakeVault(notes());
+	const timeline = await openTimeline(t, vault);
+	const read = readsOf(vault);
+	// As when Obsidian cannot read the saved file for its metadata: "modify" comes, "changed" does not, nor a reload.
+	vault.write("Inbox.md", "- [x] call the plumber 📅 2026-01-20", { indexed: false });
+	await wait(t, 10 * RELOAD_DELAY_MS);
+	assert.equal(timeline.reloads(), 0);
+	vault.write("Projects/Garden.md", "- [ ] plant the roses");
+	await wait(t, RELOAD_DELAY_MS);
+	assert.equal(timeline.reloads(), 1);
+	assert.deepEqual(read(), ["Inbox.md", "Projects/Garden.md"]);
+	assert.deepEqual(
+		linesIn(timeline.view, "Inbox.md"),
+		["- [x] call the plumber 📅 2026-01-20"],
+		"as before the index",
+	);
 });

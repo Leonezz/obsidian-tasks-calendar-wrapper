@@ -41,7 +41,7 @@ interface World extends Stage {
 	readonly index: TaskIndex;
 	/** The paths parsed, in order. */
 	readonly parsed: string[];
-	/** The paths watchNotes handed on since the last update took the marks. */
+	/** The paths watchNotes marked since the last update took the marks. */
 	marked: Set<string>;
 	/** The environment changed during the last update, so the index may read everything, or not. */
 	maybeFull: boolean;
@@ -226,8 +226,8 @@ async function runUpdate(world: World, during: Extract<Action, { op: "updateDuri
 	if (during?.during.some((action) => action.op === "env")) world.maybeFull = true;
 	if (during) run.count?.("during reads");
 	assert.deepEqual(indexed.told, [], `${at}: an update tells the user nothing itself`);
-	const pendingWithMetadata = vault.pending().some((path) => vault.hasMetadata(path));
-	if (during === null && !pendingWithMetadata) await checkAtRest(world, filters, indexed, at, run);
+	// A note saved and not indexed yet is marked by its "modify", so the index reads it as readTasks does.
+	if (during === null) await checkAtRest(world, filters, indexed, at, run);
 	assert.equal(indexed.error !== undefined, visible === null, `${at}: the update threw ${indexed.error}`);
 	if (indexed.error !== undefined || visible === null) return putBack(world, window);
 	const result = indexed.value as IndexUpdate;
@@ -285,7 +285,14 @@ export async function runSequence(actions: readonly Action[], run: Run): Promise
 		previous: null,
 	};
 	// The wiring the view will register: every event marks its paths, which the model notes too.
-	watchNotes(vault.app as never, index, (paths) => paths.forEach((path) => world.marked.add(path)));
+	// The marks as the index gets them, from every event watchNotes listens to, also those it hands nothing on for.
+	const marking = {
+		markDirty: (paths: readonly string[]) => {
+			for (const path of paths) world.marked.add(path);
+			index.markDirty(paths);
+		},
+	};
+	watchNotes(vault.app as never, marking, () => {});
 	try {
 		for (const [step, action] of actions.entries()) await runStep(world, action, `step ${step}`, run);
 		return null;

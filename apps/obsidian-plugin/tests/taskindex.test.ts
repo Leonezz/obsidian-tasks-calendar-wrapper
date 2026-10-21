@@ -699,11 +699,19 @@ test("watchNotes marks the paths of each change first, then hands on the change 
 		// The metadata of a file that is no note is a new empty object each time; a note's is the same object.
 		if (paths[0].endsWith(".md")) assert.equal(events[1][2], cache(), "the very metadata object");
 	};
-	expect(
-		() => vault.write("Inbox.md", "- [ ] one"),
-		["Inbox.md"],
-		() => fileCache("Inbox.md"),
-	);
+	// A save marks the note when it is written, and again with its metadata, which goes on to the view.
+	events.length = 0;
+	vault.write("Inbox.md", "- [ ] one");
+	assert.deepEqual(events, [
+		["marked", "Inbox.md"],
+		["marked", "Inbox.md"],
+		["changed", ["Inbox.md"], fileCache("Inbox.md")],
+	]);
+	// A save Obsidian's metadata cache does not answer, as when it cannot read the file: marked, and nothing handed on.
+	events.length = 0;
+	vault.write("Inbox.md", "- [x] one", { indexed: false });
+	assert.deepEqual(events, [["marked", "Inbox.md"]]);
+	vault.indexPending();
 	const archived = fileCache("Archive/Old.md");
 	assert.ok(archived);
 	expect(

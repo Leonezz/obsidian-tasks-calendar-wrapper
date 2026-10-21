@@ -61,9 +61,9 @@ export interface IndexUpdate {
  */
 export interface TaskIndex {
 	/**
-	 * These paths may have changed; the next update reads the ones that are visible notes. Called for every metadata
-	 * cache "changed" and "deleted" and every vault "rename" of a file (new and old path), whatever changeAffectsTasks
-	 * says. May be called at any time, also while an update runs.
+	 * These paths may have changed; the next update reads the ones that are visible notes. Called for every vault
+	 * "modify", every metadata cache "changed" and "deleted" and every vault "rename" of a file (new and old path),
+	 * whatever changeAffectsTasks says. May be called at any time, also while an update runs.
 	 */
 	markDirty(paths: readonly string[]): void;
 	/**
@@ -227,13 +227,16 @@ export function createTaskIndex(deps: TaskIndexDeps): TaskIndex {
 }
 
 /**
- * Wires the index to the vault the way the view will: each event marks its paths first, then hands the change to
+ * Wires the index to the vault the way the view does: each event marks its paths first, then hands the change to
  * onChange with the arguments the view's onFileChanged takes, where the view applies changeAffectsTasks and schedules
  * its reload.
  * - metadata cache "changed": the note's path, with the event's metadata;
  * - metadata cache "deleted": the note's path, with the metadata it had;
  * - vault "rename" of a file: the new path and the old one, with the file's metadata now. A folder's own event is left
  *   out, as Obsidian sends one for each file inside it.
+ * - vault "modify" of a file only marks it and hands nothing on. Obsidian's metadata cache sends no "changed" when it
+ *   cannot read a saved file, or the worker gives no metadata; the next reload, of another note's change, then reads
+ *   the file as every reload did before the index, instead of keeping the tasks it had.
  * Returns the refs, for the caller to registerEvent, so they go when the view unloads.
  */
 export function watchNotes(
@@ -250,6 +253,9 @@ export function watchNotes(
 		app.metadataCache.on("deleted", (file, prevCache) => changed([file.path], prevCache)),
 		app.vault.on("rename", (file, oldPath) => {
 			if (file instanceof TFile) changed([file.path, oldPath], app.metadataCache.getFileCache(file));
+		}),
+		app.vault.on("modify", (file) => {
+			if (file instanceof TFile) index.markDirty([file.path]);
 		}),
 	];
 }
