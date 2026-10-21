@@ -10,10 +10,21 @@
  * Obsidian fires the metadata events a moment later, after reading the note; here they come at once. A file that is not
  * a note (not ".md") gets no "changed", and its metadata is empty, as in Obsidian.
  *
+ * A test can also ask for what Obsidian does only now and then; unless it asks, none of it happens:
+ * - write a note before Obsidian has indexed it (`indexed: false`): only "modify" or "create" fires, and the metadata
+ *   stays as it was, none for a new note, until indexPending fires "changed" for each such note, then "resolved". A
+ *   note removed meanwhile is no longer waiting, and one renamed waits at its new path;
+ * - change a note with no event at all (writeSilently), as when an event is missed;
+ * - make reading a note fail (failReads) and work again (healReads), hold every read until a test lets them go
+ *   (holdReads), or make the next listing of the notes throw (breakListing);
+ * - with `staggerReads`, have reads finish out of order, a few microtasks apart, so a change can land between two
+ *   notes' parses.
+ *
  * The metadata of a note is computed from its text, as far as the plugin uses it: each line that starts with a list
  * marker is a list item at the top of its list, a task when "[x]" follows the marker; "#tags"; and a frontmatter of
- * "key: value" lines between "---" lines. Code blocks, nested lists and typed frontmatter values are not modelled; tests
- * that need Obsidian's own metadata use the golden vault's, see golden-vault.ts.
+ * "key: value" lines between "---" lines. Code blocks, nested lists and typed frontmatter values are not modelled,
+ * except that with `jsonFrontmatter` a value written as a JSON list or object, such as `tags: [2026]`, is read as one;
+ * tests that need Obsidian's own metadata use the golden vault's, see golden-vault.ts.
  */
 import type { CachedMetadata, FrontMatterCache, ListItemCache, TagCache } from "obsidian";
 import { Events, TAbstractFile, TFile, TFolder } from "obsidian";
@@ -21,8 +32,21 @@ import { Events, TAbstractFile, TFile, TFolder } from "obsidian";
 const LIST_ITEM = /^(\s*)([-*+]|\d+[.)]) (?:\[(.)\])?/;
 const TAG = /(^|\s)(#[^\s#]+)/g;
 
-/** The metadata Obsidian computes for a note's text, as far as the plugin uses it. */
-export function metadataOf(content: string): CachedMetadata {
+/** A frontmatter value as written; with `json`, one written as a JSON list or object is read as one, as in YAML. */
+function valueOf(text: string, json: boolean): unknown {
+	if (!json || !/^[[{]/.test(text)) return text;
+	try {
+		return JSON.parse(text);
+	} catch {
+		return text;
+	}
+}
+
+/**
+ * The metadata Obsidian computes for a note's text, as far as the plugin uses it. With `json`, frontmatter values
+ * written as JSON lists or objects are read as such.
+ */
+export function metadataOf(content: string, json = false): CachedMetadata {
 	const lines = content.split("\n");
 	const starts = lines.map((_, n) => lines.slice(0, n).reduce((offset, line) => offset + line.length + 1, 0));
 	const end = lines[0] === "---" ? lines.indexOf("---", 1) : -1;
@@ -33,7 +57,7 @@ export function metadataOf(content: string): CachedMetadata {
 						.slice(1, end)
 						.map((line) => line.match(/^([^:]+):\s*(.*)$/))
 						.filter((match): match is RegExpMatchArray => match !== null)
-						.map((match) => [match[1].trim(), match[2].trim()]),
+						.map((match) => [match[1].trim(), valueOf(match[2].trim(), json)]),
 				)
 			: undefined;
 	const range = (line: number, from: number, to: number) => ({
@@ -239,26 +263,42 @@ const folderAt = (path: string) => {
 
 /**
  * A vault with these notes, by path, and the app the timeline sees it through. With `layoutReady: false` the app is
- * still starting: onLayoutReady waits for finishLayout.
+ * still starting: onLayoutReady waits for finishLayout. With `jsonFrontmatter`, frontmatter values written as JSON
+ * lists or objects are read as such. With `staggerReads`, each read waits a few microtasks, more or fewer by its path,
+ * before it looks up the content, so reads finish out of order.
  */
-export function fakeVault(notes: Record<string, string>, { layoutReady = true } = {}) {
+export function fakeVault(
+	notes: Record<string, string>,
+	{ layoutReady = true, jsonFrontmatter = false, staggerReads = false } = {},
+) {
 	const contents = new Map<string, string>();
 	const caches = new Map<string, CachedMetadata>();
 	const files = new Map<string, TAbstractFile>();
 	const failing = new Set<string>();
+	/** The notes written with `indexed: false` whose "changed" has not come yet. */
+	const pending = new Set<string>();
 	const reads: string[] = [];
 	let listings = 0;
+	let brokenListings = 0;
+	/** While reads are held, the promise they wait for. */
+	let held: Promise<void> | null = null;
 
 	const metadataCache = new FakeMetadataCache(caches);
 	const vault = Object.assign(new Events(), {
 		getMarkdownFiles(): TFile[] {
 			listings += 1;
+			if (brokenListings > 0) {
+				brokenListings -= 1;
+				throw new Error("the vault is not ready");
+			}
 			return [...files.values()].filter(
 				(file): file is TFile => file instanceof TFile && file.extension === "md",
 			);
 		},
 		async cachedRead(file: TFile): Promise<string> {
 			reads.push(file.path);
+			if (held) await held;
+			if (staggerReads) for (let tick = 0; tick < (file.path.length * 7) % 5; tick++) await null;
 			if (failing.has(file.path)) throw new Error(`could not read ${file.path}`);
 			const content = contents.get(file.path);
 			if (content === undefined) throw new Error(`${file.path} does not exist`);
@@ -287,7 +327,7 @@ export function fakeVault(notes: Record<string, string>, { layoutReady = true } 
 		addFolders(path);
 		files.set(path, fileAt(path));
 		contents.set(path, content);
-		caches.set(path, path.endsWith(".md") ? metadataOf(content) : {});
+		caches.set(path, path.endsWith(".md") ? metadataOf(content, jsonFrontmatter) : {});
 	}
 
 	return {
@@ -296,8 +336,12 @@ export function fakeVault(notes: Record<string, string>, { layoutReady = true } 
 		reads,
 		/** How often the notes were listed, which readTasks does once per reload. */
 		listings: () => listings,
-		/** Writes a note, as an editor saving it does: "modify", or "create" for a new note, then "changed". */
-		write(path: string, content: string): void {
+		/**
+		 * Writes a note, as an editor saving it does: "modify", or "create" for a new note, then "changed". With
+		 * `indexed: false`, Obsidian has not indexed it yet: "changed" waits for indexPending, and until then the
+		 * metadata stays as it was, none for a new note.
+		 */
+		write(path: string, content: string, { indexed = true } = {}): void {
 			const existing = files.get(path);
 			const file = existing instanceof TFile ? existing : fileAt(path);
 			if (!existing) {
@@ -310,7 +354,12 @@ export function fakeVault(notes: Record<string, string>, { layoutReady = true } 
 				caches.set(path, {});
 				return;
 			}
-			caches.set(path, metadataOf(content));
+			if (!indexed) {
+				pending.add(path);
+				return;
+			}
+			pending.delete(path);
+			caches.set(path, metadataOf(content, jsonFrontmatter));
 			metadataCache.trigger("changed", file, content, caches.get(path));
 			metadataCache.trigger("resolved");
 		},
@@ -319,6 +368,7 @@ export function fakeVault(notes: Record<string, string>, { layoutReady = true } 
 			const file = files.get(path);
 			if (!(file instanceof TFile)) throw new Error(`there is no note ${path}`);
 			files.delete(path);
+			pending.delete(path);
 			metadataCache.trigger("deleted", file, metadataCache.getFileCache(file));
 			caches.delete(path);
 			contents.delete(path);
@@ -337,7 +387,9 @@ export function fakeVault(notes: Record<string, string>, { layoutReady = true } 
 				files.delete(from);
 				setPath(file, to);
 				files.set(to, file);
-				// Obsidian's metadata cache moves the metadata on "rename" before the plugins hear of it.
+				// Obsidian's metadata cache moves the metadata on "rename" before the plugins hear of it. A note still
+				// waiting to be indexed waits at its new path, unless it is no note there.
+				if (pending.delete(from) && to.endsWith(".md")) pending.add(to);
 				for (const map of [caches, contents] as Map<string, unknown>[]) {
 					if (map.has(from)) {
 						map.set(to, map.get(from));
@@ -360,6 +412,54 @@ export function fakeVault(notes: Record<string, string>, { layoutReady = true } 
 		failReads(path: string): void {
 			failing.add(path);
 		},
+		/** Not in Obsidian: reading the note works again. */
+		healReads(path: string): void {
+			failing.delete(path);
+		},
+		/** Not in Obsidian: the note changes, its metadata too, and no event says so, as when an event is missed. */
+		writeSilently(path: string, content: string): void {
+			contents.set(path, content);
+			caches.set(path, path.endsWith(".md") ? metadataOf(content, jsonFrontmatter) : {});
+		},
+		/** Not in Obsidian: the next listing of the notes throws, as in a vault that is not ready. */
+		breakListing(): void {
+			brokenListings += 1;
+		},
+		/**
+		 * Not in Obsidian: every read started from now on waits until the returned function is called. A read is
+		 * recorded in `reads` when it starts, and looks up the content when it is let go, so it reads what is there
+		 * then.
+		 */
+		holdReads(): () => void {
+			let release = () => {};
+			held = new Promise<void>((resolve) => (release = resolve));
+			return () => {
+				held = null;
+				release();
+			};
+		},
+		/** Not in Obsidian: the notes written with `indexed: false` whose "changed" has not come yet, sorted. */
+		pending: (): readonly string[] => [...pending].sort(),
+		/** Obsidian indexes the notes written with `indexed: false`: "changed" for each, then "resolved", if any. */
+		indexPending(): void {
+			const paths = [...pending].sort();
+			pending.clear();
+			for (const path of paths) {
+				const file = files.get(path) as TFile;
+				const content = contents.get(path) ?? "";
+				caches.set(path, metadataOf(content, jsonFrontmatter));
+				metadataCache.trigger("changed", file, content, caches.get(path));
+			}
+			if (paths.length > 0) metadataCache.trigger("resolved");
+		},
+		/** Not in Obsidian: the paths of every file, not folder, sorted. Unlike getMarkdownFiles, it does not count. */
+		filePaths: (): string[] =>
+			[...files.entries()]
+				.filter(([, file]) => file instanceof TFile)
+				.map(([path]) => path)
+				.sort(),
+		/** Not in Obsidian: whether the metadata cache has metadata for the path. */
+		hasMetadata: (path: string): boolean => caches.has(path),
 	};
 }
 
