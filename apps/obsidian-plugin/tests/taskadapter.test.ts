@@ -236,3 +236,40 @@ test("reportNoteReads logs each failure with its reason after the warnings, then
 	assert.equal(told[1][2], reasons[0], "the reason object itself, not a copy");
 	assert.deepEqual(shownNotices, [twoFailed]);
 });
+
+test("a note with too many tasks to hand on at once fails the reload, after the warnings of the notes before it", async (t) => {
+	const count = 300_000;
+	// The reload fails because spreading this many tasks into a call overflows; check that it does on this Node.
+	assert.throws(() => [].push(...(new Array(count) as never[])), RangeError);
+	const warned = t.mock.method(console, "warn", () => {});
+	const item = (line: number, length: number) => ({
+		task: " ",
+		parent: -1,
+		position: { start: { line, col: 0, offset: line * 8 }, end: { line, col: length, offset: line * 8 + length } },
+	});
+	const notes: Record<string, { content: string; listItems: object[] }> = {
+		"a.md": { content: "- [ ] pay [due:: soon]", listItems: [item(0, 22)] },
+		"z.md": {
+			content: Array.from({ length: count }, () => "- [ ] t").join("\n"),
+			listItems: Array.from({ length: count }, (_, line) => item(line, 7)),
+		},
+	};
+	const app = {
+		vault: {
+			getMarkdownFiles: () => Object.keys(notes).map((path) => ({ path })),
+			cachedRead: async (file: { path: string }) => notes[file.path].content,
+		},
+		metadataCache: {
+			getFileCache: (file: { path: string }) => ({
+				listItems: notes[file.path].listItems,
+				sections: [],
+				links: [],
+				tags: [],
+			}),
+		},
+	} as never;
+	await assert.rejects(readTasks(app, {}, moment), RangeError);
+	const told = warned.mock.calls.map((call) => String(call.arguments[0]));
+	assert.equal(told.length, 1);
+	assert.match(told[0], /^Tasks Calendar Wrapper: a\.md, line 1: /);
+});

@@ -55,6 +55,16 @@ const MINIMUM = 10;
 /** A run whose console lines the test's mocks collect, keeping ours, as the other tests do. */
 const quietRun = (t: TestContext, count?: (what: string) => void): Run => ({ lines: ourLines(t), count });
 
+/**
+ * Lets go of what a sequence that passed left behind: its console lines, and the calls the console mocks record, so a
+ * long soak does not run out of memory.
+ */
+function forget(run: Run): void {
+	run.lines.length = 0;
+	for (const method of [console.warn, console.error])
+		(method as unknown as { mock: { resetCalls(): void } }).mock.resetCalls();
+}
+
 /** The first lines of a failure's message. */
 const firstLines = (error: Error, count: number) => error.message.split("\n").slice(0, count).join("\n");
 
@@ -65,7 +75,10 @@ test(`the index gives what readTasks gives, over ${SEEDS} generated sequences of
 	for (let seed = FIRST; seed < FIRST + SEEDS; seed++) {
 		const actions = generate(seed, STEPS);
 		const failure = await runSequence(actions, run);
-		if (failure === null) continue;
+		if (failure === null) {
+			forget(run);
+			continue;
+		}
 		const shrunk = await shrink(actions, run);
 		const again = (await runSequence(shrunk, run)) ?? failure;
 		assert.fail(

@@ -279,6 +279,28 @@ test("metadata that cannot be read after a note's read fails only that note, as 
 	assert.deepStrictEqual(told, toldByReadTasks);
 });
 
+test("a read that throws at once, not after waiting, fails only that note, as in readTasks", async (t) => {
+	const lines = ourLines(t);
+	const i = indexed();
+	const { vault } = i.vault.app;
+	const cachedRead = vault.cachedRead.bind(vault);
+	t.mock.method(vault, "cachedRead", (file: { path: string }) => {
+		if (file.path === "Inbox.md") throw new Error("the file is locked");
+		return cachedRead(file as never);
+	});
+	const result = await i.index.update({});
+	i.since();
+	assert.deepEqual(
+		result.failures.map((failure) => [failure.path, String(failure.reason)]),
+		[["Inbox.md", "Error: the file is locked"]],
+	);
+	const told = await telling(lines, () => reportNoteReads(result.warnings, result.failures));
+	let reference: Task[] = [];
+	const toldByReadTasks = await telling(lines, async () => (reference = await i.reference()));
+	assert.deepStrictEqual([...result.tasks], reference);
+	assert.deepStrictEqual(told, toldByReadTasks);
+});
+
 test("step 10's approved change: a stored note that starts failing with no change is not read again", async (t) => {
 	const lines = ourLines(t);
 	const i = indexed();
@@ -539,6 +561,56 @@ test("an update that fails after its reads keeps the marks it took and those mad
 	assert.deepStrictEqual([...next.tasks], await t.reference());
 });
 
+test("an update that fails after its reads keeps a full read asked for while it ran, and not its filters", async () => {
+	let calls = 0;
+	let failAt = -1;
+	const t = indexed(notes(), {
+		parseKey: () => {
+			calls += 1;
+			if (calls === failAt) throw new Error("the parse key cannot be read");
+			return parseKeyOf(moment);
+		},
+	});
+	await t.index.update({});
+	const release = t.vault.holdReads();
+	failAt = calls + 2;
+	const running = t.index.update({});
+	t.index.rereadAll();
+	release();
+	await assert.rejects(running, /the parse key cannot be read/);
+	t.since();
+	await t.index.update({});
+	assert.deepEqual(t.since().read, ALL, "the full read asked for while it ran");
+	// New filters on an update that fails are not stored: the next update with them reads every note they keep.
+	failAt = calls + 2;
+	const archived = { excludePaths: ["Archive"] };
+	await assert.rejects(t.index.update(archived), /the parse key cannot be read/);
+	t.since();
+	const next = await t.index.update(archived);
+	assert.deepEqual(t.since().read, ["Inbox.md", "Projects/Garden.md", "Reference/Plain.md"]);
+	assert.deepStrictEqual([...next.tasks], await t.reference(archived));
+});
+
+test("a parse key that cannot be read when an update starts rejects it before any read, and the marks wait", async () => {
+	let broken = false;
+	const t = indexed(notes(), {
+		parseKey: () => {
+			if (broken) throw new Error("the parse key cannot be read");
+			return parseKeyOf(moment);
+		},
+	});
+	await t.index.update({});
+	t.since();
+	t.vault.write("Inbox.md", "- [ ] one");
+	broken = true;
+	await assert.rejects(t.index.update({}), /the parse key cannot be read/);
+	assert.deepEqual(t.since().read, []);
+	broken = false;
+	const next = await t.index.update({});
+	assert.deepEqual(t.since().read, ["Inbox.md"]);
+	assert.deepStrictEqual([...next.tasks], await t.reference());
+});
+
 test("metadata that cannot be read while the notes are filtered rejects the update, as readTasks rejects", async (t) => {
 	const i = indexed();
 	await i.index.update({});
@@ -565,6 +637,7 @@ test("an update asked for while one runs is refused; the running one goes on, an
 	const running = t.index.update({});
 	t.vault.write("Inbox.md", "- [ ] one");
 	await assert.rejects(t.index.update({}), /while another update was running/);
+	await assert.rejects(t.index.update({}), /while another update was running/, "still refused after a refusal");
 	assert.equal((await running).tasks.length, 4);
 	t.since();
 	const next = await t.index.update({});

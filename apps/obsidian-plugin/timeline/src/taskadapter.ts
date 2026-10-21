@@ -47,15 +47,15 @@ export async function readTasks(app: App, settings: NoteFilterSettings, moment: 
 	);
 
 	const tasks: Task[] = [];
-	const warnings: ParseWarning[] = [];
 	const failures: NoteReadFailure[] = [];
 	reads.forEach((read, i) => {
 		if (read.status === "fulfilled") {
 			tasks.push(...read.value.tasks);
-			// One at a time, as they were logged before: a spread could exceed the argument limit where that did not.
-			for (const warning of read.value.warnings) warnings.push(warning);
+			// Each note's warnings right after its tasks, as before: when a later note has too many tasks to spread, the
+			// warnings of the notes before it are told all the same.
+			reportNoteReads(read.value.warnings, []);
 		} else failures.push({ path: paths[i], reason: read.reason });
 	});
-	reportNoteReads(warnings, failures);
+	reportNoteReads([], failures);
 	return tasks;
 }
