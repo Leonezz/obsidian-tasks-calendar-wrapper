@@ -1,6 +1,6 @@
 import { Notice, Plugin } from "obsidian";
 
-import { TasksTimelineView, TIMELINE_VIEW } from "./views";
+import { TasksTimelineView, TIMELINE_VIEW, timelineTaskIndex } from "./views";
 
 import { notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
 import { RELEASE_NOTES, SUPPORT_LINKS } from "../utils/whatsnew";
@@ -18,6 +18,8 @@ import { debounceOptionUpdates } from "../utils/refresh";
 
 export default class TasksCalendarWrapper extends Plugin {
 	private readonly settingsStore = createSettingsStore();
+	/** The notes the timelines read, shared, see SharedTaskIndex: made with the first timeline, gone after the last. */
+	private readonly taskIndex = timelineTaskIndex(this.app);
 	private readonly pushOptionsToViews = debounceOptionUpdates(() => {
 		this.app.workspace.getLeavesOfType(TIMELINE_VIEW).forEach((leaf) => {
 			if (leaf.view instanceof TasksTimelineView) {
@@ -33,9 +35,11 @@ export default class TasksCalendarWrapper extends Plugin {
 
 	async onload() {
 		this.register(() => this.pushOptionsToViews.cancel());
+		// Registered before the view type, so it runs after the timelines closed: whatever is left, nothing is watched.
+		this.register(() => this.taskIndex.dispose());
 		await this.loadOptions();
 		this.registerView(TIMELINE_VIEW, (leaf) => {
-			const view = new TasksTimelineView(leaf);
+			const view = new TasksTimelineView(leaf, this.taskIndex);
 			view.onUpdateOptions(this.userOptions);
 			return view;
 		});

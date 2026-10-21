@@ -456,6 +456,11 @@ export class Events {
 		return ref;
 	}
 
+	/** Not in Obsidian: how many handlers the event has now. */
+	handlerCount(name: string): number {
+		return (this.handlers[name] ?? []).length;
+	}
+
 	off(name: string, callback: (...data: never[]) => unknown): void {
 		this.keep(name, (ref) => ref.fn !== callback);
 	}

@@ -548,6 +548,46 @@ async function wait(t: TestContext, ms: number): Promise<void> {
 	await settle();
 }
 
+/** The stub's Events count their handlers; Obsidian's typings know nothing of that. */
+const handlerCount = (events: object, name: string) =>
+	(events as { handlerCount(name: string): number }).handlerCount(name);
+
+/** The handlers of the note events: the shared task index's four, and each open timeline's three. */
+function noteHandlers(vault: FakeVault): number {
+	const { vault: files, metadataCache } = vault.app;
+	return (
+		handlerCount(metadataCache, "changed") +
+		handlerCount(metadataCache, "deleted") +
+		handlerCount(files, "rename") +
+		handlerCount(files, "modify")
+	);
+}
+
+test("the plugin's timelines share one task index, which stops watching when the plugin unloads", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { vault, plugin } = await startPlugin(readFixture("quiet.json"), { layoutReady: true });
+	assert.equal(noteHandlers(vault), 0, "no timeline, no index");
+	await openTimeline(vault);
+	await openTimeline(vault);
+	vault.resolve();
+	await wait(t, 10 * OPTIONS_DELAY_MS);
+	assert.equal(noteHandlers(vault), 4 + 3 + 3);
+	const from = vault.reads.length;
+	vault.write("Inbox.md", "- [ ] call the plumber again");
+	await wait(t, 10 * OPTIONS_DELAY_MS);
+	assert.deepEqual(vault.reads.slice(from), ["Inbox.md"], "read once for both timelines");
+	// Unloading while a timeline's reload reads: the reload goes on, and nothing is watched any more.
+	const release = vault.holdReads();
+	vault.write("Inbox.md", "- [ ] call the plumber once more");
+	await wait(t, 10 * OPTIONS_DELAY_MS);
+	plugin.unload();
+	await settle();
+	assert.equal(noteHandlers(vault), 0);
+	release();
+	await settle();
+	assert.equal(noteHandlers(vault), 0);
+});
+
 // Declared last, so it runs after every test that produces a snapshot.
 test("fixtures/settings/start holds the snapshots these tests write, and no others", () => {
 	snapshots.checkFolder();

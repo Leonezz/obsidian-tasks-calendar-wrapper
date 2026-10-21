@@ -9,10 +9,10 @@ import moment, { type Moment } from "moment";
 import type { Task } from "@tasks-calendar-wrapper/core";
 import { defaultUserOptions } from "../src/useroptions";
 import { readTasks, reportNoteReads } from "../timeline/src/taskadapter";
-import { createTaskIndex, type IndexUpdate } from "../timeline/src/taskindex";
+import type { IndexUpdate } from "../timeline/src/taskindex";
 import { parseKeyOf } from "../utils/parsekey";
 import { goldenApp, loadVault } from "./golden-vault";
-import { ALL, indexed, notes, ourLines, telling } from "./indexed-vault";
+import { ALL, indexed, notes, ourLines, soleReader, telling } from "./indexed-vault";
 
 // The task index when the parse environment changes, the way Obsidian or the user can change it: moment's locale and
 // the time zone. Each test puts them back as golden-clock set them. The last test reads the golden vault, with the
@@ -124,7 +124,7 @@ test("golden: equal to readTasks in every read order, nothing read twice, one re
 			read.splice(before);
 			return tasks;
 		};
-		const index = createTaskIndex({ app: app as never, moment, parseKey: () => parseKeyOf(moment) });
+		const index = soleReader({ app: app as never, moment, parseKey: () => parseKeyOf(moment) });
 		const first = await index.update(defaultUserOptions);
 		assert.equal(read.length, 24, JSON.stringify(order));
 		assert.deepStrictEqual([...first.tasks], await reference());

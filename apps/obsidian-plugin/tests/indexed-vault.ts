@@ -1,6 +1,6 @@
 /**
- * A task index of a fake vault, for the index's tests, wired to the vault as the view will be. It records which notes
- * the index reads and parses, so a test can pin them exactly, and compares with readTasks on the same vault.
+ * A task index of a fake vault, for the index's tests, wired to the vault as the plugin wires it. It records which
+ * notes the index reads and parses, so a test can pin them exactly, and compares with readTasks on the same vault.
  */
 import assert from "node:assert/strict";
 import type { TestContext } from "node:test";
@@ -9,7 +9,14 @@ import { Notice, type CachedMetadata } from "obsidian";
 
 import { parseNote, type NoteFilterSettings, type Task } from "@tasks-calendar-wrapper/core";
 import { readTasks } from "../timeline/src/taskadapter";
-import { createTaskIndex, watchNotes } from "../timeline/src/taskindex";
+import {
+	createTaskIndex,
+	watchChanges,
+	watchNotes,
+	type TaskIndex,
+	type TaskIndexDeps,
+	type TaskIndexReader,
+} from "../timeline/src/taskindex";
 import { parseKeyOf, type ParseKey } from "../utils/parsekey";
 import { fakeVault } from "./fakevault";
 
@@ -28,8 +35,9 @@ export const ALL = ["Archive/Old.md", "Inbox.md", "Projects/Garden.md", "Referen
 export const shownNotices = (Notice as unknown as { shown: string[] }).shown;
 
 /**
- * An index of a fake vault, wired to it as step 10's view will be: watchNotes marks the paths of every change, and the
- * changes it hands on are kept in `heard`. The index parses with core's parseNote and records each path it parses.
+ * An index of a fake vault, wired to it as the plugin wires it: watchNotes marks the paths of every change, and the
+ * changes watchChanges hands on, as to a view, are kept in `heard`. The index parses with core's parseNote and records
+ * each path it parses. `index` is its first reader, with the index's markDirty; `open` gives another.
  */
 export function indexed(
 	content: Record<string, string> = notes(),
@@ -42,7 +50,7 @@ export function indexed(
 	const vault = fakeVault(content, { jsonFrontmatter, staggerReads });
 	const parsed: string[] = [];
 	const heard: [string[], CachedMetadata | null][] = [];
-	const index = createTaskIndex({
+	const shared = createTaskIndex({
 		app: vault.app as never,
 		moment,
 		parseKey: parseKey ?? (() => parseKeyOf(moment)),
@@ -51,12 +59,19 @@ export function indexed(
 			return parseNote(snapshot, m);
 		},
 	});
-	const refs = watchNotes(vault.app as never, index, (paths, cache) => heard.push([paths, cache]));
+	const index = withMarks(shared, shared.openReader());
+	const refs = [
+		...watchNotes(vault.app as never, shared),
+		...watchChanges(vault.app as never, (paths, cache) => heard.push([paths, cache])),
+	];
 	let reads = 0;
 	let parses = 0;
 	return {
 		vault,
+		shared,
 		index,
+		/** Another reader of the same index, with the same markDirty. */
+		open: () => withMarks(shared, shared.openReader()),
 		heard,
 		refs,
 		/** The notes read and parsed since the last call, in the order the reads started and the parses ran. */
@@ -74,6 +89,16 @@ export function indexed(
 			return tasks;
 		},
 	};
+}
+
+/** A reader with the index's markDirty, as the tests of one reader use it. */
+export const withMarks = (shared: TaskIndex, reader: TaskIndexReader) =>
+	Object.freeze({ ...reader, markDirty: shared.markDirty });
+
+/** The only reader of a new index, with the index's markDirty. */
+export function soleReader(deps: TaskIndexDeps) {
+	const shared = createTaskIndex(deps);
+	return withMarks(shared, shared.openReader());
 }
 
 /**
