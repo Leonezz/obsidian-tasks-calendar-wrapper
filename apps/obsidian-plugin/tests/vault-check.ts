@@ -52,6 +52,8 @@ export interface Run {
 	readonly lines: unknown[][];
 	/** Told what each step did, for the coverage guard. */
 	readonly count?: (what: string) => void;
+	/** For sequences of one reader: each update reads exactly what an index of its own would, no fewer, no more. */
+	readonly exact?: boolean;
 }
 
 /** What a sequence runs with: the model, the index, the app readTasks reads through, and the vault actions' stage. */
@@ -143,14 +145,23 @@ function atRest(world: World, asked: Asked, plan: Plan): boolean {
 	return plan.actions === world.actions && !asked.reader.missedSinceClose && !(plan.visible ?? []).some(unheard);
 }
 
-/** It read no note an index of its reader's own would not read, but in the two cases the model names. */
+/**
+ * It read no note an index of its reader's own would not read, but in the two cases the model names, and again a note
+ * it could not read in one of them.
+ */
 function checkAgainstOwn(asked: Asked, plan: Plan, run: Run): void {
 	const own = plan.own;
 	if (own === null) return;
+	if (run.exact) {
+		const sorted = (paths: Iterable<string>) => [...paths].sort();
+		assert.deepEqual(sorted(asked.reads), sorted(own.due), `${asked.at}: the reads of an index of its own`);
+	}
 	const more = asked.reads.filter((path) => !own.due.has(path));
 	if (more.length > 0 && own.keyFlipped) run.count?.("more than its own: the key changed and back");
 	else if (more.length > 0 && more.every((path) => own.gone.has(path)))
 		run.count?.("more than its own: a file gone unheard");
+	else if (more.length > 0 && more.every((path) => own.gone.has(path) || own.failedUnread.has(path)))
+		run.count?.("more than its own: again, a note it could not read then");
 	else assert.deepEqual(more, [], `${asked.at}: reader ${asked.reader.id} read what an index of its own would not`);
 	if (asked.reads.length < own.due.size) run.count?.("fewer than its own");
 	if (own.everything) run.count?.("full");

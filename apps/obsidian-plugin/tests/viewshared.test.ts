@@ -235,6 +235,11 @@ test("a timeline closed while its reload runs keeps its notes for the reload it 
 	await wait(t, RELOAD_DELAY_MS);
 	await b.close();
 	release();
+	// A's read, which starts when B's first reload is done, waits until B has asked for its follow-up: as in Obsidian,
+	// where reading a note that is not in its cache takes longer than that.
+	const releaseA = vault.holdReads();
+	await settle();
+	releaseA();
 	await settle();
 	assert.deepEqual(
 		[a.reloads(), b.reloads()],
@@ -242,8 +247,85 @@ test("a timeline closed while its reload runs keeps its notes for the reload it 
 		"each asked for a reload while one ran, and ran it, B after it closed",
 	);
 	assert.deepEqual(read(), ["Projects/Garden.md"], "read by A; B's last reload kept the archive's note");
-	assert.equal(watchers(vault), 2 + 1, "B's reader is closed now; the index still watches for A");
+	assert.equal(watchers(vault), 2 + 1, "the index still watches, for A");
 	assert.deepStrictEqual([...a.tasks()], await readTasks(vault.app as never, a.options, moment));
+	await a.close();
+	assert.equal(watchers(vault), 0, "B's reader was closed after its last reload");
+});
+
+test("a timeline closed while its reload waits, which then fails: its reader is closed all the same", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	ourLines(t);
+	const vault = fakeVault(notes());
+	const shared = timelineTaskIndex(vault.app as never);
+	const a = await openTimeline(t, vault, shared);
+	const b = await openTimeline(t, vault, shared);
+	shownNotices.length = 0;
+	const release = vault.holdReads();
+	vault.write("Inbox.md", "- [ ] call the plumber again");
+	await wait(t, RELOAD_DELAY_MS);
+	await b.close();
+	// B's reload lists the notes once A's is done.
+	vault.breakListing();
+	release();
+	await settle();
+	assert.deepEqual(shownNotices, ["Error when generating tasks from files: Error: the vault is not ready"]);
+	await a.close();
+	assert.equal(watchers(vault), 0);
+});
+
+test("a timeline closed while its reload runs goes on hearing changes until its reloads are done", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const lines = ourLines(t);
+	const vault = fakeVault(notes());
+	const shared = timelineTaskIndex(vault.app as never);
+	const a = await openTimeline(t, vault, shared);
+	shownNotices.length = 0;
+	const read = readsOf(vault);
+	const release = vault.holdReads();
+	vault.write("Inbox.md", "- [ ] call the plumber again");
+	await wait(t, RELOAD_DELAY_MS);
+	vault.write("Projects/Garden.md", "- [ ] plant the roses");
+	await wait(t, RELOAD_DELAY_MS);
+	await a.close();
+	// The shared index still marks it, for the follow-up A asked for while its reload ran; an index of A's own heard
+	// nothing once A closed.
+	vault.failReads("Archive/Old.md");
+	vault.write("Archive/Old.md", "- [ ] an old task, edited");
+	release();
+	await settle();
+	assert.deepEqual(read(), ["Inbox.md", "Archive/Old.md", "Projects/Garden.md"]);
+	assert.deepEqual(shownNotices, [ONE_FAILED]);
+	assert.deepEqual(
+		lines.map(([kind, message]) => [kind, message]),
+		[["error", "Tasks Calendar Wrapper: reading a file failed"]],
+	);
+	assert.equal(watchers(vault), 0);
+});
+
+test("the plugin unloads while a timeline reloads: its reloads keep their notes, and hear nothing more", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	ourLines(t);
+	const vault = fakeVault(notes());
+	const shared = timelineTaskIndex(vault.app as never);
+	const a = await openTimeline(t, vault, shared);
+	vault.failReads("Reference/Plain.md");
+	shownNotices.length = 0;
+	const read = readsOf(vault);
+	const release = vault.holdReads();
+	vault.write("Inbox.md", "- [ ] call the plumber again");
+	await wait(t, RELOAD_DELAY_MS);
+	vault.write("Projects/Garden.md", "- [ ] plant the roses");
+	await wait(t, RELOAD_DELAY_MS);
+	// As Obsidian unloads the plugin: the timelines close with their view type, then the plugin drops the index.
+	await a.close();
+	shared.dispose();
+	vault.write("Archive/Old.md", "- [ ] an old task, edited");
+	release();
+	await settle();
+	assert.deepEqual(read(), ["Inbox.md", "Projects/Garden.md"], "what was marked before, as with an index of its own");
+	assert.deepEqual(shownNotices, []);
+	assert.equal(watchers(vault), 0);
 });
 
 test("the last timeline closed while its reload runs keeps the index for one opened meanwhile", async (t) => {

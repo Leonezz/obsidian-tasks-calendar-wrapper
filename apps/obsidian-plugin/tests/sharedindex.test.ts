@@ -72,6 +72,26 @@ test("the first reader makes the index, which watches the vault once; the last o
 	const fromC = await c.update({});
 	assert.deepEqual(read(), ALL);
 	assert.deepStrictEqual([...fromC.tasks], await readTasks(vault.app as never, {}, moment));
+	// A reader of the old index closed again leaves the new one alone.
+	a.close();
+	assert.equal(watchers(vault), 4);
+});
+
+test("a reader closed beside another is closed in the index: its notes go, and it reads them again", async () => {
+	const vault = fakeVault(notes());
+	const shared = sharedOf(vault);
+	const a = shared.openReader();
+	const b = shared.openReader();
+	await a.update({});
+	await b.update({ includePaths: ["Projects"] });
+	a.close();
+	await b.update({ includePaths: ["Projects"] });
+	const read = readsOf(vault);
+	// As a view that closed finishes the reload it was asked for: twice, as the index keeps nothing for it.
+	await a.update({});
+	await a.update({});
+	const unshown = ["Archive/Old.md", "Inbox.md", "Reference/Plain.md"];
+	assert.deepEqual(read(), [...unshown, ...unshown], "Garden stays, B shows it");
 });
 
 test("the last reader closed while its update reads: the update finishes, and a reader opened then gets a new index", async () => {
@@ -103,8 +123,12 @@ test("unloading the plugin stops the watching whatever is open, and no reader ca
 	shared.dispose();
 	shared.dispose();
 	assert.equal(watchers(vault), 0);
-	a.close();
 	assert.throws(() => shared.openReader(), /the plugin unloaded/);
-	// A reload a view had asked for still finishes.
+	// A reader is left to its view: a reload it had asked for still finishes, and keeps its notes for the next.
+	const read = readsOf(vault);
+	vault.write("Inbox.md", "- [ ] after the unload");
 	assert.equal((await a.update({})).tasks.length, 4);
+	assert.equal((await a.update({})).tasks.length, 4);
+	assert.deepEqual(read(), [], "it hears nothing, and keeps what it read");
+	a.close();
 });

@@ -23,7 +23,10 @@ export interface SharedTaskIndex extends ReaderSource {
 	 * the watching and drops the index, so the next timeline's index reads every note. Throws once the plugin unloaded.
 	 */
 	openReader(): TaskIndexReader;
-	/** The plugin unloads: stops the watching, closes every reader still open and drops the index. Idempotent. */
+	/**
+	 * The plugin unloads: stops the watching and drops the index. A reader still open is left to its view, which
+	 * closes it once its reloads are done; they finish on the dropped index, which hears nothing more. Idempotent.
+	 */
 	dispose(): void;
 }
 
@@ -77,10 +80,9 @@ export function createSharedTaskIndex(
 	return Object.freeze({
 		openReader,
 		dispose(): void {
+			// A reader closed now would keep nothing for the reload its view still runs, which would read every note.
 			disposed = true;
-			const readers = lease ? [...lease.readers] : [];
 			drop();
-			for (const reader of readers) reader.close();
 		},
 	});
 }

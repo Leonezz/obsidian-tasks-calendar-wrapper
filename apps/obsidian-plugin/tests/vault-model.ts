@@ -28,6 +28,11 @@ export interface OwnModel {
 	goneSilently: ReadonlySet<string>;
 	/** Since its last update, another reader's update stored under another key than the one before, dropping the rest. */
 	keyDropSeen: boolean;
+	/**
+	 * Notes it still stores, as it would not have read them, that the shared reader read in an update and could not:
+	 * the shared one holds them no more, and reads them again at each update until it can.
+	 */
+	failedUnread: ReadonlySet<string>;
 }
 
 export interface ReaderModel {
@@ -55,6 +60,8 @@ export interface OwnPlan {
 	readonly keyFlipped: boolean;
 	/** The files gone with no event whose stale entry it stored as the update started. */
 	readonly gone: ReadonlySet<string>;
+	/** OwnModel.failedUnread as the update started. */
+	readonly failedUnread: ReadonlySet<string>;
 }
 
 /** What the model says of an update as it starts. */
@@ -157,6 +164,7 @@ export function newReader(id: number, reader: TaskIndexReader, filters: NoteFilt
 			key: null,
 			goneSilently: new Set(),
 			keyDropSeen: false,
+			failedUnread: new Set(),
 		},
 		filters,
 		open: true,
@@ -233,6 +241,7 @@ function ownStarted(
 		everything,
 		keyFlipped: !everything && (own.keyDropSeen || sharedKey === null || !sameParseKey(sharedKey, key)),
 		gone: own.goneSilently,
+		failedUnread: own.failedUnread,
 	};
 	// One that rejects takes nothing: step 9's puts back what it took.
 	if (visible !== null) {
@@ -242,11 +251,18 @@ function ownStarted(
 	return plan;
 }
 
-/** What the reader's own index stores at the end of the update: what it read without failure, unless marked since. */
+/**
+ * What the reader's own index stores at the end of the update: what it read without failure, and what it kept, unless
+ * marked since. A note the shared reader could not read stays stored when the own index would not have read it.
+ */
 function ownEnded(asked: Asked, plan: Plan, endKey: ParseKey): void {
 	const { own } = asked.reader;
-	if (plan.own === null) return;
-	const stored = new Set((plan.visible ?? []).filter((path) => !asked.failed.has(path) && !own.marks.has(path)));
+	const ownPlan = plan.own;
+	if (ownPlan === null) return;
+	const visible = plan.visible ?? [];
+	const failedByOwn = (path: string) => asked.failed.has(path) && ownPlan.due.has(path);
+	const stored = new Set(visible.filter((path) => !failedByOwn(path) && !own.marks.has(path)));
+	own.failedUnread = new Set(visible.filter((path) => asked.failed.has(path) && !ownPlan.due.has(path)));
 	own.stored = stored;
 	own.filters = filterKey(asked.filters);
 	own.key = sameParseKey(plan.key, endKey) ? plan.key : null;

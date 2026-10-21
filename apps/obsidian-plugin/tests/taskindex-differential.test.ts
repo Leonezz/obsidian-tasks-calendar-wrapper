@@ -70,7 +70,11 @@ const COVERED_SHARED = [
 const MINIMUM = 10;
 
 /** A run whose console lines the test's mocks collect, keeping ours, as the other tests do. */
-const quietRun = (t: TestContext, count?: (what: string) => void): Run => ({ lines: ourLines(t), count });
+const quietRun = (t: TestContext, count?: (what: string) => void, exact = false): Run => ({
+	lines: ourLines(t),
+	count,
+	exact,
+});
 
 /**
  * Lets go of what a sequence that passed left behind: its console lines, and the calls the console mocks record, so a
@@ -91,16 +95,21 @@ const ORACLE = [
 	"fewer than its own",
 	"more than its own: the key changed and back",
 	"more than its own: a file gone unheard",
+	"more than its own: again, a note it could not read then",
 ];
 
-/** Runs the generated sequences, shrinks the first that fails, and checks what they covered. */
+/**
+ * Runs the generated sequences, shrinks the first that fails, and checks what they covered. `exact` holds every update
+ * to the reads of an index of its own, for sequences of one reader, where nothing may differ.
+ */
 async function soak(
 	t: TestContext,
 	generator: (seed: number, steps: number) => Action[],
 	covered: readonly string[],
+	exact: boolean,
 ): Promise<void> {
 	const coverage = new Map<string, number>();
-	const run = quietRun(t, (what) => coverage.set(what, (coverage.get(what) ?? 0) + 1));
+	const run = quietRun(t, (what) => coverage.set(what, (coverage.get(what) ?? 0) + 1), exact);
 	const started = performance.now();
 	for (let seed = FIRST; seed < FIRST + SEEDS; seed++) {
 		const actions = generator(seed, STEPS);
@@ -129,10 +138,10 @@ async function soak(
 }
 
 test(`the index gives what readTasks gives, over ${SEEDS} generated sequences of ${STEPS} steps`, (t) =>
-	soak(t, generate, COVERED));
+	soak(t, generate, COVERED, true));
 
 test(`readers sharing the index each give what readTasks gives, over ${SEEDS} sequences of ${STEPS} steps`, (t) =>
-	soak(t, generateShared, COVERED_SHARED));
+	soak(t, generateShared, COVERED_SHARED, false));
 
 /**
  * Shrunk sequences of failures found once, each run on its own, so a rare case stays covered whatever the seeds give.

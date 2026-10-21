@@ -85,7 +85,8 @@ export class TasksTimelineView extends ItemView {
 	async onClose(): Promise<void> {
 		this.requestReload.cancel();
 		// A reload that runs or waits goes on, and so does the one asked for while it ran; the last of them closes the
-		// reader, so the notes this view shows stay for them. The last reader closed drops the shared index.
+		// reader, so the notes this view shows stay for them, and they read the changes the index marks until then.
+		// The last reader closed drops the shared index.
 		this.closed = true;
 		if (!this.isReloading) this.reader.close();
 		// Runs the components' cleanup, so a reload that finishes after closing renders nothing.
