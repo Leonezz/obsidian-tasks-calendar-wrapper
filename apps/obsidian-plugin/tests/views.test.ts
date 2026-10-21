@@ -14,31 +14,39 @@ import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { heldOf, TasksTimelineView } from "../src/views";
 import { ObsidianBridge, quickFilterOf } from "../timeline/src/obsidianbridge";
 import { readTasks } from "../timeline/src/taskadapter";
+import type { TaskIndex } from "../timeline/src/taskindex";
 import { moment } from "../utils/moment";
 import { deeplyFrozen } from "./frozen";
 import { goldenApp, loadVault } from "./golden-vault";
 import { rowsOf } from "./markup";
 
-// The timeline's view reads the notes with core's readTasks and hands the bridge the tasks, and the list the old view
-// held of the tasks it shows, in its state. The bridge renders again when the options change, and when the list shown
-// changes, which also clears the quick filter, as when the old list, and the quick filter applied to it, was replaced.
+// The timeline's view reads the notes through its task index, which gives what readTasks gives, and hands the bridge
+// the tasks, and the list the old view held of the tasks it shows, in its state. The bridge renders again when the
+// options change, and when the list shown changes, which also clears the quick filter, as when the old list, and the
+// quick filter applied to it, was replaced.
 
 const DAY = 24 * 60 * 60 * 1000;
 
-/** A timeline view opened on an app, counting the changes of the list shown. */
+/**
+ * A timeline view opened on an app, counting the changes of the list shown. `edited` tells the view a note changed, as
+ * Obsidian's "changed" does through watchNotes, so that the next reload reads the note; these apps fire no events.
+ */
 function openView(app: unknown) {
 	const view = new TasksTimelineView({ app } as never);
-	const store = (view as unknown as { store: Store<TimelineState> }).store;
+	const { store, index } = view as unknown as { store: Store<TimelineState>; index: TaskIndex };
 	let changes = 0;
 	let shown = store.getSnapshot().shown;
 	store.subscribe(() => {
 		if (store.getSnapshot().shown !== shown) changes += 1;
 		shown = store.getSnapshot().shown;
 	});
-	return { view, store, changes: () => changes };
+	return { view, store, changes: () => changes, edited: (path: string) => index.markDirty([path]) };
 }
 
-/** An app whose notes have one task each, on their first line, and can be edited between reloads. */
+/**
+ * An app whose notes have one task each, on their first line, and can be edited between reloads. Each edit is told to
+ * the view with `edited`, see openView.
+ */
 function notesApp(notes: Record<string, string>) {
 	return {
 		vault: {
@@ -243,6 +251,7 @@ test("the quick filter lasts until the list shown changes, as it did", async () 
 	await opened.view.onUpdateOptions({ ...options, dateFormat: "DD.MM.YYYY" });
 	assert.deepEqual(rows(), ["Inbox.md:0"]);
 	notes["Done.md"] = "- [-] gamma 📅 2026-01-15";
+	opened.edited("Done.md");
 	const before = (bridge.state as { tasks: unknown }).tasks;
 	await opened.view.onReloadTasks();
 	const hidden = opened.store.getSnapshot().tasks.find((task) => task.path === "Done.md");
@@ -263,6 +272,7 @@ test("a task edited where it is shown clears the quick filter, and so does a tas
 	const { bridge, rows } = bridgeOf(opened, app);
 	bridge.handleFilterEnable("2026-01-19", "2026-01-21", []);
 	notes["Later.md"] = "- [ ] alpha, renamed 📅 2026-01-25";
+	opened.edited("Later.md");
 	await opened.view.onReloadTasks();
 	assert.deepEqual(rows().sort(), ["Inbox.md:0", "Later.md:0"]);
 
@@ -306,6 +316,7 @@ test("the bridge takes in what changed between drawing it and mounting it, and n
 	bridge.componentWillUnmount();
 	const before = updates;
 	notes["Inbox.md"] = "- [ ] beta, edited 📅 2026-01-20";
+	opened.edited("Inbox.md");
 	await opened.view.onUpdateOptions({ ...defaultUserOptions });
 	assert.equal(updates, before);
 });
@@ -321,9 +332,11 @@ test("a reload that ends before the bridge renders with the same list shown brin
 	await opened.view.onUpdateOptions({ ...defaultUserOptions, hideStatusTasks: ["x"] });
 	const { bridge, flush, rows } = deferredBridgeOf(opened, app);
 	notes["A.md"] = "- [ ] alpha, renamed 📅 2026-01-20";
+	opened.edited("A.md");
 	const first = opened.view.onReloadTasks();
 	// While the first reload runs: the hidden task changes, and new options ask for another reload.
 	notes["H.md"] = "- [-] hidden 📅 2026-01-15";
+	opened.edited("H.md");
 	const second = opened.view.onUpdateOptions({ ...defaultUserOptions, hideStatusTasks: ["-"] });
 	await first;
 	await second;
@@ -348,6 +361,7 @@ test("a bridge mounted before the first reload keeps the quick filter until the 
 	assert.deepEqual(rows(), [], "a setting that changes nothing shown");
 	const before = (bridge.state as { tasks: unknown }).tasks;
 	notes["Done.md"] = "- [-] gamma 📅 2026-01-15";
+	opened.edited("Done.md");
 	await opened.view.onReloadTasks();
 	assert.equal((bridge.state as { tasks: unknown }).tasks, before, "an edit of a hidden task");
 	assert.deepEqual(rows(), []);
