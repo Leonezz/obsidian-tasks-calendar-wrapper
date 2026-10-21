@@ -175,16 +175,22 @@ export function notesOf(dir) {
 	return new Map(markdownFiles(dir).map((file) => [file, readFileSync(path.join(dir, file))]));
 }
 
+/** This checkout's release build: dist/main.js, made by `pnpm build`, and styles.css. */
+export const releaseBuild = () => ({
+	mainJs: path.join(packageDir, "dist", "main.js"),
+	stylesCss: path.join(packageDir, "styles.css"),
+});
+
 /**
- * Copies the release build (dist/main.js, made by `pnpm build`), manifest.json and styles.css into the vault's
- * plugin folder, with `settings` as data.json. Returns `restore`, which puts the folder back as it was.
+ * Copies a build, this checkout's release build unless `build` names another main.js and styles.css, and manifest.json
+ * into the vault's plugin folder, with `settings` as data.json. Returns `copyBuild`, which puts another build's main.js
+ * and styles.css in place while keeping the manifest, and `restore`, which puts the folder back as it was.
  * What the folder held is kept on disk until then, in .obsidian/.tcw-fixture-backup (Obsidian ignores folders it does
  * not know there), so after a run that was killed the next one restores it instead of taking the leftovers for it.
  */
-export function installPlugin(vaultPath, settings) {
-	const mainJs = path.join(packageDir, "dist", "main.js");
-	if (!existsSync(mainJs))
-		throw new ScriptError(`${path.relative(repoRoot, mainJs)} does not exist. Run \`pnpm build\` first.`);
+export function installPlugin(vaultPath, settings, build = releaseBuild()) {
+	if (!existsSync(build.mainJs))
+		throw new ScriptError(`${path.relative(repoRoot, build.mainJs)} does not exist. Run \`pnpm build\` first.`);
 	const obsidianDir = path.join(vaultPath, ".obsidian");
 	const pluginsDir = path.join(obsidianDir, "plugins");
 	const pluginDir = path.join(pluginsDir, manifest.id);
@@ -211,17 +217,20 @@ export function installPlugin(vaultPath, settings) {
 	writeFileSync(stateFile, JSON.stringify(state));
 	const writeSettings = (values) =>
 		writeFileSync(path.join(pluginDir, "data.json"), JSON.stringify(values, null, "\t"));
+	const copyBuild = (files) => {
+		copyFileSync(files.mainJs, path.join(pluginDir, "main.js"));
+		copyFileSync(files.stylesCss, path.join(pluginDir, "styles.css"));
+	};
 	try {
 		mkdirSync(pluginDir, { recursive: true });
-		copyFileSync(mainJs, path.join(pluginDir, "main.js"));
+		copyBuild(build);
 		copyFileSync(path.join(repoRoot, "manifest.json"), path.join(pluginDir, "manifest.json"));
-		copyFileSync(path.join(packageDir, "styles.css"), path.join(pluginDir, "styles.css"));
 		writeSettings(settings);
 	} catch (error) {
 		restore();
 		throw error;
 	}
-	return { writeSettings, restore };
+	return { writeSettings, copyBuild, restore };
 }
 
 /**

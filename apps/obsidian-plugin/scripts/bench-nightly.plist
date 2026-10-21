@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+A LaunchAgent that runs scripts/bench-nightly.mjs at 03:00 in the logged-in user's session, where Obsidian runs.
+Nothing installs it for you: the header of scripts/bench-nightly.mjs says how, and what a laptop needs for it.
+The placeholders __REPO__, __HOME__ and __PATH__ are filled in when it is copied to ~/Library/LaunchAgents.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.github.leonezz.tcw-bench-nightly</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/bin/env</string>
+		<string>node</string>
+		<string>__REPO__/apps/obsidian-plugin/scripts/bench-nightly.mjs</string>
+	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PATH</key>
+		<string>__PATH__</string>
+	</dict>
+	<key>WorkingDirectory</key>
+	<string>__REPO__</string>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>3</integer>
+		<key>Minute</key>
+		<integer>0</integer>
+	</dict>
+	<!-- It drives the Obsidian window of the logged-in session; Interactive keeps launchd from throttling it. -->
+	<key>ProcessType</key>
+	<string>Interactive</string>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StandardOutPath</key>
+	<string>__HOME__/Library/Logs/tcw-bench-nightly.log</string>
+	<key>StandardErrorPath</key>
+	<string>__HOME__/Library/Logs/tcw-bench-nightly.log</string>
+</dict>
+</plist>
