@@ -14,7 +14,7 @@
  * - write a note before Obsidian has indexed it (`indexed: false`): only "modify" or "create" fires, and the metadata
  *   stays as it was, none for a new note, until indexPending fires "changed" for each such note, then "resolved". A
  *   note removed meanwhile is no longer waiting, and one renamed waits at its new path;
- * - change a note with no event at all (writeSilently), as when an event is missed;
+ * - change or remove a file with no event at all (writeSilently, removeSilently), as when an event is missed;
  * - make reading a note fail (failReads) and work again (healReads), hold every read until a test lets them go
  *   (holdReads), or make the next listing of the notes throw (breakListing);
  * - with `staggerReads`, have reads finish out of order, a few microtasks apart, so a change can land between two
@@ -420,6 +420,14 @@ export function fakeVault(
 		writeSilently(path: string, content: string): void {
 			contents.set(path, content);
 			caches.set(path, path.endsWith(".md") ? metadataOf(content, jsonFrontmatter) : {});
+		},
+		/** Not in Obsidian: the file, its text and its metadata go, and no event says so, as when an event is missed. */
+		removeSilently(path: string): void {
+			if (!(files.get(path) instanceof TFile)) throw new Error(`there is no file ${path}`);
+			files.delete(path);
+			pending.delete(path);
+			caches.delete(path);
+			contents.delete(path);
 		},
 		/** Not in Obsidian: the next listing of the notes throws, as in a vault that is not ready. */
 		breakListing(): void {

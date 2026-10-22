@@ -7,10 +7,11 @@ import assert from "node:assert/strict";
 
 import { ourLines } from "./indexed-vault";
 import { runSequence, shrink, type Run } from "./vault-check";
-import { generate, type Action } from "./vault-steps";
+import { generate, generateShared, type Action } from "./vault-steps";
 
 // The task index against readTasks, over generated sequences of changes to a fake vault, see tests/vault-check.ts for
-// what each update is checked for. The defaults run in about a second and a half; for a longer run, set
+// what each update is checked for: sequences of one reader, as one timeline has, and of up to three readers sharing
+// the index, as the plugin's timelines do. The defaults run in about three seconds; for a longer run, set
 // TASKINDEX_SEEDS and TASKINDEX_STEPS, and to replay one seed, TASKINDEX_SEED=<seed> TASKINDEX_SEEDS=1:
 //   TASKINDEX_SEEDS=3000 TASKINDEX_STEPS=60 pnpm --filter @tasks-calendar-wrapper/obsidian-plugin test
 
@@ -36,6 +37,7 @@ const COVERED = [
 	"at rest",
 	"at rest with failures",
 	"broken listing",
+	"checked against its own",
 	"during reads",
 	"env",
 	"filters",
@@ -50,10 +52,29 @@ const COVERED = [
 	"rename md/txt",
 	"write unindexed",
 ];
+/** And these too, over the sequences of several readers. */
+const COVERED_SHARED = [
+	...COVERED,
+	"at rest beside other filters",
+	"close",
+	"closed during",
+	"closed reader update",
+	"failure kept for another reader",
+	"not listed, not kept",
+	"open",
+	"queued",
+	"shared read",
+	"silent failure",
+	"silent remove",
+];
 const MINIMUM = 10;
 
 /** A run whose console lines the test's mocks collect, keeping ours, as the other tests do. */
-const quietRun = (t: TestContext, count?: (what: string) => void): Run => ({ lines: ourLines(t), count });
+const quietRun = (t: TestContext, count?: (what: string) => void, exact = false): Run => ({
+	lines: ourLines(t),
+	count,
+	exact,
+});
 
 /**
  * Lets go of what a sequence that passed left behind: its console lines, and the calls the console mocks record, so a
@@ -68,12 +89,30 @@ function forget(run: Run): void {
 /** The first lines of a failure's message. */
 const firstLines = (error: Error, count: number) => error.message.split("\n").slice(0, count).join("\n");
 
-test(`the index gives what readTasks gives, over ${SEEDS} generated sequences of ${STEPS} steps`, async (t) => {
+/** How often a reader read more, or fewer, notes than an index of its own would have. */
+const ORACLE = [
+	"checked against its own",
+	"fewer than its own",
+	"more than its own: the key changed and back",
+	"more than its own: a file gone unheard",
+	"more than its own: again, a note it could not read then",
+];
+
+/**
+ * Runs the generated sequences, shrinks the first that fails, and checks what they covered. `exact` holds every update
+ * to the reads of an index of its own, for sequences of one reader, where nothing may differ.
+ */
+async function soak(
+	t: TestContext,
+	generator: (seed: number, steps: number) => Action[],
+	covered: readonly string[],
+	exact: boolean,
+): Promise<void> {
 	const coverage = new Map<string, number>();
-	const run = quietRun(t, (what) => coverage.set(what, (coverage.get(what) ?? 0) + 1));
+	const run = quietRun(t, (what) => coverage.set(what, (coverage.get(what) ?? 0) + 1), exact);
 	const started = performance.now();
 	for (let seed = FIRST; seed < FIRST + SEEDS; seed++) {
-		const actions = generate(seed, STEPS);
+		const actions = generator(seed, STEPS);
 		const failure = await runSequence(actions, run);
 		if (failure === null) {
 			forget(run);
@@ -90,17 +129,26 @@ test(`the index gives what readTasks gives, over ${SEEDS} generated sequences of
 		);
 	}
 	t.diagnostic(`${SEEDS} sequences of ${STEPS} steps in ${Math.round(performance.now() - started)} ms`);
+	t.diagnostic(ORACLE.map((what) => `${what}: ${coverage.get(what) ?? 0}`).join(", "));
 	if (SEEDS < GUARDED) return;
-	for (const what of COVERED) {
+	for (const what of covered) {
 		const times = coverage.get(what) ?? 0;
 		assert.ok(times >= MINIMUM, `the sequences cover "${what}" too rarely: ${times} times`);
 	}
-});
+}
+
+test(`the index gives what readTasks gives, over ${SEEDS} generated sequences of ${STEPS} steps`, (t) =>
+	soak(t, generate, COVERED, true));
+
+test(`readers sharing the index each give what readTasks gives, over ${SEEDS} sequences of ${STEPS} steps`, (t) =>
+	soak(t, generateShared, COVERED_SHARED, false));
 
 /**
  * Shrunk sequences of failures found once, each run on its own, so a rare case stays covered whatever the seeds give.
  * PATHS[0] is "a.md", CONTENTS[0] has a date, CONTENTS[1] two tasks with dates, CONTENTS[5] a date in Arabic digits;
  * ENVIRONMENTS[0] is zh-cn, [2] an updateLocale with an Arabic-digit preparse, [3] one with the identity, in place.
+ * CONTENTS[4] is a note tagged #skip; FILTERS[0] is none, as the first reader starts with, [2] leaves out the archive,
+ * and [3] keeps the notes tagged #work.
  */
 const REGRESSIONS: readonly { readonly name: string; readonly actions: readonly Action[] }[] = [
 	{
@@ -123,6 +171,57 @@ const REGRESSIONS: readonly { readonly name: string; readonly actions: readonly 
 			{ op: "updateDuring", ticks: 0, during: [{ op: "env", pick: 0 }] },
 			{ op: "restoreEnv" },
 			{ op: "update" },
+		],
+	},
+	{
+		// Found at seed 845 of 3,000 sequences of several readers: a new reader's full read failed to read a note, with
+		// no mark or full read since the other's update; its next update must read the note again, not take the
+		// other's entry, as it holds the note no more.
+		name: "a reader uses only the entries of notes its last update gave without failure",
+		actions: [
+			{ op: "open", filters: 0 },
+			{ op: "write", path: 38, content: 1, indexed: true },
+			{ op: "update", reader: 6 },
+			{ op: "silentFail", pick: 260 },
+			{ op: "updateDuring", reader: 4, ticks: 5, during: [{ op: "update", reader: 1 }] },
+			{ op: "pair", a: 0, b: 1 },
+		],
+	},
+	{
+		// The random sequences seldom reach it: a file that went with no event is listed no more, so its entry goes,
+		// although another reader showed it, and a note made at its path, which fires only "create", is read.
+		name: "an entry another reader showed is not kept once its file is no longer listed",
+		actions: [
+			{ op: "write", path: 0, content: 0, indexed: true },
+			{ op: "open", filters: 0 },
+			{ op: "update", reader: 0 },
+			{ op: "update", reader: 1 },
+			{ op: "silentRemove", pick: 0 },
+			{ op: "update", reader: 0 },
+			{ op: "write", path: 0, content: 1, indexed: false },
+			{ op: "update", reader: 1 },
+		],
+	},
+	{
+		// Found at seed 98 of 1,000 sequences of several readers: the first reader closes, and its late update, which
+		// shows nothing, is the only reader of the index then; it must keep the note the open reader holds.
+		name: "an update of a closed reader keeps the notes the open readers hold",
+		actions: [
+			{ op: "write", path: 0, content: 4, indexed: true },
+			{ op: "filters", pick: 3, reader: 0 },
+			{ op: "open", filters: 2 },
+			{ op: "close", pick: 2 },
+			{ op: "pair", a: 6, b: 8 },
+			{ op: "closedUpdate", pick: 3 },
+			{
+				op: "updateDuring",
+				reader: 3,
+				ticks: 2,
+				during: [
+					{ op: "renameFolder", pick: 138, to: 5 },
+					{ op: "rename", pick: 583, to: 43 },
+				],
+			},
 		],
 	},
 ];

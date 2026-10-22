@@ -10,18 +10,19 @@ import type { App } from "obsidian";
 import type { MomentFactory, Task } from "@tasks-calendar-wrapper/core";
 import { defaultUserOptions } from "../src/useroptions";
 import { reportNoteReads } from "../timeline/src/taskadapter";
-import { createTaskIndex, watchNotes, type IndexUpdate, type NoteSource } from "../timeline/src/taskindex";
+import { watchChanges, watchNotes, type IndexUpdate, type NoteSource } from "../timeline/src/taskindex";
 import type { moment as obsidianMoment } from "../utils/moment";
 import { parseKeyOf, type ParseKey } from "../utils/parsekey";
 import { changeAffectsTasks } from "../utils/refresh";
 import { fakeVault } from "./fakevault";
 import { goldenApp, loadVault } from "./golden-vault";
-import { ALL, indexed, notes, ourLines, pathsOf, shownNotices, telling } from "./indexed-vault";
+import { ALL, indexed, notes, ourLines, pathsOf, shownNotices, soleReader, telling } from "./indexed-vault";
 
 // The task index keeps the parsed notes of a view between reloads, so a reload reads only the notes that may have
 // changed. These tests pin which notes each update reads, exactly, and that what it returns is what readTasks returns.
-// taskindex-env.test.ts changes the parse environment and reads the golden vault, and taskindex-differential.test.ts
-// compares the index with readTasks over generated sequences of changes.
+// taskindex-env.test.ts changes the parse environment and reads the golden vault, taskindex-readers.test.ts has several
+// readers share one index, and taskindex-differential.test.ts compares the index with readTasks over generated
+// sequences of changes.
 
 /** Compiles only when T fits Bound. */
 type Fits<T extends Bound, Bound> = T;
@@ -93,7 +94,7 @@ test("saving a note without tasks schedules no reload, and the next update reads
 	const first = await t.index.update({});
 	t.since();
 	t.vault.write("Reference/Plain.md", "# Plain\n\n- edited");
-	const [paths, cache] = t.heard[t.heard.length - 1] ?? assert.fail("watchNotes handed on no change");
+	const [paths, cache] = t.heard[t.heard.length - 1] ?? assert.fail("watchChanges handed on no change");
 	assert.deepEqual(paths, ["Reference/Plain.md"]);
 	assert.equal(changeAffectsTasks(paths, cache, new Set(pathsOf(first.tasks))), false, "the view does not reload");
 	await t.index.update({});
@@ -632,17 +633,24 @@ test("metadata that cannot be read while the notes are filtered rejects the upda
 
 // F. Contract
 
-test("an update asked for while one runs is refused; the running one goes on, and the marks wait", async () => {
+test("an update asked for while one runs waits for it and then runs; a rejected one does not stop the next", async () => {
 	const t = indexed();
+	const release = t.vault.holdReads();
 	const running = t.index.update({});
+	const listed = t.vault.listings();
 	t.vault.write("Inbox.md", "- [ ] one");
-	await assert.rejects(t.index.update({}), /while another update was running/);
-	await assert.rejects(t.index.update({}), /while another update was running/, "still refused after a refusal");
+	const queued = t.index.update({});
+	const broken = t.index.update({ includePaths: "Projects" as never });
+	const after = t.index.update({});
+	assert.equal(t.vault.listings(), listed, "the queued ones have not started");
+	release();
 	assert.equal((await running).tasks.length, 4);
-	t.since();
-	const next = await t.index.update({});
-	assert.deepEqual(t.since().read, ["Inbox.md"]);
-	assert.deepStrictEqual([...next.tasks], await t.reference());
+	await queued;
+	await assert.rejects(broken, /include\.some is not a function/);
+	const last = await after;
+	assert.deepEqual(t.since().read, [...ALL, "Inbox.md"], "the mark made while the first ran is read by the next one");
+	assert.equal(t.vault.listings(), listed + 3);
+	assert.deepStrictEqual([...last.tasks], await t.reference());
 });
 
 test("tasks come by path in code-unit order, then in the order parseNote gives them", async () => {
@@ -671,7 +679,7 @@ function containers(value: unknown, found = new Set<object>()): Set<object> {
 test("the tasks keep none of Obsidian's metadata objects", async () => {
 	const handedOut: unknown[] = [];
 	const app = goldenApp(loadVault(), {}, handedOut) as never;
-	const index = createTaskIndex({ app, moment, parseKey: () => parseKeyOf(moment) });
+	const index = soleReader({ app, moment, parseKey: () => parseKeyOf(moment) });
 	const result = await index.update(defaultUserOptions);
 	assert.ok(result.tasks.length > 100 && handedOut.length > 0);
 	const reachable = containers(result.tasks);
@@ -679,15 +687,15 @@ test("the tasks keep none of Obsidian's metadata objects", async () => {
 	assert.deepEqual(kept, []);
 });
 
-test("watchNotes marks the paths of each change first, then hands on the change with its metadata", () => {
+test("watchNotes marks the paths of each change, then watchChanges hands on the change with its metadata", () => {
 	const vault = fakeVault({ ...notes(), "Projects/Pond.md": "- [ ] dig the pond" });
 	const { metadataCache } = vault.app;
 	const events: unknown[][] = [];
-	const refs = watchNotes(
-		vault.app as never,
-		{ markDirty: (paths) => events.push(["marked", ...paths]) },
-		(paths, cache) => events.push(["changed", paths, cache]),
-	);
+	// Registered in this order, as the plugin's shared index watches before a view does.
+	const refs = [
+		...watchNotes(vault.app as never, { markDirty: (paths) => events.push(["marked", ...paths]) }),
+		...watchChanges(vault.app as never, (paths, cache) => events.push(["changed", paths, cache])),
+	];
 	const fileCache = (path: string) => metadataCache.getFileCache(vault.app.vault.getAbstractFileByPath(path));
 	const expect = (change: () => void, paths: string[], cache: () => unknown) => {
 		events.length = 0;

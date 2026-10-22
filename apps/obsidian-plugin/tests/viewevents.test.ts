@@ -9,7 +9,8 @@ import { Notice } from "obsidian";
 import type { Store } from "@tasks-calendar-wrapper/core";
 import type { TimelineState } from "../src/state/timeline";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
-import { TasksTimelineView } from "../src/views";
+import { TasksTimelineView, timelineTaskIndex } from "../src/views";
+import type { SharedTaskIndex } from "../timeline/src/sharedindex";
 import { fakeVault, type FakeVault } from "./fakevault";
 import { ourLines } from "./indexed-vault";
 import { roots } from "./stubs/react-dom-client";
@@ -28,6 +29,16 @@ const shownNotices = (Notice as unknown as { shown: string[] }).shown;
 interface Opening {
 	open(): Promise<void>;
 	close(): Promise<void>;
+}
+
+/** The task index each vault's timelines share, as the plugin's do. */
+const sharedIndexes = new WeakMap<FakeVault, SharedTaskIndex>();
+function sharedIndexOf(vault: FakeVault): SharedTaskIndex {
+	const known = sharedIndexes.get(vault);
+	if (known) return known;
+	const made = timelineTaskIndex(vault.app as never);
+	sharedIndexes.set(vault, made);
+	return made;
 }
 
 /** Lets the reads of a reload, which need no timer, finish. */
@@ -50,7 +61,7 @@ async function openTimeline(
 	{ resolved = true, options = {} }: { resolved?: boolean; options?: Partial<UserOption> } = {},
 ) {
 	const leaf = vault.app.workspace.addLeaf();
-	const view = new TasksTimelineView(leaf as never);
+	const view = new TasksTimelineView(leaf as never, sharedIndexOf(vault));
 	const loading = view.onUpdateOptions({ ...defaultUserOptions, ...options });
 	leaf.view = view;
 	await (view as unknown as Opening).open();
@@ -372,7 +383,7 @@ test("the first reload after the view opens reads every note again, as a change 
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const vault = fakeVault(notes());
 	const leaf = vault.app.workspace.addLeaf();
-	const view = new TasksTimelineView(leaf as never);
+	const view = new TasksTimelineView(leaf as never, sharedIndexOf(vault));
 	// The plugin's view factory hands the new view the options, which reads the notes, before Obsidian opens it.
 	await view.onUpdateOptions({ ...defaultUserOptions });
 	vault.write("Inbox.md", "- [ ] call the plumber, before the view listened");

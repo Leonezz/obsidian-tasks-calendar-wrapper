@@ -1,21 +1,47 @@
 /**
- * Runs a sequence of tests/vault-steps.ts against a task index and readTasks on one fake vault, and checks each update:
- * - at rest, the index gives what readTasks gives, tasks and moments included, rejects as it rejects, and its warnings
- *   and failures tell the user what readTasks tells;
- * - always, it reads exactly the notes a model of the marks says are due, each once, and parses each it read;
- * - a note it did not read gives the same Task objects as before.
- * shrink makes a failing sequence as short as it can while it still fails.
+ * Runs a sequence of tests/vault-steps.ts against the readers of one task index and against readTasks, on one fake
+ * vault, and checks each update:
+ * - at rest, a reader gets what readTasks gives with its own filters, tasks and moments included, rejects as it
+ *   rejects, and its warnings and failures tell the user what readTasks tells;
+ * - always, it reads exactly the notes the model of tests/vault-model.ts says are due, in order and each once, parses
+ *   each it read, and reads no note an index of the reader's own would not read at the same moment, but in the two
+ *   cases the model names and again a note it could not read in one of them; with one reader, exactly those notes;
+ * - a note it did not read gives the same Task objects as the last update, of any reader, that gave it.
+ * The sequence starts with one reader open, with no filters, as a sequence of one reader has it. shrink makes a failing
+ * sequence as short as it can while it still fails.
  */
 import assert from "node:assert/strict";
 import moment from "moment";
 import { Notice } from "obsidian";
 
-import { noteVisible, parseNote, resolveTasks, type NoteFilterSettings, type Task } from "@tasks-calendar-wrapper/core";
+import { parseNote, resolveTasks, type Task } from "@tasks-calendar-wrapper/core";
 import { readTasks, reportNoteReads } from "../timeline/src/taskadapter";
 import { createTaskIndex, watchNotes, type IndexUpdate, type TaskIndex } from "../timeline/src/taskindex";
-import { parseKeyOf, sameParseKey, type ParseKey } from "../utils/parsekey";
-import { fakeVault, type FakeVault } from "./fakevault";
-import { applyVaultAction, resetEnvironment, type Action, type Stage, type VaultAction } from "./vault-steps";
+import { parseKeyOf } from "../utils/parsekey";
+import { fakeVault } from "./fakevault";
+import {
+	ended,
+	filterKey,
+	fullReadAsked,
+	marked,
+	newReader,
+	openReaders,
+	pickOpen,
+	started,
+	type Asked,
+	type Plan,
+	type ReaderModel,
+	type World,
+} from "./vault-model";
+import {
+	applyVaultAction,
+	FILTERS,
+	MOST_READERS,
+	resetEnvironment,
+	type Action,
+	type Stage,
+	type VaultAction,
+} from "./vault-steps";
 
 /** The stub of Notice keeps what it showed; the real type knows nothing of that. */
 const shownNotices = (Notice as unknown as { shown: string[] }).shown;
@@ -26,70 +52,24 @@ export interface Run {
 	readonly lines: unknown[][];
 	/** Told what each step did, for the coverage guard. */
 	readonly count?: (what: string) => void;
+	/** For sequences of one reader: each update reads exactly what an index of its own would, no fewer, no more. */
+	readonly exact?: boolean;
 }
 
-/** The last update that succeeded. */
-interface Previous {
-	readonly result: IndexUpdate;
-	/** The notes listed and kept by the filters when it started. */
-	readonly visible: ReadonlySet<string>;
-	readonly failed: ReadonlySet<string>;
-}
-
-/** What the model knows of the index, besides the stage the vault actions change. */
-interface World extends Stage {
+/** What a sequence runs with: the model, the index, the app readTasks reads through, and the vault actions' stage. */
+interface Setup {
+	readonly world: World;
 	readonly index: TaskIndex;
-	/** The paths parsed, in order. */
-	readonly parsed: string[];
-	/** The paths watchNotes marked since the last update took the marks. */
-	marked: Set<string>;
-	/** The environment changed during the last update, so the index may read everything, or not. */
-	maybeFull: boolean;
-	committed: { readonly filters: string; readonly parseKey: ParseKey } | null;
-	previous: Previous | null;
+	/** The vault's app without the hooks, so readTasks's reads and parses are not taken for the index's. */
+	readonly reference: unknown;
+	readonly stage: Stage;
+	readonly run: Run;
 }
 
-/** What one update starts from: the model takes it right before update(), as the index takes its marks. */
-interface Window {
-	readonly marks: ReadonlySet<string>;
-	readonly rereadAll: boolean;
-	readonly maybeFull: boolean;
-}
-
-function takeWindow(world: World): Window {
-	const window = { marks: world.marked, rereadAll: world.rereadAll, maybeFull: world.maybeFull };
-	world.marked = new Set();
-	world.rereadAll = false;
-	world.maybeFull = false;
-	return window;
-}
-
-/** A rejected update stored nothing: its window goes on into the next one. */
-function putBack(world: World, window: Window): void {
-	world.marked = new Set([...window.marks, ...world.marked]);
-	world.rereadAll ||= window.rereadAll;
-	world.maybeFull ||= window.maybeFull;
-}
-
-const filterKey = (s: NoteFilterSettings) =>
-	JSON.stringify([s.includePaths, s.excludePaths, s.fileIncludeTags, s.fileExcludeTags, s.excludeProperties]);
-
-const sorted = (paths: Iterable<string>) => [...paths].sort();
-
-/** The notes the filters keep now, worked out without listing through the vault; null when the filters throw. */
-function visibleNow(vault: FakeVault, filters: NoteFilterSettings): Set<string> | null {
-	const notes = vault.filePaths().filter((path) => path.endsWith(".md"));
-	try {
-		return new Set(
-			notes.filter((path) => {
-				const cache = vault.app.metadataCache.getFileCache(vault.app.vault.getAbstractFileByPath(path));
-				const note = { path, tags: cache?.tags?.map((t) => t.tag) ?? [], frontmatter: cache?.frontmatter };
-				return noteVisible(note, filters);
-			}),
-		);
-	} catch {
-		return null;
-	}
+/** An update asked for, and what it gives. */
+interface Pending {
+	readonly asked: Asked;
+	readonly promise: Promise<IndexUpdate>;
 }
 
 interface Captured<T> {
@@ -119,15 +99,80 @@ function tasksByPath(tasks: readonly Task[]): Map<string, Task[]> {
 	return byPath;
 }
 
-/** At rest, the index gives what readTasks gives, and tells the user the same. */
-async function checkAtRest(
-	world: World,
-	filters: NoteFilterSettings,
-	indexed: Captured<IndexUpdate>,
-	at: string,
-	run: Run,
-) {
-	const reference = await captured(run.lines, () => readTasks(world.vault.app as never, filters, moment));
+const sorted = (paths: Iterable<string>) => [...paths].sort();
+
+/** Asks the reader's index for an update. It is in the model's queue first, as it may start right in update(). */
+function ask(s: Setup, reader: ReaderModel, at: string): Pending {
+	const { world } = s;
+	if (world.current !== null || world.waiting.length > 0) s.run.count?.("queued");
+	const asked: Asked = {
+		reader,
+		filters: reader.filters,
+		at,
+		plan: null,
+		ended: false,
+		reads: [],
+		parsed: [],
+		unread: new Set(),
+		failed: new Set(),
+		markedDuring: new Set(),
+		requestedDuring: new Set(),
+	};
+	world.waiting.push(asked);
+	const promise = reader.reader.update(reader.filters);
+	// Kept from turning into an unhandled rejection before it is checked.
+	promise.catch(() => {});
+	return { asked, promise };
+}
+
+/** Checks an update once it settled, against the model, readTasks when at rest, and the updates before. */
+async function check(s: Setup, { asked, promise }: Pending): Promise<void> {
+	const result = await captured(s.run.lines, () => promise);
+	// Read once it settled: an update that waited had no plan when it was asked for.
+	const { at, reader, plan } = asked;
+	assert.ok(plan !== null && asked.ended, `${at}: the update started and ended`);
+	assert.deepEqual(result.told, [], `${at}: an update tells the user nothing itself`);
+	assert.equal(result.error !== undefined, plan.visible === null, `${at}: the update threw ${result.error}`);
+	assert.deepEqual(asked.reads, plan.due, `${at}: the notes reader ${reader.id} read`);
+	checkAgainstOwn(asked, plan, s.run);
+	if (atRest(s.world, asked, plan)) await checkAtRest(s, asked, result);
+	if (result.error === undefined) checkResult(s, asked, plan, result.value as IndexUpdate);
+}
+
+/** No vault action came since it started, and it shows no note that fails or went with no event. */
+function atRest(world: World, asked: Asked, plan: Plan): boolean {
+	const unheard = (path: string) => world.silent.has(path) || world.silentlyRemoved.has(path);
+	return plan.actions === world.actions && !asked.reader.missedSinceClose && !(plan.visible ?? []).some(unheard);
+}
+
+/**
+ * It read no note an index of its reader's own would not read, but in the two cases the model names, and again a note
+ * it could not read in one of them.
+ */
+function checkAgainstOwn(asked: Asked, plan: Plan, run: Run): void {
+	const own = plan.own;
+	if (own === null) return;
+	if (run.exact) {
+		const sorted = (paths: Iterable<string>) => [...paths].sort();
+		assert.deepEqual(sorted(asked.reads), sorted(own.due), `${asked.at}: the reads of an index of its own`);
+	}
+	const more = asked.reads.filter((path) => !own.due.has(path));
+	if (more.length > 0 && own.keyFlipped) run.count?.("more than its own: the key changed and back");
+	else if (more.length > 0 && more.every((path) => own.gone.has(path)))
+		run.count?.("more than its own: a file gone unheard");
+	else if (more.length > 0 && more.every((path) => own.gone.has(path) || own.failedUnread.has(path)))
+		run.count?.("more than its own: again, a note it could not read then");
+	else assert.deepEqual(more, [], `${asked.at}: reader ${asked.reader.id} read what an index of its own would not`);
+	if (asked.reads.length < own.due.size) run.count?.("fewer than its own");
+	if (own.everything) run.count?.("full");
+	run.count?.("checked against its own");
+}
+
+/** At rest, the update gives what readTasks gives with its filters, and tells the user the same. */
+async function checkAtRest(s: Setup, asked: Asked, indexed: Captured<IndexUpdate>): Promise<void> {
+	const { at, reader } = asked;
+	const { run } = s;
+	const reference = await captured(run.lines, () => readTasks(s.reference as never, asked.filters, moment));
 	if (reference.error !== undefined) {
 		assert.ok(indexed.error !== undefined, `${at}: readTasks threw ${reference.error}, the index did not`);
 		assert.equal(String(indexed.error), String(reference.error), `${at}: the same error`);
@@ -136,165 +181,272 @@ async function checkAtRest(
 	}
 	assert.equal(indexed.error, undefined, `${at}: the index threw ${indexed.error}, readTasks did not`);
 	const result = indexed.value as IndexUpdate;
-	assert.deepStrictEqual([...result.tasks], reference.value, `${at}: the tasks`);
+	assert.deepStrictEqual([...result.tasks], reference.value, `${at}: the tasks of reader ${reader.id}`);
 	const told = await captured(run.lines, () => reportNoteReads(result.warnings, result.failures));
 	assert.deepStrictEqual(told.told, reference.told, `${at}: what the user is told`);
-	const failed = result.failures.map((failure) => failure.path);
-	assert.deepEqual(failed, sorted(failed), `${at}: the failures in path order`);
 	run.count?.("at rest");
-	if (failed.length > 0) run.count?.("at rest with failures");
+	if (result.failures.length > 0) run.count?.("at rest with failures");
+	const others = openReaders(s.world).filter((other) => other !== reader);
+	if (others.some((other) => filterKey(other.filters) !== filterKey(asked.filters)))
+		run.count?.("at rest beside other filters");
 }
 
-/** What an update read, against the model, and whose tasks it kept. */
-interface Reading {
-	readonly reads: readonly string[];
-	readonly parsed: readonly string[];
-	readonly visible: ReadonlySet<string>;
-	/** A full read is certainly due: the first update, rereadAll, or another filter or parse key. */
-	readonly certainFull: boolean;
-}
-
-/** Every update that succeeds: frozen, each note read once and parsed, exactly the notes due, the others kept. */
-function checkReading(world: World, window: Window, result: IndexUpdate, reading: Reading, at: string, run: Run) {
-	const { reads, parsed, visible, certainFull } = reading;
-	const arrays = [result, result.tasks, result.warnings, result.failures];
+/** Every update that succeeds: frozen and new, the failures and parses as read, the tasks of a note kept the same. */
+function checkResult(s: Setup, asked: Asked, plan: Plan, update: IndexUpdate): void {
+	const { world, run } = s;
+	const { at, reader } = asked;
+	const arrays = [update, update.tasks, update.warnings, update.failures];
 	assert.ok(
 		arrays.every((value) => Object.isFrozen(value)),
 		`${at}: the result is frozen`,
 	);
-	assert.equal(new Set(reads).size, reads.length, `${at}: a note read twice: ${reads}`);
-	const unread = result.failures.filter((failure) => /could not read|does not exist/.test(String(failure.reason)));
-	const readFailures = new Set(unread.map((failure) => failure.path));
-	const readAndParsed = reads.filter((path) => !readFailures.has(path));
-	assert.deepEqual(sorted(parsed), sorted(readAndParsed), `${at}: one parse per note read`);
-	const previous = world.previous;
-	if (previous) assert.notEqual(result.tasks, previous.result.tasks, `${at}: a new array`);
-	const due = certainFull
-		? sorted(visible)
-		: sorted(
-				[...visible].filter(
-					(path) =>
-						window.marks.has(path) ||
-						previous === null ||
-						!previous.visible.has(path) ||
-						previous.failed.has(path),
-				),
-			);
-	if (certainFull) run.count?.("full");
-	if (certainFull || !window.maybeFull) {
-		assert.deepEqual(sorted(reads), due, `${at}: the notes read`);
-	} else {
-		for (const path of due) assert.ok(reads.includes(path), `${at}: ${path} was not read`);
-		for (const path of reads) assert.ok(visible.has(path), `${at}: ${path} is no visible note`);
-	}
-	if (previous && !certainFull && !window.maybeFull) checkKept(result, previous, reads, at, run);
-}
-
-/** The tasks of a note not read are the same objects as before. */
-function checkKept(result: IndexUpdate, previous: Previous, reads: readonly string[], at: string, run: Run) {
-	const before = tasksByPath(previous.result.tasks);
-	for (const [path, tasks] of tasksByPath(result.tasks)) {
-		const old = before.get(path);
-		if (reads.includes(path) || old === undefined) continue;
-		assert.equal(tasks.length, old.length, `${at}: ${path}'s tasks`);
-		tasks.forEach((task, i) => assert.equal(task, old[i], `${at}: ${path}'s task ${i} is the same object`));
+	const last = world.lastResult;
+	if (last)
+		assert.ok(
+			update.tasks !== last.tasks && update.warnings !== last.warnings && update.failures !== last.failures,
+			`${at}: new arrays`,
+		);
+	world.lastResult = update;
+	const failed = (plan.visible ?? []).filter((path) => asked.failed.has(path));
+	assert.deepEqual(
+		update.failures.map((failure) => failure.path),
+		failed,
+		`${at}: the failures, in path order`,
+	);
+	const readAndParsed = asked.reads.filter((path) => !asked.unread.has(path));
+	assert.deepEqual(sorted(asked.parsed), sorted(readAndParsed), `${at}: one parse per note read`);
+	for (const [path, tasks] of tasksByPath(update.tasks)) {
+		if (asked.reads.includes(path)) {
+			world.objects.set(path, tasks);
+			world.producer.set(path, reader.id);
+			continue;
+		}
+		const before = world.objects.get(path) ?? [];
+		assert.equal(tasks.length, before.length, `${at}: ${path}'s tasks`);
+		tasks.forEach((task, i) => assert.equal(task, before[i], `${at}: ${path}'s task ${i} is the same object`));
 		run.count?.("identity kept");
 	}
+	// What each view does with the tasks: a change to the shared moments would show in a later comparison.
+	resolveTasks(update.tasks, { forward: true, sort: "" }, { now: moment(), moment });
+	if (plan.sharedKeep) run.count?.("shared read");
+	if (plan.own === null) run.count?.("closed reader update");
 }
 
-/** One update, with the vault actions applied while it reads, if any. */
-async function runUpdate(world: World, during: Extract<Action, { op: "updateDuring" }> | null, at: string, run: Run) {
-	const { vault, index } = world;
-	const window = takeWindow(world);
-	const keyAtStart = parseKeyOf(moment);
-	const filters = world.filters;
-	const visible = visibleNow(vault, filters);
-	const certainFull =
-		world.committed === null ||
-		window.rereadAll ||
-		world.committed.filters !== filterKey(filters) ||
-		!sameParseKey(world.committed.parseKey, keyAtStart);
-	const readsBefore = vault.reads.length;
-	const parsedBefore = world.parsed.length;
-	const indexed = await captured(run.lines, async () => {
-		const updating = index.update(filters);
-		if (during) await applyDuring(world, during.ticks, during.during, run);
-		return updating;
+/** The reader asks for a full read, and the model takes note. */
+function rereadAll(world: World, reader: ReaderModel): void {
+	reader.reader.rereadAll();
+	fullReadAsked(world, reader);
+}
+
+function open(s: Setup, filters: number): void {
+	const { world } = s;
+	if (openReaders(world).length >= MOST_READERS) return;
+	world.readers.push(newReader(world.readers.length, s.index.openReader(), FILTERS[filters]));
+	s.run.count?.("open");
+}
+
+function close(s: Setup, reader: ReaderModel): void {
+	reader.reader.close();
+	reader.open = false;
+	s.run.count?.("close");
+}
+
+/** A vault action, which the model follows: an update it comes during is not at rest, unless it changes no note. */
+function vaultStep(s: Setup, action: VaultAction): void {
+	const { world } = s;
+	if (action.op !== "filters" && action.op !== "rereadAll") world.actions += 1;
+	const path = applyVaultAction(s.stage, action, (what) => s.run.count?.(what));
+	if (path === null) return;
+	if (action.op === "silentFail") world.silent.add(path);
+	else if (action.op === "silentRemove") {
+		world.silent.delete(path);
+		for (const reader of world.readers) reader.own.goneSilently = new Set([...reader.own.goneSilently, path]);
+		if (path.endsWith(".md")) world.silentlyRemoved.add(path);
+	}
+	// A note failing with no event is heard of again once it is written, healed, removed or renamed.
+	else if (action.op !== "missedEvent") world.silent.delete(path);
+}
+
+/** An update, with the actions applied while it reads: with 0 ticks right after update() returned, more later. */
+async function updateDuring(s: Setup, action: Extract<Action, { op: "updateDuring" }>, at: string): Promise<void> {
+	const { world, run } = s;
+	const reader = pickOpen(world, action.reader ?? 0);
+	if (reader === null) return;
+	const main = ask(s, reader, at);
+	const queued: Pending[] = [];
+	for (let tick = 0; tick < action.ticks; tick++) await Promise.resolve();
+	for (const [i, during] of action.during.entries()) {
+		if (during.op === "update") {
+			const other = pickOpen(world, during.reader ?? 0);
+			if (other !== null) queued.push(ask(s, other, `${at}, queued ${i}`));
+		} else if (during.op === "close") {
+			if (!reader.open) continue;
+			close(s, reader);
+			run.count?.("closed during");
+		} else if (during.op === "open") open(s, during.filters);
+		else vaultStep(s, during);
+	}
+	run.count?.("during reads");
+	await check(s, main);
+	for (const pending of queued) await check(s, pending);
+}
+
+async function step(s: Setup, action: Action, at: string): Promise<void> {
+	const { world, run } = s;
+	switch (action.op) {
+		case "update": {
+			const reader = pickOpen(world, action.reader ?? 0);
+			if (reader !== null) await check(s, ask(s, reader, at));
+			return;
+		}
+		case "updateDuring":
+			return updateDuring(s, action, at);
+		case "updateBroken": {
+			// The listing throws with the filters unchanged: the update fails, and nothing changes.
+			const reader = pickOpen(world, action.reader ?? 0);
+			if (reader === null) return;
+			world.vault.breakListing();
+			world.brokenNext = true;
+			const { promise } = ask(s, reader, at);
+			await assert.rejects(promise, /the vault is not ready/, `${at}: a broken listing`);
+			run.count?.("broken listing");
+			return;
+		}
+		case "open":
+			return open(s, action.filters);
+		case "close": {
+			const reader = pickOpen(world, action.pick);
+			if (reader !== null) close(s, reader);
+			return;
+		}
+		case "closedUpdate": {
+			const closed = world.readers.filter((reader) => !reader.open);
+			if (closed.length > 0) await check(s, ask(s, closed[action.pick % closed.length], at));
+			return;
+		}
+		case "pair": {
+			const a = pickOpen(world, action.a);
+			const b = pickOpen(world, action.b);
+			if (a === null || b === null) return;
+			const first = ask(s, a, `${at} (a)`);
+			const second = ask(s, b, `${at} (b)`);
+			await check(s, first);
+			await check(s, second);
+			return;
+		}
+		default:
+			return vaultStep(s, action);
+	}
+}
+
+/** The model's world of a new vault, before any reader. */
+function newWorld(run: Run): World {
+	return {
+		vault: fakeVault({}, { jsonFrontmatter: true, staggerReads: true }),
+		readers: [],
+		stored: new Map(),
+		committedKey: null,
+		waiting: [],
+		current: null,
+		brokenNext: false,
+		actions: 0,
+		silent: new Set(),
+		silentlyRemoved: new Set(),
+		objects: new Map(),
+		producer: new Map(),
+		lastResult: null,
+		count: (what) => run.count?.(what),
+	};
+}
+
+/** The index on the world's vault, with the hooks that tell the model what it does. */
+function hookedIndex(world: World): TaskIndex {
+	const files = world.vault.app.vault;
+	const cachedRead = files.cachedRead.bind(files);
+	files.cachedRead = (file) => {
+		// Taken as the read starts, as the index takes it: a rename while it reads changes the path of the same TFile.
+		const path = file.path;
+		const current = world.current ?? assert.fail(`a read of ${path} with no update running`);
+		current.reads.push(path);
+		return cachedRead(file).catch((error: unknown) => {
+			current.unread.add(path);
+			current.failed.add(path);
+			throw error;
+		});
+	};
+	const index = createTaskIndex({
+		app: world.vault.app as never,
+		moment,
+		// The first probe of an update starts it, the second ends it, see TaskIndexDeps.
+		parseKey: () => {
+			const key = parseKeyOf(moment);
+			if (world.current !== null) ended(world, world.current, key);
+			else
+				started(
+					world,
+					world.waiting.shift() ?? assert.fail("a probe of the key with no update asked for"),
+					key,
+				);
+			return key;
+		},
+		parse: (snapshot, m) => {
+			const current = world.current ?? assert.fail(`a parse of ${snapshot.path} with no update running`);
+			current.parsed.push(snapshot.path);
+			try {
+				return parseNote(snapshot, m);
+			} catch (error) {
+				current.failed.add(snapshot.path);
+				throw error;
+			}
+		},
 	});
-	const reads = vault.reads.slice(readsBefore);
-	const parsed = world.parsed.slice(parsedBefore);
-	if (during?.during.some((action) => action.op === "env")) world.maybeFull = true;
-	if (during) run.count?.("during reads");
-	assert.deepEqual(indexed.told, [], `${at}: an update tells the user nothing itself`);
-	// A note saved and not indexed yet is marked by its "modify", so the index reads it as readTasks does.
-	if (during === null) await checkAtRest(world, filters, indexed, at, run);
-	assert.equal(indexed.error !== undefined, visible === null, `${at}: the update threw ${indexed.error}`);
-	if (indexed.error !== undefined || visible === null) return putBack(world, window);
-	const result = indexed.value as IndexUpdate;
-	checkReading(world, window, result, { reads, parsed, visible, certainFull }, at, run);
-	// What the view does with the tasks: a change to the shared moments would show in the next comparison.
-	resolveTasks(result.tasks, { forward: true, sort: "" }, { now: moment(), moment });
-	const failed = new Set(result.failures.map((failure) => failure.path));
-	world.previous = { result, visible, failed };
-	world.committed = { filters: filterKey(filters), parseKey: keyAtStart };
-}
-
-/**
- * The actions applied while the update reads: with 0 ticks synchronously, right after update() returned, when every
- * read has started and none is parsed; with more, after that many microtasks, between the staggered parses.
- */
-async function applyDuring(world: World, ticks: number, actions: readonly VaultAction[], run: Run): Promise<void> {
-	for (let tick = 0; tick < ticks; tick++) await Promise.resolve();
-	for (const action of actions) applyVaultAction(world, action, (what) => run.count?.(what));
-}
-
-async function runStep(world: World, action: Action, at: string, run: Run): Promise<void> {
-	if (action.op === "update") return runUpdate(world, null, at, run);
-	if (action.op === "updateDuring") return runUpdate(world, action, at, run);
-	if (action.op !== "updateBroken") return applyVaultAction(world, action, (what) => run.count?.(what));
-	// The listing throws with the filters unchanged: the update fails, and the marks and a full read due stay.
-	world.vault.breakListing();
-	await assert.rejects(world.index.update(world.filters), /the vault is not ready/, `${at}: a broken listing`);
-	run.count?.("broken listing");
+	// The marks as the index gets them, from every event watchNotes listens to, which the model takes note of first.
+	watchNotes(world.vault.app as never, {
+		markDirty: (paths) => {
+			marked(world, paths);
+			index.markDirty(paths);
+		},
+	});
+	return index;
 }
 
 /** Runs the sequence on a new vault, in the environment golden-clock sets. Gives null, or how it failed. */
 export async function runSequence(actions: readonly Action[], run: Run): Promise<Error | null> {
 	resetEnvironment();
 	shownNotices.length = 0;
-	const vault = fakeVault({}, { jsonFrontmatter: true, staggerReads: true });
-	const parsed: string[] = [];
-	const index = createTaskIndex({
-		app: vault.app as never,
-		moment,
-		parseKey: () => parseKeyOf(moment),
-		parse: (snapshot, m) => {
-			parsed.push(snapshot.path);
-			return parseNote(snapshot, m);
-		},
-	});
-	const world: World = {
-		vault,
-		index,
-		parsed,
-		filters: {},
-		rereadAll: false,
-		marked: new Set(),
-		maybeFull: false,
-		committed: null,
-		previous: null,
+	const world = newWorld(run);
+	const files = world.vault.app.vault;
+	const reference = {
+		vault: { getMarkdownFiles: () => files.getMarkdownFiles(), cachedRead: files.cachedRead.bind(files) },
+		metadataCache: world.vault.app.metadataCache,
 	};
-	// The wiring the view will register: every event marks its paths, which the model notes too.
-	// The marks as the index gets them, from every event watchNotes listens to, also those it hands nothing on for.
-	const marking = {
-		markDirty: (paths: readonly string[]) => {
-			for (const path of paths) world.marked.add(path);
-			index.markDirty(paths);
+	const index = hookedIndex(world);
+	world.readers.push(newReader(0, index.openReader(), {}));
+	const stage: Stage = {
+		vault: world.vault,
+		filters: (pick, filters) => {
+			const reader = pickOpen(world, pick);
+			if (reader !== null) reader.filters = filters;
+		},
+		rereadAll: (pick) => {
+			if (pick !== null) {
+				const reader = pickOpen(world, pick);
+				if (reader !== null) rereadAll(world, reader);
+				return;
+			}
+			// As every open view does on window-open; a closed one has stopped listening.
+			for (const reader of world.readers) {
+				if (reader.open) rereadAll(world, reader);
+				else reader.missedSinceClose = true;
+			}
 		},
 	};
-	watchNotes(vault.app as never, marking, () => {});
+	const setup: Setup = { world, index, reference, stage, run };
 	try {
-		for (const [step, action] of actions.entries()) await runStep(world, action, `step ${step}`, run);
+		for (const [n, action] of actions.entries()) {
+			await step(setup, action, `step ${n}`);
+			assert.ok(world.current === null && world.waiting.length === 0, `step ${n}: an update has not settled`);
+		}
 		return null;
 	} catch (error) {
 		return error instanceof Error ? error : new Error(String(error));

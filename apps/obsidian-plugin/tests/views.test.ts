@@ -14,8 +14,9 @@ import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { heldOf, TasksTimelineView } from "../src/views";
 import { ObsidianBridge, quickFilterOf } from "../timeline/src/obsidianbridge";
 import { readTasks } from "../timeline/src/taskadapter";
-import type { TaskIndex } from "../timeline/src/taskindex";
+import { createTaskIndex } from "../timeline/src/taskindex";
 import { moment } from "../utils/moment";
+import { parseKeyOf } from "../utils/parsekey";
 import { deeplyFrozen } from "./frozen";
 import { goldenApp, loadVault } from "./golden-vault";
 import { rowsOf } from "./markup";
@@ -32,8 +33,10 @@ const DAY = 24 * 60 * 60 * 1000;
  * Obsidian's "changed" does through watchNotes, so that the next reload reads the note; these apps fire no events.
  */
 function openView(app: unknown) {
-	const view = new TasksTimelineView({ app } as never);
-	const { store, index } = view as unknown as { store: Store<TimelineState>; index: TaskIndex };
+	// An index of the view's own: these apps fire no events, so `edited` marks it as watchNotes would.
+	const index = createTaskIndex({ app: app as never, moment, parseKey: () => parseKeyOf(moment) });
+	const view = new TasksTimelineView({ app } as never, index);
+	const { store } = view as unknown as { store: Store<TimelineState> };
 	let changes = 0;
 	let shown = store.getSnapshot().shown;
 	store.subscribe(() => {

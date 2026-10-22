@@ -1,8 +1,9 @@
-import { CachedMetadata, debounce, ItemView, Notice, WorkspaceLeaf } from "obsidian";
+import { App, CachedMetadata, debounce, ItemView, Notice, WorkspaceLeaf } from "obsidian";
 import { createStore, resolveTasks } from "@tasks-calendar-wrapper/core";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
 import { reportNoteReads } from "../timeline/src/taskadapter";
-import { createTaskIndex, watchNotes } from "../timeline/src/taskindex";
+import { createSharedTaskIndex, type ReaderSource, type SharedTaskIndex } from "../timeline/src/sharedindex";
+import { watchChanges, type TaskIndexReader } from "../timeline/src/taskindex";
 import { createRoot, Root } from "react-dom/client";
 import { moment } from "../utils/moment";
 import { parseKeyOf } from "../utils/parsekey";
@@ -17,16 +18,23 @@ export { heldOf } from "./state/timeline";
 /** Changes that arrive within this time of each other are applied in one reload. */
 const RELOAD_DELAY_MS = 500;
 
+/** The plugin's shared task index, read with Obsidian's moment under the key of its locale and time zone. */
+export function timelineTaskIndex(app: App): SharedTaskIndex {
+	return createSharedTaskIndex({ app, moment, parseKey: () => parseKeyOf(moment) });
+}
+
 export class TasksTimelineView extends ItemView {
 	private root?: Root;
 	/** The options, the tasks read last and the list shown, see TimelineState, which the bridge renders. */
 	private readonly store = createStore<TimelineState>(initialTimelineState());
 	/**
-	 * The notes read at the last reload, so a reload reads only those that may have changed, see TaskIndex. A field,
-	 * not made in onOpen, as the plugin's view factory hands the view its options, which reloads, before it opens.
-	 * Obsidian's View has set this.app from the leaf by the time the fields are made.
+	 * This view's reader of the task index the plugin's timelines share, so a reload reads only the notes that may have
+	 * changed, see TaskIndex. Opened in the constructor, not in onOpen, as the plugin's view factory hands the view its
+	 * options, which reloads, before it opens; closed once the view is closed and its reloads are done.
 	 */
-	private readonly index = createTaskIndex({ app: this.app, moment, parseKey: () => parseKeyOf(moment) });
+	private readonly reader: TaskIndexReader;
+	/** Set in onClose. The reader is closed then, or by the reload running then, once it and its follow-up are done. */
+	private closed = false;
 
 	private isReloading = false;
 	/** A reload was asked for while one was running, so the list is loaded again when it is done. */
@@ -35,23 +43,25 @@ export class TasksTimelineView extends ItemView {
 	private filesWithTasks: ReadonlySet<string> = new Set();
 	private readonly requestReload = debounce(() => this.onReloadTasks(), RELOAD_DELAY_MS, true);
 	static view: TasksTimelineView | null = null;
-	constructor(leaf: WorkspaceLeaf) {
+	constructor(leaf: WorkspaceLeaf, notes: ReaderSource) {
 		super(leaf);
+		this.reader = notes.openReader();
 
 		TasksTimelineView.view = this;
 	}
 
 	async onOpen(): Promise<void> {
-		// Every change marks its notes for the next reload to read. Only changes to files that have or had tasks
-		// reload the list, see issue #63.
-		for (const ref of watchNotes(this.app, this.index, (paths, cache) => this.onFileChanged(paths, cache)))
+		// The shared index marks every change for the next reload to read, see watchNotes. Only changes to files that
+		// have or had tasks reload the list, see issue #63.
+		for (const ref of watchChanges(this.app, (paths, cache) => this.onFileChanged(paths, cache)))
 			this.registerEvent(ref);
-		// The changes before the view listened went unheard, so the next reload reads every note.
-		this.index.rereadAll();
+		// The next reload reads every note, as it always has. The shared index has heard every change since the view
+		// was made, so this is now only a defence, in case one went unheard.
+		this.reader.rereadAll();
 		// When the view opens while Obsidian starts, the metadata of some files may not be read yet.
 		const firstResolved = this.app.metadataCache.on("resolved", () => {
 			this.app.metadataCache.offref(firstResolved);
-			this.index.rereadAll();
+			this.reader.rereadAll();
 			this.requestReload();
 		});
 		this.registerEvent(firstResolved);
@@ -59,7 +69,7 @@ export class TasksTimelineView extends ItemView {
 		// for before the reload starts, so that this reload is the one that does it.
 		this.registerEvent(
 			this.app.workspace.on("window-open", () => {
-				this.index.rereadAll();
+				this.reader.rereadAll();
 				return this.onReloadTasks();
 			}),
 		);
@@ -74,6 +84,11 @@ export class TasksTimelineView extends ItemView {
 
 	async onClose(): Promise<void> {
 		this.requestReload.cancel();
+		// A reload that runs or waits goes on, and so does the one asked for while it ran; the last of them closes the
+		// reader, so the notes this view shows stay for them, and they read the changes the index marks until then.
+		// The last reader closed drops the shared index.
+		this.closed = true;
+		if (!this.isReloading) this.reader.close();
 		// Runs the components' cleanup, so a reload that finishes after closing renders nothing.
 		this.root?.unmount();
 		// Task rows render their markdown with this static view as the owner. Hand it to another open
@@ -109,7 +124,7 @@ export class TasksTimelineView extends ItemView {
 		}
 		this.isReloading = true;
 		const { options } = this.store.getSnapshot();
-		return this.index
+		return this.reader
 			.update(options)
 			.then(({ tasks, warnings, failures }) => {
 				reportNoteReads(warnings, failures);
@@ -127,6 +142,7 @@ export class TasksTimelineView extends ItemView {
 					this.reloadAgain = false;
 					return this.onReloadTasks();
 				}
+				if (this.closed) this.reader.close();
 			});
 	}
 
