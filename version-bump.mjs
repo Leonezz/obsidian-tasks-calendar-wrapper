@@ -1,7 +1,11 @@
-import { readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 
 // Runs from `pnpm version <x.y.z>` for a release to the community store, which reads manifest.json on master.
-// Betas are not released this way: they are tagged off master with only manifest.json changed.
+// The release takes the oldest Obsidian it supports, the minAppVersion of next-release.json, into manifest.json and
+// versions.json. manifest.json on master keeps the released minAppVersion until then, so the store sees no change
+// before the release.
+// Betas are not released this way: they are tagged off master with only manifest.json changed, its version and the
+// minAppVersion of next-release.json; the release workflow refuses a tag whose manifest.json holds another.
 // "preversion" runs it with `check` before npm writes package.json, so a refusal leaves the working tree as it was;
 // "version" runs it again to write manifest.json and versions.json.
 const checkOnly = process.argv[2] === "check";
@@ -13,24 +17,21 @@ if (targetVersion.includes("-"))
 	fail(`${targetVersion} is a pre-release. Tag betas off master instead, so the store keeps the released version.`);
 
 const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
-const { minAppVersion } = manifest;
-// The plugin is built against these typings, so an older Obsidian may lack an API the build uses.
-const typingsVersion = JSON.parse(readFileSync("apps/obsidian-plugin/package.json", "utf8")).devDependencies.obsidian;
-if (!exactVersion.test(minAppVersion))
-	fail(`minAppVersion "${minAppVersion}" in manifest.json is not a version number.`);
-if (!exactVersion.test(typingsVersion)) {
+if (!existsSync("next-release.json"))
 	fail(
-		`the obsidian typings in apps/obsidian-plugin/package.json are "${typingsVersion}", not an exact version, so minAppVersion cannot be checked against them. Pin an exact version.`,
+		'next-release.json is missing. It holds the minAppVersion of the next release, as { "minAppVersion": "x.y.z" }.',
 	);
-}
-if (compareVersions(minAppVersion, typingsVersion) < 0) {
+const { minAppVersion } = JSON.parse(readFileSync("next-release.json", "utf8"));
+if (!exactVersion.test(String(minAppVersion)))
+	fail(`minAppVersion "${minAppVersion}" in next-release.json is not a version number.`);
+if (compareVersions(minAppVersion, manifest.minAppVersion) < 0) {
 	fail(
-		`minAppVersion ${minAppVersion} in manifest.json is older than the obsidian typings the plugin is built against (${typingsVersion}). Raise minAppVersion first.`,
+		`minAppVersion ${minAppVersion} in next-release.json is older than the minAppVersion ${manifest.minAppVersion} manifest.json holds. A release never lowers it, as users of an Obsidian in between would be offered a version that no longer runs for them.`,
 	);
 }
 if (checkOnly) process.exit(0);
 
-writeJson("manifest.json", { ...manifest, version: targetVersion });
+writeJson("manifest.json", { ...manifest, version: targetVersion, minAppVersion });
 
 // versions.json tells older Obsidian versions the newest release they can still install.
 const versions = JSON.parse(readFileSync("versions.json", "utf8"));
