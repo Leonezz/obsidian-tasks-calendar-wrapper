@@ -66,10 +66,12 @@ test("an update with narrower filters keeps the notes another reader shows; a no
 	await b.update(NO_ARCHIVE);
 	await a.update({});
 	assert.deepEqual(t.since().read, [], "the archive's note, which only A shows, was kept");
-	// The note goes, and a new one comes at its path before Obsidian indexes it: it fires "create", which marks nothing.
+	// The note goes, and a new one comes at its path: it fires "create", which marks nothing, and its "changed" goes
+	// unheard.
 	t.vault.remove("Archive/Old.md");
 	await b.update(NO_ARCHIVE);
 	t.vault.write("Archive/Old.md", "- [ ] a new task", { indexed: false });
+	t.vault.writeSilently("Archive/Old.md", "- [ ] a new task");
 	t.since();
 	const fromA = await a.update({});
 	assert.deepEqual(t.since().read, ["Archive/Old.md"]);
@@ -107,10 +109,10 @@ test("a closed reader's notes go at the next update of another; an update it sti
 	assert.deepEqual(t.since().read, []);
 	// As a view that closed finishes the reload it was asked for.
 	const late = await a.update({});
-	assert.deepEqual(t.since().read, ["Archive/Old.md", "Inbox.md", "Reference/Plain.md"], "Garden stays, B shows it");
+	assert.deepEqual(t.since().read, ["Archive/Old.md", "Inbox.md"], "Garden stays, B shows it");
 	assert.deepStrictEqual([...late.tasks], await t.reference());
 	await a.update({});
-	assert.deepEqual(t.since().read, ["Archive/Old.md", "Inbox.md", "Reference/Plain.md"], "kept for no open reader");
+	assert.deepEqual(t.since().read, ["Archive/Old.md", "Inbox.md"], "kept for no open reader");
 });
 
 test("rereadAll makes only its own reader read everything; others use what that read stored", async () => {
@@ -246,7 +248,7 @@ test("another parse key: the first update reads every note it shows, the next re
 	await b.update(PROJECTS);
 	assert.deepEqual(t.since().read, ["Projects/Garden.md"]);
 	await a.update({});
-	assert.deepEqual(t.since().read, ["Archive/Old.md", "Inbox.md", "Reference/Plain.md"]);
+	assert.deepEqual(t.since().read, ["Archive/Old.md", "Inbox.md"]);
 	// The key changes while B reads and is back before A updates: what B stored may be parsed under either.
 	const release = t.vault.holdReads();
 	t.vault.write("Projects/Garden.md", "- [ ] plant the roses");
@@ -311,8 +313,9 @@ test("a note gone with no event is kept for no reader once an update lists the n
 	// Gone with no event, and an update of A, which does not show it, lists the notes without it.
 	t.vault.removeSilently("Archive/Old.md");
 	await a.update(NO_ARCHIVE);
-	// A new note at its path before Obsidian indexes it: "create" only, which marks nothing.
+	// A new note at its path: "create" only, which marks nothing, and its "changed" goes unheard.
 	t.vault.write("Archive/Old.md", "- [ ] a new task", { indexed: false });
+	t.vault.writeSilently("Archive/Old.md", "- [ ] a new task");
 	const fromB = await b.update({});
 	assert.deepEqual(t.since().read, ["Archive/Old.md"], "B holds it, but its entry went with A's update");
 	assert.deepStrictEqual([...fromB.tasks], await t.reference());

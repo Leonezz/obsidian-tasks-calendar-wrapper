@@ -4,7 +4,7 @@ import moment from "moment";
 import "moment/locale/zh-cn";
 
 import { sameDay, type DateValue } from "../src/dates";
-import { parseNote, parseTaskLine } from "../src/parse";
+import { hasTaskItems, parseNote, parseTaskLine } from "../src/parse";
 import type { NoteSnapshot, Task } from "../src/task";
 import { resolveTasks, type ResolveSettings, type ResolvedTask } from "../src/resolve";
 import { TaskStatus } from "../src/status";
@@ -504,4 +504,32 @@ test("everything parseNote returns is frozen, for a note without tasks too", () 
 	}
 	const empty = parseNote({ path: "Empty.md", content: "text", metadata: { frontmatter: { a: 1 } } }, moment);
 	assert.ok(Object.isFrozen(empty.note) && Object.isFrozen(empty.note.frontmatter) && Object.isFrozen(empty.tasks));
+});
+
+test("hasTaskItems says whether parseNote can make a task: a list item with a status character", () => {
+	const content = "- [ ] a task [due:: someday]";
+	const item = (task?: string) => ({
+		...(task === undefined ? {} : { task }),
+		parent: -1,
+		position: position(0, 0, 0, content.length),
+	});
+	const cases: [NoteSnapshot["metadata"], boolean][] = [
+		[null, false],
+		[undefined, false],
+		[{}, false],
+		[{ listItems: [] }, false],
+		[{ listItems: [item()] }, false],
+		[{ listItems: [item("")] }, false],
+		[{ listItems: [item(), item(" ")] }, true],
+		[{ listItems: [item("x")] }, true],
+		[{ listItems: [item("/")] }, true],
+	];
+	for (const [metadata, expected] of cases) {
+		assert.equal(hasTaskItems(metadata), expected, JSON.stringify(metadata));
+		// A note without one gives no task and no warning, whatever its text: there is nothing to read it for.
+		const parsed = parseNote({ path: "Note.md", content, metadata }, moment);
+		if (!expected)
+			assert.deepEqual([parsed.tasks.length, parsed.warnings.length], [0, 0], JSON.stringify(metadata));
+		else assert.equal(parsed.tasks.length, 1, JSON.stringify(metadata));
+	}
 });

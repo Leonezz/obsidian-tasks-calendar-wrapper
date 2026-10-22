@@ -127,7 +127,7 @@ test("two timelines with other note filters: each reloads as before, reads what 
 	vault.write("Inbox.md", "- [ ] call the plumber again");
 	await wait(t, RELOAD_DELAY_MS);
 	assert.deepEqual([a.reloads(), b.reloads()], [2, 2]);
-	assert.deepEqual(read(), ["Inbox.md", "Reference/Plain.md"]);
+	assert.deepEqual(read(), ["Inbox.md"], "the note without a task item is not read");
 	for (const timeline of [a, b])
 		assert.deepStrictEqual([...timeline.tasks()], await readTasks(vault.app as never, timeline.options, moment));
 });
@@ -309,7 +309,8 @@ test("the plugin unloads while a timeline reloads: its reloads keep their notes,
 	const vault = fakeVault(notes());
 	const shared = timelineTaskIndex(vault.app as never);
 	const a = await openTimeline(t, vault, shared);
-	vault.failReads("Reference/Plain.md");
+	// It fails from now on with no event, and it is saved after the unload: a reload that reads it tells of it.
+	vault.failReads("Archive/Old.md");
 	shownNotices.length = 0;
 	const read = readsOf(vault);
 	const release = vault.holdReads();

@@ -1,5 +1,5 @@
 import { App, Notice, TFile } from "obsidian";
-import { noteVisible, parseNote } from "@tasks-calendar-wrapper/core";
+import { hasTaskItems, noteVisible, parseNote } from "@tasks-calendar-wrapper/core";
 import type { MomentFactory, NoteFilterSettings, ParseWarning, Task } from "@tasks-calendar-wrapper/core";
 
 /** A note that could not be read or parsed. Only `reason` is logged; `path` is for the index's callers and tests. */
@@ -25,16 +25,19 @@ export function reportNoteReads(warnings: readonly ParseWarning[], failures: rea
 }
 
 /**
- * Reads and parses the notes with packages/core: notes the note filters leave out are not read, the tasks come in
- * path order, and each note is read and parsed in its own callback, so a note that cannot be read or parsed drops only
- * its own tasks, with a Notice. The task index is tested against it, see tests/taskindex-differential.test.ts.
+ * Reads and parses the notes with packages/core: notes the note filters leave out, and notes without a task item in
+ * their metadata, are not read, the tasks come in path order, and each note is read and parsed in its own callback, so
+ * a note that cannot be read or parsed drops only its own tasks, with a Notice. The task index is tested against it,
+ * see tests/taskindex-differential.test.ts.
  */
 export async function readTasks(app: App, settings: NoteFilterSettings, moment: MomentFactory): Promise<Task[]> {
 	const visible = app.vault.getMarkdownFiles().filter((file) => {
 		const cache = app.metadataCache.getFileCache(file);
-		return noteVisible(
-			{ path: file.path, tags: cache?.tags?.map((t) => t.tag) ?? [], frontmatter: cache?.frontmatter },
-			settings,
+		return (
+			noteVisible(
+				{ path: file.path, tags: cache?.tags?.map((t) => t.tag) ?? [], frontmatter: cache?.frontmatter },
+				settings,
+			) && hasTaskItems(cache)
 		);
 	});
 	const inPathOrder = [...visible].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));

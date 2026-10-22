@@ -28,8 +28,11 @@ export const notes = () => ({
 	"Archive/Old.md": "- [ ] an old task",
 });
 
-/** Every note of notes(), in the order the index reads them. */
-export const ALL = ["Archive/Old.md", "Inbox.md", "Projects/Garden.md", "Reference/Plain.md"];
+/**
+ * The notes of notes() a full read reads, in the order the index reads them: those with a task item, so every note but
+ * Reference/Plain.md.
+ */
+export const ALL = ["Archive/Old.md", "Inbox.md", "Projects/Garden.md"];
 
 /** The stub of Notice keeps what it showed; the real type knows nothing of that. */
 export const shownNotices = (Notice as unknown as { shown: string[] }).shown;
