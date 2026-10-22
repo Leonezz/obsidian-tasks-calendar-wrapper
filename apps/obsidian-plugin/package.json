@@ -21,6 +21,8 @@
 		"underscore": "1.13.7"
 	},
 	"devDependencies": {
+		"@codemirror/state": "6.7.6",
+		"@codemirror/view": "6.43.13",
 		"@types/backbone": "1.4.23",
 		"@types/node": "20.19.43",
 		"@types/react": "18.3.27",
@@ -28,7 +30,7 @@
 		"backbone": "1.6.1",
 		"esbuild": "0.28.2",
 		"moment": "2.29.4",
-		"obsidian": "1.11.0",
+		"obsidian": "1.14.4",
 		"typescript": "6.0.3"
 	}
 }
