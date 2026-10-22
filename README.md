@@ -21,6 +21,7 @@ I maintain Tasks Calendar Wrapper and its continuation, [Tasks Timeline](https:/
 Your support helps me spend time on bug fixes, compatibility with Obsidian and related plugins, and performance improvements. [PayPal](https://www.paypal.com/paypalme/zhuwenq) and [Patreon](https://www.patreon.com/cw/zhuwenq) are also available if you prefer.
 
 The plugins remain free, and support is always optional. [Bug reports](https://github.com/Leonezz/obsidian-tasks-calendar-wrapper/issues), feedback and contributions are just as welcome.
+
 ## Overview
 
 The [ExampleVault](https://github.com/Leonezz/obsidian-tasks-calendar-wrapper/tree/master/ExampleVault) provides an example using this plugin, the screen shot with the [Blue-Topaz](https://github.com/whyt-byte/Blue-Topaz_Obsidian-css) light theme is as follows:
@@ -29,10 +30,12 @@ The [ExampleVault](https://github.com/Leonezz/obsidian-tasks-calendar-wrapper/tr
 
 ## Features
 
--- Review tasks by date, including due, scheduled and start dates.
+- Review tasks by date, including due, scheduled and start dates.
 - Focus on today, overdue or unplanned tasks, with filters for dates, priorities, tags and paths.
 - Add tasks to an inbox or a chosen note from the quick entry panel.
-- Use Tasks emoji dates or Dataview fields, and choose how task markers and metadata are displayed. About
+- Use Tasks emoji dates or Dataview fields, and choose how task markers and metadata are displayed.
+
+## About
 
 This is a simple wrapper for Obsidian-Tasks-Calendar (https://github.com/702573N/Obsidian-Tasks-Calendar) and Obsidian-Tasks-Timeline (https://github.com/702573N/Obsidian-Tasks-Timeline).
 
