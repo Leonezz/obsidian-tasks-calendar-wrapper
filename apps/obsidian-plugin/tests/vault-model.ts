@@ -137,14 +137,17 @@ export interface World {
 export const filterKey = (s: NoteFilterSettings) =>
 	JSON.stringify([s.includePaths, s.excludePaths, s.fileIncludeTags, s.fileExcludeTags, s.excludeProperties]);
 
-/** The notes the filters keep now that have a task item, worked out without listing through the vault; null when the filters throw. */
+/**
+ * The notes the filters keep now that may have tasks: a task item, or no metadata yet. Worked out without listing
+ * through the vault; null when the filters throw.
+ */
 export function visibleNow(vault: FakeVault, filters: NoteFilterSettings): string[] | null {
 	const notes = vault.filePaths().filter((path) => path.endsWith(".md"));
 	try {
 		return notes.filter((path) => {
 			const cache = vault.app.metadataCache.getFileCache(vault.app.vault.getAbstractFileByPath(path));
 			const note = { path, tags: cache?.tags?.map((t) => t.tag) ?? [], frontmatter: cache?.frontmatter };
-			return noteVisible(note, filters) && hasTaskItems(cache);
+			return noteVisible(note, filters) && (cache === null || hasTaskItems(cache));
 		});
 	} catch {
 		return null;

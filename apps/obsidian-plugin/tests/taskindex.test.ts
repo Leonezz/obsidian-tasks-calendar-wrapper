@@ -136,7 +136,7 @@ test("saving a note without tasks schedules no reload, and the next update does 
 	assert.deepEqual(t.since(), { read: [], parsed: [] }, "it has no task item");
 });
 
-test("a removed note is not read, and its tasks are gone; written again, it is read once Obsidian indexes it", async () => {
+test("a removed note is not read, and its tasks are gone; written again, it is read before Obsidian indexes it", async () => {
 	const t = indexed();
 	await t.index.update({});
 	t.since();
@@ -145,16 +145,12 @@ test("a removed note is not read, and its tasks are gone; written again, it is r
 	assert.deepEqual(t.since(), { read: [], parsed: [] });
 	assert.ok(!pathsOf(after.tasks).includes("Inbox.md"));
 	assert.deepStrictEqual([...after.tasks], await t.reference());
-	// Only "create" comes, which marks nothing. Without metadata the note has no task item, so it is not read yet.
+	// Only "create" comes, which marks nothing: the note is read because nothing of it is stored any more.
 	t.vault.write("Inbox.md", "- [ ] a new inbox", { indexed: false });
 	const again = await t.index.update({});
-	assert.deepEqual(t.since(), { read: [], parsed: [] });
+	assert.deepEqual(t.since(), { read: ["Inbox.md"], parsed: ["Inbox.md"] });
 	assert.ok(!pathsOf(again.tasks).includes("Inbox.md"), "no metadata yet, so no tasks");
 	assert.deepStrictEqual([...again.tasks], await t.reference());
-	t.vault.indexPending();
-	const indexedNow = await t.index.update({});
-	assert.deepEqual(t.since(), { read: ["Inbox.md"], parsed: ["Inbox.md"] });
-	assert.deepStrictEqual([...indexedNow.tasks], await t.reference());
 });
 
 test("renames read the notes at their new paths: a note, a folder, to a file that is no note and back, a swap", async () => {
@@ -185,13 +181,13 @@ test("renames read the notes at their new paths: a note, a folder, to a file tha
 	);
 });
 
-test("a note Obsidian has not indexed yet is not read, as it has no task item yet; it is read once it is indexed", async () => {
+test("a note Obsidian has not indexed yet is read without metadata, kept, and read again once it is indexed", async () => {
 	const t = indexed();
 	await t.index.update({});
 	t.since();
 	t.vault.write("New.md", "- [ ] new", { indexed: false });
 	const unindexed = await t.index.update({});
-	assert.deepEqual(t.since(), { read: [], parsed: [] });
+	assert.deepEqual(t.since(), { read: ["New.md"], parsed: ["New.md"] });
 	assert.ok(!pathsOf(unindexed.tasks).includes("New.md"));
 	assert.deepStrictEqual([...unindexed.tasks], await t.reference());
 	await t.index.update({});
@@ -554,6 +550,13 @@ test("a full read asked for before an update that fails is still due", async () 
 	t.since();
 	await t.index.update({});
 	assert.deepEqual(t.since().read, ALL);
+});
+
+test("a filter of the wrong type rejects as readTasks does, also in a vault whose notes have no task item", async () => {
+	const t = indexed({ "Plain.md": "# Plain\n\n- a list item" });
+	const wrong = { includePaths: "Projects" as never };
+	await assert.rejects(t.index.update(wrong));
+	await assert.rejects(t.reference(wrong));
 });
 
 test("a filter of the wrong type rejects as readTasks does, and its filters are not kept", async () => {

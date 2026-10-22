@@ -66,12 +66,10 @@ test("an update with narrower filters keeps the notes another reader shows; a no
 	await b.update(NO_ARCHIVE);
 	await a.update({});
 	assert.deepEqual(t.since().read, [], "the archive's note, which only A shows, was kept");
-	// The note goes, and a new one comes at its path: it fires "create", which marks nothing, and its "changed" goes
-	// unheard.
+	// The note goes, and a new one comes at its path before Obsidian indexes it: it fires "create", which marks nothing.
 	t.vault.remove("Archive/Old.md");
 	await b.update(NO_ARCHIVE);
 	t.vault.write("Archive/Old.md", "- [ ] a new task", { indexed: false });
-	t.vault.writeSilently("Archive/Old.md", "- [ ] a new task");
 	t.since();
 	const fromA = await a.update({});
 	assert.deepEqual(t.since().read, ["Archive/Old.md"]);
@@ -313,9 +311,8 @@ test("a note gone with no event is kept for no reader once an update lists the n
 	// Gone with no event, and an update of A, which does not show it, lists the notes without it.
 	t.vault.removeSilently("Archive/Old.md");
 	await a.update(NO_ARCHIVE);
-	// A new note at its path: "create" only, which marks nothing, and its "changed" goes unheard.
+	// A new note at its path before Obsidian indexes it: "create" only, which marks nothing.
 	t.vault.write("Archive/Old.md", "- [ ] a new task", { indexed: false });
-	t.vault.writeSilently("Archive/Old.md", "- [ ] a new task");
 	const fromB = await b.update({});
 	assert.deepEqual(t.since().read, ["Archive/Old.md"], "B holds it, but its entry went with A's update");
 	assert.deepStrictEqual([...fromB.tasks], await t.reference());

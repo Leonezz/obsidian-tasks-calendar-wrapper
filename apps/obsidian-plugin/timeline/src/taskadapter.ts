@@ -25,10 +25,10 @@ export function reportNoteReads(warnings: readonly ParseWarning[], failures: rea
 }
 
 /**
- * Reads and parses the notes with packages/core: notes the note filters leave out, and notes without a task item in
- * their metadata, are not read, the tasks come in path order, and each note is read and parsed in its own callback, so
- * a note that cannot be read or parsed drops only its own tasks, with a Notice. The task index is tested against it,
- * see tests/taskindex-differential.test.ts.
+ * Reads and parses the notes with packages/core: notes the note filters leave out, and notes whose metadata has no task
+ * item, are not read, the tasks come in path order, and each note is read and parsed in its own callback, so a note
+ * that cannot be read or parsed drops only its own tasks, with a Notice. A note Obsidian has given no metadata yet is
+ * read. The task index is tested against it, see tests/taskindex-differential.test.ts.
  */
 export async function readTasks(app: App, settings: NoteFilterSettings, moment: MomentFactory): Promise<Task[]> {
 	const visible = app.vault.getMarkdownFiles().filter((file) => {
@@ -37,7 +37,8 @@ export async function readTasks(app: App, settings: NoteFilterSettings, moment: 
 			noteVisible(
 				{ path: file.path, tags: cache?.tags?.map((t) => t.tag) ?? [], frontmatter: cache?.frontmatter },
 				settings,
-			) && hasTaskItems(cache)
+			) &&
+			(cache === null || hasTaskItems(cache))
 		);
 	});
 	const inPathOrder = [...visible].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
