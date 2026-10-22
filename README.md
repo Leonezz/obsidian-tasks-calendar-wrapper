@@ -12,7 +12,15 @@ Tasks Timeline runs on desktop only and needs Obsidian 1.11.4 or later. Tasks Ca
 
 ![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22tasks-calendar-wrapper%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json)
 
-This plugin currently provides a timeline view to display your tasks from your [obsidian](https://obsidian.md/) vault, with customizable filters and rendering options.
+Tasks Calendar Wrapper brings tasks from your [Obsidian](https://obsidian.md/) notes into a date-based timeline. Review what's due, keep overdue and unplanned tasks in view, and add tasks to your inbox without leaving the timeline. Filters and display options let you adapt the view to your workflow.
+
+## Support development
+
+I maintain Tasks Calendar Wrapper and its continuation, [Tasks Timeline](https://github.com/Leonezz/tasks-timeline-obsidian). If either helps you manage your tasks, you can make a one-time contribution through [Buy Me a Coffee](https://buymeacoffee.com/zhuwenqa) or [Ko-fi](https://ko-fi.com/zhuwenqa).
+
+Your support helps me spend time on bug fixes, compatibility with Obsidian and related plugins, and performance improvements. [PayPal](https://www.paypal.com/paypalme/zhuwenq) and [Patreon](https://www.patreon.com/cw/zhuwenq) are also available if you prefer.
+
+The plugins remain free, and support is always optional. [Bug reports](https://github.com/Leonezz/obsidian-tasks-calendar-wrapper/issues), feedback and contributions are just as welcome.
 
 ## Overview
 
@@ -22,9 +30,10 @@ The [ExampleVault](https://github.com/Leonezz/obsidian-tasks-calendar-wrapper/tr
 
 ## Features
 
-- Organize taks in a timeline view
-- Customizable options
-- Quick entry panel for new items and filters
+- Review tasks by date, including due, scheduled and start dates.
+- Focus on today, overdue or unplanned tasks, with filters for dates, priorities, tags and paths.
+- Add tasks to an inbox or a chosen note from the quick entry panel.
+- Use Tasks emoji dates or Dataview fields, and choose how task markers and metadata are displayed.
 
 ## About
 
