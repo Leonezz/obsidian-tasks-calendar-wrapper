@@ -328,6 +328,27 @@ test("the plugin unloads while a timeline reloads: its reloads keep their notes,
 	assert.equal(watchers(vault), 0);
 });
 
+test("a timeline made before the plugin unloads and opened after it shows each change", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const vault = fakeVault(notes());
+	const shared = timelineTaskIndex(vault.app as never);
+	// Obsidian's setViewState makes the view, then waits for the leaf's old view to close, as a note that saves; the
+	// plugin can unload meanwhile, and its sweep finds no leaf of the timeline's type yet.
+	const leaf = vault.app.workspace.addLeaf();
+	const view = new TasksTimelineView(leaf as never, shared);
+	const loading = view.onUpdateOptions({ ...defaultUserOptions });
+	shared.dispose();
+	leaf.view = view;
+	await (view as unknown as Opening).open();
+	await loading;
+	vault.resolve();
+	await wait(t, RELOAD_DELAY_MS);
+	vault.write("Inbox.md", "- [ ] call the plumber, edited 📅 2026-01-21");
+	await wait(t, RELOAD_DELAY_MS);
+	const { tasks } = (view as unknown as { store: Store<TimelineState> }).store.getSnapshot();
+	assert.deepStrictEqual([...tasks], await readTasks(vault.app as never, defaultUserOptions, moment));
+});
+
 test("the last timeline closed while its reload runs keeps the index for one opened meanwhile", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const vault = fakeVault(notes());

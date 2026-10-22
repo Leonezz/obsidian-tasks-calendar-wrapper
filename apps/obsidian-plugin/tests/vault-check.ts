@@ -5,7 +5,7 @@
  *   rejects, and its warnings and failures tell the user what readTasks tells;
  * - always, it reads exactly the notes the model of tests/vault-model.ts says are due, in order and each once, parses
  *   each it read, and reads no note an index of the reader's own would not read at the same moment, but in the two
- *   cases the model names;
+ *   cases the model names and again a note it could not read in one of them; with one reader, exactly those notes;
  * - a note it did not read gives the same Task objects as the last update, of any reader, that gave it.
  * The sequence starts with one reader open, with no filters, as a sequence of one reader has it. shrink makes a failing
  * sequence as short as it can while it still fails.

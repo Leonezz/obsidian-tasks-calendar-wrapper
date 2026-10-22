@@ -3,6 +3,7 @@ import type { NoteFilterSettings } from "@tasks-calendar-wrapper/core";
 import {
 	createTaskIndex,
 	watchNotes,
+	type IndexUpdate,
 	type NoteSource,
 	type TaskIndex,
 	type TaskIndexDeps,
@@ -25,7 +26,9 @@ export interface SharedTaskIndex extends ReaderSource {
 	openReader(): TaskIndexReader;
 	/**
 	 * The plugin unloads: stops the watching and drops the index. A reader still open is left to its view, which
-	 * closes it once its reloads are done; they finish on the dropped index, which hears nothing more. Idempotent.
+	 * closes it once its reloads are done; they finish on the dropped index, which hears nothing more. A view Obsidian
+	 * made before the unload and opens after it asks for a full read when it opens: from then on each of its updates
+	 * reads every note it shows, as nothing marks the notes that change. Idempotent.
 	 */
 	dispose(): void;
 }
@@ -64,9 +67,17 @@ export function createSharedTaskIndex(
 		if (disposed) throw new Error("Tasks Calendar Wrapper: the plugin unloaded; its task index is gone.");
 		const mine = lend();
 		const reader = mine.index.openReader();
+		/** A full read was asked for after the unload: only a view that opens then asks, as a closed one hears nothing. */
+		let unwatched = false;
 		const handed: TaskIndexReader = Object.freeze({
-			rereadAll: () => reader.rereadAll(),
-			update: (filters: NoteFilterSettings) => reader.update(filters),
+			rereadAll(): void {
+				if (disposed) unwatched = true;
+				reader.rereadAll();
+			},
+			update(filters: NoteFilterSettings): Promise<IndexUpdate> {
+				if (unwatched) reader.rereadAll();
+				return reader.update(filters);
+			},
 			close(): void {
 				reader.close();
 				if (!mine.readers.delete(handed)) return;
