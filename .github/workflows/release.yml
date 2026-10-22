@@ -55,6 +55,9 @@ jobs:
       - name: Lint
         run: pnpm run eslint
 
+      - name: API floor
+        run: pnpm run api-floor
+
       - name: Test
         run: pnpm test
 

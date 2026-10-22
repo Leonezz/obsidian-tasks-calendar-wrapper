@@ -2,8 +2,8 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 
 // Runs from `pnpm version <x.y.z>` for a release to the community store, which reads manifest.json on master.
 // The release takes the oldest Obsidian it supports, the minAppVersion of next-release.json, into manifest.json and
-// versions.json. manifest.json on master keeps the released minAppVersion until then, so the store sees no change
-// before the release.
+// versions.json. CI holds the code to it with `pnpm api-floor`, apps/obsidian-plugin/scripts/api-floor.mjs.
+// manifest.json on master keeps the released minAppVersion until then, so the store sees no change before the release.
 // Betas are not released this way: they are tagged off master with only manifest.json changed, its version and the
 // minAppVersion of next-release.json; the release workflow refuses a tag whose manifest.json holds another.
 // "preversion" runs it with `check` before npm writes package.json, so a refusal leaves the working tree as it was;

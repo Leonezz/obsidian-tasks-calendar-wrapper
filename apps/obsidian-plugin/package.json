@@ -7,6 +7,7 @@
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc --noEmit && node esbuild.config.mjs production",
 		"typecheck": "tsc --noEmit",
+		"api-floor": "node scripts/api-floor.mjs",
 		"test": "node scripts/test.mjs",
 		"capture:golden": "node scripts/capture-golden.mjs",
 		"bench:vault": "node scripts/bench-vault.mjs",

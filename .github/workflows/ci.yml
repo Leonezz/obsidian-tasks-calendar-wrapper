@@ -36,6 +36,11 @@ jobs:
       - name: Type-check
         run: pnpm run typecheck
 
+      # The plugin may use an Obsidian API newer than the minAppVersion of next-release.json only behind
+      # requireApiVersion, see apps/obsidian-plugin/scripts/api-floor-check.mjs.
+      - name: API floor
+        run: pnpm run api-floor
+
       - name: Test
         run: pnpm test
 
