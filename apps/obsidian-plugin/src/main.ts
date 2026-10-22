@@ -1,4 +1,4 @@
-import { Notice, Plugin } from "obsidian";
+import { Notice, Plugin, requireApiVersion } from "obsidian";
 
 import { TasksTimelineView, TIMELINE_VIEW, timelineTaskIndex } from "./views";
 
@@ -20,6 +20,8 @@ export default class TasksCalendarWrapper extends Plugin {
 	private readonly settingsStore = createSettingsStore();
 	/** The notes the timelines read, shared, see SharedTaskIndex: made with the first timeline, gone after the last. */
 	private readonly taskIndex = timelineTaskIndex(this.app);
+	/** The settings tab, made in onload. */
+	private settingsTab: TasksCalendarSettingTab | null = null;
 	private readonly pushOptionsToViews = debounceOptionUpdates(() => {
 		this.app.workspace.getLeavesOfType(TIMELINE_VIEW).forEach((leaf) => {
 			if (leaf.view instanceof TasksTimelineView) {
@@ -65,7 +67,8 @@ export default class TasksCalendarWrapper extends Plugin {
 		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new TasksCalendarSettingTab(this.app, this));
+		this.settingsTab = new TasksCalendarSettingTab(this.app, this);
+		this.addSettingTab(this.settingsTab);
 
 		this.app.workspace.onLayoutReady(() => {
 			this.showWhatsNewAfterUpdate().catch((error) => {
@@ -102,6 +105,8 @@ export default class TasksCalendarWrapper extends Plugin {
 	 */
 	async onExternalSettingsChange(): Promise<void> {
 		await this.loadOptions();
+		// From 1.13 Obsidian draws the settings tab again itself when it is open, see SettingTab.update.
+		if (!requireApiVersion("1.13.0")) this.settingsTab?.redrawIfShown();
 	}
 
 	async writeOptions(changedOpts: Partial<UserOption>): Promise<void> {

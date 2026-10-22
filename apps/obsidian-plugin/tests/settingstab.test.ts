@@ -21,6 +21,7 @@ import {
 	FakeElement,
 	SettingControl,
 	SettingItemElement,
+	setApiVersion,
 } from "./stubs/obsidian";
 
 // What the settings tab shows for the data.json shapes users have, see settings-fixtures.ts, and what each of its
@@ -41,6 +42,53 @@ async function drawnTab(t: TestContext, dataJson: string | null) {
 }
 
 const names = (rows: Row[]) => rows.map((row) => row.name);
+
+/** The stub's settings window opening and closing at the tab; Obsidian's typings know nothing of it. */
+const settingsWindow = (tab: TasksCalendarSettingTab) =>
+	tab as unknown as { openSettings(): void; closeSettings(): void };
+
+/** Makes the stubs act as this Obsidian version for the rest of the test. */
+function onObsidian(t: TestContext, version: string): void {
+	const replaced = setApiVersion(version);
+	t.after(() => setApiVersion(replaced));
+}
+
+// Obsidian draws an open settings tab again after onExternalSettingsChange from 1.13 (SettingTab.update); before
+// that, the plugin does. Either way the tab is drawn once, with the new options.
+for (const [version, drawer] of [
+	["1.12.7", "the plugin"],
+	["1.14.4", "Obsidian"],
+] as const) {
+	test(`data.json changed outside while the settings show the tab: ${drawer} draws it once more (Obsidian ${version})`, async (t) => {
+		t.mock.timers.enable({ apis: ["setTimeout"] });
+		onObsidian(t, version);
+		const { plugin } = await startPlugin(readFixture("quiet.json"));
+		const tab = plugin.settingTab as TasksCalendarSettingTab;
+		settingsWindow(tab).openSettings();
+		const draws = t.mock.method(tab, "display");
+		const changed = readFixture("0.2.9-dropdown-sort.json");
+		await plugin.changeDataJsonOutside(changed);
+		assert.equal(draws.mock.callCount(), 1);
+		const drawnOnChanged = rowsOf((await drawnTab(t, changed)).container);
+		assert.deepEqual(rowsOf(tab.containerEl as unknown as FakeElement), drawnOnChanged);
+		assert.notDeepEqual(drawnOnChanged, rowsOf((await drawnTab(t, readFixture("quiet.json"))).container));
+	});
+
+	test(`data.json changed outside while the settings are closed: the tab is not drawn (Obsidian ${version})`, async (t) => {
+		t.mock.timers.enable({ apis: ["setTimeout"] });
+		onObsidian(t, version);
+		const { plugin } = await startPlugin(readFixture("quiet.json"));
+		const tab = plugin.settingTab as TasksCalendarSettingTab;
+		const draws = t.mock.method(tab, "display");
+		await plugin.changeDataJsonOutside(readFixture("0.2.9-dropdown-sort.json"));
+		settingsWindow(tab).openSettings();
+		settingsWindow(tab).closeSettings();
+		draws.mock.resetCalls();
+		await plugin.changeDataJsonOutside(readFixture("quiet.json"));
+		assert.equal(draws.mock.callCount(), 0);
+		assert.deepEqual(plugin.userOptions, (await startPlugin(readFixture("quiet.json"))).plugin.userOptions);
+	});
+}
 
 for (const fixture of FIXTURE_NAMES) {
 	test(`the settings tab on ${fixture}`, async (t) => {

@@ -22,6 +22,27 @@ export function debounce<T extends unknown[]>(cb: (...args: T) => unknown, timeo
 	return Object.assign(debounced, { cancel: () => clearTimeout(timer) });
 }
 
+/** The Obsidian the stubs act as; tests change it with setApiVersion and set it back. */
+let currentApiVersion = "1.14.4";
+
+/** Not in Obsidian: makes the stubs act as this Obsidian version. Returns the version it replaced. */
+export function setApiVersion(version: string): string {
+	const replaced = currentApiVersion;
+	currentApiVersion = version;
+	return replaced;
+}
+
+/** As in Obsidian: whether the running Obsidian is this version or newer, by the numbers of a dotted version. */
+export function requireApiVersion(version: string): boolean {
+	const running = currentApiVersion.split(".").map(Number);
+	const wanted = version.split(".").map(Number);
+	for (let i = 0; i < Math.max(running.length, wanted.length); i++) {
+		const difference = (running[i] ?? 0) - (wanted[i] ?? 0);
+		if (difference !== 0) return difference > 0;
+	}
+	return true;
+}
+
 /** Obsidian shows a toast. The stub keeps each message, so a test can check what the user was told. */
 export class Notice {
 	static shown: string[] = [];
@@ -406,9 +427,14 @@ export class Setting {
 	}
 }
 
-/** As Obsidian's PluginSettingTab: the tab draws itself into containerEl when Obsidian calls display(). */
+/**
+ * As Obsidian's PluginSettingTab: the tab draws itself into containerEl when Obsidian calls display(), and Obsidian
+ * calls hide() when the settings close or show another tab.
+ */
 export class PluginSettingTab {
 	readonly containerEl = new FakeElement("div", "vertical-tab-content");
+	/** Not in Obsidian's typings: the settings show this tab now, as Obsidian's activeTab. */
+	private openInSettings = false;
 
 	constructor(
 		public app: unknown,
@@ -418,6 +444,24 @@ export class PluginSettingTab {
 	display(): void {}
 
 	hide(): void {}
+
+	/** As from Obsidian 1.13: the tab is drawn again when the settings show it; the stub's tab has no definitions. */
+	update(): void {
+		if (!requireApiVersion("1.13.0")) throw new Error("SettingTab.update is not in Obsidian before 1.13.0");
+		if (this.openInSettings) this.display();
+	}
+
+	/** Not in Obsidian: the user opens the settings at this tab, as Obsidian's openTab, which draws it. */
+	openSettings(): void {
+		this.openInSettings = true;
+		this.display();
+	}
+
+	/** Not in Obsidian: the user closes the settings, as Obsidian's closeActiveTab, which hides the tab. */
+	closeSettings(): void {
+		this.openInSettings = false;
+		this.hide();
+	}
 }
 
 const escapeHtml = (text: string) =>
@@ -623,6 +667,19 @@ export class Plugin extends Component {
 
 	async saveData(data: unknown): Promise<void> {
 		this.dataJson = JSON.stringify(data, undefined, 2);
+	}
+
+	/**
+	 * Not in Obsidian's typings: what Obsidian (1.14.4, _onConfigFileChange) does when data.json changed on disk while
+	 * the plugin runs, from another device or by hand: it waits for onExternalSettingsChange, then, from 1.13, updates
+	 * the settings tab. A rejection reaches the caller, as Obsidian does not catch it.
+	 */
+	async changeDataJsonOutside(dataJson: string | null): Promise<void> {
+		this.dataJson = dataJson;
+		const self = this as { onExternalSettingsChange?: () => unknown };
+		if (!self.onExternalSettingsChange) return;
+		await self.onExternalSettingsChange();
+		if (requireApiVersion("1.13.0")) this.settingTab?.update();
 	}
 
 	registerView(type: string, creator: (leaf: never) => unknown): void {
