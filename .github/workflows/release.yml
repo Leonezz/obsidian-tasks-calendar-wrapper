@@ -30,8 +30,9 @@ jobs:
 
       # Obsidian and BRAT take the version from manifest.json, so a tag that does not match it would ship
       # under the wrong version. A release also needs its versions.json entry, which tells older Obsidian
-      # versions which release they can still install.
-      - name: Check the tag against manifest.json and versions.json
+      # versions which release they can still install. Releases and betas alike declare the minAppVersion of
+      # next-release.json, the oldest Obsidian the code is held to.
+      - name: Check the tag against manifest.json, versions.json and next-release.json
         env:
           TAG: ${{ github.ref_name }}
         run: |
@@ -40,6 +41,8 @@ jobs:
             const fail = (message) => { console.error("::error::" + message); process.exit(1); };
             const { version, minAppVersion } = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
             if (process.env.TAG !== version) fail(`tag ${process.env.TAG} does not match version ${version} in manifest.json`);
+            const floor = JSON.parse(fs.readFileSync("next-release.json", "utf8")).minAppVersion;
+            if (minAppVersion !== floor) fail(`manifest.json declares minAppVersion ${minAppVersion}, but next-release.json holds ${floor}`);
             if (!version.includes("-")) {
               const versions = JSON.parse(fs.readFileSync("versions.json", "utf8"));
               if (versions[version] !== minAppVersion) fail(`versions.json must map ${version} to minAppVersion ${minAppVersion}`);
