@@ -70,6 +70,7 @@ const COVERED_SHARED = [
 	"shared read",
 	"silent failure",
 	"silent remove",
+	"other failures",
 ];
 const MINIMUM = 10;
 

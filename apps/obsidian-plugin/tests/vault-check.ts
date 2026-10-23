@@ -264,31 +264,26 @@ function checkResult(s: Setup, asked: Asked, plan: Plan, update: IndexUpdate): v
 }
 
 /**
- * What the reader's view tells of an update that succeeded, as its ReadReporter, against what it is to tell, worked out
- * here: each warning line not told yet for the note's text, the text being the same while the note stays in the
- * reports, warned or failing, with the same content id; the reason of every failing note; and the Notice when the
- * failing paths differ from the last report's and are some.
+ * What the reader's view tells of an update that succeeded, as its ReadReporter, against what it is to tell: each
+ * warning line of the update that the view has not told yet for that note's text, a line that a note has twice being
+ * told twice the first time; the reason of every failing note; and the Notice when the failing paths differ from the
+ * last report's and are some.
  */
 async function checkTelling(s: Setup, asked: Asked, update: IndexUpdate): Promise<void> {
 	const { reader, at } = asked;
-	const { told: before, failing } = reader.telling;
+	const { told, failing } = reader.telling;
 	const expected: unknown[][] = [];
-	const told = new Map<string, { content: number; lines: ReadonlySet<string> }>();
+	const toldNow = new Set(told);
 	for (const note of update.warned) {
-		const was = before.get(note.path);
-		const toldBefore = was?.content === note.content ? was.lines : new Set<string>();
-		const lines = new Set(toldBefore);
+		let before = 0;
 		for (const warning of note.warnings) {
 			const line = warningLine(warning);
-			if (!toldBefore.has(line)) expected.push(["warn", line]);
-			lines.add(line);
+			const key = JSON.stringify([note.path, note.content, line]);
+			if (told.has(key)) before += 1;
+			else expected.push(["warn", line]);
+			toldNow.add(key);
 		}
-		told.set(note.path, { content: note.content, lines });
-		s.run.count?.(toldBefore.size > 0 ? "warnings told before" : "warnings told");
-	}
-	for (const { path } of update.failures) {
-		const was = before.get(path);
-		if (was && !told.has(path)) told.set(path, was);
+		s.run.count?.(before > 0 ? "warnings told before" : "warnings told");
 	}
 	const paths = update.failures.map((failure) => failure.path);
 	for (const failure of update.failures)
@@ -299,10 +294,11 @@ async function checkTelling(s: Setup, asked: Asked, update: IndexUpdate): Promis
 			"notice",
 			`Tasks Calendar Wrapper: ${paths.length} file(s) could not be read, their tasks are missing. See the developer console.`,
 		]);
+		if (failing.length > 0) s.run.count?.("other failures");
 	} else if (paths.length > 0) s.run.count?.("same failures");
 	const actual = await captured(s.run.lines, () => reader.reporter.report(update));
 	assert.deepStrictEqual(actual.told, expected, `${at}: what the view of reader ${reader.id} tells`);
-	reader.telling = { told, failing: paths };
+	reader.telling = { told: toldNow, failing: paths };
 }
 
 /** The reader asks for a full read, and the model takes note. */

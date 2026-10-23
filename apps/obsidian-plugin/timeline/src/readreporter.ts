@@ -4,9 +4,10 @@ import type { IndexUpdate, WarnedNote } from "./taskindex";
 
 /**
  * What one timeline tells of its reloads, so it does not say the same again on every reload:
- * - a warning line once for the same text of the same note: the note's lines are told again once its text changes (a
- *   new content id), and once it leaves the timeline's updates, removed, renamed, filtered out or without warnings, and
- *   comes back. A note that cannot be read keeps what was told, so it says nothing new when it heals with the same text;
+ * - a warning line once for the same text of the same note, for as long as the timeline is open: a note read again,
+ *   filtered out and back in, unreadable for a while, or edited and the edit undone says nothing new for a text it was
+ *   told for. A line is told again for another text of the note, and under its new path after a rename, as the line
+ *   names the path. The last TEXTS_PER_NOTE texts of each note are remembered;
  * - the reasons of the notes that cannot be read on every reload, as before, on the console;
  * - the Notice "N file(s) could not be read" only when the set of those notes changed since its last report, and is
  *   not empty: when one starts failing, another one fails instead, or one of several heals.
@@ -17,28 +18,25 @@ export interface ReadReporter {
 	report(update: Pick<IndexUpdate, "warned" | "failures">): void;
 }
 
-/** What was told of one note's text. */
+/** How many texts of a note a reporter remembers the told lines of, so a note edited very often costs no more. */
+export const TEXTS_PER_NOTE = 16;
+
+/** What was told of one note. */
 interface Told {
-	/** The WarnedNote last reported: a note kept by the index gives the same object, told as it is. */
+	/** The WarnedNote last reported: a note kept by the index gives the same object, told already. */
 	readonly note: WarnedNote;
-	readonly content: ContentId;
-	readonly lines: ReadonlySet<string>;
+	/** The lines told for each text, the most recent text last. */
+	readonly texts: ReadonlyMap<ContentId, ReadonlySet<string>>;
 }
 
 /** A reporter that has told nothing: its first report tells what reportNoteReads tells. */
 export function createReadReporter(): ReadReporter {
-	let told: ReadonlyMap<string, Told> = new Map();
+	/** By path, every note told of while the timeline is open. Changed in place, one entry per warned note. */
+	const told = new Map<string, Told>();
 	let failing: readonly string[] = [];
 	return Object.freeze({
 		report({ warned, failures }: Pick<IndexUpdate, "warned" | "failures">): void {
-			const next = new Map<string, Told>();
-			for (const note of warned) next.set(note.path, tell(note, told.get(note.path)));
-			// A note that cannot be read now keeps what was told of it.
-			for (const { path } of failures) {
-				const before = told.get(path);
-				if (before && !next.has(path)) next.set(path, before);
-			}
-			told = next;
+			for (const note of warned) told.set(note.path, tell(note, told.get(note.path)));
 			const paths = failures.map((failure) => failure.path);
 			const changed = paths.length !== failing.length || paths.some((path, i) => path !== failing[i]);
 			failing = paths;
@@ -47,10 +45,10 @@ export function createReadReporter(): ReadReporter {
 	});
 }
 
-/** Logs the note's lines not told yet for its text, and returns what is told of it now. */
+/** Logs the note's lines not told yet for its text, and returns what is told of the note now. */
 function tell(note: WarnedNote, before: Told | undefined): Told {
 	if (before?.note === note) return before;
-	const toldBefore = before?.content === note.content ? before.lines : new Set<string>();
+	const toldBefore = before?.texts.get(note.content) ?? new Set<string>();
 	const lines = new Set(toldBefore);
 	// Checked against what was told before this report, so a line a note has twice is told twice the first time.
 	for (const warning of note.warnings) {
@@ -58,5 +56,12 @@ function tell(note: WarnedNote, before: Told | undefined): Told {
 		if (!toldBefore.has(line)) console.warn(line);
 		lines.add(line);
 	}
-	return Object.freeze({ note, content: note.content, lines });
+	const texts = new Map(before?.texts);
+	texts.delete(note.content);
+	texts.set(note.content, lines);
+	for (const oldest of texts.keys()) {
+		if (texts.size <= TEXTS_PER_NOTE) break;
+		texts.delete(oldest);
+	}
+	return Object.freeze({ note, texts });
 }

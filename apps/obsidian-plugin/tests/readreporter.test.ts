@@ -6,7 +6,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 
 import type { ParseWarning } from "@tasks-calendar-wrapper/core";
-import { createReadReporter } from "../timeline/src/readreporter";
+import { createReadReporter, TEXTS_PER_NOTE } from "../timeline/src/readreporter";
 import { reportNoteReads, type NoteReadFailure } from "../timeline/src/taskadapter";
 import type { WarnedNote } from "../timeline/src/taskindex";
 import { ourLines, shownNotices, telling } from "./indexed-vault";
@@ -94,19 +94,31 @@ test("a warning is told once for the same content of the same note, and again fo
 	// The same text with a line more, as after another locale: only the new line.
 	assert.deepEqual(await report([warned("Dates.md", 2, DUE, SCHEDULED)]), [warn(SCHEDULED)]);
 	assert.deepEqual(await report([warned("Dates.md", 2, DUE)]), [], "back to the first locale");
-	assert.deepEqual(await report([warned("Dates.md", 1, DUE)]), [warn(DUE)], "the text edited back");
+	assert.deepEqual(await report([warned("Dates.md", 1, DUE)]), [], "the edit undone: a text told for before");
 });
 
-test("a note that leaves the updates is told again when it comes back; one that fails keeps what was told", async (t) => {
+test("a note filtered out and back, unreadable for a while, or removed and made again says nothing new", async (t) => {
 	const { report } = reporting(t);
 	const dates = warned("Dates.md", 1, DUE);
 	assert.deepEqual(await report([dates, warned("Other.md", 3, OTHER)]), [warn(DUE), warn(OTHER)]);
-	// Other.md left: removed, filtered out, or without warnings now.
+	// Other.md left: removed, filtered out, or without warnings now; it comes back with the same text.
 	assert.deepEqual(await report([dates]), []);
-	assert.deepEqual(await report([dates, warned("Other.md", 3, OTHER)]), [warn(OTHER)]);
-	// Dates.md cannot be read for a while, then reads with the same text: nothing new.
+	assert.deepEqual(await report([dates, warned("Other.md", 3, OTHER)]), []);
+	// Dates.md cannot be read for two reloads, then reads with the same text.
 	assert.deepEqual(await report([], [failure("Dates.md")]), [error("Dates.md"), notice(1)]);
+	assert.deepEqual(await report([], [failure("Dates.md")]), [error("Dates.md")]);
 	assert.deepEqual(await report([warned("Dates.md", 1, DUE)]), []);
+	// Renamed, the note's lines name its new path, so they are told under it.
+	const renamed = warning("Archive/Dates.md", 1, DUE.message);
+	assert.deepEqual(await report([warned("Archive/Dates.md", 1, renamed)]), [warn(renamed)]);
+});
+
+test(`a reporter remembers the last ${TEXTS_PER_NOTE} texts of a note`, async (t) => {
+	const { report } = reporting(t);
+	for (let text = 0; text <= TEXTS_PER_NOTE; text++)
+		assert.deepEqual(await report([warned("Dates.md", text, DUE)]), [warn(DUE)], `text ${text}`);
+	assert.deepEqual(await report([warned("Dates.md", 1, DUE)]), [], "among the last ones");
+	assert.deepEqual(await report([warned("Dates.md", 0, DUE)]), [warn(DUE)], "the oldest, forgotten");
 });
 
 test("each reporter has its own memory, and reports change none of what they are given", async (t) => {

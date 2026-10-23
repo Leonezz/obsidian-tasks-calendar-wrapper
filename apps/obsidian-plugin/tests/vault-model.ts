@@ -55,9 +55,12 @@ export interface ReaderModel {
 	telling: TellingModel;
 }
 
-/** For each note of the last report, warned or failing, the id of its text and the lines told for it; the failing paths. */
+/**
+ * What a view's reporter has told while it is open: each warning line as path, content id and line, and the failing
+ * paths of its last report. The generated sequences give a note fewer texts than a reporter remembers.
+ */
 export interface TellingModel {
-	readonly told: ReadonlyMap<string, { readonly content: number; readonly lines: ReadonlySet<string> }>;
+	readonly told: ReadonlySet<string>;
 	readonly failing: readonly string[];
 }
 
@@ -188,7 +191,7 @@ export function newReader(id: number, reader: TaskIndexReader, filters: NoteFilt
 		held: new Set(),
 		missedSinceClose: false,
 		reporter: createReadReporter(),
-		telling: { told: new Map(), failing: [] },
+		telling: { told: new Set(), failing: [] },
 	};
 }
 

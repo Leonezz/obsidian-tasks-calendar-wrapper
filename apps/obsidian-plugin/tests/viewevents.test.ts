@@ -541,7 +541,7 @@ test("a reload asked for while one reads the notes reads, when it runs, the note
 	assert.deepEqual(linesIn(timeline.view, "Projects/Garden.md"), ["- [ ] plant the roses"]);
 });
 
-test("a renamed note's warning is told under its new path; a rejected reload changes nothing; reopened, it tells again", async (t) => {
+test("filtered out and back a warning says nothing new; renamed it is told under its new path; reopened, it tells again", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const lines = ourLines(t);
 	const vault = fakeVault({ ...notes(), "Dates.md": "# Dates\n- [ ] pay the rent [due:: soon]" });
@@ -553,6 +553,10 @@ test("a renamed note's warning is told under its new path; a rejected reload cha
 	const warned = () => lines.filter(([kind]) => kind === "warn").map(([, message]) => message);
 	assert.deepEqual(warned(), [warningOf("Dates.md")]);
 	assert.deepEqual(shownNotices, [ONE_FAILED]);
+	// Filtered out and back in, it says nothing new for the same text.
+	await first.view.onUpdateOptions({ ...defaultUserOptions, excludePaths: ["Dates.md"] });
+	await first.view.onUpdateOptions({ ...defaultUserOptions });
+	assert.deepEqual(warned(), [warningOf("Dates.md")]);
 	vault.rename("Dates.md", "Dated.md");
 	await wait(t, RELOAD_DELAY_MS);
 	assert.deepEqual(warned(), [warningOf("Dates.md"), warningOf("Dated.md")]);

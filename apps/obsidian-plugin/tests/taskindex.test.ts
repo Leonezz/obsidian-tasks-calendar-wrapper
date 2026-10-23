@@ -423,7 +423,10 @@ test("the notes that warn come with the id of their text: kept notes give the sa
 	assert.notEqual(reread.warned[1], first.warned[1]);
 	assert.equal(reread.warned[1].content, first.warned[1].content);
 	key = Object.freeze({ ...key, timeZone: "B" });
-	assert.equal((await i.index.update({})).warned[1].content, contentIdOf(dates));
+	const otherKey = await i.index.update({});
+	assert.ok(i.since().read.includes("Dates.md"));
+	assert.notEqual(otherKey.warned[1], reread.warned[1]);
+	assert.equal(otherKey.warned[1].content, contentIdOf(dates));
 	// A save with other text gives another id; written back, the first one.
 	i.vault.write("Dates.md", dates + "\n- [ ] and the water");
 	const saved = await i.index.update({});
