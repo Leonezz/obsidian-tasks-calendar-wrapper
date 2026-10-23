@@ -12,6 +12,7 @@ import { defaultUserOptions } from "../src/useroptions";
 import { reportNoteReads } from "../timeline/src/taskadapter";
 import { watchChanges, watchNotes, type IndexUpdate, type NoteSource } from "../timeline/src/taskindex";
 import type { moment as obsidianMoment } from "../utils/moment";
+import { contentIdOf } from "../utils/contentid";
 import { parseKeyOf, type ParseKey } from "../utils/parsekey";
 import { changeAffectsTasks } from "../utils/refresh";
 import { fakeVault } from "./fakevault";
@@ -36,7 +37,9 @@ export type ObsidianFits = [
 
 /** Whether the update and each of its arrays are frozen. */
 const frozen = (update: IndexUpdate) =>
-	[update, update.tasks, update.warnings, update.failures].every((value) => Object.isFrozen(value));
+	[update, update.tasks, update.warnings, update.warned, ...update.warned, update.failures].every((value) =>
+		Object.isFrozen(value),
+	);
 
 /** Asserts that every task not of the given paths is the same object as in the earlier update. */
 function sameObjectsExcept(now: IndexUpdate, before: IndexUpdate, paths: readonly string[]): void {
@@ -390,6 +393,52 @@ test("every update gives the warnings of every note, stored ones too, and they a
 		assert.deepEqual(told, [["warn", "Tasks Calendar Wrapper: Dates.md, line 2: " + warning.message]]);
 		assert.deepEqual(told, toldByReadTasks);
 	}
+});
+
+test("the notes that warn come with the id of their text: kept notes give the same object, the same text the same id", async () => {
+	const dates = "# Dates\n- [ ] pay the rent [due:: soon]";
+	let key: ParseKey = Object.freeze({ locale: {}, localeConfig: 1, timeZone: "A", offsets: [0, 0] as const });
+	const i = indexed({ ...notes(), "Dates.md": dates, "B.md": "- [ ] b [due:: never]" }, { parseKey: () => key });
+	const first = await i.index.update({});
+	assert.ok(frozen(first));
+	assert.deepEqual(
+		first.warned.map((note) => [note.path, note.content]),
+		[
+			["B.md", contentIdOf("- [ ] b [due:: never]")],
+			["Dates.md", contentIdOf(dates)],
+		],
+	);
+	assert.deepEqual(
+		first.warned.flatMap((note) => note.warnings),
+		first.warnings,
+	);
+	i.since();
+	const kept = await i.index.update({});
+	assert.deepEqual(i.since().read, []);
+	kept.warned.forEach((note, n) => assert.equal(note, first.warned[n], "not read: the same object"));
+	// Read again with the same text, by a full read and under another parse key: the same id, in a new object.
+	i.index.rereadAll();
+	const reread = await i.index.update({});
+	assert.ok(i.since().read.includes("Dates.md"));
+	assert.notEqual(reread.warned[1], first.warned[1]);
+	assert.equal(reread.warned[1].content, first.warned[1].content);
+	key = Object.freeze({ ...key, timeZone: "B" });
+	const otherKey = await i.index.update({});
+	assert.ok(i.since().read.includes("Dates.md"));
+	assert.notEqual(otherKey.warned[1], reread.warned[1]);
+	assert.equal(otherKey.warned[1].content, contentIdOf(dates));
+	// A save with other text gives another id; written back, the first one.
+	i.vault.write("Dates.md", dates + "\n- [ ] and the water");
+	const saved = await i.index.update({});
+	assert.notEqual(saved.warned[1].content, contentIdOf(dates));
+	i.vault.write("Dates.md", dates);
+	assert.equal((await i.index.update({})).warned[1].content, contentIdOf(dates));
+	// A note that no longer warns is not among them.
+	i.vault.write("B.md", "- [ ] b");
+	assert.deepEqual(
+		(await i.index.update({})).warned.map((note) => note.path),
+		["Dates.md"],
+	);
 });
 
 test("an update tells the user nothing itself, even with warnings and failures", async (t) => {

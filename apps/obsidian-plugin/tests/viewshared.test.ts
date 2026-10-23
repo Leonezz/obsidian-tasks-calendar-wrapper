@@ -132,28 +132,31 @@ test("two timelines with other note filters: each reloads as before, reads what 
 		assert.deepStrictEqual([...timeline.tasks()], await readTasks(vault.app as never, timeline.options, moment));
 });
 
-test("two timelines tell of a failing note each, on every reload, and log the warnings each", async (t) => {
+test("two timelines each tell of a failing note and a warning once, and log the failing note's reason on every reload", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const lines = ourLines(t);
 	const vault = fakeVault({ ...notes(), "Dates.md": "# Dates\n- [ ] pay the rent [due:: soon]" });
 	vault.failReads("Projects/Garden.md");
 	const shared = timelineTaskIndex(vault.app as never);
+	shownNotices.length = 0;
 	const a = await openTimeline(t, vault, shared);
 	const b = await openTimeline(t, vault, shared);
-	shownNotices.length = 0;
+	const warning = 'Tasks Calendar Wrapper: Dates.md, line 2: could not read the date " soon" of [due:: ]';
+	// Each timeline, as with an index of its own, tells at its first reload; the one after the first "resolved"
+	// fails the same note and reads the same text.
+	assert.deepEqual(shownNotices, [ONE_FAILED, ONE_FAILED]);
+	assert.equal(lines.filter(([kind, message]) => kind === "warn" && message === warning).length, 2);
 	lines.length = 0;
 	const read = readsOf(vault);
 	vault.write("Inbox.md", "- [ ] call the plumber again");
 	await wait(t, RELOAD_DELAY_MS);
 	assert.deepEqual([a.reloads(), b.reloads()], [1, 1]);
 	assert.deepEqual(read(), ["Inbox.md", "Projects/Garden.md", "Projects/Garden.md"]);
-	assert.deepEqual(shownNotices, [ONE_FAILED, ONE_FAILED]);
+	assert.deepEqual(shownNotices, [ONE_FAILED, ONE_FAILED], "no new Notice");
 	assert.deepEqual(
 		lines.map(([kind, message]) => [kind, message]),
 		[
-			["warn", 'Tasks Calendar Wrapper: Dates.md, line 2: could not read the date " soon" of [due:: ]'],
 			["error", "Tasks Calendar Wrapper: reading a file failed"],
-			["warn", 'Tasks Calendar Wrapper: Dates.md, line 2: could not read the date " soon" of [due:: ]'],
 			["error", "Tasks Calendar Wrapper: reading a file failed"],
 		],
 	);

@@ -6,7 +6,10 @@
  * - always, it reads exactly the notes the model of tests/vault-model.ts says are due, in order and each once, parses
  *   each it read, and reads no note an index of the reader's own would not read at the same moment, but in the two
  *   cases the model names and again a note it could not read in one of them; with one reader, exactly those notes;
- * - a note it did not read gives the same Task objects as the last update, of any reader, that gave it.
+ * - a note it did not read gives the same Task objects and WarnedNote as the last update, of any reader, that gave it;
+ *   at rest each warned note's content id is that of the text the note holds;
+ * - the reader's view tells of the update what checkTelling says it is to: each warning line once for the same text
+ *   of the same note, the reasons of the failing notes, and the Notice only when they changed.
  * The sequence starts with one reader open, with no filters, as a sequence of one reader has it. shrink makes a failing
  * sequence as short as it can while it still fails.
  */
@@ -15,7 +18,8 @@ import moment from "moment";
 import { Notice } from "obsidian";
 
 import { parseNote, resolveTasks, type Task } from "@tasks-calendar-wrapper/core";
-import { readTasks, reportNoteReads } from "../timeline/src/taskadapter";
+import { readTasks, reportNoteReads, warningLine } from "../timeline/src/taskadapter";
+import { contentIdOf } from "../utils/contentid";
 import { createTaskIndex, watchNotes, type IndexUpdate, type TaskIndex } from "../timeline/src/taskindex";
 import { parseKeyOf } from "../utils/parsekey";
 import { fakeVault } from "./fakevault";
@@ -136,7 +140,10 @@ async function check(s: Setup, { asked, promise }: Pending): Promise<void> {
 	assert.deepEqual(asked.reads, plan.due, `${at}: the notes reader ${reader.id} read`);
 	checkAgainstOwn(asked, plan, s.run);
 	if (atRest(s.world, asked, plan)) await checkAtRest(s, asked, result);
-	if (result.error === undefined) checkResult(s, asked, plan, result.value as IndexUpdate);
+	if (result.error === undefined) {
+		checkResult(s, asked, plan, result.value as IndexUpdate);
+		await checkTelling(s, asked, result.value as IndexUpdate);
+	}
 }
 
 /** No vault action came since it started, and it shows no note that fails or went with no event. */
@@ -184,6 +191,11 @@ async function checkAtRest(s: Setup, asked: Asked, indexed: Captured<IndexUpdate
 	assert.deepStrictEqual([...result.tasks], reference.value, `${at}: the tasks of reader ${reader.id}`);
 	const told = await captured(run.lines, () => reportNoteReads(result.warnings, result.failures));
 	assert.deepStrictEqual(told.told, reference.told, `${at}: what the user is told`);
+	for (const note of result.warned) {
+		const text = s.world.vault.contentOf(note.path);
+		assert.equal(note.content, contentIdOf(text ?? ""), `${at}: the content id of ${note.path} is its text's`);
+		run.count?.("content ids at rest");
+	}
 	run.count?.("at rest");
 	if (result.failures.length > 0) run.count?.("at rest with failures");
 	const others = openReaders(s.world).filter((other) => other !== reader);
@@ -195,7 +207,7 @@ async function checkAtRest(s: Setup, asked: Asked, indexed: Captured<IndexUpdate
 function checkResult(s: Setup, asked: Asked, plan: Plan, update: IndexUpdate): void {
 	const { world, run } = s;
 	const { at, reader } = asked;
-	const arrays = [update, update.tasks, update.warnings, update.failures];
+	const arrays = [update, update.tasks, update.warnings, update.warned, ...update.warned, update.failures];
 	assert.ok(
 		arrays.every((value) => Object.isFrozen(value)),
 		`${at}: the result is frozen`,
@@ -226,10 +238,67 @@ function checkResult(s: Setup, asked: Asked, plan: Plan, update: IndexUpdate): v
 		tasks.forEach((task, i) => assert.equal(task, before[i], `${at}: ${path}'s task ${i} is the same object`));
 		run.count?.("identity kept");
 	}
+	const flat = update.warned.flatMap((note) => note.warnings);
+	assert.ok(
+		flat.length === update.warnings.length && flat.every((warning, i) => warning === update.warnings[i]),
+		`${at}: the warned notes hold the warnings, in order`,
+	);
+	assert.deepEqual(
+		update.warned.map((note) => note.path),
+		[...new Set(update.warnings.map((warning) => warning.path))],
+		`${at}: each warned note once, in path order`,
+	);
+	for (const note of update.warned) {
+		if (asked.reads.includes(note.path)) world.warnedObjects.set(note.path, note);
+		else
+			assert.equal(
+				note,
+				world.warnedObjects.get(note.path),
+				`${at}: ${note.path}'s WarnedNote is the same object`,
+			);
+	}
 	// What each view does with the tasks: a change to the shared moments would show in a later comparison.
 	resolveTasks(update.tasks, { forward: true, sort: "" }, { now: moment(), moment });
 	if (plan.sharedKeep) run.count?.("shared read");
 	if (plan.own === null) run.count?.("closed reader update");
+}
+
+/**
+ * What the reader's view tells of an update that succeeded, as its ReadReporter, against what it is to tell: each
+ * warning line of the update that the view has not told yet for that note's text, a line that a note has twice being
+ * told twice the first time; the reason of every failing note; and the Notice when the failing paths differ from the
+ * last report's and are some.
+ */
+async function checkTelling(s: Setup, asked: Asked, update: IndexUpdate): Promise<void> {
+	const { reader, at } = asked;
+	const { told, failing } = reader.telling;
+	const expected: unknown[][] = [];
+	const toldNow = new Set(told);
+	for (const note of update.warned) {
+		let before = 0;
+		for (const warning of note.warnings) {
+			const line = warningLine(warning);
+			const key = JSON.stringify([note.path, note.content, line]);
+			if (told.has(key)) before += 1;
+			else expected.push(["warn", line]);
+			toldNow.add(key);
+		}
+		s.run.count?.(before > 0 ? "warnings told before" : "warnings told");
+	}
+	const paths = update.failures.map((failure) => failure.path);
+	for (const failure of update.failures)
+		expected.push(["error", "Tasks Calendar Wrapper: reading a file failed", failure.reason]);
+	const changed = paths.length !== failing.length || paths.some((path, i) => path !== failing[i]);
+	if (changed && paths.length > 0) {
+		expected.push([
+			"notice",
+			`Tasks Calendar Wrapper: ${paths.length} file(s) could not be read, their tasks are missing. See the developer console.`,
+		]);
+		if (failing.length > 0) s.run.count?.("other failures");
+	} else if (paths.length > 0) s.run.count?.("same failures");
+	const actual = await captured(s.run.lines, () => reader.reporter.report(update));
+	assert.deepStrictEqual(actual.told, expected, `${at}: what the view of reader ${reader.id} tells`);
+	reader.telling = { told: toldNow, failing: paths };
 }
 
 /** The reader asks for a full read, and the model takes note. */
@@ -353,6 +422,7 @@ function newWorld(run: Run): World {
 		silent: new Set(),
 		silentlyRemoved: new Set(),
 		objects: new Map(),
+		warnedObjects: new Map(),
 		producer: new Map(),
 		lastResult: null,
 		count: (what) => run.count?.(what),
