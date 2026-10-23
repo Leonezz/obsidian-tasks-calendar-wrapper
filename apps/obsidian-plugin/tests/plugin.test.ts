@@ -10,7 +10,7 @@ import { TasksTimelineView, TIMELINE_VIEW } from "../src/views";
 import type { FakeVault } from "./fakevault";
 import { deeplyFrozen, nothingFrozen } from "./frozen";
 import { FIXTURE_NAMES, readFixture, snapshotsIn, startPlugin, type StartedPlugin } from "./settings-fixtures";
-import { FakeElement, Modal } from "./stubs/obsidian";
+import { FakeElement, Modal, Notice } from "./stubs/obsidian";
 
 // How the plugin loads, saves and hands on its options today, for the data.json shapes users have, see
 // settings-fixtures.ts. Later steps replace this code and must keep what these tests pin, or change them on purpose.
@@ -506,6 +506,87 @@ test("a data.json changed outside is read as at start, and reaches the timelines
 	assert.deepEqual(
 		updates.mock.calls.map((call) => [call.this, call.arguments[0].sort]),
 		[[view, "due-asc"]],
+	);
+});
+
+/** What the plugin tells when data.json changed outside Obsidian and cannot be read. */
+const UNREADABLE =
+	"Tasks Calendar Wrapper: data.json changed outside Obsidian but could not be read, so the settings stay as they were; the next change of a setting saves them. See the developer console.";
+
+// The user's decision (2026-10-23): a data.json changed outside Obsidian that cannot be read keeps the settings, with a
+// Notice, and the next save writes them back; at start one that cannot be read still gives the defaults.
+test("a data.json changed outside that cannot be read keeps the settings, says so, and the next save writes them", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const errors = t.mock.method(console, "error", () => {});
+	const updates = countUpdates(t);
+	const { vault, plugin } = await startPlugin(readFixture("quiet.json"), { layoutReady: true });
+	await openTimeline(vault);
+	await wait(t, 10 * OPTIONS_DELAY_MS);
+	updates.mock.resetCalls();
+	const saves = t.mock.method(plugin, "saveData");
+	const before = plugin.userOptions;
+	Notice.shown.length = 0;
+	// As a half-written Sync file, or git's conflict markers: Obsidian logs why and gives undefined.
+	await plugin.changeDataJsonOutside('{ "sort": "due-asc", <<<<<<< HEAD');
+	assert.equal(plugin.userOptions, before, "the same options");
+	assert.deepEqual(Notice.shown, [UNREADABLE]);
+	assert.equal(errors.mock.calls.filter((call) => call.arguments[0] === "failed to read JSON").length, 1);
+	assert.equal(saves.mock.callCount(), 0, "nothing is saved over the file");
+	await wait(t, 10 * OPTIONS_DELAY_MS);
+	assert.equal(updates.mock.callCount(), 0, "the timelines keep their options");
+	await plugin.writeOptions({ dateFormat: "YYYY" });
+	assert.deepEqual(JSON.parse(plugin.dataJson ?? "null"), {
+		...JSON.parse(JSON.stringify(before)),
+		dateFormat: "YYYY",
+		settingsVersion: 1,
+	});
+});
+
+test("a data.json removed outside reaches no plugin code: the settings stay, nothing is saved until a setting changes", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin } = await startPlugin(readFixture("quiet.json"), { layoutReady: true });
+	const before = plugin.userOptions;
+	const calls = t.mock.method(plugin, "onExternalSettingsChange");
+	const saves = t.mock.method(plugin, "saveData");
+	Notice.shown.length = 0;
+	// Obsidian does not call onExternalSettingsChange: the removed file's modified time is 0.
+	await plugin.changeDataJsonOutside(null);
+	assert.equal(calls.mock.callCount(), 0);
+	assert.equal(plugin.userOptions, before);
+	assert.deepEqual(Notice.shown, []);
+	await wait(t, 10 * OPTIONS_DELAY_MS);
+	assert.equal(saves.mock.callCount(), 0, "the file is not made again on its own");
+	await plugin.writeOptions({ dateFormat: "YYYY" });
+	assert.deepEqual(JSON.parse(plugin.dataJson ?? "null"), {
+		...JSON.parse(JSON.stringify(before)),
+		dateFormat: "YYYY",
+		settingsVersion: 1,
+	});
+});
+
+test("a data.json changed outside to hold null gives the defaults, as at start, with no Notice", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin } = await startPlugin(readFixture("quiet.json"), { layoutReady: true });
+	Notice.shown.length = 0;
+	await plugin.changeDataJsonOutside("null");
+	assert.deepEqual(plugin.userOptions, defaultUserOptions);
+	assert.deepEqual(Notice.shown, []);
+});
+
+test("reading a data.json changed outside that throws keeps the settings and says so, with no unhandled rejection", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const errors = t.mock.method(console, "error", () => {});
+	const { plugin } = await startPlugin(readFixture("quiet.json"), { layoutReady: true });
+	const before = plugin.userOptions;
+	Notice.shown.length = 0;
+	const failure = new Error("EACCES: permission denied");
+	t.mock.method(plugin, "loadData", () => Promise.reject(failure));
+	await plugin.changeDataJsonOutside(readFixture("0.2.9-dropdown-sort.json"));
+	assert.equal(plugin.userOptions, before);
+	assert.deepEqual(Notice.shown, [UNREADABLE]);
+	assert.deepEqual(
+		errors.mock.calls.map((call) => call.arguments),
+		[["Tasks Calendar Wrapper: reading data.json failed", failure]],
 	);
 });
 

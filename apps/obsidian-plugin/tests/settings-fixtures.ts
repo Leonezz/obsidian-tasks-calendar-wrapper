@@ -65,6 +65,7 @@ export type StartedPlugin = TasksCalendarWrapper & {
 	commands: readonly AddedCommand[];
 	load(): Promise<void>;
 	unload(): void;
+	changeDataJsonOutside(dataJson: string | null): Promise<void>;
 };
 
 /**

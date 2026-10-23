@@ -17,16 +17,26 @@ export type { UserOption };
 
 export class TasksCalendarSettingTab extends PluginSettingTab {
 	plugin: TasksCalendarWrapper;
+	/** The settings show this tab: from Obsidian's display() until its hide(). */
+	private shown = false;
 	constructor(app: App, plugin: TasksCalendarWrapper) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
+	/** Draws the tab again with the options now, if the settings show it. */
+	redrawIfShown(): void {
+		if (this.shown) this.display();
+	}
+
+	hide(): void {
+		this.shown = false;
+	}
+
 	async onOptionUpdate(updatePart: Partial<UserOption>, refreashSettingPage = false) {
 		await this.plugin.writeOptions(updatePart);
-		if (refreashSettingPage) {
-			this.display();
-		}
+		// The settings may have closed while it saved.
+		if (refreashSettingPage) this.redrawIfShown();
 	}
 
 	/** Saves options from a callback that cannot wait for the result, reporting failures to the user. */
@@ -35,6 +45,7 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
+		this.shown = true;
 		const { containerEl } = this;
 
 		containerEl.empty();
