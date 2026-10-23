@@ -6,9 +6,13 @@
  * - inside `if (requireApiVersion("x"))`, or the else of `if (!requireApiVersion("x"))`;
  * - after `if (!requireApiVersion("x")) return;` (or throw, continue, break) in the same block;
  * - on the right of `requireApiVersion("x") &&`, or in the true branch of `requireApiVersion("x") ? … : …`;
- * where x is the declaration's version or newer. A condition may join several such calls with &&. A gate around a
- * function's definition holds in its body too, as the running Obsidian does not change. A use in a type alone needs
- * no gate, as types do not exist at run time. A declaration without `@since` is taken to be as old as any floor.
+ * where x is the declaration's version or newer. A condition may join several such calls with &&, and the one an early
+ * return leaves on may join several negated ones with ||. A gate around a function's definition holds in its body too,
+ * as the running Obsidian does not change. A use is a name in an expression, a property taken by destructuring, or a
+ * value put in an object by shorthand; a call of an overloaded method counts the overload it calls. A use in a type,
+ * `typeof` in a type included, needs no gate, as types do not exist at run time. A declaration without `@since` is
+ * taken to be as old as any floor; a gate that is not a requireApiVersion call with a string, such as a variable or a
+ * helper that holds one, is not seen, and the check fails on what it gates.
  *
  * scripts/api-floor.mjs runs it on the plugin; the tests import it.
  */
@@ -27,10 +31,10 @@ export function compareVersions(a, b) {
 
 const isObsidianTypings = (fileName) => /[\\/]obsidian[\\/]obsidian\.d\.ts$/.test(fileName);
 
-/** The newest `@since` of the symbol's declarations in Obsidian's typings, or null when it has none there. */
-function sinceOf(symbol) {
+/** The newest `@since` of these declarations of Obsidian's typings, or null when none of them has one. */
+function sinceOf(declarations) {
 	let newest = null;
-	for (const declaration of symbol.declarations ?? []) {
+	for (const declaration of declarations) {
 		if (!isObsidianTypings(declaration.getSourceFile().fileName)) continue;
 		for (const tag of ts.getJSDocTags(declaration)) {
 			if (tag.tagName.text !== "since") continue;
@@ -42,6 +46,45 @@ function sinceOf(symbol) {
 		}
 	}
 	return newest;
+}
+
+/** The declaration a call or `new` resolves to, when the identifier names what is called; null otherwise. */
+function calledDeclaration(identifier, checker) {
+	const callee =
+		ts.isPropertyAccessExpression(identifier.parent) && identifier.parent.name === identifier
+			? identifier.parent
+			: identifier;
+	const call = callee.parent;
+	if ((ts.isCallExpression(call) || ts.isNewExpression(call)) && call.expression === callee) {
+		return checker.getResolvedSignature(call)?.declaration ?? null;
+	}
+	return null;
+}
+
+/**
+ * The `@since` of what the identifier uses: the overload a call resolves to, when it has one, otherwise the newest of
+ * the declarations of the symbol it names, the property it destructures or the value its shorthand puts in an object.
+ */
+function sinceAt(identifier, checker) {
+	const called = calledDeclaration(identifier, checker);
+	const sinceCalled = called ? sinceOf([called]) : null;
+	if (sinceCalled !== null) return sinceCalled;
+	const parent = identifier.parent;
+	let symbol;
+	if (ts.isShorthandPropertyAssignment(parent) && parent.name === identifier) {
+		symbol = checker.getShorthandAssignmentValueSymbol(parent);
+	} else if (
+		ts.isBindingElement(parent) &&
+		parent.name === identifier &&
+		!parent.propertyName &&
+		ts.isObjectBindingPattern(parent.parent)
+	) {
+		symbol = checker.getPropertyOfType(checker.getTypeAtLocation(parent.parent), identifier.text);
+	} else {
+		symbol = checker.getSymbolAtLocation(identifier);
+	}
+	if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+	return symbol ? sinceOf(symbol.declarations ?? []) : null;
 }
 
 /** The versions a condition requires when it is true: the requireApiVersion("x") calls it joins with &&. */
@@ -57,14 +100,23 @@ function requiredWhenTrue(expression, isRequireApiVersion) {
 			...requiredWhenTrue(node.right, isRequireApiVersion),
 		];
 	}
+	if (ts.isPrefixUnaryExpression(node) && node.operator === ts.SyntaxKind.ExclamationToken) {
+		return requiredWhenFalse(node.operand, isRequireApiVersion);
+	}
 	return [];
 }
 
-/** The versions a condition requires when it is false: those of `!requireApiVersion("x")`. */
+/** The versions a condition requires when it is false: those of `!requireApiVersion("x")`, joined with ||. */
 function requiredWhenFalse(expression, isRequireApiVersion) {
 	const node = skipParentheses(expression);
 	if (ts.isPrefixUnaryExpression(node) && node.operator === ts.SyntaxKind.ExclamationToken) {
 		return requiredWhenTrue(node.operand, isRequireApiVersion);
+	}
+	if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.BarBarToken) {
+		return [
+			...requiredWhenFalse(node.left, isRequireApiVersion),
+			...requiredWhenFalse(node.right, isRequireApiVersion),
+		];
 	}
 	return [];
 }
@@ -107,7 +159,8 @@ function guaranteedAt(node, isRequireApiVersion) {
 			ts.isBlock(parent) ||
 			ts.isSourceFile(parent) ||
 			ts.isModuleBlock(parent) ||
-			ts.isCaseClause(parent)
+			ts.isCaseClause(parent) ||
+			ts.isDefaultClause(parent)
 		) {
 			// `if (!requireApiVersion("x")) return;` before the statement in the same block.
 			for (const statement of parent.statements) {
@@ -143,6 +196,10 @@ const OWN_DECLARATIONS = new Set([
 function notARunTimeUse(identifier) {
 	const parent = identifier.parent;
 	if (ts.isPartOfTypeNode(identifier)) return true;
+	// `typeof x.y` in a type: isPartOfTypeNode leaves out the names a type query takes.
+	let name = identifier;
+	while (ts.isQualifiedName(name.parent)) name = name.parent;
+	if (ts.isTypeQueryNode(name.parent)) return true;
 	if (ts.isImportSpecifier(parent) || ts.isImportClause(parent) || ts.isNamespaceImport(parent)) return true;
 	if (ts.isExportSpecifier(parent)) return true;
 	// `implements X` and an interface's `extends X` name types; a class's `extends X` runs.
@@ -173,9 +230,7 @@ export function apiFloorViolations(program, floor, isPluginFile) {
 		if (sourceFile.isDeclarationFile || !isPluginFile(sourceFile.fileName)) continue;
 		const visit = (node) => {
 			if (ts.isIdentifier(node) && !notARunTimeUse(node)) {
-				let symbol = checker.getSymbolAtLocation(node);
-				if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
-				const since = symbol ? sinceOf(symbol) : null;
+				const since = sinceAt(node, checker);
 				if (since !== null && compareVersions(since, floor) > 0) {
 					const gated = guaranteedAt(node, isRequireApiVersion).some((v) => compareVersions(v, since) >= 0);
 					if (!gated) {

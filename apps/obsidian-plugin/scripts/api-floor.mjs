@@ -28,9 +28,24 @@ if (!/^\d+(\.\d+)*$/.test(String(floor)))
 const configFile = path.join(pluginRoot, "tsconfig.json");
 const config = ts.readConfigFile(configFile, ts.sys.readFile);
 if (config.error) fail(ts.flattenDiagnosticMessageText(config.error.messageText, "\n"));
-const { options, errors } = ts.parseJsonConfigFileContent(config.config, ts.sys, pluginRoot);
+const { options, fileNames, errors } = ts.parseJsonConfigFileContent(config.config, ts.sys, pluginRoot);
 if (errors.length > 0) fail(errors.map((error) => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"));
-const program = ts.createProgram([path.join(pluginRoot, "src", "main.ts")], options);
+// What src/main.ts reaches, and the declarations of the plugin's own the tsconfig takes in, such as module shims.
+const declarations = fileNames.filter((fileName) => fileName.endsWith(".d.ts") && !fileName.includes("/tests/"));
+const program = ts.createProgram([path.join(pluginRoot, "src", "main.ts"), ...declarations], options);
+// Without the typings no declaration has a @since, and every use would pass: a program that does not compile fails.
+const typings = program.getSourceFiles().some((file) => /[\\/]obsidian[\\/]obsidian\.d\.ts$/.test(file.fileName));
+if (!typings) fail("the obsidian typings are not in the program; run pnpm install.");
+const problems = ts.getPreEmitDiagnostics(program).filter((d) => d.category === ts.DiagnosticCategory.Error);
+if (problems.length > 0) {
+	fail(
+		`the plugin does not compile, so its uses cannot be checked:\n${ts.formatDiagnostics(problems, {
+			getCanonicalFileName: (fileName) => fileName,
+			getCurrentDirectory: () => repoRoot,
+			getNewLine: () => "\n",
+		})}`,
+	);
+}
 
 // Every file of the program but the declarations and what comes from node_modules: the code the bundle holds.
 const isPluginFile = (fileName) => !fileName.split(/[\\/]/).includes("node_modules");

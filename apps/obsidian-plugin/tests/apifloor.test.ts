@@ -51,7 +51,7 @@ function reported(source: string, floor: string): string[] {
 	);
 }
 
-const HEADER = `import { App, Modal, Plugin, PluginSettingTab, requireApiVersion } from "obsidian";
+const HEADER = `import { App, ConfirmationModal, getLanguage, Modal, Plugin, PluginSettingTab, requireApiVersion } from "obsidian";
 declare const app: App;
 declare const modal: Modal;
 `;
@@ -110,6 +110,42 @@ export type { Update, Wrapper };
 export { callback };
 `;
 	assert.deepEqual(reported(HEADER + typesOnly, "1.0.0"), []);
+});
+
+test("a property taken by destructuring and a value put in an object by shorthand are uses", () => {
+	assert.deepEqual(reported(HEADER + "const { setCloseCallback } = modal;\n", "1.7.2"), [
+		"4:setCloseCallback@1.10.0",
+	]);
+	assert.deepEqual(reported(HEADER + "const { setCloseCallback: set } = modal;\n", "1.7.2"), [
+		"4:setCloseCallback@1.10.0",
+	]);
+	assert.deepEqual(reported(HEADER + "const deps = { getLanguage };\n", "1.7.2"), ["4:getLanguage@1.8.7"]);
+	assert.deepEqual(reported(HEADER + "const deps = { lang: getLanguage };\n", "1.7.2"), ["4:getLanguage@1.8.7"]);
+	assert.deepEqual(reported(HEADER + `if (requireApiVersion("1.8.7")) console.log({ getLanguage });\n`, "1.7.2"), []);
+});
+
+test("a call of an overloaded method counts the overload it calls", () => {
+	const source = HEADER + `app.workspace.on("window-open", () => {});\napp.workspace.on("url-menu", () => {});\n`;
+	// window-open is @since 0.15.3, url-menu @since 1.5.1, both overloads of Workspace.on.
+	assert.deepEqual(reported(source, "1.4.0"), ["5:on@1.5.1"]);
+	assert.deepEqual(reported(source, "0.15.3"), ["5:on@1.5.1"]);
+	assert.deepEqual(reported(source, "1.5.1"), []);
+});
+
+test("typeof in a type needs no gate; an early return on || and a break in default: gate what follows", () => {
+	assert.deepEqual(
+		reported(HEADER + "let m: InstanceType<typeof ConfirmationModal> | null = null;\nm = null;\n", "1.11.4"),
+		[],
+	);
+	assert.deepEqual(reported(HEADER + "type F = typeof modal.setCloseCallback;\nexport type { F };\n", "1.7.2"), []);
+	const gated = [
+		`function f(ready: boolean) { if (!requireApiVersion("1.10.0") || !ready) return; modal.setCloseCallback(() => {}); }`,
+		`function f(x: number) { switch (x) { default: if (!requireApiVersion("1.10.0")) break; modal.setCloseCallback(() => {}); } }`,
+		`if (!(requireApiVersion("1.10.0") && requireApiVersion("1.0.0"))) modal.close(); else modal.setCloseCallback(() => {});`,
+	];
+	for (const line of gated) assert.deepEqual(reported(HEADER + line + "\n", "1.7.2"), [], line);
+	const ungated = `function f(ready: boolean) { if (!requireApiVersion("1.10.0") && !ready) return; modal.setCloseCallback(() => {}); }`;
+	assert.deepEqual(reported(HEADER + ungated + "\n", "1.7.2"), ["4:setCloseCallback@1.10.0"], ungated);
 });
 
 test("a declaration without @since, such as requireApiVersion, is as old as any floor", () => {
