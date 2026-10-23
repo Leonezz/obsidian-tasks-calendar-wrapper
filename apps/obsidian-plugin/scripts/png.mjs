@@ -1,6 +1,6 @@
 /**
  * Just enough PNG for screenshots.mjs, without dependencies: decodes the 8-bit RGB/RGBA images Chrome's
- * screenshots are, encodes RGBA, and compares two images pixel by pixel.
+ * screenshots are, encodes RGBA, compares two images pixel by pixel, and says what a difference means.
  */
 import { deflateSync, inflateSync } from "zlib";
 
@@ -154,4 +154,32 @@ export function comparePngs(expected, actual) {
 		}
 	}
 	return { differing, maxDelta, total: width * height, sameSize, diff: { width, height, data: diff } };
+}
+
+/**
+ * Chrome draws some pixels of the status icons slightly differently from run to run: in 84 states up to 132 pixels,
+ * by up to 13 levels. A screenshot counts as the same when no more than NOISE_PIXELS differ, by no more than
+ * NOISE_DELTA. Real changes are far larger: a highlighted row is about 22,000 pixels, a changed digit differs by over 100.
+ */
+export const NOISE_PIXELS = 500;
+export const NOISE_DELTA = 24;
+/**
+ * Colour drift: the same pixels in slightly other colours, as when the colour management between the page and the
+ * screenshot differs a little from the baselines'. Seen on 2026-10-22 in all 84 states: up to 35,000 pixels, in the
+ * accent colour only, by up to 15 levels, both on the display the baselines record and on another one, with the
+ * visible/*.txt records unchanged. A screenshot whose every pixel differs by no more than DRIFT_DELTA counts as the same,
+ * however many differ: a moved, added or changed element differs by far more where it changed. What is displayed is
+ * checked exactly by visible/*.txt; a colour change this small is the one change neither sees.
+ */
+export const DRIFT_DELTA = 16;
+
+/**
+ * What a comparison of a screenshot with its baseline means: "same" when no pixel differs, "noise" or "drift" when the
+ * difference is rendering noise or colour drift and the screenshot counts as the same, "changed" otherwise.
+ */
+export function screenshotVerdict({ differing, maxDelta, sameSize }) {
+	if (differing === 0) return "same";
+	if (differing <= NOISE_PIXELS && maxDelta <= NOISE_DELTA) return "noise";
+	if (sameSize && maxDelta <= DRIFT_DELTA) return "drift";
+	return "changed";
 }

@@ -12,7 +12,7 @@
  * `pnpm screenshots` builds the plugin, takes both and compares them with fixtures/screenshots, the screenshots pixel by
  * pixel, writes what it took and a diff image of each screenshot that differs to a folder it names, and fails if anything
  * differs. `pnpm screenshots --update` writes to fixtures/screenshots instead what no longer matches it, and keeps the
- * rest, so re-recording changes no file that only differs by rendering noise. `--only=<text>` takes only the states whose
+ * rest, so re-recording changes no file that only differs by rendering noise or colour drift, see screenshotVerdict in png.mjs. `--only=<text>` takes only the states whose
  * name contains the text, e.g. `--only=dark-today`, and cannot be combined with --update.
  *
  * Pixels and colours depend on the machine, the Obsidian version, the golden vault's appearance settings (accent colour,
@@ -44,7 +44,7 @@ import {
 	ScriptError,
 	TIMELINE_VIEW,
 } from "./fixture-app.mjs";
-import { comparePngs, decodePng, encodePng } from "./png.mjs";
+import { comparePngs, decodePng, encodePng, screenshotVerdict } from "./png.mjs";
 
 const VAULT_NAME = "golden-vault";
 const baselineDir = path.join(repoRoot, "fixtures", "screenshots");
@@ -54,13 +54,6 @@ const VISIBLE = "visible";
 const VIEWPORT_WIDTH = 600;
 const MIN_HEIGHT = 600;
 const MAX_HEIGHT = 16_000;
-/**
- * Chrome draws some pixels of the status icons slightly differently from run to run: in 84 states up to 132 pixels,
- * by up to 13 levels. A screenshot counts as the same when no more than NOISE_PIXELS differ, by no more than
- * NOISE_DELTA. Real changes are far larger: a highlighted row is about 22,000 pixels, a changed digit differs by over 100.
- */
-const NOISE_PIXELS = 500;
-const NOISE_DELTA = 24;
 /**
  * The plugin pushes its options to open views 200 ms after it loads (#203), which renders the timeline again; the
  * timeline is left this long after opening, and then until it is quiet, before the first screenshot.
@@ -436,11 +429,12 @@ function comparePng(outDir, name) {
 	writeFileSync(path.join(outDir, `${name}.diff.png`), encodePng(result.diff));
 	const size = result.sameSize ? "" : ` (${expected.width}×${expected.height} → ${actual.width}×${actual.height})`;
 	const summary = `${result.differing} of ${result.total} pixels differ, by up to ${result.maxDelta} (${((100 * result.differing) / result.total).toFixed(2)} %)${size}`;
-	if (result.differing <= NOISE_PIXELS && result.maxDelta <= NOISE_DELTA) {
-		console.log(`screenshots: ${name}: ${summary}, counted as rendering noise`);
-		return null;
-	}
-	return summary;
+	const verdict = screenshotVerdict(result);
+	if (verdict === "changed") return summary;
+	console.log(
+		`screenshots: ${name}: ${summary}, counted as ${verdict === "noise" ? "rendering noise" : "colour drift"}`,
+	);
+	return null;
 }
 
 /** Warns about each thing that decides the pixels and differs between the baselines and this run. */
@@ -546,7 +540,7 @@ await runScript("screenshots", async () => {
 
 	if (update) {
 		if (existsSync(manifestFile)) warnAboutSetup(JSON.parse(readFileSync(manifestFile, "utf8")), env);
-		// A baseline that still matches, rendering noise included, is kept as it is, so re-recording adds to the git
+		// A baseline that still matches, rendering noise and colour drift included, is kept as it is, so re-recording adds to the git
 		// history only what really changed.
 		const visibleDir = path.join(baselineDir, VISIBLE);
 		mkdirSync(visibleDir, { recursive: true });
