@@ -107,10 +107,10 @@ test("a closed reader's notes go at the next update of another; an update it sti
 	assert.deepEqual(t.since().read, []);
 	// As a view that closed finishes the reload it was asked for.
 	const late = await a.update({});
-	assert.deepEqual(t.since().read, ["Archive/Old.md", "Inbox.md", "Reference/Plain.md"], "Garden stays, B shows it");
+	assert.deepEqual(t.since().read, ["Archive/Old.md", "Inbox.md"], "Garden stays, B shows it");
 	assert.deepStrictEqual([...late.tasks], await t.reference());
 	await a.update({});
-	assert.deepEqual(t.since().read, ["Archive/Old.md", "Inbox.md", "Reference/Plain.md"], "kept for no open reader");
+	assert.deepEqual(t.since().read, ["Archive/Old.md", "Inbox.md"], "kept for no open reader");
 });
 
 test("rereadAll makes only its own reader read everything; others use what that read stored", async () => {
@@ -246,7 +246,7 @@ test("another parse key: the first update reads every note it shows, the next re
 	await b.update(PROJECTS);
 	assert.deepEqual(t.since().read, ["Projects/Garden.md"]);
 	await a.update({});
-	assert.deepEqual(t.since().read, ["Archive/Old.md", "Inbox.md", "Reference/Plain.md"]);
+	assert.deepEqual(t.since().read, ["Archive/Old.md", "Inbox.md"]);
 	// The key changes while B reads and is back before A updates: what B stored may be parsed under either.
 	const release = t.vault.holdReads();
 	t.vault.write("Projects/Garden.md", "- [ ] plant the roses");

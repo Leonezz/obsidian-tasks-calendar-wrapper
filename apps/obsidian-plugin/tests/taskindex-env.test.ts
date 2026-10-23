@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import moment, { type Moment } from "moment";
 
-import type { Task } from "@tasks-calendar-wrapper/core";
+import { hasTaskItems, type NoteMetadata, type Task } from "@tasks-calendar-wrapper/core";
 import { defaultUserOptions } from "../src/useroptions";
 import { readTasks, reportNoteReads } from "../timeline/src/taskadapter";
 import type { IndexUpdate } from "../timeline/src/taskindex";
@@ -113,6 +113,12 @@ test("golden: equal to readTasks in every read order, nothing read twice, one re
 	const vault = loadVault();
 	const paths = Object.keys(vault.files).sort();
 	assert.equal(paths.length, 24);
+	// The notes with a task item, the only ones read: every golden note but "No tasks.md".
+	const withTasks = paths.filter((path) => hasTaskItems(vault.files[path] as NoteMetadata));
+	assert.deepEqual(
+		paths.filter((path) => !withTasks.includes(path)),
+		["No tasks.md"],
+	);
 	for (const order of [{}, { reversed: true }, { staggered: true }]) {
 		const app = goldenApp(vault, order) as { vault: { cachedRead(file: { path: string }): Promise<string> } };
 		const read: string[] = [];
@@ -126,24 +132,24 @@ test("golden: equal to readTasks in every read order, nothing read twice, one re
 		};
 		const index = soleReader({ app: app as never, moment, parseKey: () => parseKeyOf(moment) });
 		const first = await index.update(defaultUserOptions);
-		assert.equal(read.length, 24, JSON.stringify(order));
+		assert.equal(read.length, withTasks.length, JSON.stringify(order));
 		assert.deepStrictEqual([...first.tasks], await reference());
 		const second = await index.update(defaultUserOptions);
-		assert.equal(read.length, 24, "the second update reads nothing");
+		assert.equal(read.length, withTasks.length, "the second update reads nothing");
 		assert.equal(second.tasks.length, first.tasks.length);
 		second.tasks.forEach((task, i) => assert.equal(task, first.tasks[i]));
 		for (const path of paths) {
 			read.length = 0;
 			index.markDirty([path]);
 			const marked = await index.update(defaultUserOptions);
-			assert.deepEqual(read, [path]);
+			assert.deepEqual(read, withTasks.includes(path) ? [path] : []);
 			assert.deepStrictEqual([...marked.tasks], [...first.tasks], path);
 		}
 		read.length = 0;
 		try {
 			moment.locale("zh-cn");
 			const chinese = await index.update(defaultUserOptions);
-			assert.equal(read.length, 24, "every note, in zh-cn");
+			assert.equal(read.length, withTasks.length, "every note with a task item, in zh-cn");
 			assert.deepStrictEqual([...chinese.tasks], await reference());
 		} finally {
 			moment.locale("en");

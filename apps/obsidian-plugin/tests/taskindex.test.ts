@@ -56,12 +56,47 @@ test("the first update reads each visible note once, in code-unit order, and giv
 		"Files/data.txt": "x",
 	});
 	const first = await t.index.update({ excludePaths: ["Archive"] });
-	const visible = ["B.md", "Inbox.md", "Notes/ä.md", "Projects/Garden.md", "Reference/Plain.md", "a.md"];
+	// Reference/Plain.md has no task item, and data.txt is no note.
+	const visible = ["B.md", "Inbox.md", "Notes/ä.md", "Projects/Garden.md", "a.md"];
 	assert.deepEqual(t.since(), { read: visible, parsed: visible });
 	assert.deepStrictEqual([...first.tasks], await t.reference({ excludePaths: ["Archive"] }));
 	assert.ok(frozen(first));
 	assert.deepEqual(first.warnings, []);
 	assert.deepEqual(first.failures, []);
+});
+
+test("a note without a task item is not read: not first, not by a full read, not saved; failing, it tells nothing", async () => {
+	const t = indexed();
+	t.vault.failReads("Reference/Plain.md");
+	const first = await t.index.update({});
+	assert.deepEqual(t.since(), { read: ALL, parsed: ALL });
+	assert.deepEqual(first.failures, []);
+	t.index.rereadAll();
+	await t.index.update({});
+	assert.deepEqual(t.since().read, ALL);
+	t.vault.write("Reference/Plain.md", "# Plain\n\n- edited");
+	const saved = await t.index.update({});
+	assert.deepEqual(t.since().read, []);
+	assert.deepEqual(saved.failures, []);
+	assert.deepStrictEqual([...saved.tasks], await t.reference());
+});
+
+test("a note that gets its first task is read; one that loses its last is not read, and its tasks are gone", async () => {
+	const t = indexed();
+	await t.index.update({});
+	t.since();
+	t.vault.write("Reference/Plain.md", "# Plain\n\n- [ ] now a task");
+	const gained = await t.index.update({});
+	assert.deepEqual(t.since().read, ["Reference/Plain.md"]);
+	assert.deepEqual(
+		gained.tasks.filter((task) => task.path === "Reference/Plain.md").map((task) => task.visual),
+		["now a task"],
+	);
+	t.vault.write("Projects/Garden.md", "# Garden\n\nnothing to do");
+	const lost = await t.index.update({});
+	assert.deepEqual(t.since().read, []);
+	assert.ok(!pathsOf(lost.tasks).includes("Projects/Garden.md"));
+	assert.deepStrictEqual([...lost.tasks], await t.reference());
 });
 
 test("an update with no change since the last one reads nothing and gives the same tasks in a new array", async () => {
@@ -89,7 +124,7 @@ test("acceptance: after a note is saved, the update reads and parses that one no
 	assert.deepStrictEqual([...second.tasks], await t.reference());
 });
 
-test("saving a note without tasks schedules no reload, and the next update reads it", async () => {
+test("saving a note without tasks schedules no reload, and the next update does not read it", async () => {
 	const t = indexed();
 	const first = await t.index.update({});
 	t.since();
@@ -98,7 +133,7 @@ test("saving a note without tasks schedules no reload, and the next update reads
 	assert.deepEqual(paths, ["Reference/Plain.md"]);
 	assert.equal(changeAffectsTasks(paths, cache, new Set(pathsOf(first.tasks))), false, "the view does not reload");
 	await t.index.update({});
-	assert.deepEqual(t.since(), { read: ["Reference/Plain.md"], parsed: ["Reference/Plain.md"] });
+	assert.deepEqual(t.since(), { read: [], parsed: [] }, "it has no task item");
 });
 
 test("a removed note is not read, and its tasks are gone; written again, it is read before Obsidian indexes it", async () => {
@@ -335,7 +370,7 @@ test("a note that cannot be read is no longer read or reported once it is remove
 		["Archive/Old.md"],
 	);
 	const filtered = await i.index.update({ excludePaths: ["Archive"] });
-	assert.deepEqual(i.since().read, ["Inbox.md", "Reference/Plain.md"], "the filters changed: every visible note");
+	assert.deepEqual(i.since().read, ["Inbox.md"], "the filters changed: every visible note with a task item");
 	assert.deepEqual(filtered.failures, []);
 	const after = await i.index.update({ excludePaths: ["Archive"] });
 	assert.deepEqual(i.since().read, []);
@@ -454,7 +489,7 @@ test("a change of the note filters reads every note; equal values and the other 
 	await t.index.update(structuredClone({ ...defaultUserOptions, sort: "something else" }));
 	assert.deepEqual(t.since().read, [], "a copy, with another sort");
 	await t.index.update({ ...defaultUserOptions, excludePaths: ["Archive"] });
-	assert.deepEqual(t.since().read, ["Inbox.md", "Projects/Garden.md", "Reference/Plain.md"]);
+	assert.deepEqual(t.since().read, ["Inbox.md", "Projects/Garden.md"]);
 	await t.index.update(defaultUserOptions);
 	assert.deepEqual(t.since().read, ALL);
 });
@@ -515,6 +550,13 @@ test("a full read asked for before an update that fails is still due", async () 
 	t.since();
 	await t.index.update({});
 	assert.deepEqual(t.since().read, ALL);
+});
+
+test("a filter of the wrong type rejects as readTasks does, also in a vault whose notes have no task item", async () => {
+	const t = indexed({ "Plain.md": "# Plain\n\n- a list item" });
+	const wrong = { includePaths: "Projects" as never };
+	await assert.rejects(t.index.update(wrong));
+	await assert.rejects(t.reference(wrong));
 });
 
 test("a filter of the wrong type rejects as readTasks does, and its filters are not kept", async () => {
@@ -588,7 +630,7 @@ test("an update that fails after its reads keeps a full read asked for while it 
 	await assert.rejects(t.index.update(archived), /the parse key cannot be read/);
 	t.since();
 	const next = await t.index.update(archived);
-	assert.deepEqual(t.since().read, ["Inbox.md", "Projects/Garden.md", "Reference/Plain.md"]);
+	assert.deepEqual(t.since().read, ["Inbox.md", "Projects/Garden.md"]);
 	assert.deepStrictEqual([...next.tasks], await t.reference(archived));
 });
 

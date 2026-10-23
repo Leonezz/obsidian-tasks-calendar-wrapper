@@ -90,7 +90,7 @@ test("a reader closed beside another is closed in the index: its notes go, and i
 	// Updates of the closed reader, which the index still runs: it keeps nothing for it, so both read the same notes.
 	await a.update({});
 	await a.update({});
-	const unshown = ["Archive/Old.md", "Inbox.md", "Reference/Plain.md"];
+	const unshown = ["Archive/Old.md", "Inbox.md"];
 	assert.deepEqual(read(), [...unshown, ...unshown], "Garden stays, B shows it");
 });
 

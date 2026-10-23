@@ -312,8 +312,8 @@ test("a task whose date cannot be read is warned about again on every reload", a
 // reload reads the notes changed since the last one and those that could not be read then, and every note again where
 // a change may have gone unheard.
 
-/** Every note of notes(), in the order a reload that reads every note reads them. */
-const ALL = ["Archive/Old.md", "Inbox.md", "Projects/Garden.md", "Reference/Plain.md"];
+/** The notes of notes() a reload that reads every note reads, in its order: those with a task item. */
+const ALL = ["Archive/Old.md", "Inbox.md", "Projects/Garden.md"];
 
 /** The notice a reload shows when one note could not be read. */
 const ONE_FAILED =
@@ -373,10 +373,10 @@ test("counted as the benchmark counts them, a save with tasks reloads once and r
 	vault.write("Reference/Plain.md", "# Plain, edited");
 	await wait(t, 10 * RELOAD_DELAY_MS);
 	assert.deepEqual({ reloadCalls, reads }, { reloadCalls: 1, reads: 1 }, "a save without tasks");
-	// The note saved without tasks is read at the next reload, with the note saved then.
+	// The note saved without tasks is not read at the next reload either: it has no task item.
 	vault.write("Inbox.md", "- [ ] call the plumber once more");
 	await wait(t, RELOAD_DELAY_MS);
-	assert.deepEqual({ reloadCalls, reads }, { reloadCalls: 2, reads: 3 }, "the next save with tasks");
+	assert.deepEqual({ reloadCalls, reads }, { reloadCalls: 2, reads: 2 }, "the next save with tasks");
 });
 
 test("the first reload after the view opens reads every note again, as a change before it listened went unheard", async (t) => {
@@ -562,7 +562,7 @@ test("an option change reads no note and keeps an unchanged failing note's tasks
 	assert.deepEqual(shownNotices, []);
 	vault.healReads("Projects/Garden.md");
 	await timeline.view.onUpdateOptions({ ...defaultUserOptions, excludePaths: ["Archive"] });
-	assert.deepEqual(read(), ["Inbox.md", "Projects/Garden.md", "Reference/Plain.md"]);
+	assert.deepEqual(read(), ["Inbox.md", "Projects/Garden.md"]);
 	assert.deepEqual(linesIn(timeline.view, "Archive/Old.md"), []);
 });
 

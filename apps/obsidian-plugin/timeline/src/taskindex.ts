@@ -1,5 +1,5 @@
 import { TFile, type App, type CachedMetadata, type EventRef } from "obsidian";
-import { noteVisible, parseNote } from "@tasks-calendar-wrapper/core";
+import { hasTaskItems, noteVisible, parseNote } from "@tasks-calendar-wrapper/core";
 import type {
 	MomentFactory,
 	NoteFilterSettings,
@@ -169,9 +169,11 @@ const filterKeyOf = (f: NoteFilterSettings): string =>
 	JSON.stringify([f.includePaths, f.excludePaths, f.fileIncludeTags, f.fileExcludeTags, f.excludeProperties]);
 
 /**
- * The notes the filters keep, by path in code-unit order, and with `all`, the paths of every markdown note. It is what
- * readTasks lists, written out again on purpose, so readTasks stays a reference of its own and the tests can tell when
- * the two drift apart.
+ * The notes the filters keep that may have tasks, by path in code-unit order, and with `all`, the paths of every
+ * markdown note. A note whose metadata has no task item gives no task and no warning, so it is not read, and one of
+ * those that cannot be read tells nothing. A note Obsidian has given no metadata yet, new or being indexed again, is
+ * listed as before, so its stored tasks stay and it is read when it is due. It is what readTasks lists, written out
+ * again on purpose, so readTasks stays a reference of its own and the tests can tell when the two drift apart.
  */
 function listNotes(
 	app: NoteSource,
@@ -181,9 +183,13 @@ function listNotes(
 	const files = app.vault.getMarkdownFiles();
 	const visible = files.filter((file) => {
 		const cache = app.metadataCache.getFileCache(file);
-		return noteVisible(
-			{ path: file.path, tags: cache?.tags?.map((t) => t.tag) ?? [], frontmatter: cache?.frontmatter },
-			filters,
+		// The filters first, so a filter of the wrong type throws as it always has.
+		return (
+			noteVisible(
+				{ path: file.path, tags: cache?.tags?.map((t) => t.tag) ?? [], frontmatter: cache?.frontmatter },
+				filters,
+			) &&
+			(cache === null || hasTaskItems(cache))
 		);
 	});
 	return {
@@ -370,7 +376,8 @@ function createQueue(): <T>(job: () => Promise<T>) => Promise<T> {
  * - vault "rename" of a file: the new path and the old one. A folder's own event is left out, as Obsidian sends one
  *   for each file inside it;
  * - vault "modify" of a file, as Obsidian's metadata cache sends no "changed" when it cannot read a saved file, or the
- *   worker gives no metadata; the next reload, of another note's change, then reads the file.
+ *   worker gives no metadata; the next reload, of another note's change, then reads the file, unless the metadata it
+ *   still has says the note has no task item.
  * Registered once per index, by createSharedTaskIndex. Returns the refs, for the caller to register and take off.
  */
 export function watchNotes(app: Pick<App, "vault" | "metadataCache">, index: Pick<TaskIndex, "markDirty">): EventRef[] {

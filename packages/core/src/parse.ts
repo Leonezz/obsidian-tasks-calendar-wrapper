@@ -44,6 +44,16 @@ export function parseNote(snapshot: NoteSnapshot, moment: MomentFactory): Parsed
 	return Object.freeze({ note, tasks: Object.freeze(tasks), warnings: deepFreeze(warnings) });
 }
 
+/**
+ * Whether the note has a list item parseNote makes a task of, one with a status character. A note without one gives
+ * no task and no warning whatever its text, so there is nothing to read it for.
+ */
+export function hasTaskItems(metadata: NoteMetadata | null | undefined): boolean {
+	return metadata?.listItems?.some(isTaskItem) ?? false;
+}
+
+const isTaskItem = (item: ListItemInfo): boolean => Boolean(item.task);
+
 /** Parses one task line as if it were a note of its own, starting at column `col`. For tests and quick checks. */
 export function parseTaskLine(
 	line: string,
@@ -154,7 +164,7 @@ function taskOfItem(
 	moment: MomentFactory,
 	warnings: ParseWarning[],
 ): Task | null {
-	if (!item.task) return null;
+	if (!isTaskItem(item)) return null;
 	const { content, metadata } = context;
 	const position = item.position;
 	const section = parentSection(item, metadata?.sections);
