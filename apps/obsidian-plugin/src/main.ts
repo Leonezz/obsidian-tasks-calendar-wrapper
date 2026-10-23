@@ -92,7 +92,11 @@ export default class TasksCalendarWrapper extends Plugin {
 	}
 
 	async loadOptions(): Promise<void> {
-		const savedOptions = (await this.loadData()) as Partial<UserOption> | null;
+		this.useSavedOptions((await this.loadData()) as Partial<UserOption> | null | undefined);
+	}
+
+	/** The options of data.json as loadData gave them: null when there is none, undefined when it could not be read. */
+	private useSavedOptions(savedOptions: Partial<UserOption> | null | undefined): void {
 		const state = loadedState(savedOptions);
 		for (const warning of settingWarnings(savedOptions, state.options)) console.warn(warning);
 		this.settingsStore.setState(state);
@@ -102,9 +106,25 @@ export default class TasksCalendarWrapper extends Plugin {
 	/**
 	 * Obsidian calls this when data.json changes on disk while the plugin runs (Sync, git, a hand edit).
 	 * Without reloading, the next save wrote the old settings back over the change, see issue #187.
+	 * A data.json that cannot be read, as a half-written Sync file, keeps the settings, and the next save writes them
+	 * back; Obsidian gives undefined for it and logs why. A removed one gives the defaults, as at start.
 	 */
 	async onExternalSettingsChange(): Promise<void> {
-		await this.loadOptions();
+		let savedOptions: Partial<UserOption> | null | undefined;
+		try {
+			savedOptions = (await this.loadData()) as Partial<UserOption> | null | undefined;
+		} catch (error) {
+			console.error("Tasks Calendar Wrapper: reading data.json failed", error);
+			savedOptions = undefined;
+		}
+		if (savedOptions === undefined) {
+			new Notice(
+				"Tasks Calendar Wrapper: data.json changed outside Obsidian but could not be read, so the settings stay as they were; the next change of a setting saves them. See the developer console.",
+				10000,
+			);
+			return;
+		}
+		this.useSavedOptions(savedOptions);
 		// From 1.13 Obsidian draws the settings tab again itself when it is open, see SettingTab.update.
 		if (!requireApiVersion("1.13.0")) this.settingsTab?.redrawIfShown();
 	}
