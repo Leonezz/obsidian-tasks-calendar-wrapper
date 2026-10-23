@@ -26,7 +26,7 @@ if (!exactVersion.test(String(minAppVersion)))
 	fail(`minAppVersion "${minAppVersion}" in next-release.json is not a version number.`);
 if (compareVersions(minAppVersion, manifest.minAppVersion) < 0) {
 	fail(
-		`minAppVersion ${minAppVersion} in next-release.json is older than the minAppVersion ${manifest.minAppVersion} manifest.json holds. A release never lowers it, as users of an Obsidian in between would be offered a version that no longer runs for them.`,
+		`minAppVersion ${minAppVersion} in next-release.json is older than the minAppVersion ${manifest.minAppVersion} manifest.json holds. A release does not lower it; if that is meant, set the lower minAppVersion in manifest.json by hand first.`,
 	);
 }
 if (checkOnly) process.exit(0);
