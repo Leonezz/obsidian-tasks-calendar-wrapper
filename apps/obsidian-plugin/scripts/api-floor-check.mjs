@@ -1,18 +1,21 @@
 /**
  * The API floor check: the plugin may use an Obsidian API newer than the oldest Obsidian it supports only behind
- * requireApiVersion. It reads the `@since` tag Obsidian's typings give each declaration and finds every place in the
- * plugin's own code that uses, at run time, a declaration of the obsidian module newer than the floor, unless that place
+ * requireApiVersion. It reads the `@since` tag Obsidian's typings give each declaration and finds the places in the
+ * plugin's own code that use, at run time, a declaration of the obsidian module newer than the floor, unless that place
  * runs only when requireApiVersion has said the running Obsidian is new enough:
  * - inside `if (requireApiVersion("x"))`, or the else of `if (!requireApiVersion("x"))`;
  * - after `if (!requireApiVersion("x")) return;` (or throw, continue, break) in the same block;
  * - on the right of `requireApiVersion("x") &&`, or in the true branch of `requireApiVersion("x") ? … : …`;
  * where x is the declaration's version or newer. A condition may join several such calls with &&, and the one an early
  * return leaves on may join several negated ones with ||. A gate around a function's definition holds in its body too,
- * as the running Obsidian does not change. A use is a name in an expression, a property taken by destructuring, or a
- * value put in an object by shorthand; a call of an overloaded method counts the overload it calls. A use in a type,
- * `typeof` in a type included, needs no gate, as types do not exist at run time. A declaration without `@since` is
- * taken to be as old as any floor; a gate that is not a requireApiVersion call with a string, such as a variable or a
- * helper that holds one, is not seen, and the check fails on what it gates.
+ * as the running Obsidian does not change, but an early return does not gate a function declared after it, which is
+ * hoisted. A use is a name in an expression, `new` and a class's `extends` included, a property taken by destructuring
+ * or by a destructuring assignment, a property read with a string, `x["name"]`, or a value put in an object by
+ * shorthand. A call counts the `@since` of the overload it resolves to; when that one has none, as a constructor often
+ * has not, the newest `@since` of what it names, such as the class. A use in a type, `typeof` in a type included, needs
+ * no gate, as types do not exist at run time. A name whose declarations have no `@since` is taken to be as old as any
+ * floor. A gate that is not a requireApiVersion call with a string, such as a variable or a helper that holds one, is
+ * not seen, and the check fails on what it gates; so does a use through `any`, which has no declaration to read.
  *
  * scripts/api-floor.mjs runs it on the plugin; the tests import it.
  */
@@ -61,6 +64,18 @@ function calledDeclaration(identifier, checker) {
 	return null;
 }
 
+/** The value an object literal takes its properties from when it is the target of a destructuring assignment. */
+function destructuredFrom(literal) {
+	let target = literal;
+	while (ts.isParenthesizedExpression(target.parent)) target = target.parent;
+	const assignment = target.parent;
+	return ts.isBinaryExpression(assignment) &&
+		assignment.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+		assignment.left === target
+		? assignment.right
+		: null;
+}
+
 /**
  * The `@since` of what the identifier uses: the overload a call resolves to, when it has one, otherwise the newest of
  * the declarations of the symbol it names, the property it destructures or the value its shorthand puts in an object.
@@ -70,8 +85,16 @@ function sinceAt(identifier, checker) {
 	const sinceCalled = called ? sinceOf([called]) : null;
 	if (sinceCalled !== null) return sinceCalled;
 	const parent = identifier.parent;
+	const source =
+		(ts.isShorthandPropertyAssignment(parent) || ts.isPropertyAssignment(parent)) &&
+		parent.name === identifier &&
+		ts.isObjectLiteralExpression(parent.parent)
+			? destructuredFrom(parent.parent)
+			: null;
 	let symbol;
-	if (ts.isShorthandPropertyAssignment(parent) && parent.name === identifier) {
+	if (source !== null) {
+		symbol = checker.getPropertyOfType(checker.getTypeAtLocation(source), identifier.text);
+	} else if (ts.isShorthandPropertyAssignment(parent) && parent.name === identifier) {
 		symbol = checker.getShorthandAssignmentValueSymbol(parent);
 	} else if (
 		ts.isBindingElement(parent) &&
@@ -162,7 +185,9 @@ function guaranteedAt(node, isRequireApiVersion) {
 			ts.isCaseClause(parent) ||
 			ts.isDefaultClause(parent)
 		) {
-			// `if (!requireApiVersion("x")) return;` before the statement in the same block.
+			// `if (!requireApiVersion("x")) return;` before the statement in the same block; a function declared there is
+			// hoisted, and may be called before it.
+			if (ts.isFunctionDeclaration(child)) continue;
 			for (const statement of parent.statements) {
 				if (statement === child) break;
 				if (ts.isIfStatement(statement) && !statement.elseStatement && leaves(statement.thenStatement)) {
@@ -208,6 +233,13 @@ function notARunTimeUse(identifier) {
 			parent.parent.token === ts.SyntaxKind.ImplementsKeyword || ts.isInterfaceDeclaration(parent.parent.parent)
 		);
 	}
+	// `({ name: local } = obj)` reads obj.name.
+	if (
+		ts.isPropertyAssignment(parent) &&
+		ts.isObjectLiteralExpression(parent.parent) &&
+		destructuredFrom(parent.parent)
+	)
+		return parent.name !== identifier;
 	return OWN_DECLARATIONS.has(parent.kind) && parent.name === identifier;
 }
 
@@ -228,22 +260,22 @@ export function apiFloorViolations(program, floor, isPluginFile) {
 	const violations = [];
 	for (const sourceFile of program.getSourceFiles()) {
 		if (sourceFile.isDeclarationFile || !isPluginFile(sourceFile.fileName)) continue;
+		/** Reports the use at `at` of a declaration with this `@since`, unless it is no newer than the floor or gated. */
+		const check = (at, name, since) => {
+			if (since === null || compareVersions(since, floor) <= 0) return;
+			if (guaranteedAt(at, isRequireApiVersion).some((v) => compareVersions(v, since) >= 0)) return;
+			const { line, character } = sourceFile.getLineAndCharacterOfPosition(at.getStart());
+			violations.push({ file: sourceFile.fileName, line: line + 1, column: character + 1, name, since });
+		};
 		const visit = (node) => {
-			if (ts.isIdentifier(node) && !notARunTimeUse(node)) {
-				const since = sinceAt(node, checker);
-				if (since !== null && compareVersions(since, floor) > 0) {
-					const gated = guaranteedAt(node, isRequireApiVersion).some((v) => compareVersions(v, since) >= 0);
-					if (!gated) {
-						const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
-						violations.push({
-							file: sourceFile.fileName,
-							line: line + 1,
-							column: character + 1,
-							name: node.text,
-							since,
-						});
-					}
-				}
+			if (ts.isIdentifier(node) && !notARunTimeUse(node)) check(node, node.text, sinceAt(node, checker));
+			else if (ts.isElementAccessExpression(node) && ts.isStringLiteralLike(node.argumentExpression)) {
+				const symbol = checker.getSymbolAtLocation(node.argumentExpression);
+				check(
+					node.argumentExpression,
+					node.argumentExpression.text,
+					symbol ? sinceOf(symbol.declarations ?? []) : null,
+				);
 			}
 			ts.forEachChild(node, visit);
 		};

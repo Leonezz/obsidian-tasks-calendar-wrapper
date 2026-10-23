@@ -19,6 +19,11 @@ const FILE = path.resolve("api-floor-example.ts");
 
 /** The uses the check reports in this source, as "line:name@since". */
 function reported(source: string, floor: string): string[] {
+	return check(source, floor).map((use) => `${use.line}:${use.name}@${use.since}`);
+}
+
+/** The uses the check reports in this source. */
+function check(source: string, floor: string) {
 	const options: ts.CompilerOptions = {
 		strict: true,
 		target: ts.ScriptTarget.ES2018,
@@ -46,12 +51,10 @@ function reported(source: string, floor: string): string[] {
 		[],
 		"the example compiles",
 	);
-	return apiFloorViolations(program, floor, (fileName) => fileName === FILE).map(
-		(use) => `${use.line}:${use.name}@${use.since}`,
-	);
+	return apiFloorViolations(program, floor, (fileName) => fileName === FILE);
 }
 
-const HEADER = `import { App, ConfirmationModal, getLanguage, Modal, Plugin, PluginSettingTab, requireApiVersion } from "obsidian";
+const HEADER = `import { App, ConfirmationModal, DisplayValueComponent, getLanguage, Modal, Notice, Plugin, PluginSettingTab, requireApiVersion } from "obsidian";
 declare const app: App;
 declare const modal: Modal;
 `;
@@ -146,6 +149,50 @@ test("typeof in a type needs no gate; an early return on || and a break in defau
 	for (const line of gated) assert.deepEqual(reported(HEADER + line + "\n", "1.7.2"), [], line);
 	const ungated = `function f(ready: boolean) { if (!requireApiVersion("1.10.0") && !ready) return; modal.setCloseCallback(() => {}); }`;
 	assert.deepEqual(reported(HEADER + ungated + "\n", "1.7.2"), ["4:setCloseCallback@1.10.0"], ungated);
+});
+
+test("new and extends of a newer class are uses; a constructor without @since counts its class's", () => {
+	// DisplayValueComponent is @since 1.13.1 and its constructor has none; ConfirmationModal is @since 1.13.0.
+	assert.deepEqual(reported(HEADER + "declare const el: HTMLElement;\nnew DisplayValueComponent(el);\n", "1.11.4"), [
+		"5:DisplayValueComponent@1.13.1",
+	]);
+	assert.deepEqual(reported(HEADER + "export class Ask extends ConfirmationModal {}\n", "1.11.4"), [
+		"4:ConfirmationModal@1.13.0",
+	]);
+	assert.deepEqual(
+		reported(
+			HEADER +
+				`declare const el: HTMLElement;\nif (requireApiVersion("1.13.1")) new DisplayValueComponent(el);\n`,
+			"1.11.4",
+		),
+		[],
+	);
+});
+
+test("an early return gates with throw, continue and a block of statements, in a case clause too, and not a hoisted function", () => {
+	const gated = [
+		`function f() { if (!requireApiVersion("1.10.0")) throw new Error("old"); modal.setCloseCallback(() => {}); }`,
+		`for (const x of [1]) { if (!requireApiVersion("1.10.0")) continue; modal.setCloseCallback(() => console.log(x)); }`,
+		`function f() { if (!requireApiVersion("1.10.0")) { new Notice("old"); return; } modal.setCloseCallback(() => {}); }`,
+		`function f(x: number) { switch (x) { case 1: if (!requireApiVersion("1.10.0")) break; modal.setCloseCallback(() => {}); } }`,
+		`const set = !requireApiVersion("1.10.0") ? null : modal.setCloseCallback(() => {});`,
+	];
+	for (const line of gated) assert.deepEqual(reported(HEADER + line + "\n", "1.7.2"), [], line);
+	const hoisted = `function f() { g(); if (!requireApiVersion("1.10.0")) return; function g() { modal.setCloseCallback(() => {}); } }`;
+	assert.deepEqual(reported(HEADER + hoisted + "\n", "1.7.2"), ["4:setCloseCallback@1.10.0"], hoisted);
+});
+
+test("a destructuring assignment and a property read with a string are uses, at their place", () => {
+	const set = `let setCloseCallback: Modal["setCloseCallback"];\n({ setCloseCallback } = modal);\nexport { setCloseCallback };\n`;
+	assert.deepEqual(reported(HEADER + set, "1.7.2"), ["5:setCloseCallback@1.10.0"]);
+	const renamed = `let set: Modal["setCloseCallback"];\n({ setCloseCallback: set } = modal);\nexport { set };\n`;
+	assert.deepEqual(reported(HEADER + renamed, "1.7.2"), ["5:setCloseCallback@1.10.0"]);
+	assert.deepEqual(reported(HEADER + `modal["setCloseCallback"](() => {});\n`, "1.7.2"), [
+		"4:setCloseCallback@1.10.0",
+	]);
+	// The column, from 1, of the name.
+	const [use] = check(HEADER + "    modal.setCloseCallback(() => {});\n", "1.7.2");
+	assert.deepEqual([use.line, use.column], [4, 11]);
 });
 
 test("a declaration without @since, such as requireApiVersion, is as old as any floor", () => {
