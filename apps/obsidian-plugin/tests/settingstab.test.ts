@@ -57,6 +57,7 @@ function onObsidian(t: TestContext, version: string): void {
 // that, the plugin does. Either way the tab is drawn once, with the new options.
 for (const [version, drawer] of [
 	["1.12.7", "the plugin"],
+	["1.13.0", "Obsidian"],
 	["1.14.4", "Obsidian"],
 ] as const) {
 	test(`data.json changed outside while the settings show the tab: ${drawer} draws it once more (Obsidian ${version})`, async (t) => {
@@ -81,14 +82,38 @@ for (const [version, drawer] of [
 		const tab = plugin.settingTab as TasksCalendarSettingTab;
 		const draws = t.mock.method(tab, "display");
 		await plugin.changeDataJsonOutside(readFixture("0.2.9-dropdown-sort.json"));
+		assert.equal(draws.mock.callCount(), 0, "never opened");
 		settingsWindow(tab).openSettings();
 		settingsWindow(tab).closeSettings();
 		draws.mock.resetCalls();
 		await plugin.changeDataJsonOutside(readFixture("quiet.json"));
-		assert.equal(draws.mock.callCount(), 0);
+		assert.equal(draws.mock.callCount(), 0, "closed again");
 		assert.deepEqual(plugin.userOptions, (await startPlugin(readFixture("quiet.json"))).plugin.userOptions);
 	});
 }
+
+test("a tab closed while a toggle's save runs is not drawn again when the save is done, nor at the next change", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	onObsidian(t, "1.12.7");
+	const { plugin } = await startPlugin(readFixture("quiet.json"));
+	const tab = plugin.settingTab as TasksCalendarSettingTab;
+	settingsWindow(tab).openSettings();
+	let release = () => {};
+	const held = new Promise<void>((resolve) => (release = resolve));
+	const save = plugin.saveData.bind(plugin);
+	t.mock.method(plugin, "saveData", async (data: unknown) => {
+		await held;
+		await save(data);
+	});
+	const draws = t.mock.method(tab, "display");
+	// A toggle that draws the page again once its option is saved.
+	const saving = tab.onOptionUpdate({ useQuickEntry: false }, true);
+	settingsWindow(tab).closeSettings();
+	release();
+	await saving;
+	await plugin.changeDataJsonOutside(readFixture("0.2.9-dropdown-sort.json"));
+	assert.equal(draws.mock.callCount(), 0);
+});
 
 for (const fixture of FIXTURE_NAMES) {
 	test(`the settings tab on ${fixture}`, async (t) => {

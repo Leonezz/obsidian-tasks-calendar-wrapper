@@ -542,11 +542,33 @@ test("a data.json changed outside that cannot be read keeps the settings, says s
 	});
 });
 
-test("a data.json removed outside gives the defaults, as at start, with no Notice", async (t) => {
+test("a data.json removed outside reaches no plugin code: the settings stay, nothing is saved until a setting changes", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin } = await startPlugin(readFixture("quiet.json"), { layoutReady: true });
+	const before = plugin.userOptions;
+	const calls = t.mock.method(plugin, "onExternalSettingsChange");
+	const saves = t.mock.method(plugin, "saveData");
+	Notice.shown.length = 0;
+	// Obsidian does not call onExternalSettingsChange: the removed file's modified time is 0.
+	await plugin.changeDataJsonOutside(null);
+	assert.equal(calls.mock.callCount(), 0);
+	assert.equal(plugin.userOptions, before);
+	assert.deepEqual(Notice.shown, []);
+	await wait(t, 10 * OPTIONS_DELAY_MS);
+	assert.equal(saves.mock.callCount(), 0, "the file is not made again on its own");
+	await plugin.writeOptions({ dateFormat: "YYYY" });
+	assert.deepEqual(JSON.parse(plugin.dataJson ?? "null"), {
+		...JSON.parse(JSON.stringify(before)),
+		dateFormat: "YYYY",
+		settingsVersion: 1,
+	});
+});
+
+test("a data.json changed outside to hold null gives the defaults, as at start, with no Notice", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const { plugin } = await startPlugin(readFixture("quiet.json"), { layoutReady: true });
 	Notice.shown.length = 0;
-	await plugin.changeDataJsonOutside(null);
+	await plugin.changeDataJsonOutside("null");
 	assert.deepEqual(plugin.userOptions, defaultUserOptions);
 	assert.deepEqual(Notice.shown, []);
 });

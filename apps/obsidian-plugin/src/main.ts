@@ -107,7 +107,9 @@ export default class TasksCalendarWrapper extends Plugin {
 	 * Obsidian calls this when data.json changes on disk while the plugin runs (Sync, git, a hand edit).
 	 * Without reloading, the next save wrote the old settings back over the change, see issue #187.
 	 * A data.json that cannot be read, as a half-written Sync file, keeps the settings, and the next save writes them
-	 * back; Obsidian gives undefined for it and logs why. A removed one gives the defaults, as at start.
+	 * back; Obsidian gives undefined for it and logs why. One that holds null gives the defaults, as at start. Obsidian
+	 * does not call this for a removed one, as its modified time is then 0: the settings stay, and the next save writes
+	 * the file again.
 	 */
 	async onExternalSettingsChange(): Promise<void> {
 		let savedOptions: Partial<UserOption> | null | undefined;

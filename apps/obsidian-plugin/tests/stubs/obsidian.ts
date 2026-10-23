@@ -655,31 +655,49 @@ export class Plugin extends Component {
 		await this.onload();
 	}
 
+	/** Not in Obsidian: the modified time of data.json, which ticks with every write; 0 when there is none. */
+	private dataModified = 0;
+	/** As Obsidian's _lastDataModifiedTime: the modified time of the data.json the plugin last read or wrote. */
+	private lastDataModified = 0;
+	private clock = 0;
+
 	async loadData(): Promise<unknown> {
 		if (this.dataJson === null) return null;
+		let data: unknown;
 		try {
-			return JSON.parse(this.dataJson);
+			data = JSON.parse(this.dataJson);
 		} catch (error) {
 			console.error("failed to read JSON", `${this.manifest.dir}/data.json`, error);
 			return undefined;
 		}
+		if (data && (this as { onExternalSettingsChange?: unknown }).onExternalSettingsChange)
+			this.lastDataModified = this.dataModified;
+		return data;
 	}
 
 	async saveData(data: unknown): Promise<void> {
 		this.dataJson = JSON.stringify(data, undefined, 2);
+		this.dataModified = this.lastDataModified = ++this.clock;
 	}
 
 	/**
 	 * Not in Obsidian's typings: what Obsidian (1.14.4, _onConfigFileChange) does when data.json changed on disk while
-	 * the plugin runs, from another device or by hand: it waits for onExternalSettingsChange, then, from 1.13, updates
-	 * the settings tab. A rejection reaches the caller, as Obsidian does not catch it.
+	 * the plugin runs, from another device or by hand, here to this text or, with null, removed. Only when the file's
+	 * modified time is later than the one the plugin last read or wrote, which a removed file's 0 never is, it waits for
+	 * onExternalSettingsChange, then, from 1.13, updates the settings tab. A rejection reaches the caller, as Obsidian
+	 * does not catch it.
 	 */
 	async changeDataJsonOutside(dataJson: string | null): Promise<void> {
 		this.dataJson = dataJson;
+		this.dataModified = dataJson === null ? 0 : ++this.clock;
 		const self = this as { onExternalSettingsChange?: () => unknown };
 		if (!self.onExternalSettingsChange) return;
-		await self.onExternalSettingsChange();
-		if (requireApiVersion("1.13.0")) this.settingTab?.update();
+		const modified = this.dataModified;
+		if (this.lastDataModified < modified) {
+			await self.onExternalSettingsChange();
+			if (requireApiVersion("1.13.0")) this.settingTab?.update();
+		}
+		this.lastDataModified = modified;
 	}
 
 	registerView(type: string, creator: (leaf: never) => unknown): void {

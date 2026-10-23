@@ -35,9 +35,8 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
 	async onOptionUpdate(updatePart: Partial<UserOption>, refreashSettingPage = false) {
 		await this.plugin.writeOptions(updatePart);
-		if (refreashSettingPage) {
-			this.display();
-		}
+		// The settings may have closed while it saved.
+		if (refreashSettingPage) this.redrawIfShown();
 	}
 
 	/** Saves options from a callback that cannot wait for the result, reporting failures to the user. */
