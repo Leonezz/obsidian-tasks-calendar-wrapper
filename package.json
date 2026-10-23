@@ -7,6 +7,7 @@
 		"dev": "pnpm --filter @tasks-calendar-wrapper/obsidian-plugin dev",
 		"build": "pnpm --filter @tasks-calendar-wrapper/obsidian-plugin build",
 		"typecheck": "pnpm -r typecheck",
+		"api-floor": "pnpm --filter @tasks-calendar-wrapper/obsidian-plugin api-floor",
 		"test": "pnpm -r test",
 		"capture:golden": "pnpm --filter @tasks-calendar-wrapper/obsidian-plugin capture:golden",
 		"bench:vault": "pnpm --filter @tasks-calendar-wrapper/obsidian-plugin bench:vault",
