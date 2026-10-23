@@ -9,7 +9,8 @@
  * followed too, in the order they run.
  */
 import { hasTaskItems, noteVisible, type NoteFilterSettings, type Task } from "@tasks-calendar-wrapper/core";
-import type { IndexUpdate, TaskIndexReader } from "../timeline/src/taskindex";
+import { createReadReporter, type ReadReporter } from "../timeline/src/readreporter";
+import type { IndexUpdate, TaskIndexReader, WarnedNote } from "../timeline/src/taskindex";
 import { sameParseKey, type ParseKey } from "../utils/parsekey";
 import type { FakeVault } from "./fakevault";
 
@@ -48,6 +49,16 @@ export interface ReaderModel {
 	held: ReadonlySet<string>;
 	/** A change went unheard after it closed, which a closed view never rereads for. */
 	missedSinceClose: boolean;
+	/** The reporter of the reader's view, which every update that succeeds reaches, as in views.tsx. */
+	readonly reporter: ReadReporter;
+	/** What the reporter is to have told, worked out on its own, see checkTelling in vault-check.ts. */
+	telling: TellingModel;
+}
+
+/** For each note of the last report, warned or failing, the id of its text and the lines told for it; the failing paths. */
+export interface TellingModel {
+	readonly told: ReadonlyMap<string, { readonly content: number; readonly lines: ReadonlySet<string> }>;
+	readonly failing: readonly string[];
 }
 
 /** What an index of the reader's own would do with the update, as it starts. */
@@ -127,6 +138,8 @@ export interface World {
 	readonly silentlyRemoved: Set<string>;
 	/** The Task objects of each note from the last update that read it, and the reader of that update. */
 	readonly objects: Map<string, readonly Task[]>;
+	/** The WarnedNote of each note from the last update that read it. */
+	readonly warnedObjects: Map<string, WarnedNote>;
 	readonly producer: Map<string, number>;
 	/** The last update that succeeded, of any reader: every update gives new arrays. */
 	lastResult: IndexUpdate | null;
@@ -174,6 +187,8 @@ export function newReader(id: number, reader: TaskIndexReader, filters: NoteFilt
 		committed: null,
 		held: new Set(),
 		missedSinceClose: false,
+		reporter: createReadReporter(),
+		telling: { told: new Map(), failing: [] },
 	};
 }
 

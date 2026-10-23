@@ -51,6 +51,10 @@ const COVERED = [
 	"rename",
 	"rename md/txt",
 	"write unindexed",
+	"content ids at rest",
+	"warnings told",
+	"warnings told before",
+	"same failures",
 ];
 /** And these too, over the sequences of several readers. */
 const COVERED_SHARED = [

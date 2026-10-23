@@ -416,6 +416,8 @@ export function fakeVault(
 		healReads(path: string): void {
 			failing.delete(path);
 		},
+		/** Not in Obsidian: the text the file holds now, or undefined when there is none. */
+		contentOf: (path: string): string | undefined => contents.get(path),
 		/** Not in Obsidian: the note changes, its metadata too, and no event says so, as when an event is missed. */
 		writeSilently(path: string, content: string): void {
 			contents.set(path, content);

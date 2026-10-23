@@ -39,6 +39,8 @@ export const CONTENTS = [
 	"",
 	"- [/] started #work\n  - [ ] nested",
 	"- [ ] invalid 📅 2026-02-31",
+	// CONTENTS[3] with one word changed: the same length and the same warnings, but another text, which is told again.
+	"- [ ] pay the rent [due:: soon]\n- [ ] and that [scheduled:: later]",
 ];
 
 export const FILTERS: readonly NoteFilterSettings[] = [

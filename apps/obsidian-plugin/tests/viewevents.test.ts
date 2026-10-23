@@ -267,7 +267,7 @@ test("a closed timeline hands the view task rows render with to another open one
 	assert.equal(TasksTimelineView.view, null);
 });
 
-test("a note that cannot be read is reported again on every reload", async (t) => {
+test("a note that cannot be read shows the Notice once, and its reason is logged on every reload", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const errors = t.mock.method(console, "error", () => {});
 	const vault = fakeVault(notes());
@@ -279,23 +279,25 @@ test("a note that cannot be read is reported again on every reload", async (t) =
 	assert.equal(timeline.reloads(), 1);
 	const notice =
 		"Tasks Calendar Wrapper: 1 file(s) could not be read, their tasks are missing. See the developer console.";
-	// The view's first reload, the one after Obsidian's first "resolved", and the one after the edit.
-	assert.deepEqual(shownNotices, [notice, notice, notice]);
+	// The view's first reload shows it; the one after Obsidian's first "resolved" and the one after the edit fail the
+	// same note, so they show nothing new.
+	assert.deepEqual(shownNotices, [notice]);
 	// Node also reports, once, that its mocked timers are experimental.
 	const failures = errors.mock.calls
 		.map((call) => call.arguments)
 		.filter(([message]) => String(message).startsWith("Tasks Calendar Wrapper"));
-	assert.equal(failures.length, 3);
+	assert.equal(failures.length, 3, "the reason, on each of the three reloads");
 	for (const [message, reason] of failures) {
 		assert.equal(message, "Tasks Calendar Wrapper: reading a file failed");
 		assert.match(String(reason), /could not read Projects\/Garden\.md/);
 	}
 });
 
-test("a task whose date cannot be read is warned about again on every reload", async (t) => {
+test("a task whose date cannot be read is warned about once, also when full reads read its note again", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const warnings = t.mock.method(console, "warn", () => {});
 	const vault = fakeVault({ ...notes(), "Dates.md": "# Dates\n- [ ] pay the rent [due:: soon]" });
+	// The first reload, the full read after the first "resolved", and the full read of a new window.
 	await openTimeline(t, vault);
 	vault.openWindow();
 	await settle();
@@ -305,7 +307,7 @@ test("a task whose date cannot be read is warned about again on every reload", a
 	const ours = warnings.mock.calls
 		.map((call) => call.arguments)
 		.filter(([message]) => String(message).startsWith("Tasks Calendar Wrapper"));
-	assert.deepEqual(ours, [[warning], [warning], [warning]]);
+	assert.deepEqual(ours, [[warning]]);
 });
 
 // Which notes a reload reads. The view keeps the notes it read in its task index, see timeline/src/taskindex.ts: a
@@ -428,7 +430,7 @@ test("a new window reads every note again", async (t) => {
 	assert.deepEqual(linesIn(timeline.view, "Inbox.md"), ["- [ ] call the plumber, unheard"]);
 });
 
-test("a note that cannot be read at the first reload is read and reported again on every reload, until it can be", async (t) => {
+test("a note that cannot be read is read on every reload, its reason logged each time and the Notice shown once, until it can be", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const lines = ourLines(t);
 	const vault = fakeVault(notes());
@@ -437,24 +439,30 @@ test("a note that cannot be read at the first reload is read and reported again 
 	const timeline = await openTimeline(t, vault);
 	const told = () => ({ errors: lines.length, notices: shownNotices.length });
 	// The view's first reload and the one after Obsidian's first "resolved" read every note.
-	assert.deepEqual(told(), { errors: 2, notices: 2 });
-	assert.deepEqual(shownNotices, [ONE_FAILED, ONE_FAILED]);
+	assert.deepEqual(told(), { errors: 2, notices: 1 });
+	assert.deepEqual(shownNotices, [ONE_FAILED]);
 	const read = readsOf(vault);
 	vault.write("Inbox.md", "- [ ] call the plumber again");
 	await wait(t, RELOAD_DELAY_MS);
 	assert.deepEqual(read(), ["Inbox.md", "Projects/Garden.md"]);
-	assert.deepEqual(told(), { errors: 3, notices: 3 });
+	assert.deepEqual(told(), { errors: 3, notices: 1 });
 	await timeline.view.onReloadTasks();
 	assert.deepEqual(read(), ["Projects/Garden.md"], "a reload with no change");
-	assert.deepEqual(told(), { errors: 4, notices: 4 });
+	assert.deepEqual(told(), { errors: 4, notices: 1 });
 	assert.deepEqual(linesIn(timeline.view, "Projects/Garden.md"), []);
 	vault.healReads("Projects/Garden.md");
 	await timeline.view.onReloadTasks();
 	assert.deepEqual(read(), ["Projects/Garden.md"]);
-	assert.deepEqual(told(), { errors: 4, notices: 4 }, "once it can be read");
+	assert.deepEqual(told(), { errors: 4, notices: 1 }, "once it can be read");
 	assert.deepEqual(linesIn(timeline.view, "Projects/Garden.md"), ["- [ ] plant the tulips", "- [x] buy bulbs"]);
 	await timeline.view.onReloadTasks();
 	assert.deepEqual(read(), []);
+	// It fails again: the set of failing notes changed, so the Notice shows again.
+	vault.failReads("Projects/Garden.md");
+	vault.write("Projects/Garden.md", "# Garden\n\n- [ ] plant the tulips again");
+	await wait(t, RELOAD_DELAY_MS);
+	assert.deepEqual(read(), ["Projects/Garden.md"]);
+	assert.deepEqual(told(), { errors: 5, notices: 2 });
 	for (const [kind, message, reason] of lines) {
 		assert.deepEqual([kind, message], ["error", "Tasks Calendar Wrapper: reading a file failed"]);
 		assert.match(String(reason), /could not read Projects\/Garden\.md/);
@@ -533,7 +541,40 @@ test("a reload asked for while one reads the notes reads, when it runs, the note
 	assert.deepEqual(linesIn(timeline.view, "Projects/Garden.md"), ["- [ ] plant the roses"]);
 });
 
-test("a task whose date cannot be read is warned about also on a reload that reads only another note", async (t) => {
+test("a renamed note's warning is told under its new path; a rejected reload changes nothing; reopened, it tells again", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const lines = ourLines(t);
+	const vault = fakeVault({ ...notes(), "Dates.md": "# Dates\n- [ ] pay the rent [due:: soon]" });
+	vault.failReads("Projects/Garden.md");
+	shownNotices.length = 0;
+	const first = await openTimeline(t, vault);
+	const warningOf = (path: string) =>
+		`Tasks Calendar Wrapper: ${path}, line 2: could not read the date " soon" of [due:: ]`;
+	const warned = () => lines.filter(([kind]) => kind === "warn").map(([, message]) => message);
+	assert.deepEqual(warned(), [warningOf("Dates.md")]);
+	assert.deepEqual(shownNotices, [ONE_FAILED]);
+	vault.rename("Dates.md", "Dated.md");
+	await wait(t, RELOAD_DELAY_MS);
+	assert.deepEqual(warned(), [warningOf("Dates.md"), warningOf("Dated.md")]);
+	// A reload that rejects between two with the same failing note: no new Notice.
+	vault.breakListing();
+	await first.view.onReloadTasks();
+	assert.deepEqual(shownNotices, [
+		ONE_FAILED,
+		"Error when generating tasks from files: Error: the vault is not ready",
+	]);
+	await first.view.onReloadTasks();
+	assert.equal(shownNotices.length, 2);
+	// A timeline opened again is a new one: it tells what fails and warns now.
+	await first.close();
+	lines.length = 0;
+	shownNotices.length = 0;
+	await openTimeline(t, vault);
+	assert.deepEqual(warned(), [warningOf("Dated.md")]);
+	assert.deepEqual(shownNotices, [ONE_FAILED]);
+});
+
+test("a task whose date cannot be read is not warned about again for another note's save; a save of its own is", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const lines = ourLines(t);
 	const vault = fakeVault({ ...notes(), "Dates.md": "# Dates\n- [ ] pay the rent [due:: soon]" });
@@ -544,6 +585,11 @@ test("a task whose date cannot be read is warned about also on a reload that rea
 	await wait(t, RELOAD_DELAY_MS);
 	assert.equal(timeline.reloads(), 1);
 	assert.deepEqual(read(), ["Inbox.md"]);
+	assert.deepEqual(lines.slice(before), []);
+	// Its text changes and keeps the date: the same line, for new text, is told again, once.
+	vault.write("Dates.md", "# Dates\n- [ ] pay the rent [due:: soon]\n- [ ] and the water");
+	await wait(t, RELOAD_DELAY_MS);
+	await timeline.view.onReloadTasks();
 	assert.deepEqual(lines.slice(before), [
 		["warn", 'Tasks Calendar Wrapper: Dates.md, line 2: could not read the date " soon" of [due:: ]'],
 	]);

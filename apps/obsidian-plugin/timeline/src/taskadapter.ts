@@ -8,20 +8,28 @@ export interface NoteReadFailure {
 	readonly reason: unknown;
 }
 
-/**
- * Tells the user what reading the notes ran into, as readTasks always has: each warning on the console, in the order
- * given; then, if notes failed, each reason on the console and one Notice with their count.
- */
-export function reportNoteReads(warnings: readonly ParseWarning[], failures: readonly NoteReadFailure[]): void {
-	for (const warning of warnings) {
-		console.warn(`Tasks Calendar Wrapper: ${warning.path}, line ${warning.line + 1}: ${warning.message}`);
-	}
-	if (failures.length === 0) return;
+/** The console line of a warning. */
+export const warningLine = (warning: ParseWarning): string =>
+	`Tasks Calendar Wrapper: ${warning.path}, line ${warning.line + 1}: ${warning.message}`;
+
+/** Each failure's reason on the console; then, with `notice` and some failures, one Notice with their count. */
+export function tellFailures(failures: readonly NoteReadFailure[], notice: boolean): void {
 	failures.forEach((failure) => console.error("Tasks Calendar Wrapper: reading a file failed", failure.reason));
+	if (!notice || failures.length === 0) return;
 	new Notice(
 		`Tasks Calendar Wrapper: ${failures.length} file(s) could not be read, their tasks are missing. See the developer console.`,
 		5000,
 	);
+}
+
+/**
+ * Tells the user what reading the notes ran into, as readTasks always has: each warning on the console, in the order
+ * given; then, if notes failed, each reason on the console and one Notice with their count. A timeline tells less,
+ * see readreporter.ts.
+ */
+export function reportNoteReads(warnings: readonly ParseWarning[], failures: readonly NoteReadFailure[]): void {
+	for (const warning of warnings) console.warn(warningLine(warning));
+	tellFailures(failures, true);
 }
 
 /**

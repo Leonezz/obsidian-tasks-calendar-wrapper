@@ -1,7 +1,7 @@
 import { App, CachedMetadata, debounce, ItemView, Notice, WorkspaceLeaf } from "obsidian";
 import { createStore, resolveTasks } from "@tasks-calendar-wrapper/core";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
-import { reportNoteReads } from "../timeline/src/taskadapter";
+import { createReadReporter } from "../timeline/src/readreporter";
 import { createSharedTaskIndex, type ReaderSource, type SharedTaskIndex } from "../timeline/src/sharedindex";
 import { watchChanges, type TaskIndexReader } from "../timeline/src/taskindex";
 import { createRoot, Root } from "react-dom/client";
@@ -35,6 +35,8 @@ export class TasksTimelineView extends ItemView {
 	private readonly reader: TaskIndexReader;
 	/** Set in onClose. The reader is closed then, or by the reload running then, once it and its follow-up are done. */
 	private closed = false;
+	/** What this timeline told of its reloads' warnings and failures, so it does not tell the same on each. */
+	private readonly reporter = createReadReporter();
 
 	private isReloading = false;
 	/** A reload was asked for while one was running, so the list is loaded again when it is done. */
@@ -115,7 +117,8 @@ export class TasksTimelineView extends ItemView {
 
 	/**
 	 * Reads the tasks of the notes that may have changed, see TaskIndex, and tells of the notes that warn or cannot be
-	 * read, on every reload. Returns once this reload, and one asked for while it ran, are done.
+	 * read what it has not told yet, see ReadReporter. Returns once this reload, and one asked for while it ran, are
+	 * done.
 	 */
 	onReloadTasks(): Promise<void> {
 		if (this.isReloading) {
@@ -126,8 +129,8 @@ export class TasksTimelineView extends ItemView {
 		const { options } = this.store.getSnapshot();
 		return this.reader
 			.update(options)
-			.then(({ tasks, warnings, failures }) => {
-				reportNoteReads(warnings, failures);
+			.then(({ tasks, warned, failures }) => {
+				this.reporter.report({ warned, failures });
 				this.filesWithTasks = new Set(tasks.map((task) => task.path));
 				const { shown } = resolveTasks(tasks, options, { now: moment(), moment });
 				this.store.setState((state) => withReload(state, tasks, shown.map(heldOf)));

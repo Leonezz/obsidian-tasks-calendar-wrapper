@@ -8,6 +8,7 @@ import type {
 	ParseWarning,
 	Task,
 } from "@tasks-calendar-wrapper/core";
+import { contentIdOf, type ContentId } from "../../utils/contentid";
 import { sameParseKey, type ParseKey } from "../../utils/parsekey";
 import type { NoteReadFailure } from "./taskadapter";
 
@@ -38,6 +39,15 @@ export interface TaskIndexDeps {
 	readonly parse?: ParseNote;
 }
 
+/** A note whose parse gave warnings, with the id of the text it was parsed from. Frozen. */
+export interface WarnedNote {
+	readonly path: string;
+	/** contentIdOf the text read: a note read again with the same text has the same id. */
+	readonly content: ContentId;
+	/** The note's warnings, the same array as its ParsedNote's. */
+	readonly warnings: readonly ParseWarning[];
+}
+
 /** What one update gives. Frozen, with new frozen arrays every time, also when nothing changed. */
 export interface IndexUpdate {
 	/**
@@ -48,6 +58,11 @@ export interface IndexUpdate {
 	readonly tasks: readonly Task[];
 	/** The warnings of every visible note read without failure, stored notes included, in the same order. */
 	readonly warnings: readonly ParseWarning[];
+	/**
+	 * The notes of `warnings`, each once, in the same order: warned.flatMap((note) => note.warnings) is `warnings`. A
+	 * note this update did not read gives the same WarnedNote object as the update that read it.
+	 */
+	readonly warned: readonly WarnedNote[];
 	/** The visible notes whose read or parse failed in this update, in path order. They are read again next time. */
 	readonly failures: readonly NoteReadFailure[];
 }
@@ -55,7 +70,8 @@ export interface IndexUpdate {
 /**
  * The parsed notes of every open timeline, kept between reloads and shared, so a note that changed is read once, by
  * whichever timeline reloads first, and stored once:
- * - it keeps one entry per note: the last ParsedNote read without failure, and the generation its read started at;
+ * - it keeps one entry per note: the last ParsedNote read without failure, the generation its read started at, and
+ *   for a note that warns, the id of the text it was parsed from, see WarnedNote;
  * - a reader's update uses an entry only while it is fresh for that reader: of a note the reader's last update gave
  *   without failure, read after the last mark of its path, under the parse key now, and after the reader's last full
  *   read was asked for, see TaskIndexReader. So a reader reads no note an index of its own would not read, except
@@ -88,9 +104,9 @@ export interface TaskIndexReader {
 	/**
 	 * Lists and filters the notes as readTasks does, reads the ones that have no entry fresh for this reader, and
 	 * returns every visible note's tasks, warnings and failures. A note its last update that succeeded did not give
-	 * without failure has none: it is new to the reader, or its read failed. It tells the user nothing: the caller
-	 * hands the warnings and failures to reportNoteReads. `filters` may be the view's whole options; only the five note
-	 * filters count.
+	 * without failure has none: it is new to the reader, or its read failed. It tells the user nothing: the view
+	 * hands the warned notes and failures to its ReadReporter, see readreporter.ts. `filters` may be the view's whole
+	 * options; only the five note filters count.
 	 * - It starts at once when no update of any reader runs or waits, so every read has started when it returns;
 	 *   otherwise right when every update asked for before it has settled, before their callers hear of it. A
 	 *   rejection stops none of the updates after it.
@@ -114,7 +130,15 @@ export interface TaskIndexReader {
 /** A stored note, and the generation its read started at. */
 interface Entry {
 	readonly note: ParsedNote;
+	/** Null for a note without warnings, whose text is not hashed. */
+	readonly warned: WarnedNote | null;
 	readonly readAt: number;
+}
+
+/** What reading one note gave. */
+interface Read {
+	readonly note: ParsedNote;
+	readonly warned: WarnedNote | null;
 }
 
 /** What the last update that succeeded stored. */
@@ -213,9 +237,15 @@ export function createTaskIndex(deps: TaskIndexDeps): TaskIndex {
 	const readers = new Set<ReaderState>();
 	const queue = createQueue();
 
-	async function readNote({ file, path }: Planned): Promise<ParsedNote> {
+	async function readNote({ file, path }: Planned): Promise<Read> {
 		const content = await deps.app.vault.cachedRead(file);
-		return parse({ path, content, metadata: deps.app.metadataCache.getFileCache(file) }, deps.moment);
+		const note = parse({ path, content, metadata: deps.app.metadataCache.getFileCache(file) }, deps.moment);
+		// Only a note that warns is hashed, so the notes of most vaults cost nothing more.
+		const warned =
+			note.warnings.length === 0
+				? null
+				: Object.freeze({ path, content: contentIdOf(content), warnings: note.warnings });
+		return { note, warned };
 	}
 
 	/** Whether the entry was read after the last mark of its path. */
@@ -254,13 +284,14 @@ export function createTaskIndex(deps: TaskIndexDeps): TaskIndex {
 	}
 
 	/** Stores what this update read and kept, and what the other open readers show, in one assignment. */
-	function commit(u: Running, settled: readonly PromiseSettledResult<ParsedNote>[], parseKey: ParseKey | null) {
+	function commit(u: Running, settled: readonly PromiseSettledResult<Read>[], parseKey: ParseKey | null) {
 		const { reader } = u;
 		const others = [...readers].filter((other) => other !== reader);
 		const heldByOthers = (path: string) => others.some((other) => other.held.has(path));
 		const entries = new Map<string, Entry>();
 		const tasks: Task[] = [];
 		const warnings: ParseWarning[] = [];
+		const warned: WarnedNote[] = [];
 		const failures: NoteReadFailure[] = [];
 		const given = new Set<string>();
 		let next = 0;
@@ -271,12 +302,12 @@ export function createTaskIndex(deps: TaskIndexDeps): TaskIndex {
 				failures.push(Object.freeze({ path, reason: read.reason }));
 				continue;
 			}
-			const entry =
-				kept ?? Object.freeze({ note: (read as PromiseFulfilledResult<ParsedNote>).value, readAt: u.start });
+			const entry = kept ?? Object.freeze({ ...(read as PromiseFulfilledResult<Read>).value, readAt: u.start });
 			given.add(path);
 			// One at a time, not spread, so a note with very many tasks cannot exceed the argument limit.
 			for (const task of entry.note.tasks) tasks.push(task);
 			for (const warning of entry.note.warnings) warnings.push(warning);
+			if (entry.warned !== null) warned.push(entry.warned);
 			// Marked again since the update started: returned as read, but not stored, so it is read again.
 			if ((reader.open || heldByOthers(path)) && fresh(path, entry)) entries.set(path, entry);
 		}
@@ -300,6 +331,7 @@ export function createTaskIndex(deps: TaskIndexDeps): TaskIndex {
 		return Object.freeze({
 			tasks: Object.freeze(tasks),
 			warnings: Object.freeze(warnings),
+			warned: Object.freeze(warned),
 			failures: Object.freeze(failures),
 		});
 	}
