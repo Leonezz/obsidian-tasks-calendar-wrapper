@@ -88,6 +88,9 @@ const context = await esbuild.context({
 	},
 	entryPoints: ["src/main.ts"],
 	bundle: true,
+	define: {
+		"process.env.NODE_ENV": JSON.stringify(prod ? "production" : "development"),
+	},
 	external: [
 		"obsidian",
 		"@codemirror/autocomplete",
@@ -116,6 +119,19 @@ const context = await esbuild.context({
 
 if (prod) {
 	await context.rebuild();
+	// Esbuild preserves these module filenames in comments, so the guard does not depend on React's warning text.
+	const bundle = readFileSync(`${releaseDir}/main.js`, "utf8");
+	for (const developmentBuild of [
+		"react.development.js",
+		"react-dom.development.js",
+		"react-jsx-runtime.development.js",
+		"scheduler.development.js",
+	]) {
+		if (bundle.includes(developmentBuild))
+			throw new Error(
+				`main.js contains "${developmentBuild}"; define process.env.NODE_ENV as "production" so the release bundles React's production builds.`,
+			);
+	}
 	process.exit(0);
 } else {
 	await context.watch();
