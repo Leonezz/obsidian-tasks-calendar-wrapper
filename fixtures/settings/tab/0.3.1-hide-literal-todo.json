@@ -187,6 +187,16 @@
     ]
   },
   {
+    "name": "Forward Undated Done Tasks",
+    "desc": "Show done tasks that have no date at all on the today panel. Turn it off to keep them out of the timeline.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
     "name": "Hide Subtasks",
     "desc": "Hide task items that are nested under another list item.",
     "controls": [

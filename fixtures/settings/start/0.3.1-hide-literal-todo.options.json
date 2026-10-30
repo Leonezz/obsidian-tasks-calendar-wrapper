@@ -21,6 +21,7 @@
   "hideTags": [],
   "forward": true,
   "forwardPastStartAndScheduled": false,
+  "forwardUndatedDone": true,
   "sort": "status-asc",
   "taskStatusOrder": [
     "overdue",

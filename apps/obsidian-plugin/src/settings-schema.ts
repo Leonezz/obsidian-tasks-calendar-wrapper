@@ -183,6 +183,14 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				readWhen: PUSH,
 			},
 			{
+				key: "forwardUndatedDone",
+				type: "boolean",
+				control: "toggle",
+				group: "interface",
+				redrawsTab: false,
+				readWhen: PUSH,
+			},
+			{
 				key: "sort",
 				type: "string",
 				control: "dropdown",

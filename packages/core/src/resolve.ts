@@ -26,6 +26,8 @@ export interface ResolveSettings extends NoteFilterSettings {
 	readonly dailyNoteFormat?: string;
 	readonly forward?: boolean;
 	readonly forwardPastStartAndScheduled?: boolean;
+	/** Whether a done task with no date at all is listed on today. Unset means it is. */
+	readonly forwardUndatedDone?: boolean;
 	readonly convert24HourTimePrefix?: boolean;
 	readonly taskStatusOrder?: readonly string[];
 	readonly sort?: string;
@@ -151,7 +153,8 @@ const todoStatuses: readonly TaskStatus[] = [
 /**
  * Why the forward option also lists a task on today, if it does: an unplanned, undated done or cancelled, or undated
  * to-do task has no other day to be on; an overdue task is listed on today too, unless it is already; and, with the
- * option for it, so is a task that has started or whose scheduled date has passed, see #84.
+ * option for it, so is a task that has started or whose scheduled date has passed, see #84. The undated done task is
+ * only listed when forwardUndatedDone is set.
  */
 export function forwardKey(
 	status: TaskStatus,
@@ -159,6 +162,7 @@ export function forwardKey(
 	extraDates: DateEntries,
 	now: DateValue,
 	pastStartAndScheduled: boolean,
+	undatedDone = true,
 ): ForwardKey | undefined {
 	const onToday = [
 		dates.due,
@@ -170,6 +174,7 @@ export function forwardKey(
 	].some((date) => date !== undefined && sameDay(now, date));
 	if (status === TaskStatus.unplanned) return "unplanned";
 	if (
+		undatedDone &&
 		status === TaskStatus.done &&
 		!dates.completion &&
 		!dates.due &&
@@ -238,7 +243,14 @@ function resolveTask(
 			: task.dates;
 	const status = taskStatus(task, dates, task.extraDates, now);
 	const forwarded = settings.forward
-		? forwardKey(status, dates, task.extraDates, now, !!settings.forwardPastStartAndScheduled)
+		? forwardKey(
+				status,
+				dates,
+				task.extraDates,
+				now,
+				!!settings.forwardPastStartAndScheduled,
+				settings.forwardUndatedDone !== false,
+			)
 		: undefined;
 	const statusOrder = settings.taskStatusOrder;
 	return Object.freeze({

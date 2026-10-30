@@ -61,7 +61,7 @@ test("the schema has one entry for each option, in the defaults' order", () => {
 		settingsSchema.map((spec) => spec.key),
 		Object.keys(defaultUserOptions),
 	);
-	assert.equal(settingsSchema.length, 45);
+	assert.equal(settingsSchema.length, 46);
 	assert.ok(Object.isFrozen(settingsSchema) && settingsSchema.every((spec) => Object.isFrozen(spec)));
 });
 

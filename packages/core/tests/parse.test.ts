@@ -110,6 +110,19 @@ test("undated cancelled task is shown today, like an undated done task", () => {
 	assert.ok(isShownOn(resolved, TODAY));
 });
 
+test("undated done task is shown today unless forwardUndatedDone is off", () => {
+	assert.ok(isShownOn(resolve("- [x] Done"), TODAY));
+	const resolved = resolve("- [x] Done", { forwardUndatedDone: false });
+	assert.equal(resolved.status, TaskStatus.done);
+	assert.equal(resolved.forwarded, undefined);
+	assert.ok(!isShownOn(resolved, TODAY));
+});
+
+test("forwardUndatedDone off leaves a done task with a date on that date", () => {
+	const resolved = resolve("- [x] Done ✅ 2026-09-10", { forwardUndatedDone: false });
+	assert.ok(isShownOn(resolved, day("2026-09-10")));
+});
+
 test("a dated cancelled task stays on its own date", () => {
 	const resolved = resolve("- [-] Cancelled 📅 2026-09-10");
 	assert.equal(resolved.status, TaskStatus.cancelled);
