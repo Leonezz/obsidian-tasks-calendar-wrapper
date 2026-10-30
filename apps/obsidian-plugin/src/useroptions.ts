@@ -83,6 +83,10 @@ export const defaultUserOptions = {
 	 */
 	forwardPastStartAndScheduled: false as boolean,
 	/**
+	 * Show done tasks that have no date at all on the today panel. They have no other day to be shown on.
+	 */
+	forwardUndatedDone: true as boolean,
+	/**
 	 * Specify how do you like the task items to be sorted, see sortOptionLabels in packages/core/src/sort.ts.
 	 */
 	sort: defaultSortKey as string,
