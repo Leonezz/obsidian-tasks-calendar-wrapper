@@ -5,6 +5,8 @@
 fixtures/golden-vault/** -text
 fixtures/golden-vault.metadata.json -text
 fixtures/golden/** -text
+# The Tasks toggle capture JSON is compared byte for byte.
+fixtures/tasks-toggle/** -text
 # The screenshot baselines are compared too, the visible/*.txt snapshots byte for byte, see
 # apps/obsidian-plugin/scripts/screenshots.mjs. Git still finds the PNGs binary by their content.
 fixtures/screenshots/** -text

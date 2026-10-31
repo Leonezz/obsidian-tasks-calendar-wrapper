@@ -15,49 +15,13 @@ import { setTaskDate, toggleTaskLine, type DateField, type NewDateStyle } from "
 import { dayKey } from "../src/dates";
 import { parseTaskLine } from "../src/parse";
 import { mulberry32 } from "./support/random";
+import { integer, noteFor, pick } from "./support/notes";
 import { readTasksLine, type TasksFormat } from "./support/tasksreader";
 
 const REPLACEMENT_CASES = 10_000;
 const ENCODING_CASES = 10_000;
 const REPLACEMENT_SEED = 0x51a7c0de;
 const ENCODING_SEED = 0x8badf00d;
-
-function integer(random: () => number, limit: number): number {
-	return Math.floor(random() * limit);
-}
-
-function noteFor(random: () => number, index: number): string {
-	const phrases = ["plain", "中文", "🗓️ tomorrow", "- [ ] identical", "", "\ufeffinside"];
-	const rows = Array.from({ length: 1 + integer(random, 8) }, () => phrases[integer(random, phrases.length)]);
-	const target = integer(random, rows.length);
-	rows[target] = `- [ ] task ${integer(random, 5)}`;
-	switch (index % 7) {
-		case 0:
-			rows.unshift("---", "title: tasks", "---");
-			break;
-		case 1:
-			rows[target] = "> - [ ] callout";
-			rows.splice(target, 0, "> [!todo]");
-			break;
-		case 2:
-			rows.splice(target + 1, 0, "  continuation", "    nested continuation");
-			break;
-		case 3:
-			rows.splice(target, 0, rows[target], rows[target]);
-			break;
-		case 4:
-			rows.splice(0, rows.length, "- [ ] only task");
-			break;
-		case 5:
-			rows.splice(0, rows.length, "");
-			break;
-	}
-	const mode = integer(random, 3);
-	const ending = () => (mode === 0 ? "\n" : mode === 1 ? "\r\n" : random() < 0.5 ? "\n" : "\r\n");
-	const trailing = random() < 0.5;
-	const content = rows.map((row, i) => row + (i < rows.length - 1 || trailing ? ending() : "")).join("");
-	return (random() < 0.35 ? "\ufeff" : "") + content;
-}
 
 test("replaceTaskLine property: only the target line changes, or nothing does", () => {
 	const random = mulberry32(REPLACEMENT_SEED);
@@ -166,10 +130,6 @@ interface Candidate {
 	readonly end: number;
 	readonly value: string | null;
 	readonly format: TasksFormat;
-}
-
-function pick<T>(random: () => number, values: readonly T[]): T {
-	return values[integer(random, values.length)];
 }
 
 // This scanner deliberately uses separate comment ranges and bracket walks rather than the writer's helpers.

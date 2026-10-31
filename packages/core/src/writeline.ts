@@ -57,12 +57,19 @@ function removeField(body: string, span: FieldSpan, keepLeadingSpace: boolean): 
 	return before.replace(/\s*$/u, "") + body.slice(span.end);
 }
 
+function squareFieldEnd(body: string, end: number, openings: number): number {
+	for (let extra = 1; extra < openings && body[end] === "]"; extra++) end++;
+	return end;
+}
+
 function removeFields(body: string, regex: RegExp, keepLeadingSpace: boolean): string {
 	const matches = matchesOutsideComments(body, regex);
 	let result = body;
 	for (let i = matches.length - 1; i >= 0; i--) {
 		const match = matches[i];
-		result = removeField(result, { start: match.index!, end: match.index! + match[0].length }, keepLeadingSpace);
+		const openings = /^\[+/u.exec(match[0])?.[0].length ?? 1;
+		const end = squareFieldEnd(body, match.index! + match[0].length, openings);
+		result = removeField(result, { start: match.index!, end }, keepLeadingSpace);
 	}
 	return result;
 }
@@ -77,7 +84,7 @@ function toggleMinimal(body: string, status: string, today: DayKey, dataview: bo
 	if (dataview) {
 		const cleared = removeFields(
 			body,
-			/\[(?:completion|cancelled)::[^\]]*\]|\((?:completion|cancelled)::[^)]*\)/gu,
+			/\[+(?:completion|cancelled)::[^\]]*\]|\((?:completion|cancelled)::[^)]*\)/gu,
 			false,
 		);
 		return status === "x" ? insertField(cleared, `  [completion:: ${today}]`) : cleared;
@@ -197,8 +204,7 @@ function squareDateCandidates(body: string, field: DateField): readonly DateCand
 		const value = match[3].trim();
 		const valueStart =
 			match.index! + match[1].length + match[2].length + 2 + match[3].length - match[3].trimStart().length;
-		let end = match.index! + match[0].length;
-		for (let extra = 1; extra < match[1].length && body[end] === "]"; extra++) end++;
+		const end = squareFieldEnd(body, match.index! + match[0].length, match[1].length);
 		candidates.push({ start: match.index!, end, valueStart, day: dateTimeShape.exec(value)?.[1] ?? null });
 	}
 	return candidates;

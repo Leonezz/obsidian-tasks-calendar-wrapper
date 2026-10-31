@@ -89,9 +89,13 @@ test("replaceTaskLine handles a BOM and a task on line 0", () => {
 });
 
 test("replaceTaskLine gives a last line without ending two lines", () => {
+	const L1 = "- [ ] r 🔁 every day 📅 2026-10-25";
+	const L2 = "- [x] r 🔁 every day ✅ 2026-10-24";
 	assert.equal(
-		contentOf(replaceTaskLine("a\r\n" + RECURRING, { line: 1, sourceLine: RECURRING }, [NEXT, FINISHED])),
-		"a\r\n" + NEXT + "\r\n" + FINISHED,
+		contentOf(
+			replaceTaskLine("a\r\n- [ ] r 🔁 every day", { line: 1, sourceLine: "- [ ] r 🔁 every day" }, [L1, L2]),
+		),
+		"a\r\n" + L1 + "\r\n" + L2,
 	);
 	assert.equal(
 		contentOf(replaceTaskLine(RECURRING, { line: 0, sourceLine: RECURRING }, [NEXT, FINISHED])),
@@ -781,6 +785,18 @@ test("toggleTaskLine changes dataview-field lines minimally", () => {
 			"12)   [x] a [repeat:: every  day] (completion:: 2026-10-01) [completion:: later] %% [completion:: old] %%",
 			"12)   [ ] a [repeat:: every  day] %% [completion:: old] %%",
 		],
+	]);
+});
+
+test("toggleTaskLine removes a double-bracket completion or cancelled field whole", () => {
+	toggles([
+		["- [x] a [[completion:: 2026-10-01]]", "- [ ] a"],
+		["- [-] a [due:: 2026-10-25] [[cancelled:: 2026-10-01]]", "- [ ] a [due:: 2026-10-25]"],
+		["- [x] a [[completion:: 2026-10-01]] ^id", "- [ ] a ^id"],
+		["- [x] a [ note [[completion:: 2026-10-01]]", "- [ ] a [ note"],
+		["- [-] a [[cancelled:: 2026-10-01]] [ note", "- [ ] a [ note"],
+		["- [x] a [[[completion:: 2026-10-01]]] [[cancelled:: 2026-10-02]]", "- [ ] a"],
+		["- [x] a %% [[completion:: old]] %% [[completion:: 2026-10-01]]", "- [ ] a %% [[completion:: old]] %%"],
 	]);
 });
 
