@@ -12,7 +12,8 @@
  *
  * A test can also ask for what Obsidian does only now and then; unless it asks, none of it happens:
  * - write a note before Obsidian has indexed it (`indexed: false`): only "modify" or "create" fires, and the metadata
- *   stays as it was, none for a new note, until indexPending fires "changed" for each such note, then "resolved". A
+ *   stays as it was, none for a new note, until indexPending fires "changed" for each such note, then "resolved". With
+ *   `pendingMetadata: "none"`, getFileCache returns null meanwhile, as while Obsidian parses. A
  *   note removed meanwhile is no longer waiting, and one renamed waits at its new path;
  * - change or remove a file with no event at all (writeSilently, removeSilently), as when an event is missed;
  * - make reading a note fail (failReads) and work again (healReads), hold every read until a test lets them go
@@ -339,9 +340,13 @@ export function fakeVault(
 		/**
 		 * Writes a note, as an editor saving it does: "modify", or "create" for a new note, then "changed". With
 		 * `indexed: false`, Obsidian has not indexed it yet: "changed" waits for indexPending, and until then the
-		 * metadata stays as it was, none for a new note.
+		 * metadata stays as it was, none for a new note. With `pendingMetadata: "none"`, it is absent until indexed.
 		 */
-		write(path: string, content: string, { indexed = true } = {}): void {
+		write(
+			path: string,
+			content: string,
+			{ indexed = true, pendingMetadata = "old" }: { indexed?: boolean; pendingMetadata?: "old" | "none" } = {},
+		): void {
 			const existing = files.get(path);
 			const file = existing instanceof TFile ? existing : fileAt(path);
 			if (!existing) {
@@ -355,6 +360,7 @@ export function fakeVault(
 				return;
 			}
 			if (!indexed) {
+				if (pendingMetadata === "none") caches.delete(path);
 				pending.add(path);
 				return;
 			}

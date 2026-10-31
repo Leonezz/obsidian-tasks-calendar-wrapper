@@ -37,8 +37,8 @@ export type ObsidianFits = [
 
 /** Whether the update and each of its arrays are frozen. */
 const frozen = (update: IndexUpdate) =>
-	[update, update.tasks, update.warnings, update.warned, ...update.warned, update.failures].every((value) =>
-		Object.isFrozen(value),
+	[update, update.tasks, update.warnings, update.warned, ...update.warned, update.failures, update.pinned].every(
+		(value) => Object.isFrozen(value),
 	);
 
 /** Asserts that every task not of the given paths is the same object as in the earlier update. */
@@ -239,6 +239,312 @@ test("a mark of a path that is no visible note reads nothing", async () => {
 	t.vault.write("Archive/Old.md", "- [ ] an old task, edited");
 	await t.index.update({ excludePaths: ["Archive"] });
 	assert.deepEqual(t.since().read, [], "a note the filters leave out");
+});
+
+// Holds keep the entry from before a write, including its warnings and visibility, until metadata catches up.
+
+test('a pinned note is given from the pin while its new text waits for metadata: only b.md read, a.md\'s Task objects ===, pinned is ["a.md"]. Full reread and new note filters also give the pin', async () => {
+	const t = indexed({ "a.md": "- [ ] a [due:: soon]", "b.md": "- [ ] b" });
+	const first = await t.index.update({});
+	t.since();
+	const hold = t.shared.hold("a.md");
+	t.vault.write("a.md", "- [x] a changed", { indexed: false, pendingMetadata: "none" });
+	t.vault.write("b.md", "- [ ] b changed");
+	t.shared.markDirty(["a.md", "b.md"]);
+	const pinned = await t.index.update({});
+	assert.deepEqual(t.since(), { read: ["b.md"], parsed: ["b.md"] });
+	assert.equal(pinned.tasks[0], first.tasks[0]);
+	assert.equal(pinned.warned[0], first.warned[0]);
+	assert.deepEqual(pinned.pinned, ["a.md"]);
+	assert.ok(frozen(pinned));
+	t.index.rereadAll();
+	const full = await t.index.update({});
+	assert.deepEqual(t.since().read, ["b.md"]);
+	assert.equal(full.tasks[0], first.tasks[0]);
+	assert.equal(full.warned[0], first.warned[0]);
+	assert.deepEqual(full.pinned, ["a.md"]);
+	const filtered = await t.index.update({ includePaths: ["a.md"] });
+	assert.deepEqual(t.since().read, []);
+	assert.equal(filtered.tasks[0], first.tasks[0]);
+	assert.deepEqual(filtered.pinned, ["a.md"]);
+	const opened = await t.open().update({});
+	assert.deepEqual(t.since().read, ["b.md"]);
+	assert.equal(opened.tasks[0], first.tasks[0]);
+	assert.deepEqual(opened.pinned, ["a.md"]);
+	hold.release();
+});
+
+test("pinned mid-read → replaced by the pin and not stored", async () => {
+	const t = indexed({ "a.md": "- [ ] a [due:: soon]" });
+	const first = await t.index.update({});
+	t.since();
+	t.vault.write("a.md", "- [ ] a changed");
+	const letRead = t.vault.holdReads();
+	const running = t.index.update({});
+	assert.deepEqual(t.since().read, ["a.md"]);
+	const hold = t.shared.hold("a.md");
+	letRead();
+	const pinned = await running;
+	assert.equal(pinned.tasks[0], first.tasks[0]);
+	assert.equal(pinned.warned[0], first.warned[0]);
+	assert.deepEqual(pinned.pinned, ["a.md"]);
+	t.since();
+	// Even without a release mark, the discarded in-flight read cannot become a committed entry.
+	hold.release({ markDirty: false });
+	const reread = await t.index.update({});
+	assert.deepEqual(t.since().read, ["a.md"]);
+	assert.deepEqual(reread.pinned, []);
+	assert.deepStrictEqual([...reread.tasks], await t.reference());
+});
+
+test("a hold acquired and released during a read still replaces that read with its pin", async () => {
+	for (const markDirty of [true, false]) {
+		const t = indexed({ "a.md": "- [ ] a [due:: soon]" });
+		const first = await t.index.update({});
+		t.since();
+		t.vault.write("a.md", "- [ ] changed");
+		const letRead = t.vault.holdReads();
+		const running = t.index.update({});
+		const hold = t.shared.hold("a.md");
+		hold.release({ markDirty });
+		letRead();
+		const pinned = await running;
+		assert.deepEqual(t.since().read, ["a.md"]);
+		assert.equal(pinned.tasks[0], first.tasks[0]);
+		assert.equal(pinned.warned[0], first.warned[0]);
+		assert.deepEqual(pinned.pinned, ["a.md"]);
+		const reread = await t.index.update({});
+		assert.deepEqual(t.since().read, ["a.md"]);
+		assert.deepEqual(reread.pinned, []);
+		assert.deepStrictEqual([...reread.tasks], await t.reference());
+	}
+});
+
+test("a pin acquired mid-read uses its visibility at acquisition, including a note hidden when the update started", async () => {
+	for (const visibleAtStart of [false, true]) {
+		const t = indexed({ "a.md": "- [ ] a #work", "b.md": "- [ ] b #work" });
+		const filters = { fileIncludeTags: ["#work"] };
+		const first = await t.index.update(filters);
+		t.vault.write("a.md", `- [ ] a ${visibleAtStart ? "#work" : "#home"}`);
+		t.vault.write("b.md", "- [ ] b changed #work");
+		t.since();
+		const letRead = t.vault.holdReads();
+		const running = t.index.update(filters);
+		t.vault.write("a.md", `- [ ] a ${visibleAtStart ? "#home" : "#work"}`);
+		const hold = t.shared.hold("a.md");
+		const listed = t.vault.listings();
+		letRead();
+		const result = await running;
+		assert.equal(t.vault.listings(), listed, "commit uses the update's original listing");
+		assert.deepEqual(t.since().read, visibleAtStart ? ["a.md", "b.md"] : ["b.md"]);
+		if (visibleAtStart) {
+			assert.deepEqual(pathsOf(result.tasks), ["b.md"]);
+			assert.deepEqual(result.pinned, []);
+		} else {
+			assert.equal(result.tasks[0], first.tasks[0]);
+			assert.deepEqual(pathsOf(result.tasks), ["a.md", "b.md"]);
+			assert.deepEqual(result.pinned, ["a.md"]);
+		}
+		hold.release();
+	}
+});
+
+test("counting tokens: re-read only after the last release; a release without events also marks dirty and re-reads", async () => {
+	const t = indexed({ "a.md": "- [ ] a" });
+	const first = await t.index.update({});
+	t.since();
+	const one = t.shared.hold("a.md");
+	const two = t.shared.hold("a.md");
+	t.vault.write("a.md", "- [ ] a changed");
+	one.release();
+	one.release();
+	const still = await t.index.update({});
+	assert.deepEqual(t.since().read, []);
+	assert.equal(still.tasks[0], first.tasks[0]);
+	assert.deepEqual(still.pinned, ["a.md"]);
+	two.release();
+	const reread = await t.index.update({});
+	assert.deepEqual(t.since().read, ["a.md"]);
+	assert.deepEqual(reread.pinned, []);
+	assert.notEqual(reread.tasks[0], first.tasks[0]);
+	const alone = t.shared.hold("a.md");
+	alone.release();
+	await t.index.update({});
+	assert.deepEqual(t.since().read, ["a.md"], "a release itself marks, with no vault event");
+	alone.release();
+	await t.index.update({});
+	assert.deepEqual(t.since().read, [], "a repeated release does not mark again");
+});
+
+test('a pinned note shows by its visibility at pin time: fileIncludeTags ["#work"], getFileCache null, still shown', async () => {
+	const t = indexed({ "a.md": "---\nproject: work\n---\n- [ ] a #work" });
+	const filters = { fileIncludeTags: ["#work"], excludeProperties: { project: ["personal"] } };
+	const first = await t.index.update(filters);
+	assert.equal(first.tasks.length, 1);
+	t.since();
+	const hold = t.shared.hold("a.md");
+	const cache = t.vault.app.metadataCache.getFileCache(t.vault.app.vault.getAbstractFileByPath("a.md"));
+	assert.ok(cache?.frontmatter && cache.tags?.[0]);
+	cache.frontmatter.project = "personal";
+	cache.tags[0].tag = "#personal";
+	t.vault.write("a.md", "---\nproject: personal\n---\n- [ ] changed", {
+		indexed: false,
+		pendingMetadata: "none",
+	});
+	assert.equal(t.vault.app.metadataCache.getFileCache(t.vault.app.vault.getAbstractFileByPath("a.md")), null);
+	const pinned = await t.index.update(filters);
+	assert.deepEqual(t.since().read, []);
+	assert.equal(pinned.tasks[0], first.tasks[0]);
+	assert.deepEqual(pinned.pinned, ["a.md"]);
+	const hidden = await t.index.update({ excludeProperties: { project: ["work"] } });
+	assert.deepEqual(hidden.tasks, []);
+	assert.deepEqual(hidden.pinned, []);
+	t.vault.remove("a.md");
+	const deleted = await t.index.update(filters);
+	assert.deepEqual(deleted.tasks, []);
+	assert.deepEqual(deleted.pinned, [], "a pin gives no note that is no longer listed");
+	hold.release();
+});
+
+test("pinning a note with no entry has no effect", async () => {
+	const t = indexed({ "a.md": "- [ ] a" });
+	const hold = t.shared.hold("a.md");
+	const first = await t.index.update({});
+	assert.deepEqual(t.since().read, ["a.md"]);
+	assert.deepEqual(first.pinned, []);
+	t.vault.write("a.md", "- [ ] changed");
+	const changed = await t.index.update({});
+	assert.deepEqual(t.since().read, ["a.md"]);
+	assert.deepEqual(changed.pinned, []);
+	assert.notEqual(changed.tasks[0], first.tasks[0]);
+	hold.release();
+});
+
+test("retired pin: a second write started after a release and before the re-read pins the entry from before the first write; after re-read and store the retired pin is dropped", async () => {
+	const t = indexed({ "a.md": "- [ ] a [due:: soon]" });
+	const first = await t.index.update({});
+	t.since();
+	const one = t.shared.hold("a.md");
+	t.vault.write("a.md", "- [ ] first write", { indexed: false, pendingMetadata: "none" });
+	await t.index.update({});
+	assert.deepEqual(t.since().read, []);
+	one.release();
+	const two = t.shared.hold("a.md");
+	t.vault.write("a.md", "- [ ] second write", { indexed: false, pendingMetadata: "none" });
+	const retired = await t.index.update({});
+	assert.deepEqual(t.since().read, []);
+	assert.equal(retired.tasks[0], first.tasks[0]);
+	assert.equal(retired.warned[0], first.warned[0]);
+	assert.deepEqual(retired.pinned, ["a.md"]);
+	t.vault.indexPending();
+	two.release();
+	const stored = await t.index.update({});
+	assert.deepEqual(t.since().read, ["a.md"]);
+	assert.equal(stored.tasks[0].visual, "second write");
+	// Leave no committed entry: a later hold can only fall back to a retired pin, if one wrongly survived.
+	await t.index.update({ excludePaths: ["a.md"] });
+	const three = t.shared.hold("a.md");
+	const after = await t.index.update({});
+	assert.deepEqual(t.since().read, ["a.md"]);
+	assert.deepEqual(after.pinned, []);
+	assert.notEqual(after.tasks[0], stored.tasks[0]);
+	three.release();
+});
+
+test("the BOM of a note is stripped before parsing", async () => {
+	const content = "- [ ] a 📅 2026-10-25\n- [ ] b";
+	const warning = "- [ ] c [due:: soon]";
+	const t = indexed({ "a.md": content, "warned.md": warning });
+	const first = await t.index.update({});
+	const cachedRead = t.vault.app.vault.cachedRead.bind(t.vault.app.vault);
+	// Obsidian's offsets omit the BOM even when cachedRead returns it after a process that wrote nothing.
+	t.vault.app.vault.cachedRead = async (file) => "\uFEFF" + (await cachedRead(file));
+	t.index.rereadAll();
+	const bom = await t.index.update({});
+	assert.deepStrictEqual(bom.tasks, first.tasks);
+	assert.deepEqual(
+		bom.tasks.filter((task) => task.path === "a.md").map((task) => task.line),
+		[0, 1],
+	);
+	assert.deepStrictEqual(bom.warnings, first.warnings);
+	assert.equal(bom.warned[0].content, contentIdOf(warning), "the warning hashes the text after stripping its BOM");
+});
+
+test("releasing with markDirty false does not mark the note", async () => {
+	const t = indexed({ "a.md": "- [ ] a" });
+	const first = await t.index.update({});
+	t.since();
+	t.shared.hold("a.md").release({ markDirty: false });
+	const same = await t.index.update({});
+	assert.deepEqual(t.since().read, []);
+	assert.equal(same.tasks[0], first.tasks[0]);
+	assert.deepEqual(same.pinned, []);
+	// A release that does not mark still preserves a mark an actual write made while the pin was active.
+	const hold = t.shared.hold("a.md");
+	t.vault.write("a.md", "- [ ] changed");
+	await t.index.update({});
+	assert.deepEqual(t.since().read, []);
+	hold.release({ markDirty: false });
+	const changed = await t.index.update({});
+	assert.deepEqual(t.since().read, ["a.md"]);
+	assert.deepStrictEqual([...changed.tasks], await t.reference());
+});
+
+test("forget drops retired pins on deletion and on both paths of a rename", async () => {
+	for (const change of ["delete", "rename"] as const) {
+		const t = indexed({ "a.md": "- [ ] a", "b.md": "- [ ] b" });
+		await t.index.update({});
+		const a = t.shared.hold("a.md");
+		const b = t.shared.hold("b.md");
+		await t.index.update({});
+		a.release();
+		b.release();
+		if (change === "delete") {
+			t.vault.remove("a.md");
+			t.vault.write("a.md", "- [ ] new a");
+			t.shared.forget(["b.md"]);
+		} else {
+			t.vault.rename("a.md", "b.md");
+			t.vault.write("a.md", "- [ ] new a");
+		}
+		t.since();
+		const nextA = t.shared.hold("a.md");
+		const nextB = t.shared.hold("b.md");
+		const result = await t.index.update({});
+		assert.deepEqual(t.since().read, ["a.md", "b.md"], change);
+		assert.deepEqual(result.pinned, [], change);
+		assert.deepStrictEqual([...result.tasks], await t.reference());
+		nextA.release();
+		nextB.release();
+	}
+});
+
+test("forget during a hold prevents its entry becoming a retired pin on release", async () => {
+	for (const change of ["delete", "rename"] as const) {
+		const t = indexed({ "a.md": "- [ ] a", "b.md": "- [ ] b" });
+		await t.index.update({});
+		const a = t.shared.hold("a.md");
+		const b = t.shared.hold("b.md");
+		await t.index.update({});
+		if (change === "delete") {
+			t.vault.remove("a.md");
+			t.vault.remove("b.md");
+		} else t.vault.rename("a.md", "b.md");
+		// The index hears deletion and rename before the writer releases its outstanding tokens.
+		a.release();
+		b.release();
+		t.vault.write("a.md", "- [ ] new a");
+		t.vault.write("b.md", "- [ ] new b");
+		t.since();
+		const nextA = t.shared.hold("a.md");
+		const nextB = t.shared.hold("b.md");
+		const result = await t.index.update({});
+		assert.deepEqual(t.since().read, ["a.md", "b.md"], change);
+		assert.deepEqual(result.pinned, [], change);
+		assert.deepStrictEqual([...result.tasks], await t.reference());
+		nextA.release();
+		nextB.release();
+	}
 });
 
 // B. Failures and warnings
@@ -784,7 +1090,10 @@ test("watchNotes marks the paths of each change, then watchChanges hands on the 
 	const events: unknown[][] = [];
 	// Registered in this order, as the plugin's shared index watches before a view does.
 	const refs = [
-		...watchNotes(vault.app as never, { markDirty: (paths) => events.push(["marked", ...paths]) }),
+		...watchNotes(vault.app as never, {
+			markDirty: (paths) => events.push(["marked", ...paths]),
+			forget: () => {},
+		}),
 		...watchChanges(vault.app as never, (paths, cache) => events.push(["changed", paths, cache])),
 	];
 	const fileCache = (path: string) => metadataCache.getFileCache(vault.app.vault.getAbstractFileByPath(path));

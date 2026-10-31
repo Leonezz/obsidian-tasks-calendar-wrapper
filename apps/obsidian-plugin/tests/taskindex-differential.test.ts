@@ -32,8 +32,20 @@ const STEPS = setting("TASKINDEX_STEPS", 40, 0);
 
 /** Below this many sequences the coverage guard is left out, as when one seed is replayed. */
 const GUARDED = 100;
+/** Pins are exercised both between updates and while reads or other readers are active. */
+const HOLDS = [
+	"held update",
+	"held full read",
+	"held during reads",
+	"held hidden by metadata",
+	"overlapping holds",
+	"hold without pin",
+	"released then read",
+	"hold acquired after a held commit, before a re-read",
+];
 /** Each of these must happen at least MINIMUM times over the sequences, or they no longer test what they should. */
 const COVERED = [
+	...HOLDS,
 	"at rest",
 	"at rest with failures",
 	"broken listing",
@@ -59,6 +71,8 @@ const COVERED = [
 /** And these too, over the sequences of several readers. */
 const COVERED_SHARED = [
 	...COVERED,
+	"held for another reader",
+	"held at close",
 	"at rest beside other filters",
 	"close",
 	"closed during",
@@ -135,6 +149,11 @@ async function soak(
 	}
 	t.diagnostic(`${SEEDS} sequences of ${STEPS} steps in ${Math.round(performance.now() - started)} ms`);
 	t.diagnostic(ORACLE.map((what) => `${what}: ${coverage.get(what) ?? 0}`).join(", "));
+	t.diagnostic(
+		[...HOLDS, "held for another reader", "held at close"]
+			.map((what) => `${what}: ${coverage.get(what) ?? 0}`)
+			.join(", "),
+	);
 	if (SEEDS < GUARDED) return;
 	for (const what of covered) {
 		const times = coverage.get(what) ?? 0;
@@ -156,6 +175,46 @@ test(`readers sharing the index each give what readTasks gives, over ${SEEDS} se
  * and [3] keeps the notes tagged #work.
  */
 const REGRESSIONS: readonly { readonly name: string; readonly actions: readonly Action[] }[] = [
+	{
+		// Seed 999: a new reader starts with no full-read cutoff; a first pinned update can keep an older entry usable.
+		name: "a new reader uses a retained fresh entry after its first pinned update and an unmarked release",
+		actions: [
+			{ op: "write", path: 38, content: 4, indexed: true },
+			{ op: "write", path: 34, content: 0, indexed: true },
+			{ op: "open", filters: 5 },
+			{ op: "hold", pick: 470 },
+			{
+				op: "updateDuring",
+				reader: 7,
+				ticks: 6,
+				during: [
+					{ op: "open", filters: 0 },
+					{ op: "update", reader: 4 },
+					{ op: "update", reader: 9 },
+				],
+			},
+			{ op: "hold", pick: 493 },
+			{ op: "close", pick: 9 },
+			{ op: "release", pick: 886, markDirty: true },
+			{ op: "open", filters: 2 },
+			{ op: "update", reader: 5 },
+			{ op: "release", pick: 812, markDirty: false },
+			{ op: "update", reader: 2 },
+		],
+	},
+	{
+		// Seed 466: a pinned update may keep an existing fresh entry for another reader, but never store its read.
+		name: "another reader's pinned commit retains the original entry before a release without a dirty mark",
+		actions: [
+			{ op: "write", path: 56, content: 10, indexed: true },
+			{ op: "open", filters: 4 },
+			{ op: "update", reader: 1 },
+			{ op: "hold", pick: 229 },
+			{ op: "update", reader: 8 },
+			{ op: "release", pick: 789, markDirty: false },
+			{ op: "update", reader: 7 },
+		],
+	},
 	{
 		// The random sequences almost never reach it: the parse key must see a locale's _config change in place.
 		name: "a second updateLocale changes the locale in place, and the preparse with it",

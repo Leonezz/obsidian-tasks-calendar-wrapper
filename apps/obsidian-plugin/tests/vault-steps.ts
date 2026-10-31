@@ -92,7 +92,17 @@ export function resetEnvironment(): void {
  * reader, the first when it is left out, as in the sequences of one reader.
  */
 export type VaultAction =
-	| { readonly op: "write"; readonly path: number; readonly content: number; readonly indexed: boolean }
+	| {
+			readonly op: "write";
+			readonly path: number;
+			readonly content: number;
+			readonly indexed: boolean;
+			readonly held?: boolean;
+			readonly pendingMetadata?: "old" | "none";
+	  }
+	/** The selected note gains a counting token; release selects a live token, or all of them at the end. */
+	| { readonly op: "hold"; readonly pick: number }
+	| { readonly op: "release"; readonly pick: number; readonly all?: boolean; readonly markDirty?: boolean }
 	| { readonly op: "index" }
 	| { readonly op: "remove"; readonly pick: number }
 	| { readonly op: "rename"; readonly pick: number; readonly to: number }
@@ -156,10 +166,13 @@ export function mulberry32(seed: number): () => number {
 	};
 }
 
-function vaultAction(random: () => number): VaultAction {
+function vaultAction(random: () => number, duringRead = false): VaultAction {
 	const n = (k: number) => Math.floor(random() * k);
+	if (duringRead && random() < 0.3) return { op: "hold", pick: n(1000) };
 	const r = random();
-	if (r < 0.4) return { op: "write", path: n(PATHS.length), content: n(CONTENTS.length), indexed: random() < 0.8 };
+	if (r < 0.025) return { op: "hold", pick: n(1000) };
+	if (r < 0.05) return { op: "release", pick: n(1000), markDirty: random() < 0.9 };
+	if (r < 0.4) return randomWrite(random);
 	if (r < 0.5) return { op: "index" };
 	if (r < 0.6) return { op: "remove", pick: n(1000) };
 	if (r < 0.72) return { op: "rename", pick: n(1000), to: n(PATHS.length) };
@@ -169,6 +182,19 @@ function vaultAction(random: () => number): VaultAction {
 	if (r < 0.95) return { op: "env", pick: n(ENVIRONMENTS.length) };
 	if (r < 0.97) return { op: "rereadAll" };
 	return { op: "filters", pick: n(FILTERS.length) };
+}
+
+/** Half the writes prefer a held note, with absent metadata for 30% of those writes. */
+function randomWrite(random: () => number): VaultAction {
+	const n = (k: number) => Math.floor(random() * k);
+	return {
+		op: "write",
+		path: n(PATHS.length),
+		content: n(CONTENTS.length),
+		indexed: random() < 0.8,
+		held: random() < 0.5,
+		pendingMetadata: random() < 0.3 ? "none" : "old",
+	};
 }
 
 /** Six notes and an update, then `steps` steps, then whatever is not indexed yet is indexed, and a last update. */
@@ -182,7 +208,13 @@ export function generate(seed: number, steps: number): Action[] {
 		if (r < 0.25) return [{ op: "update" }];
 		if (r < 0.3) {
 			const ticks = n(7);
-			return [{ op: "updateDuring", ticks, during: Array.from({ length: 1 + n(3) }, () => vaultAction(random)) }];
+			return [
+				{
+					op: "updateDuring",
+					ticks,
+					during: Array.from({ length: 1 + n(3) }, () => vaultAction(random, true)),
+				},
+			];
 		}
 		// The parse environment changes while the notes are read, and is back before the next update.
 		if (r < 0.34) {
@@ -195,9 +227,11 @@ export function generate(seed: number, steps: number): Action[] {
 		if (r < 0.36) return [{ op: "filters", pick: n(FILTERS.length) }];
 		if (r < 0.39) return [{ op: "updateBroken" }];
 		if (r < 0.41) return [{ op: "missedEvent", pick: n(1000), content: n(CONTENTS.length) }];
+		if (r < 0.46) return [{ op: "hold", pick: n(1000) }];
+		if (r < 0.51) return [{ op: "release", pick: n(1000), markDirty: random() < 0.9 }];
 		return [vaultAction(random)];
 	}).flat();
-	return [...start, ...middle, { op: "index" }, { op: "update" }];
+	return [...start, ...middle, { op: "index" }, { op: "release", pick: 0, all: true }, { op: "update" }];
 }
 
 /** The open readers, at most: an open action does nothing when there are as many. */
@@ -207,7 +241,7 @@ export const MOST_READERS = 3;
 function sharedVaultAction(random: () => number): VaultAction {
 	const n = (k: number) => Math.floor(random() * k);
 	const r = random();
-	if (r < 0.42) return { op: "write", path: n(PATHS.length), content: n(CONTENTS.length), indexed: random() < 0.8 };
+	if (r < 0.42) return randomWrite(random);
 	if (r < 0.52) return { op: "index" };
 	if (r < 0.62) return { op: "remove", pick: n(1000) };
 	if (r < 0.74) return { op: "rename", pick: n(1000), to: n(PATHS.length) };
@@ -225,6 +259,8 @@ function during(random: () => number): During {
 	if (r < 0.26) return { op: "close" };
 	if (r < 0.34) return { op: "rereadAll", reader: n(10) };
 	if (r < 0.38) return { op: "open", filters: n(FILTERS.length - 1) };
+	if (r < 0.46) return { op: "hold", pick: n(1000) };
+	if (r < 0.5) return { op: "release", pick: n(1000), markDirty: random() < 0.9 };
 	return sharedVaultAction(random);
 }
 
@@ -278,10 +314,12 @@ export function generateShared(seed: number, steps: number): Action[] {
 		if (r < 0.5) return [{ op: "closedUpdate", pick: n(10) }];
 		if (r < 0.53) return [{ op: "silentFail", pick: n(1000) }];
 		if (r < 0.55) return [{ op: "silentRemove", pick: n(1000) }];
+		if (r < 0.6) return [{ op: "hold", pick: n(1000) }];
+		if (r < 0.65) return [{ op: "release", pick: n(1000), markDirty: random() < 0.9 }];
 		return [sharedVaultAction(random)];
 	}).flat();
 	const last = Array.from({ length: MOST_READERS }, (_, reader): Action => ({ op: "update", reader }));
-	return [...start, ...middle, { op: "index" }, ...last];
+	return [...start, ...middle, { op: "index" }, { op: "release", pick: 0, all: true }, ...last];
 }
 
 // ---- applying a vault action ----
@@ -293,6 +331,10 @@ export interface Stage {
 	filters(reader: number, filters: NoteFilterSettings): void;
 	/** The open reader the action picks asks for a full read; with null, every open reader does. */
 	rereadAll(reader: number | null): void;
+	/** The paths with live counting tokens, for writes that deliberately overlap them. */
+	heldPaths(): readonly string[];
+	hold(pick: number): string | null;
+	release(pick: number, all: boolean, markDirty: boolean): void;
 }
 
 /** The folders of FOLDER_NAMES that exist. Folders stay when their files go, as they do in Obsidian. */
@@ -311,10 +353,20 @@ export function applyVaultAction(stage: Stage, action: VaultAction, count: (what
 	/** The file the action picks, or null when there is none. */
 	const picked = (k: number): string | null => (files.length === 0 ? null : files[k % files.length]);
 	switch (action.op) {
-		case "write":
-			vault.write(PATHS[action.path], CONTENTS[action.content], { indexed: action.indexed });
-			count(action.indexed ? "write" : "write unindexed");
-			return PATHS[action.path];
+		case "write": {
+			const held = stage.heldPaths().filter((path) => files.includes(path));
+			const writingHeld = action.held && held.length > 0;
+			const path = writingHeld ? held[action.path % held.length] : PATHS[action.path];
+			const indexed = writingHeld ? false : action.indexed;
+			vault.write(path, CONTENTS[action.content], { indexed, pendingMetadata: action.pendingMetadata });
+			count(indexed ? "write" : "write unindexed");
+			return path;
+		}
+		case "hold":
+			return stage.hold(action.pick);
+		case "release":
+			stage.release(action.pick, action.all ?? false, action.markDirty !== false);
+			return null;
 		case "index":
 			if (vault.pending().length > 0) count("index");
 			vault.indexPending();
