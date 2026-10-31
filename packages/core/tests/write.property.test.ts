@@ -17,6 +17,7 @@ import { parseTaskLine } from "../src/parse";
 import { mulberry32 } from "./support/random";
 import { integer, noteFor, pick } from "./support/notes";
 import { readTasksLine, type TasksFormat } from "./support/tasksreader";
+import { loadTasksToggleFixtures, TASKS_TOGGLE_GROUPS } from "./support/tasksfixtures";
 
 const REPLACEMENT_CASES = 10_000;
 const ENCODING_CASES = 10_000;
@@ -467,11 +468,18 @@ test("setTaskDate property: one contiguous change, every other field unchanged",
 	context.diagnostic(`seed ${DATE_SEED}; ${DATE_CASES} cases: ${JSON.stringify(counts)}`);
 });
 
-test("write then undo property: undo restores the note byte for byte", (context) => {
+test("write then undo property: undo restores the note byte for byte over the Tasks capture outputs", (context) => {
+	const captured = [...loadTasksToggleFixtures().values()].flatMap((fixture) =>
+		fixture.cases.map(({ api }) => ({ group: fixture.group, lines: api.split("\n") })),
+	);
+	const single = captured.filter(({ lines }) => lines.length === 1 && lines[0] !== "");
+	const double = captured.filter(({ lines }) => lines.length === 2);
+	const empty = captured.filter(({ lines }) => lines.length === 1 && lines[0] === "");
+	assert.ok(single.length && double.length && empty.length, "the capture needs one-line, two-line and empty outputs");
 	const random = mulberry32(UNDO_SEED);
 	const kinds = new Set<string>();
+	const groups = new Set<string>();
 	const failures: string[] = [];
-	// For now the outputs are generated; step 6b adds the Tasks capture corpus here.
 	for (let index = 0; index < UNDO_CASES; index++) {
 		const before = noteFor(random, index);
 		const rows = before.split("\n");
@@ -483,12 +491,10 @@ test("write then undo property: undo restores the note byte for byte", (context)
 			}))
 			.filter((target) => isTaskLine(target.sourceLine));
 		const target = taskLines.length ? pick(random, taskLines) : { line: 0, sourceLine: lineOfText(before, 0)! };
-		const outputs: (readonly string[])[] = [
-			[`- [x] output ${index}`],
-			[`- [ ] next ${index}`, `- [x] output ${index}`],
-			[],
-			[""],
-		];
+		const sampled = [pick(random, single), pick(random, double), pick(random, empty)];
+		for (const output of sampled) groups.add(output.group);
+		// Tasks never returns zero lines, so the deletion shape stays a stand-in.
+		const outputs: (readonly string[])[] = [[], ...sampled.map(({ lines }) => lines)];
 		if (isTaskLine(target.sourceLine)) {
 			const toggle = toggleTaskLine(target.sourceLine, "2026-10-24");
 			if (toggle.kind === "lines") {
@@ -517,6 +523,7 @@ test("write then undo property: undo restores the note byte for byte", (context)
 		}
 	}
 	assert.deepEqual([...kinds].sort(), ["0", "1", "2", "date", "empty", "toggle"]);
+	assert.deepEqual([...groups].sort(), [...TASKS_TOGGLE_GROUPS].sort());
 	context.diagnostic(`seed ${UNDO_SEED}; ${UNDO_CASES} notes; ${failures.length} failures`);
 	assert.equal(failures.length, 0, failures.slice(0, 10).join("\n"));
 });

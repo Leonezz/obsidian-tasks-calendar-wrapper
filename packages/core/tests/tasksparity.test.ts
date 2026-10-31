@@ -1,22 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import moment from "moment";
 
-import {
-	findImpossibleDate,
-	isRealDay,
-	isTaskLine,
-	lineOfText,
-	replaceSpan,
-	replaceTaskLine,
-	tasksTaskLineRegex,
-	undoSpanFor,
-	type ReplaceResult,
-} from "../src/write";
-import { setTaskDate, toggleTaskLine, type DateField } from "../src/writeline";
-import { noteFor, pick } from "./support/notes";
-import { mulberry32 } from "./support/random";
-import { readTasksLine } from "./support/tasksreader";
+import { findImpossibleDate, isRealDay, replaceTaskLine, tasksTaskLineRegex, type ReplaceResult } from "../src/write";
+import { toggleTaskLine } from "../src/writeline";
+import { readTasksLine, type TasksFormat } from "./support/tasksreader";
 import {
 	applyNoteDiff,
 	loadTasksToggleFixtures,
@@ -137,7 +124,8 @@ test("toggleTaskLine matches Tasks byte for byte on the lines it rewrites with T
 		const before = noteBefore(fixture, captured);
 		const after = applyNoteDiff(before, captured.after);
 		const result = contentOf(replaceTaskLine(before, captured, toggled.lines), message);
-		if (captured.lineEnding === "lf") assert.equal(result, after, message);
+		// Capture evidence: Obsidian 1.14.5's editor save drops a leading BOM, so BOM notes compare like CRLF notes.
+		if (captured.lineEnding === "lf" && !before.startsWith("﻿")) assert.equal(result, after, message);
 		else {
 			assert.deepEqual(
 				writtenLines(result, captured.line, toggled.lines.length),
@@ -224,9 +212,25 @@ test("toggleTaskLine changes only the status and the completion and cancelled fi
 	context.diagnostic(`${compared} minimal dataview edits; ${impossible} impossible dates refused`);
 });
 
+const DATE_KEYS = ["dueDate", "scheduledDate", "startDate", "createdDate"] as const;
+const DATE_SYMBOLS = { dueDate: "📅", scheduledDate: "⏳", startDate: "🛫", createdDate: "➕" } as const;
+
+function invalidDateField(field: (typeof DATE_KEYS)[number], format: TasksFormat): string {
+	return format === "dataview"
+		? `[${field.replace("Date", "")}:: Invalid date]`
+		: `${DATE_SYMBOLS[field]} Invalid date`;
+}
+
+// Tasks only checks the box of a line without the global filter, so it never rewrites that line's dates.
+function readsAsTask(fixture: TasksToggleFixture, line: string): boolean {
+	const filter = fixture.settings.globalFilter;
+	return typeof filter !== "string" || filter === "" || line.includes(filter);
+}
+
 test("tasksreader reads the dates Tasks writes", (context) => {
 	const fixtures = loadTasksToggleFixtures();
 	let compared = 0;
+	let impossible = 0;
 	let recurring = 0;
 	let deleted = 0;
 	for (const fixture of fixtures.values()) {
@@ -245,17 +249,32 @@ test("tasksreader reads the dates Tasks writes", (context) => {
 			const before = readTasksLine(captured.sourceLine, format);
 			const after = readTasksLine(captured.api, format);
 			assert.ok(before && after, message);
-			for (const field of ["dueDate", "scheduledDate", "startDate", "createdDate"] as const)
-				assert.equal(after[field], before[field], `${message}; ${field}`);
-			compared++;
+			// Capture evidence: Tasks 8.6.0 writes an impossible date as "Invalid date", which is why
+			// toggleTaskLine refuses such lines with a RangeError instead (design question 7).
+			const refused =
+				findImpossibleDate(captured.sourceLine) !== null && readsAsTask(fixture, captured.sourceLine);
+			let invalid = false;
+			for (const field of DATE_KEYS) {
+				const value: string | null = before[field];
+				if (refused && value !== null && !isRealDay(value)) {
+					assert.equal(after[field], null, `${message}; ${field}`);
+					assert.ok(captured.api.includes(invalidDateField(field, format)), `${message}; ${field}`);
+					invalid = true;
+				} else assert.equal(after[field], value, `${message}; ${field}`);
+			}
+			if (invalid) impossible++;
+			else compared++;
 		}
 	}
 	assert.ok(compared >= 300);
+	assert.ok(impossible >= 1);
 	assert.equal(
-		compared + recurring + deleted,
+		compared + impossible + recurring + deleted,
 		[...fixtures.values()].reduce((sum, fixture) => sum + fixture.cases.length, 0),
 	);
-	context.diagnostic(`${compared} compared; ${recurring} recurring; ${deleted} deleted`);
+	context.diagnostic(
+		`${compared} compared; ${impossible} written as Invalid date; ${recurring} recurring; ${deleted} deleted`,
+	);
 });
 
 test("🏁 archive is dropped as Tasks drops it", () => {
@@ -266,69 +285,4 @@ test("🏁 archive is dropped as Tasks drops it", () => {
 	assert.ok(toggled.kind === "lines");
 	assert.equal(captured.api, toggled.lines.join("\n"));
 	assert.equal(captured.api, `- [x] a ✅ ${fixture.day}`);
-});
-
-const UNDO_SEED = 0x7a5c0ffe;
-const UNDO_NOTES = 2_500;
-const DATE_FIELDS: readonly DateField[] = ["due", "scheduled", "start"];
-
-test("write then undo restores the note over the captured outputs", (context) => {
-	const fixtures = loadTasksToggleFixtures();
-	const outputs = [...fixtures.values()].flatMap((fixture) =>
-		fixture.cases.map((captured) => ({ group: fixture.group, lines: captured.api.split("\n") })),
-	);
-	const single = outputs.filter(({ lines }) => lines.length === 1 && lines[0] !== "");
-	const double = outputs.filter(({ lines }) => lines.length === 2);
-	const empty = outputs.filter(({ lines }) => lines.length === 1 && lines[0] === "");
-	assert.ok(
-		single.length && double.length && empty.length,
-		"the capture needs one-line, two-line and empty API outputs",
-	);
-	const random = mulberry32(UNDO_SEED);
-	const groups = new Set<string>();
-	const kinds = new Set<string>();
-	let writes = 0;
-	let dateWrites = 0;
-	for (let index = 0; index < UNDO_NOTES; index++) {
-		const before = noteFor(random, index);
-		const targets = before
-			.split("\n")
-			.map((_, line) => ({
-				line,
-				sourceLine: line === 0 ? lineOfText(before, line)!.replace(/^\ufeff/, "") : lineOfText(before, line)!,
-			}))
-			.filter(({ sourceLine }) => isTaskLine(sourceLine));
-		const target = targets.length ? pick(random, targets) : { line: 0, sourceLine: lineOfText(before, 0)! };
-		const sampled = [pick(random, single), pick(random, double), pick(random, empty)];
-		for (const output of sampled) groups.add(output.group);
-		const replacements: (readonly string[])[] = [[], ...sampled.map(({ lines }) => lines)];
-		if (isTaskLine(target.sourceLine)) {
-			const changed = setTaskDate(target.sourceLine, pick(random, DATE_FIELDS), index % 2 ? "2026-11-02" : null, {
-				newFieldStyle: index % 2 ? "emoji" : "dataview",
-				moment,
-			});
-			if (changed.kind === "line") {
-				replacements.push([changed.line]);
-				dateWrites++;
-			}
-		}
-		for (const written of replacements) {
-			kinds.add(written.length === 1 && written[0] === "" ? "empty" : String(written.length));
-			const message = `seed ${UNDO_SEED}, case ${index}: ${JSON.stringify({ before, target, written })}`;
-			const after = contentOf(
-				replaceTaskLine(before, Object.freeze(target), Object.freeze([...written])),
-				message,
-			);
-			const undo = undoSpanFor(before, target.line, written);
-			assert.equal(contentOf(replaceSpan(after, undo.span, [undo.original]), message), before, message);
-			writes++;
-		}
-	}
-	assert.deepEqual([...kinds].sort(), ["0", "1", "2", "empty"]);
-	assert.deepEqual([...groups].sort(), [...TASKS_TOGGLE_GROUPS].sort());
-	assert.ok(writes >= 10_000);
-	assert.ok(dateWrites > 0);
-	context.diagnostic(
-		`seed ${UNDO_SEED}; ${UNDO_NOTES} notes; ${writes} writes, including ${dateWrites} date changes`,
-	);
 });
