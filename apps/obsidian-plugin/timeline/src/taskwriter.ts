@@ -87,9 +87,11 @@ export interface WriteEvent extends LineTarget {
 		| "recheck"
 		| "released";
 	readonly lines: readonly string[];
+	/** The lines an Undo replaces, which the store holds once Obsidian re-read the note. */
+	readonly written?: readonly string[];
 	readonly reason?: RefuseReason;
 	readonly unknownOutcome?: boolean;
-	/** A quick entry displaced the line at this position too, rather than replacing that line. */
+	/** A quick entry or Undo restoring a deleted line displaced the line at this position too. */
 	readonly insertBefore?: true;
 	/** Advances only for a token release. A failed save before the hold emits the current sequence. */
 	readonly releaseSeq?: number;
@@ -531,6 +533,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 				record.before = writeSnapshot(before);
 				record.after = writeSnapshot(result.content);
 				record.delta = result.delta;
+				if (span.expected.length === 0 && lines.length > 0) record.insertBefore = true;
 				if (undoing && undoing.span.above !== undefined && undoing.span.below !== undefined)
 					record.undoNeighbours = { above: undoing.above, below: undoing.below };
 				if (lines.length === 0)

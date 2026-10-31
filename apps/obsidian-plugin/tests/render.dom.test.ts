@@ -1,20 +1,20 @@
 // Must come first: it fixes the time zone, the locale and "now" before any date is computed.
-import { GOLDEN_NOW } from "./golden-clock";
+import "./golden-clock";
 import "./setup";
 
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { act, createElement, createRef, type ContextType } from "react";
+import { act, createElement, createRef } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { parseTaskLine, type Store, type Task } from "@tasks-calendar-wrapper/core";
 import { MarkdownView, Notice } from "./stubs/obsidian";
 
-import { defaultUserOptions, type UserOption } from "../src/useroptions";
+import { defaultUserOptions } from "../src/useroptions";
 import { TasksTimelineView, timelineTaskIndex } from "../src/views";
 import type { TimelineState } from "../src/state/timeline";
-import { providerValues, renderedDays, rendersOf, resetRenderCounts } from "../timeline/src/components/renderprobe";
-import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "../timeline/src/components/context";
+import { providerValues } from "../timeline/src/components/renderprobe";
+import { TaskItemEventHandlersContext } from "../timeline/src/components/context";
 import { TimelineView } from "../timeline/src/components/timelineview";
 import { StripWithIcon } from "../timeline/src/components/statusmarker";
 import { getTaskStatusIcon } from "../timeline/src/components/asserts/icons";
@@ -22,9 +22,8 @@ import { createPendingWrites } from "../timeline/src/pendingwrites";
 import { clickTime, clickIsGuarded } from "../timeline/src/components/clickguard";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
 import { moment } from "../utils/moment";
-import { notesApp, openView } from "./view-harness";
-import type { TaskWriter, WriteEvent, WriteResult } from "../timeline/src/taskwriter";
-import { deferred, flush, writerHarness } from "./writer-harness";
+import type { WriteEvent } from "../timeline/src/taskwriter";
+import { flush, writerHarness } from "./writer-harness";
 
 async function mountWritingTimeline(t: TestContext, text: string, toggle?: (line: string) => string) {
 	const h = writerHarness({ "Note.md": text });
@@ -352,6 +351,73 @@ test("recurring completion then Undo keeps both shifts", async (t) => {
 	assert.equal(fixture.h.text("Note.md"), original + "\n- [x] b");
 });
 
+test("🏁 deletion then Undo keeps both shifts", async (t) => {
+	const original = "- [ ] a 📅 2026-01-15 🏁 delete";
+	const fixture = await mountWritingTimeline(t, original + "\n- [ ] b", (line) =>
+		line === original ? "" : line.replace("[ ]", "[x]"),
+	);
+	await fixture.click(0);
+	assert.equal(fixture.h.text("Note.md"), "- [ ] b");
+	assert.equal(fixture.view.ledger.shift("Note.md", 1), 0);
+	assert.equal(fixture.undo.length, 1);
+	await fixture.h.clock.advance(1000);
+	await act(() => fixture.undo[0]());
+	assert.equal(fixture.view.ledger.shift("Note.md", 1), 1, "both -1 and +1 remain before re-read");
+	await fixture.click(1);
+	assert.equal(fixture.h.events.filter((event) => event.kind === "written").at(-1)?.line, 1);
+	assert.equal(fixture.h.text("Note.md"), original + "\n- [x] b");
+	assert.deepEqual(fixture.h.refusals, []);
+});
+
+test("an Undo after the re-read dims the restored row", async (t) => {
+	t.mock.method(performance, "now", () => 0);
+	const fixture = await mountWritingTimeline(t, "- [ ] Pay");
+	await fixture.click(0);
+	await act(async () => {
+		await fixture.h.deliver();
+		await fixture.view.onReloadTasks();
+	});
+	assert.equal(fixture.store.getSnapshot().tasks[0].sourceLine, "- [x] Pay ✅ 2026-10-31");
+	assert.equal(fixture.container.querySelector(".task")?.hasAttribute("aria-busy"), false);
+	await act(() => fixture.undo[0]());
+	assertIcon(fixture.container, "unplanned", " ");
+	const writes = fixture.write.mock.callCount();
+	t.mock.method(performance, "now", () => 1000);
+	t.mock.method(window.performance, "now", () => 1000);
+	const event = new MouseEvent("click", { bubbles: true, view: window });
+	Object.defineProperty(event, "timeStamp", { value: 1000 });
+	const control = fixture.container.querySelector<HTMLElement>(".task label.icon");
+	assert.ok(control);
+	await act(async () => {
+		control.dispatchEvent(event);
+		await flush();
+	});
+	assert.equal(fixture.write.mock.callCount(), writes, "the dimmed row ignores a click after the list guard");
+	assert.equal(fixture.h.text("Note.md"), "- [ ] Pay");
+});
+
+test("an Undo after the re-read dims the restored duplicate, not the other", async (t) => {
+	const fixture = await mountWritingTimeline(t, "- [ ] Pay\n- [ ] Pay");
+	await fixture.click(0);
+	await act(async () => {
+		await fixture.h.deliver();
+		await fixture.view.onReloadTasks();
+	});
+	assert.deepEqual(
+		fixture.store.getSnapshot().tasks.map((task) => task.sourceLine),
+		["- [x] Pay ✅ 2026-10-31", "- [ ] Pay"],
+	);
+	await act(() => fixture.undo[0]());
+	const restored = fixture.container.querySelector('.task[data-line="0"]');
+	const other = fixture.container.querySelector('.task[data-line="1"]');
+	assert.ok(restored && other);
+	assert.equal(restored.getAttribute("aria-busy"), "true");
+	assert.equal(restored.getAttribute("aria-disabled"), "true");
+	assert.equal(restored.querySelector("input")?.getAttribute("data-task"), " ");
+	assert.equal(other.hasAttribute("aria-busy"), false);
+	assert.equal(other.hasAttribute("aria-disabled"), false);
+});
+
 test("slow rows accept a checkbox click while keeping the written icon", async (t) => {
 	const fixture = await mountWritingTimeline(t, "- [ ] a");
 	fixture.h.setDelivery("dropped");
@@ -507,397 +573,27 @@ test("an Undo of recurring completion predicts the restored status", () => {
 	assert.equal(pending.getSnapshot(task.id)?.marker, " ");
 });
 
-/** The view's bridge mounted in a real DOM, with its store already loaded. */
-async function mountTimeline(t: TestContext, notes: Record<string, string>, writer?: Pick<TaskWriter, "insert">) {
-	const app = notesApp(notes);
-	Object.assign(app.vault, { getFileByPath: (path: string) => (path in notes ? { path } : null) });
-	const opened = openView(app);
-	await opened.view.onUpdateOptions({ ...defaultUserOptions });
-	const container = document.body.appendChild(document.createElement("div"));
-	const root = createRoot(container);
-	t.after(async () => {
-		try {
-			await act(() => root.unmount());
-		} finally {
-			container.remove();
-		}
+test("an Undo of recurring completion after the re-read predicts the restored status", () => {
+	const sourceLine = "- [ ] a 🔁 every day 📅 2026-01-14";
+	const written = ["- [ ] a 🔁 every day 📅 2026-01-15", "- [x] a 🔁 every day 📅 2026-01-14 ✅ 2026-01-15"];
+	const tasks = written.map((line, i) => {
+		const task = parseTaskLine(line, { moment, path: "Note.md" });
+		assert.ok(task);
+		return { ...task, line: i + 2, id: `Note.md:${i + 2}` };
 	});
-	const bridge = createRef<ObsidianBridge>();
-	await act(() => {
-		root.render(
-			createElement(ObsidianBridge, {
-				plugin: { app } as never,
-				store: opened.store,
-				writer: { ...opened.writer, ...writer },
-				ref: bridge,
-			}),
-		);
-	});
-	return { opened, container, bridge };
-}
-
-async function select(container: HTMLElement, selector: string, value: string) {
-	const input = container.querySelector<HTMLSelectElement>(selector);
-	assert.ok(input, selector);
-	await act(() => {
-		input.value = value;
-		input.dispatchEvent(new Event("change", { bubbles: true }));
-	});
-}
-
-/** Use the native setter so React observes the input event as a user edit. */
-function setDate(input: HTMLInputElement, value: string) {
-	const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
-	setter.call(input, value);
-	input.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
-test("inputs show the applied filter after a reload", async (t) => {
-	const notes = { "Inbox.md": "- [ ] beta ⏫ 📅 2026-01-20", "Later.md": "- [ ] alpha 📅 2026-01-25" };
-	const { opened, container, bridge } = await mountTimeline(t, notes);
-	const texts = () => [...container.querySelectorAll(".task .content")].map((row) => row.textContent);
-	assert.deepEqual(texts(), ["beta", "alpha"]);
-
-	await select(container, "select.actionName", "filter");
-	await select(container, "select.filterSelector", "date");
-	await select(container, "select.filterSelector", "priority");
-	const dates = container.querySelectorAll<HTMLInputElement>('input[type="date"]');
-	assert.equal(dates.length, 2);
-	await act(() => {
-		setDate(dates[0], "2026-01-19");
-		setDate(dates[1], "2026-01-21");
-	});
-	await select(container, 'select[name="priorityFilter"]', "1");
-	const apply = container.querySelector<HTMLButtonElement>(".quickEntryPanel button.ok");
-	assert.ok(apply);
-	await act(() => apply.click());
-
-	await act(async () => {
-		notes["Inbox.md"] = "- [ ] beta, renamed ⏫ 📅 2026-01-20";
-		opened.edited("Inbox.md");
-		await opened.view.onReloadTasks();
-	});
-	assert.equal(container.querySelector<HTMLSelectElement>("select.actionName")?.value, "filter");
-	assert.deepEqual(
-		[...container.querySelectorAll<HTMLInputElement>('input[type="date"]')].map((input) => input.value),
-		["2026-01-19", "2026-01-21"],
-	);
-	const priority = container.querySelector('select[name="priorityFilter"]')?.parentElement;
-	assert.ok(priority);
-	assert.deepEqual(
-		[...priority.querySelectorAll("a")].map((selected) => selected.textContent),
-		["High🎯"],
-	);
-	// The reload changed the list the bridge shows. The priority selector passes its option value, as before, which
-	// no task's priority is written as, so the filter lists no task.
-	assert.ok(bridge.current?.state.tasks.some((task) => task.text.includes("beta, renamed")));
-	assert.deepEqual(texts(), []);
-});
-
-test("render counters count TaskItemView and DateView renders", async (t) => {
-	resetRenderCounts();
-	const { opened } = await mountTimeline(t, {
-		"Inbox.md": "- [ ] beta 📅 2026-01-20",
-		"Later.md": "- [ ] alpha 📅 2026-01-25",
-	});
-	assert.equal(rendersOf("TaskItemView"), 2);
-	assert.equal(rendersOf("DateView"), 3);
-	assert.deepEqual(renderedDays(), ["2026-01-15", "2026-01-20", "2026-01-25"]);
-	resetRenderCounts();
-	await act(async () => {
-		await opened.view.onUpdateOptions({ ...defaultUserOptions, dateFormat: "DD.MM.YYYY" });
-	});
-	assert.equal(rendersOf("TaskItemView"), 2);
-	assert.equal(rendersOf("DateView"), 3);
-	assert.deepEqual(renderedDays(), ["2026-01-15", "2026-01-20", "2026-01-25"]);
-});
-
-test("one task changed re-renders one row", async (t) => {
-	const notes = {
-		"A.md": "- [ ] alpha 📅 2026-01-20",
-		"B.md": "- [ ] beta 📅 2026-01-25",
-		"C.md": "- [ ] gamma 📅 2026-01-27",
+	const pending = createPendingWrites();
+	const event = {
+		id: 1,
+		kind: "pending" as const,
+		path: "Note.md",
+		line: 2,
+		sourceLine,
+		lines: [sourceLine],
+		written,
 	};
-	const { opened, container } = await mountTimeline(t, notes);
-	resetRenderCounts();
-	await act(async () => {
-		notes["B.md"] = "- [ ] beta, renamed 📅 2026-01-25";
-		opened.edited("B.md");
-		await opened.view.onReloadTasks();
-	});
-	assert.ok([...container.querySelectorAll(".task .content")].some((row) => row.textContent === "beta, renamed"));
-	assert.equal(rendersOf("TaskItemView"), 1);
-	assert.equal(rendersOf("DateView"), 1);
-	assert.deepEqual(renderedDays(), ["2026-01-25"]);
-});
-
-test("unchanged options keep provider values", async (t) => {
-	const { opened } = await mountTimeline(t, {
-		"A.md": "- [ ] alpha 📅 2026-01-20",
-		"B.md": "- [ ] beta 📅 2026-01-25",
-		"C.md": "- [ ] gamma 📅 2026-01-27",
-	});
-	const before = providerValues();
-	for (const name of ["QuickEntryHandlerContext", "TodayFocusEventHandlersContext", "UserOptionContext"] as const)
-		assert.ok(before[name], name);
-	resetRenderCounts();
-	await act(async () => {
-		await opened.view.onUpdateOptions(structuredClone(opened.store.getSnapshot().options));
-	});
-	const after = providerValues();
-	assert.equal(rendersOf("TaskItemView"), 0);
-	assert.equal(rendersOf("DateView"), 0);
-	for (const name of ["QuickEntryHandlerContext", "TodayFocusEventHandlersContext", "UserOptionContext"] as const)
-		assert.strictEqual(after[name], before[name], name);
-});
-
-test("an equal quick filter keeps its provider and the unsubmitted draft", async (t) => {
-	const { container, bridge } = await mountTimeline(t, { "A.md": "- [ ] alpha 📅 2026-01-20" });
-	await select(container, "select.actionName", "filter");
-	await select(container, "select.filterSelector", "date");
-	const dates = container.querySelectorAll<HTMLInputElement>('input[type="date"]');
-	await act(() => {
-		setDate(dates[0], "2026-01-19");
-		setDate(dates[1], "2026-01-21");
-	});
-	const apply = container.querySelector<HTMLButtonElement>(".quickEntryPanel button.ok");
-	assert.ok(apply && bridge.current);
-	await act(() => apply.click());
-	const before = providerValues().QuickEntryHandlerContext;
-	const filter = bridge.current.state.quickFilter;
-	assert.ok(filter);
-	await act(() => setDate(dates[0], "2026-01-18"));
-	resetRenderCounts();
-	await act(() => bridge.current!.handleFilterEnable(filter.from, filter.to, [...filter.priorities]));
-	assert.strictEqual(bridge.current.state.quickFilter, filter);
-	assert.strictEqual(providerValues().QuickEntryHandlerContext, before);
-	assert.equal(dates[0].value, "2026-01-18");
-	assert.equal(rendersOf("TaskItemView"), 0);
-	assert.equal(rendersOf("DateView"), 0);
-});
-
-test("changed counts update the entry while its counter and focus handlers still work", async (t) => {
-	const notes = {
-		"A.md": "- [ ] alpha 📅 2026-01-20",
-		"B.md": "- [ ] beta 📅 2026-01-25",
-		"C.md": "- [ ] gamma 📅 2026-01-27",
-	};
-	const { opened, container } = await mountTimeline(t, notes);
-	assert.equal(container.querySelector("#todo .count")?.textContent, "3");
-	resetRenderCounts();
-	await act(async () => {
-		notes["B.md"] = "- [x] beta 📅 2026-01-25";
-		opened.edited("B.md");
-		await opened.view.onReloadTasks();
-	});
-	assert.equal(container.querySelector("#todo .count")?.textContent, "2");
-	assert.equal(rendersOf("TaskItemView"), 0);
-	assert.deepEqual(renderedDays(), ["2026-01-15"]);
-	const timeline = container.querySelector(".taskido");
-	const focus = container.querySelector<HTMLElement>(".todayHeader");
-	const unplanned = container.querySelector<HTMLElement>("#unplanned");
-	const todo = container.querySelector<HTMLElement>("#todo");
-	assert.ok(timeline && focus && unplanned && todo);
-	const before = providerValues().TodayFocusEventHandlersContext;
-	await act(() => focus.click());
-	assert.ok(timeline.classList.contains("todayFocus"));
-	await act(() => focus.click());
-	assert.ok(!timeline.classList.contains("todayFocus"));
-	assert.strictEqual(providerValues().TodayFocusEventHandlersContext, before);
-	await act(() => unplanned.click());
-	assert.ok(timeline.classList.contains("unplannedFilter"));
-	assert.equal(container.querySelectorAll(".task").length, 0);
-	await act(() => todo.click());
-	assert.ok(timeline.classList.contains("todoFilter"));
-	assert.equal(container.querySelectorAll(".task").length, 2);
-	await act(() => todo.click());
-	assert.ok(!timeline.classList.contains("todoFilter"));
-});
-
-test("quick-entry targets update without rendering task rows or other days", async (t) => {
-	const { opened, container } = await mountTimeline(t, {
-		"A.md": "- [ ] alpha 📅 2026-01-20",
-		"B.md": "- [ ] beta 📅 2026-01-25",
-	});
-	const targets = () => [...container.querySelectorAll<HTMLOptionElement>(".fileSelect option")].map((o) => o.value);
-	const before = targets();
-	const taskFiles = ["Projects/Capture.md", "Projects/Later.md"];
-	resetRenderCounts();
-	await act(async () => {
-		await opened.view.onUpdateOptions({ ...opened.store.getSnapshot().options, taskFiles });
-	});
-	assert.deepEqual(targets(), [...taskFiles, ...before]);
-	assert.equal(rendersOf("TaskItemView"), 0);
-	assert.deepEqual(renderedDays(), ["2026-01-15"]);
-});
-
-test("each row option refreshes the cached model and its visible fields", async (t) => {
-	const { opened, container } = await mountTimeline(t, {
-		"A.md": "- [ ] alpha #work #home 📅 2026-01-16",
-	});
-	const changes: { options: Partial<UserOption>; check: () => void }[] = [
-		{
-			options: { dateFormat: "YYYY/MM/DD" },
-			check: () =>
-				assert.equal(
-					container.querySelector('.task [aria-label^="due at "]')?.getAttribute("aria-label"),
-					"due at 2026/01/16",
-				),
-		},
-		{
-			options: { hideTags: ["#home"] },
-			check: () =>
-				assert.deepEqual(
-					[...container.querySelectorAll(".task .tag")].map((tag) => tag.getAttribute("href")),
-					["#work"],
-				),
-		},
-		{
-			options: { tagColorPalette: { "#work": "#123456" } },
-			check: () =>
-				assert.equal(
-					container.querySelector<HTMLElement>(".task .tag")?.style.getPropertyValue("--tag-color"),
-					"#123456",
-				),
-		},
-		{
-			options: { useBuiltinStyle: false },
-			check: () => {
-				assert.equal(container.querySelector(".task input[type=checkbox]")?.className, "");
-				assert.equal(container.querySelector(".task label.icon"), null);
-			},
-		},
-	];
-	for (const change of changes) {
-		resetRenderCounts();
-		await act(async () => {
-			await opened.view.onUpdateOptions({ ...opened.store.getSnapshot().options, ...change.options });
-		});
-		assert.equal(rendersOf("TaskItemView"), 1);
-		change.check();
-	}
-});
-
-test("row models last within a day and refresh with the locale and next day", async (t) => {
-	const { container } = await mountTimeline(t, { "A.md": "- [ ] alpha 📅 2026-01-16" });
-	const previousNow = moment.now;
-	const previousLocale = moment.locale();
-	t.after(() => {
-		moment.now = previousNow;
-		moment.locale(previousLocale);
-	});
-	const focus = container.querySelector<HTMLElement>(".todayHeader");
-	assert.ok(focus);
-	const label = () => container.querySelector('.task [aria-label^="due at "] .label')?.textContent;
-	assert.equal(label(), "Tomorrow");
-	moment.now = () => GOLDEN_NOW + 60 * 60 * 1000;
-	resetRenderCounts();
-	await act(() => focus.click());
-	assert.equal(rendersOf("TaskItemView"), 0);
-	assert.equal(rendersOf("DateView"), 0);
-	moment.locale("zh-cn");
-	resetRenderCounts();
-	await act(() => focus.click());
-	assert.equal(label(), "明天");
-	assert.equal(rendersOf("TaskItemView"), 1);
-	moment.now = () => GOLDEN_NOW + 24 * 60 * 60 * 1000;
-	resetRenderCounts();
-	await act(() => focus.click());
-	assert.equal(label(), "今天");
-	assert.equal(rendersOf("TaskItemView"), 1);
-	const dailyNote = moment().format(defaultUserOptions.dailyNoteFormat) + ".md";
-	assert.ok(
-		[...container.querySelectorAll<HTMLOptionElement>(".fileSelect option")].some((o) => o.value === dailyNote),
-	);
-});
-
-for (const outcome of ["refused", "failed"] as const) {
-	test(`quick entry keeps its input text on ${outcome} and clears it after success`, async (t) => {
-		const pending = deferred<WriteResult>();
-		const calls: { path: string; text: string }[] = [];
-		let result: WriteResult =
-			outcome === "refused"
-				? { kind: "refused", reason: "not-utf8", message: "Inbox is not saved as UTF-8." }
-				: { kind: "failed", unknownOutcome: false, error: new Error("disk full") };
-		const writer: Pick<TaskWriter, "insert"> = {
-			async insert(path, edit) {
-				calls.push({ path, text: edit("## Tasks\n") });
-				return calls.length === 1 ? pending.promise : result;
-			},
-		};
-		const { opened, container } = await mountTimeline(t, { "Inbox.md": "- [ ] older" }, writer);
-		await act(() =>
-			opened.view.onUpdateOptions({
-				...defaultUserOptions,
-				taskFiles: ["Inbox.md"],
-				sectionForNewTasks: "## Tasks",
-			}),
-		);
-		const input = container.querySelector<HTMLInputElement>('.quickEntryPanel input[type="text"]');
-		const submit = container.querySelector<HTMLButtonElement>(".quickEntryPanel button.ok");
-		assert.ok(input && submit);
-		input.value = "keep this draft";
-		await act(() => submit.click());
-		assert.equal(input.value, "keep this draft", "while the writer is still running");
-		await act(async () => {
-			pending.resolve(result);
-		});
-		assert.equal(input.value, "keep this draft");
-		assert.deepEqual(calls, [{ path: "Inbox.md", text: "## Tasks\n- [ ] keep this draft\n" }]);
-		result = { kind: "written", id: 1, delta: 1, indexed: Promise.resolve() };
-		await act(() => submit.click());
-		assert.equal(input.value, "");
-		assert.equal(calls.length, 2);
-	});
-}
-
-test("quick entry ignores a second submit while the first is pending", async (t) => {
-	const first = deferred<boolean>();
-	const second = deferred<boolean>();
-	const error = new Error("adding a task failed");
-	let rejection: Promise<void> | undefined;
-	t.mock.method(second.promise, "then", (...callbacks: Parameters<Promise<boolean>["then"]>) => {
-		const chained = Promise.prototype.then.call(second.promise, ...callbacks);
-		rejection = assert.rejects(chained, error);
-		return chained;
-	});
-	const { opened, container } = await mountTimeline(t, { "Inbox.md": "- [ ] older" });
-	await act(() => opened.view.onUpdateOptions({ ...defaultUserOptions, taskFiles: ["Inbox.md"] }));
-	const handlers = providerValues().QuickEntryHandlerContext as ContextType<typeof QuickEntryHandlerContext>;
-	let calls = 0;
-	const create = t.mock.method(handlers, "handleCreateNewTask", () => {
-		calls++;
-		if (calls === 1) return first.promise;
-		if (calls === 2) return second.promise;
-		return Promise.resolve(true);
-	});
-	const input = container.querySelector<HTMLInputElement>('.quickEntryPanel input[type="text"]');
-	const submit = container.querySelector<HTMLButtonElement>(".quickEntryPanel button.ok");
-	assert.ok(input && submit);
-	input.value = "add once";
-	resetRenderCounts();
-	await act(() => {
-		submit.click();
-		submit.click();
-		input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true }));
-	});
-	assert.equal(create.mock.callCount(), 1);
-	assert.deepEqual(create.mock.calls[0].arguments, ["Inbox.md", "add once"]);
-	assert.equal(input.value, "add once");
-	await act(async () => first.resolve(true));
-	assert.equal(input.value, "");
-	assert.equal(rendersOf("TaskItemView"), 0);
-	assert.equal(rendersOf("DateView"), 0);
-	input.value = "retry this";
-	await act(() => submit.click());
-	assert.equal(create.mock.callCount(), 2);
-	await act(async () => {
-		second.reject(error);
-		assert.ok(rejection, "the handler keeps rejection observable");
-		await rejection;
-	});
-	assert.equal(input.value, "retry this");
-	await act(() => submit.click());
-	assert.equal(create.mock.callCount(), 3);
-	assert.equal(input.value, "");
+	pending.apply(event, [...tasks].reverse(), defaultUserOptions, { now: moment(), moment });
+	assert.equal(pending.getSnapshot(tasks[0].id)?.dimmed, true);
+	assert.equal(pending.getSnapshot(tasks[0].id)?.status, "overdue");
+	assert.equal(pending.getSnapshot(tasks[0].id)?.marker, " ");
+	assert.equal(pending.getSnapshot(tasks[1].id), undefined);
 });

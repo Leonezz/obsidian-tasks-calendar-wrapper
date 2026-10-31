@@ -127,6 +127,32 @@ test("undo records follow the line shifts of own later writes", async () => {
 	writer.dispose();
 });
 
+test("an Undo restoring a deleted line reports insertBefore and moves a later Undo at that line", async (t) => {
+	const original = "- [ ] a 🏁 delete";
+	const h = writerHarness({ "a.md": original + "\n- [ ] b" });
+	const writer = h.create();
+	t.after(() => writer.dispose());
+	const later = undoRecord(await h.write(h.target(1)));
+	const deletion = undoRecord(await h.write(h.target(0)));
+	assert.equal(deletion.span.expected.length, 0);
+	assert.equal(h.text(), "- [x] b ✅ 2026-10-31");
+	const restored = await h.write(h.target(0), { kind: "undo", record: deletion });
+	assert.equal(restored.kind, "written");
+	if (restored.kind !== "written") throw new Error("expected written");
+	assert.equal(restored.delta, 1);
+	const pending = h.events.find((event) => event.id === restored.id && event.kind === "pending");
+	const written = h.events.find((event) => event.id === restored.id && event.kind === "written");
+	assert.ok(pending);
+	assert.ok(written);
+	assert.equal(pending.insertBefore, undefined);
+	assert.equal(written.line, 0);
+	assert.equal(written.insertBefore, true);
+	assert.equal((await h.write(h.target(0), { kind: "undo", record: later })).kind, "written");
+	assert.equal(h.events.filter((event) => event.kind === "written").at(-1)?.line, 1);
+	assert.equal(h.text(), original + "\n- [ ] b");
+	assert.deepEqual(h.refusals, []);
+});
+
 test('after Ctrl+Z in the editor restored the line, Undo → unchanged with alreadyUndone, the 4 s "is already back" notice, nothing written; after Ctrl+Z then another edit of that line, Undo → refused undo-changed, message exact; undo after the note was deleted → refused', async () => {
 	for (const action of ["restored", "edited", "deleted", "moved"]) {
 		Notice.instances = [];

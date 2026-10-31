@@ -68,7 +68,9 @@ export function createPendingWrites(): PendingWrites {
 		apply(event: WriteEvent, tasks: readonly Task[], settings: ResolveSettings, env: QueryEnv): void {
 			if (event.kind === "pending" && !event.insertBefore) {
 				const matches = tasks.filter(
-					(task) => task.path === event.path && task.sourceLine === event.sourceLine,
+					(task) =>
+						task.path === event.path &&
+						(task.sourceLine === event.sourceLine || event.written?.includes(task.sourceLine)),
 				);
 				const task = matches.length === 1 ? matches[0] : matches.find((task) => task.line === event.line);
 				if (task)
