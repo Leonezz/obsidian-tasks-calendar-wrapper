@@ -388,6 +388,19 @@ const restoreSteps = (cli, notes) =>
 		},
 	]);
 
+/** The upstream of a local branch (`master` → `origin/master`), or the ref itself when it has none. */
+function upstreamOf(ref) {
+	try {
+		return execFileSync("git", ["rev-parse", "--abbrev-ref", `${ref}@{upstream}`], {
+			cwd: repoRoot,
+			encoding: "utf8",
+			stdio: ["ignore", "pipe", "ignore"],
+		}).trim();
+	} catch {
+		return ref; // not a local branch with an upstream (a tag, a commit, origin/master itself)
+	}
+}
+
 /**
  * `pnpm bench --ab <ref>`: builds the base at the ref and the candidate at `--candidate <ref>` or from this checkout,
  * then measures them in turn, round by round, and judges the candidate against the base (bench-ab.mjs). Returns the
@@ -400,7 +413,9 @@ function runAb(ab, scale) {
 			cwd: repoRoot,
 			encoding: "utf8",
 		}).trim();
-		mergeBase = execFileSync("git", ["merge-base", "--", ab.base, ab.candidate ?? "HEAD"], {
+		// A stale local branch is an ancestor of the candidate, so its merge base with the candidate is itself; measure
+		// the expected base against the branch's upstream when it has one, so a base that is behind it is caught too.
+		mergeBase = execFileSync("git", ["merge-base", "--", upstreamOf(ab.base), ab.candidate ?? "HEAD"], {
 			cwd: repoRoot,
 			encoding: "utf8",
 		}).trim();
