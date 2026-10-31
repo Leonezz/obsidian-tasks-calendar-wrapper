@@ -13,6 +13,7 @@ function taskOf(line: string) {
 /** A deletion of the last line leaves an empty span to undo, although no task line was written. */
 function changeOf(record: UndoRecord): UndoNoticeChange {
 	if (record.edit.kind === "replace") return { kind: "replace" };
+	if (record.edit.kind === "date") return { kind: "date", field: record.edit.field, day: record.edit.day };
 	const lines = record.span.expected;
 	if (lines.length === 0 || (lines.length === 1 && lines[0] === "")) return { kind: "deleted" };
 	if (lines.length === 2) return { kind: "recurring-added" };

@@ -2,11 +2,22 @@ import "./setup";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import moment from "moment";
+import type { App } from "obsidian";
 import { dayKey } from "@tasks-calendar-wrapper/core";
 import { createShiftLedger } from "../timeline/src/taskwriter";
 import { createSharedTaskIndex } from "../timeline/src/sharedindex";
+import { createNoticePresenter } from "../timeline/src/notices";
 import { parseKeyOf } from "../utils/parsekey";
 import { writerHarness, deferred, flush } from "./writer-harness";
+import { goldenApp, loadVault } from "./golden-vault";
+import { FakeElement, Notice } from "./stubs/obsidian";
+
+async function goldenNote(path: string): Promise<string> {
+	const app: App = goldenApp(loadVault());
+	const file = app.vault.getMarkdownFiles().find((file) => file.path === path);
+	assert.ok(file);
+	return app.vault.cachedRead(file);
+}
 
 test("a stale editor buffer in reading view does not block a write", async () => {
 	const h = writerHarness();
@@ -599,7 +610,7 @@ test("an impossible date is refused before calling Tasks, with or without Tasks,
 			assert.equal(result.reason, "impossible-date");
 			assert.equal(
 				result.message,
-				"“A” has a due date that does not exist (2026-02-30). Nothing was written. Fix it in the note.",
+				"“A” has a due date that does not exist (2026-02-30). Nothing was written. Change it with right-click → Pick due date….",
 			);
 		}
 		assert.equal(called, 0);
@@ -981,6 +992,196 @@ test("preflight rejects nested markers, missing notes, recurrence loss and malfo
 	assert.equal(result.kind, "refused");
 	if (result.kind === "refused") assert.equal(result.message, "a was moved or deleted. Nothing was written.");
 	w.dispose();
+});
+
+test("date refusal shows a notice and leaves the note", async () => {
+	const path = "Dataview fields.md";
+	const original = await goldenNote(path);
+	const h = writerHarness({ [path]: original });
+	const before = h.bytes.get(path)!.slice();
+	Notice.instances = [];
+	const opened: unknown[] = [];
+	const notices = createNoticePresenter(h.app as never, {
+		document: {
+			createDocumentFragment: () => new FakeElement("#fragment"),
+			createElement: (tag: string) => new FakeElement(tag),
+			createTextNode: (text: string) => new FakeElement("#text", { text }),
+		} as unknown as Document,
+		openNote: async (...args) => {
+			opened.push(args);
+		},
+	});
+	const w = h.create({ notices });
+	try {
+		const result = await h.write(h.target(23, path), {
+			kind: "date",
+			field: "due",
+			day: dayKey(moment("2026-10-26")),
+		});
+		assert.deepEqual(result, {
+			kind: "refused",
+			reason: "date-ambiguous",
+			message:
+				"“emoji due and dataview due” has more than one due date (2026-01-25 and 2026-01-26). Nothing was changed. Keep one of them in the note, then try again.",
+		});
+		assert.deepEqual(h.bytes.get(path), before);
+		assert.equal(h.processCalls.length, 0);
+		assert.equal(h.peak(), 0);
+		assert.equal(h.holds.size, 0);
+		assert.equal(
+			h.events.some((event) => event.kind === "pending"),
+			false,
+		);
+		assert.equal(Notice.instances.length, 1);
+		assert.equal(Notice.instances[0].duration, 8000);
+		const buttons = (Notice.instances[0].message as FakeElement).children.filter(
+			(child): child is FakeElement => child instanceof FakeElement && child.tag === "button",
+		);
+		assert.deepEqual(
+			buttons.map((button) => button.textContent),
+			["Open note"],
+		);
+		buttons[0].click();
+		assert.deepEqual(opened, [[path, 23]]);
+	} finally {
+		w.dispose();
+		notices.dispose();
+	}
+});
+
+test("unchanged date makes no write", async () => {
+	for (const source of [false, true]) {
+		const h = writerHarness({ "a.md": "- [ ] Pay 📅 2026-10-26" });
+		const before = h.bytes.get("a.md")!.slice();
+		const view = source ? h.view("a.md", "source") : undefined;
+		const w = h.create();
+		try {
+			assert.deepEqual(
+				await h.write(h.target(), {
+					kind: "date",
+					field: "due",
+					day: dayKey(moment("2026-10-26")),
+				}),
+				{ kind: "unchanged" },
+			);
+			assert.equal(h.processCalls.length, 0);
+			assert.equal(view?.transactions.length ?? 0, 0);
+			assert.equal(h.writes.length, 0);
+			assert.deepEqual(h.bytes.get("a.md"), before);
+		} finally {
+			w.dispose();
+		}
+	}
+});
+
+test("uses the Style for new dates setting", async () => {
+	for (const [style, expected] of [
+		["dataview", "- [ ] Pay  [due:: 2026-10-26]"],
+		["emoji", "- [ ] Pay 📅 2026-10-26"],
+	] as const) {
+		const h = writerHarness({ "a.md": "- [ ] Pay" });
+		const w = h.create({ newDateStyle: () => style });
+		try {
+			assert.equal(
+				(
+					await h.write(h.target(), {
+						kind: "date",
+						field: "due",
+						day: dayKey(moment("2026-10-26")),
+					})
+				).kind,
+				"written",
+			);
+			assert.equal(h.text(), expected);
+		} finally {
+			w.dispose();
+		}
+	}
+});
+
+test("timed value keeps its time", async () => {
+	const path = "Dataview fields.md";
+	const original = await goldenNote(path);
+	const h = writerHarness({ [path]: original });
+	const w = h.create();
+	try {
+		assert.equal(
+			(
+				await h.write(h.target(13, path), {
+					kind: "date",
+					field: "due",
+					day: dayKey(moment("2026-01-21")),
+				})
+			).kind,
+			"written",
+		);
+		const expected = original.split("\n");
+		expected[13] = "- [ ] time in the field [due:: 2026-01-21T14:30]";
+		assert.equal(h.text(path), expected.join("\n"));
+	} finally {
+		w.dispose();
+	}
+});
+
+test("setting scheduled keeps an impossible due date unchanged", async () => {
+	const h = writerHarness({ "a.md": "- [ ] a 📅 2026-02-30" });
+	const w = h.create();
+	try {
+		assert.equal(
+			(
+				await h.write(h.target(), {
+					kind: "date",
+					field: "scheduled",
+					day: dayKey(moment("2026-10-26")),
+				})
+			).kind,
+			"written",
+		);
+		assert.equal(h.text(), "- [ ] a 📅 2026-02-30 ⏳ 2026-10-26");
+		assert.deepEqual(h.refusals, []);
+	} finally {
+		w.dispose();
+	}
+});
+
+test("isNotReread shares the slow date guard until the note is re-read, including BOM handling", async () => {
+	for (const [content, line] of [
+		["- [ ] Pay", 0],
+		["\uFEFF- [ ] Pay", 0],
+		["header\n\uFEFF- [ ] Pay", 1],
+	] as const) {
+		const h = writerHarness({ "a.md": content });
+		const w = h.create();
+		const target = Object.freeze(h.target(line));
+		try {
+			assert.equal(w.isNotReread(target), false);
+			const edit = { kind: "date", field: "due", day: dayKey(moment("2026-10-26")) } as const;
+			assert.equal((await h.write(target, edit)).kind, "written");
+			assert.equal(w.isNotReread(target), false);
+			await h.clock.advance(10_000);
+			const notices = [...h.notices];
+			const events = [...h.events];
+			const reads = [...h.readCalls];
+			assert.equal(w.isNotReread(target), true);
+			assert.equal(
+				w.isNotReread({ ...target, sourceLine: target.sourceLine.replace(/^\uFEFF/u, "") }),
+				line === 0,
+			);
+			assert.equal(w.isNotReread({ ...target, path: "other.md" }), false);
+			assert.equal(w.isNotReread({ ...target, line: line + 1 }), false);
+			assert.deepEqual(h.notices, notices);
+			assert.deepEqual(h.events, events);
+			assert.deepEqual(h.readCalls, reads);
+			const result = await h.write(target, edit);
+			assert.equal(result.kind, "refused");
+			if (result.kind === "refused") assert.equal(result.reason, "not-reread");
+			assert.equal(h.processCalls.length, 1);
+			await h.deliver();
+			assert.equal(w.isNotReread(target), false);
+		} finally {
+			w.dispose();
+		}
+	}
 });
 
 test("date writes and removals use the selected style and do not call Tasks; unchanged checks open views", async () => {

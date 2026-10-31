@@ -32,7 +32,7 @@ function prediction(
 	settings: ResolveSettings,
 	env: QueryEnv,
 ): Pick<PendingWrite, "marker" | "status"> {
-	if (event.action === "replace") return {};
+	if (event.action === "replace" || event.action === "date") return {};
 	const parsed = event.lines.map((line) => parseTaskLine(line, { moment: env.moment, path: event.path }));
 	const resolved = parsed.map((task) =>
 		task ? resolveTasks([task], { dailyNoteFormat: settings.dailyNoteFormat }, env).shown[0] : undefined,

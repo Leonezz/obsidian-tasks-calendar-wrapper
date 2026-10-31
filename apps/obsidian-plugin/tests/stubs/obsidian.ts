@@ -6,6 +6,9 @@ import moment from "moment";
 
 export { moment };
 
+/** Tests can change the current Obsidian device flags and restore them afterwards. */
+export const Platform = { isMobile: false, isDesktop: true, isPhone: false, isTablet: false };
+
 /** As in Obsidian: with resetTimer, every call starts the wait again, so only the last call of a burst runs. */
 export function debounce<T extends unknown[]>(cb: (...args: T) => unknown, timeout = 0, resetTimer = false) {
 	let timer: ReturnType<typeof setTimeout> | undefined;

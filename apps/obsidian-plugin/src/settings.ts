@@ -423,6 +423,23 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 				tg.onChange(async (v) => await this.onOptionUpdate({ openNoteInsteadOfInPlace: v }));
 			});
 
+		new Setting(containerEl)
+			.setName("Style for new dates")
+			.setDesc(
+				"Used when the timeline adds a date to a task line that has no task fields yet (no dates, priority, recurrence or other Tasks fields). Lines that already use one style keep it. If the Tasks plugin is set to the Dataview format, choose Dataview fields.",
+			)
+			.addDropdown((d) => {
+				d.addOptions({
+					emoji: "Emoji (📅 2026-10-25)",
+					dataview: "Dataview fields ([due:: 2026-10-25])",
+				});
+				d.setValue(this.plugin.userOptions.newDateStyle);
+				d.onChange(
+					async (v) =>
+						await this.onOptionUpdate({ newDateStyle: v as typeof this.plugin.userOptions.newDateStyle }),
+				);
+			});
+
 		new Setting(containerEl).setName("Formats and filters").setHeading();
 		new Setting(containerEl)
 			.setName("Date Format")

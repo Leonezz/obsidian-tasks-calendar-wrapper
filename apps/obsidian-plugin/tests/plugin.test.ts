@@ -131,6 +131,34 @@ test("options of the wrong type are kept as they are", async (t) => {
 	assert.deepEqual(options.sort, ["due-asc"]);
 });
 
+test("an invalid saved Style for new dates warns with its value and loads as emoji", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const warnings = t.mock.method(console, "warn", () => {});
+	for (const value of ["yaml", "", null, 42, false, ["emoji"], { style: "emoji" }]) {
+		warnings.mock.resetCalls();
+		const dataJson = JSON.stringify({ newDateStyle: value });
+		const { plugin } = await startPlugin(dataJson);
+		t.after(() => plugin.unload());
+		assert.equal(plugin.userOptions.newDateStyle, "emoji");
+		assert.deepEqual(
+			warnings.mock.calls.map((call) => call.arguments),
+			[
+				[
+					`Tasks Calendar Wrapper: data.json holds ${JSON.stringify(value)} for "newDateStyle", which should be "emoji" or "dataview". It is read as "emoji".`,
+				],
+			],
+		);
+		assert.equal(plugin.dataJson, dataJson, "loading does not rewrite data.json");
+	}
+	for (const value of ["emoji", "dataview"]) {
+		warnings.mock.resetCalls();
+		const { plugin } = await startPlugin(JSON.stringify({ newDateStyle: value }));
+		t.after(() => plugin.unload());
+		assert.equal(plugin.userOptions.newDateStyle, value);
+		assert.equal(warnings.mock.callCount(), 0);
+	}
+});
+
 for (const fixture of FIXTURE_NAMES) {
 	const name = fixture.replace(/\.json$/, "");
 	test(`start on ${fixture}: the options read, and what data.json holds after the first start`, async (t) => {
@@ -672,6 +700,53 @@ test("the plugin's timelines share one task index, which stops watching when the
 	release();
 	await settle();
 	assert.equal(noteHandlers(vault), 0);
+});
+
+test("changing Style for new dates reaches the plugin's writer without a reload", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const clock = new WriterClock();
+	const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+	Object.defineProperty(globalThis, "window", {
+		configurable: true,
+		value: { setTimeout: clock.setTimeout, clearTimeout: clock.clearTimeout },
+	});
+	const { vault, plugin } = await startPlugin(readFixture("quiet.json"));
+	t.after(() => {
+		plugin.unload();
+		if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow);
+		else Reflect.deleteProperty(globalThis, "window");
+	});
+	Object.assign(vault.app.vault, {
+		getFileByPath: (path: string) => vault.app.vault.getAbstractFileByPath(path),
+		async process(file: TFile, edit: (text: string) => string): Promise<string> {
+			const text = edit(await vault.app.vault.cachedRead(file));
+			vault.write(file.path, text, { indexed: false });
+			return text;
+		},
+	});
+	await openTimeline(vault);
+	const writer = (roots[roots.length - 1].rendered[0] as ReactElement<{ writer: TaskWriter }>).props.writer;
+	assert.ok(writer);
+	for (const [newDateStyle, expected] of [
+		["dataview", "- [ ] Pay  [due:: 2026-10-26]"],
+		["emoji", "- [ ] Pay 📅 2026-10-26"],
+	] as const) {
+		const path = `${newDateStyle}.md`;
+		vault.write(path, "- [ ] Pay");
+		await plugin.writeOptions({ newDateStyle });
+		assert.equal(
+			(
+				await writer.write(() => ({ path, line: 0, sourceLine: "- [ ] Pay" }), {
+					kind: "date",
+					field: "due",
+					day: "2026-10-26",
+				})
+			).kind,
+			"written",
+		);
+		const file = vault.app.vault.getAbstractFileByPath(path) as TFile;
+		assert.equal(await vault.app.vault.cachedRead(file), expected);
+	}
 });
 
 test("the plugin creates one writer and releases its holds on unload", async (t) => {

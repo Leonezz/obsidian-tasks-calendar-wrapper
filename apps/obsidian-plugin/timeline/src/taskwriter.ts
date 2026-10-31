@@ -77,7 +77,7 @@ export type WriteResult =
 /** Events carry the write identity, so several pending writes of one row do not replace each other. Frozen. */
 export interface WriteEvent extends LineTarget {
 	readonly id: number;
-	/** Dialog edits only dim the row; Undo still predicts the restored status. */
+	/** Dialog and date edits only dim the row; Undo still predicts the restored status. */
 	readonly action?: "toggle" | "date" | "replace" | "undo";
 	readonly kind:
 		| "pending"
@@ -149,6 +149,8 @@ export interface TaskWriterDeps {
 export interface TaskWriter {
 	/** Samples the path to choose a queue, then reads the target again when its turn starts. The path must stay fixed. */
 	write(target: () => LineTarget, edit: TaskEdit): Promise<WriteResult>;
+	/** The row menu checks this before opening the date modal, without showing a notice. */
+	isNotReread(target: LineTarget): boolean;
 	/** Existing-note quick entry; its callback runs only after the encoding check, inside Vault.process. */
 	insert(path: string, edit: (content: string) => string): Promise<WriteResult>;
 	/** Waits for Tasks' dialog before checking its result and entering the write queue. */
@@ -735,6 +737,11 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 					? () => ({ path: edit.record.path, line: edit.record.line, sourceLine: edit.record.original })
 					: target,
 				edit,
+			);
+		},
+		isNotReread(target: LineTarget): boolean {
+			return tracking.notReread(
+				target.line === 0 ? { ...target, sourceLine: withoutBOM(target.sourceLine) } : target,
 			);
 		},
 		insert(path: string, apply: (content: string) => string): Promise<WriteResult> {

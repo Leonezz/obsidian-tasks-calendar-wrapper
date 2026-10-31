@@ -342,6 +342,14 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				readWhen: PUSH,
 			},
 			{
+				key: "newDateStyle",
+				type: "string",
+				control: "dropdown",
+				group: "taskItems",
+				redrawsTab: false,
+				readWhen: PUSH,
+			},
+			{
 				key: "hideStatusTasks",
 				type: "stringList",
 				control: "text",
