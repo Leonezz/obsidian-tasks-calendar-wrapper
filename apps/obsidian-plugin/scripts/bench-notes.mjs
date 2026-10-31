@@ -38,10 +38,11 @@ const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frida
 const AREAS = ["Work", "Home", "Health", "Finance", "Garden", "Travel", "Reading", "Music", "Learning", "Errands"];
 const TAGS = ["#work", "#home", "#urgent", "#later", "#idea", "#errand", "#call", "#writing"];
 
-/** The notes `pnpm bench` saves: the first task of one note gets a new text, the other note has no tasks. */
+/** The notes `pnpm bench` saves; toggle temporarily adds five same-day tasks to its own note. */
 export const BENCH_TARGETS = {
 	withTasks: "Projects/Work/Project 0010.md",
 	withoutTasks: "Reference/Note 0001.md",
+	toggle: "Reference/Note 0002.md",
 };
 
 /** mulberry32: a small seeded generator, so the vault is the same on every machine. */

@@ -5,7 +5,12 @@
  * - save with tasks: from saving a note with tasks until the timeline shows the new task text;
  * - save without tasks: saving a note without tasks, which should not reload the timeline at all;
  * - option change: turning the relative dates off through the plugin's writeOptions, as the settings tab does, until the
- *   timeline shows it, then on again; data.json has to be byte for byte as it was after that.
+ *   timeline shows it, then on again; data.json has to be byte for byte as it was after that;
+ * - toggle (only with a writer, at both scales): idle checkbox clicks to the overlay and real result, five clicks
+ *   200 ms apart counting reloads, then five ticks in one day column counting ignored clicks and retrying them.
+ *   Generated notes have at most three tasks, so five same-day tasks are temporarily appended to a separate note.
+ *   Only their five lines may change; the original note bytes and display options are restored even on failure.
+ *   The idle overlay median's gate is 50 ms; the other timings are report-only. Missing baseline metrics are not judged.
  * Besides the time until the timeline shows the change, it sums the long tasks (main-thread work over 50 ms, when
  * Obsidian does not respond to input) and records the longest one, which is what a user feels as a freeze. It also
  * counts the notes read (vault.cachedRead calls), and for option changes the timeline's reloads and how often Obsidian
@@ -45,7 +50,16 @@ import { AB_RUNS, abArgs, abOrder, compareAb } from "./bench-ab.mjs";
 import { buildAt, localBuild } from "./bench-builds.mjs";
 import { otherBenchProcesses } from "./bench-host.mjs";
 import { measure } from "./bench-measure.mjs";
-import { compare, counts, round, splitLoad, summary } from "./bench-results.mjs";
+import {
+	assertToggleChanges,
+	assertToggleRestored,
+	compare,
+	countIgnoredClicks,
+	counts,
+	round,
+	splitLoad,
+	summary,
+} from "./bench-results.mjs";
 import { BENCH_TARGETS, benchVaultName, benchVaultNotes, scaleOf, withoutScale } from "./bench-notes.mjs";
 import {
 	buildInfo,
@@ -67,6 +81,7 @@ const OPEN_COMMAND = `${manifest.id}:open-tasks-timeline-view`;
 const VIEWPORT = { width: 1280, height: 800, deviceScaleFactor: 2, mobile: false };
 /** The measured runs at each scale; the large vault has fewer, so that a run takes minutes rather than an hour. */
 const RUNS = { 1: { loads: 5, saves: 10, optionChanges: 5 }, 10: { loads: 3, saves: 3, optionChanges: 3 } };
+const TOGGLE_RUNS = { 1: 5, 10: 3 };
 const WARMUP_SAVES = 2;
 const WARMUP_OPTION_CHANGES = 1;
 /** A change is rendered once the timeline's DOM has not changed for this long. */
@@ -98,6 +113,99 @@ function mainThreadMs(cli) {
 	const task = cli.cdp("Performance.getMetrics").metrics?.find((metric) => metric.name === "TaskDuration");
 	if (!task) throw new ScriptError("Performance.getMetrics has no TaskDuration; is the Performance domain enabled?");
 	return task.value * 1000;
+}
+
+/** The writer-only scenario, after the shared measurements, with setup and restoration outside the timed clicks. */
+function measureToggle(evaluate, timed, notes, scale, label, cpuSummary, cpuText) {
+	if (!evaluate({ action: "toggleSupport" })) {
+		console.log(`bench: ${label}toggle: skipped (the loaded plugin has no in-place checkbox support); not judged.`);
+		return { skipped: "the loaded plugin has no in-place checkbox support" };
+	}
+	const path = BENCH_TARGETS.toggle;
+	const original = notes.get(path);
+	const toggleTasks = Array.from({ length: 5 }, (_, i) => `Bench toggle task ${i + 1}`);
+	const lines = toggleTasks.map((_, i) => original.split("\n").length + i);
+	const prepared = `${original}\n${toggleTasks.map((text) => `- [ ] ${text} 📅 2026-01-15`).join("\n")}\n`;
+	const settings = evaluate({ action: "toggleOptions" });
+	const check = (fn) => {
+		try {
+			return fn();
+		} catch (error) {
+			throw new ScriptError(error.message);
+		}
+	};
+	const restore = (content) =>
+		check(() =>
+			assertToggleRestored(path, content, evaluate({ action: "restore", path, content, verifyRestore: true })),
+		);
+	const settle = () => evaluate({ action: "settle", settleMs: LOAD_WATCH_MS, toggleTasks });
+	const reset = () => {
+		restore(prepared);
+		evaluate({ action: "settle", settleMs: LOAD_WATCH_MS, path, toggleTasks, toggleReady: true });
+	};
+	return runAndUndo(() => {
+		evaluate({
+			action: "toggleOptions",
+			options: { hideStatusTasks: [], useBuiltinStyle: true, openNoteInsteadOfInPlace: false },
+		});
+		const idle = [];
+		for (let run = 0; run < TOGGLE_RUNS[scale]; run++) {
+			reset();
+			const step = timed({ action: "toggle", path, toggleTasks, toggleMode: "idle" });
+			check(() => assertToggleChanges(prepared, step.content, lines.slice(0, 1)));
+			idle.push(step);
+			console.log(
+				`bench: ${label}toggle idle ${run + 1}: overlay ${round(step.overlayMs)} ms, real result ${round(step.renderedMs)} ms, blocked ${round(step.blockedMs)} ms, longest task ${round(step.longestMs)} ms${cpuText(step)}`,
+			);
+		}
+		reset();
+		const burst = evaluate({ action: "toggle", path, toggleTasks, toggleMode: "burst" });
+		if (burst.reloadCalls === null)
+			throw new ScriptError("toggle: the timeline view has no onReloadTasks to count reloads with");
+		const burstIgnored = countIgnoredClicks(burst.clicks);
+		check(() =>
+			assertToggleChanges(
+				prepared,
+				burst.content,
+				burst.clicks.flatMap((click, i) => (click.overlayMs === null ? [] : [lines[i]])),
+			),
+		);
+		console.log(
+			`bench: ${label}toggle five clicks 200 ms apart: ${burst.reloadCalls} reload call(s) (gate: ${scale === 1 ? "exactly 1" : "at most 2"}), ${burstIgnored} ignored click(s).`,
+		);
+		reset();
+		const sequence = evaluate({ action: "toggle", path, toggleTasks, toggleMode: "sequence" });
+		check(() => assertToggleChanges(prepared, sequence.content, lines));
+		const ignored = countIgnoredClicks(sequence.clicks);
+		console.log(
+			`bench: ${label}toggle five ticks in one column: exactly those five lines changed, ${ignored} ignored click(s).`,
+		);
+		const overlayMs = summary(idle.map((step) => step.overlayMs));
+		console.log(
+			`bench: ${label}toggle idle overlay median ${overlayMs.medianMs} ms; gate <= 50 ms: ${overlayMs.medianMs <= 50 ? "PASS" : "OVER LIMIT"} (checked from the report).`,
+		);
+		return {
+			runs: idle.length,
+			overlayMs,
+			renderedMs: summary(idle.map((step) => step.renderedMs)),
+			blockedMs: summary(idle.map((step) => step.blockedMs)),
+			longestTaskMs: summary(idle.map((step) => step.longestMs)),
+			...cpuSummary(idle),
+			reloadCalls: counts([burst.reloadCalls]),
+			ignoredClicks: counts([ignored]),
+			burstIgnoredClicks: counts([burstIgnored]),
+			clickLog: { idle: idle.map((step) => step.clicks), burst: burst.clicks, sequence: sequence.clicks },
+		};
+	}, [
+		["wait for toggle writes", settle],
+		[`restore ${path} after toggle`, () => restore(original)],
+		["restore toggle display options", () => evaluate({ action: "toggleOptions", ...settings })],
+		["settle after toggle", settle],
+		[
+			"verify restored toggle bytes",
+			() => check(() => assertToggleRestored(path, original, evaluate({ action: "readNote", path }))),
+		],
+	]);
 }
 
 /**
@@ -189,6 +297,7 @@ function measureAll(
 			`bench: ${label}option change ${run < WARMUP_OPTION_CHANGES ? "(warm-up)" : run - WARMUP_OPTION_CHANGES + 1}: shown after ${round(change.appliedMs)} ms, ${change.reloadCalls} reload call(s), ${change.filesRead} notes read, onExternalSettingsChange called ${change.externalSettingsCalls} time(s), longest task ${round(change.longestMs)} ms${cpuText(change)}`,
 		);
 	}
+	const toggle = measureToggle(evaluate, timed, notes, scale, label, cpuSummary, cpuText);
 
 	return {
 		initialLoad: {
@@ -233,6 +342,7 @@ function measureAll(
 			externalSettingsCalls: counts(optionChanges.map((change) => change.externalSettingsCalls)),
 			...cpuSummary(optionChanges),
 		},
+		toggle,
 	};
 }
 
@@ -259,7 +369,21 @@ const loadAverageSince = (before) => ({
 const restoreSteps = (cli, notes) =>
 	Object.values(BENCH_TARGETS).map((target) => [
 		`restore ${target}`,
-		() => cli.evaluate(measure, { action: "restore", path: target, content: notes.get(target) }),
+		() => {
+			const restored = cli.evaluate(measure, {
+				action: "restore",
+				path: target,
+				content: notes.get(target),
+				verifyRestore: target === BENCH_TARGETS.toggle,
+			});
+			if (target === BENCH_TARGETS.toggle) {
+				try {
+					assertToggleRestored(target, notes.get(target), restored);
+				} catch (error) {
+					throw new ScriptError(error.message);
+				}
+			}
+		},
 	]);
 
 /**
@@ -347,6 +471,18 @@ function runAb(ab, scale) {
 			`bench: the candidate against the base over ${ab.rounds} rounds, from each arm's fastest run in each round:`,
 		);
 		verdict.lines.forEach((line) => console.log(line));
+		// These are different actions, so print them side by side without a ratio or a verdict.
+		for (let roundIndex = 1; roundIndex <= ab.rounds; roundIndex++) {
+			const base = slots.find((slot) => slot.round === roundIndex && slot.arm === "base").results.saveWithTasks;
+			const toggle = slots.find((slot) => slot.round === roundIndex && slot.arm === "candidate").results.toggle;
+			if (toggle.skipped) continue;
+			for (const metric of ["renderedMs", "blockedMs", "cpuMs", "longestTaskMs"]) {
+				if (toggle[metric] && base[metric])
+					console.log(
+						`bench: round ${roundIndex} report only, ${metric} median: base saveWithTasks ${base[metric].medianMs} ms | candidate toggle ${toggle[metric].medianMs} ms`,
+					);
+			}
+		}
 		verdict.warnings.forEach((warning) => console.warn(warning));
 		console.log(
 			`bench: 1-minute load average ${loadAverage.before} before and ${loadAverage.after} after the run (${loadAverage.cores} cores).`,
@@ -373,6 +509,7 @@ function runAb(ab, scale) {
 					warmupLoads: 1,
 					warmupSaves: WARMUP_SAVES,
 					warmupOptionChanges: WARMUP_OPTION_CHANGES,
+					toggleRuns: TOGGLE_RUNS[scale],
 					runs: AB_RUNS[scale],
 				},
 				slots,
@@ -464,6 +601,7 @@ await runScript("bench", async () => {
 			loadWatchMs: LOAD_WATCH_MS,
 			warmupSaves: WARMUP_SAVES,
 			warmupOptionChanges: WARMUP_OPTION_CHANGES,
+			toggleRuns: TOGGLE_RUNS[scale],
 			runs: RUNS[scale],
 		},
 		results,

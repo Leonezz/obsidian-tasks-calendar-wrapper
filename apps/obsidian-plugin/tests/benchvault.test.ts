@@ -69,6 +69,15 @@ test("the notes the benchmark saves are in both vaults, at the same paths", () =
 	assert.doesNotMatch(vault.get(BENCH_TARGETS.withoutTasks) ?? "", /^\s*[-*+] \[.\]/m);
 });
 
+test("the toggle target is an existing LF note separate from the save targets", () => {
+	assert.equal(BENCH_TARGETS.toggle, "Reference/Note 0002.md");
+	assert.ok(vault.has(BENCH_TARGETS.toggle));
+	assert.equal(large.get(BENCH_TARGETS.toggle), vault.get(BENCH_TARGETS.toggle));
+	assert.doesNotMatch(vault.get(BENCH_TARGETS.toggle) ?? "", /\r/);
+	assert.notEqual(BENCH_TARGETS.toggle, BENCH_TARGETS.withTasks);
+	assert.notEqual(BENCH_TARGETS.toggle, BENCH_TARGETS.withoutTasks);
+});
+
 test("only whole scales from 1 generate a vault", () => {
 	for (const scale of [0, -1, 1.5, Number.NaN]) assert.throws(() => benchVaultNotes(scale), /whole number/);
 });

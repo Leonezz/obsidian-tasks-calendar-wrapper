@@ -19,6 +19,11 @@ export async function measure({
 	quietMs,
 	windowMs,
 	settleMs,
+	toggleTasks,
+	toggleMode,
+	toggleReady = false,
+	options,
+	verifyRestore = false,
 	slowness = 1,
 }) {
 	const leafSelector = `.workspace-leaf-content[data-type="${viewType}"]`;
@@ -162,6 +167,12 @@ export async function measure({
 		return frame.paintedAt;
 	}
 	const rows = () => document.querySelectorAll(`${leafSelector} .task`).length;
+	const readBytes = async () =>
+		new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(await app.vault.adapter.readBinary(path));
+	const toggleRows = (root, text) =>
+		[...root.querySelectorAll(`.task a.file[aria-label="${CSS.escape(path)}"]`)]
+			.map((link) => link.closest(".task"))
+			.filter((row) => row.querySelector(":scope > .lines > .content")?.textContent.trim() === text);
 
 	switch (action) {
 		case "unload": {
@@ -215,6 +226,31 @@ export async function measure({
 			const recorder = record(document.body);
 			try {
 				await sleep(settleMs);
+				if (toggleTasks)
+					await until(
+						() => !document.querySelector(`${leafSelector} .task[aria-busy="true"]`),
+						120_000,
+						"pending toggle writes to finish",
+					);
+				if (toggleReady)
+					await until(
+						() => {
+							const root = document.querySelector(leafSelector);
+							return (
+								root &&
+								toggleTasks.every((text) => {
+									const matches = toggleRows(root, text);
+									return (
+										matches.length === 1 &&
+										matches[0].dataset.task === " " &&
+										!matches[0].hasAttribute("aria-busy")
+									);
+								})
+							);
+						},
+						30_000,
+						"the five open toggle tasks",
+					);
 				await until(
 					() => recorder.seen.last === null || quietFor(recorder, quietMs)(),
 					30_000,
@@ -336,10 +372,157 @@ export async function measure({
 			await plugin.writeOptions({});
 			return true;
 		}
+		case "toggleSupport": {
+			const plugin = app.plugins.plugins[pluginId];
+			// Some older builds already have a writer for dates, but their checkboxes still open the note.
+			return Boolean(plugin?.writer) && typeof plugin.userOptions?.openNoteInsteadOfInPlace === "boolean";
+		}
+		case "toggleOptions": {
+			const plugin = app.plugins.plugins[pluginId];
+			if (!plugin) throw new Error(`the plugin ${pluginId} is not loaded`);
+			const dataPath = `${app.vault.configDir}/plugins/${pluginId}/data.json`;
+			if (!options) {
+				const { hideStatusTasks, useBuiltinStyle, openNoteInsteadOfInPlace } = plugin.userOptions;
+				return {
+					options: { hideStatusTasks, useBuiltinStyle, openNoteInsteadOfInPlace },
+					content: await app.vault.adapter.read(dataPath),
+				};
+			}
+			await plugin.writeOptions(options);
+			if (content !== undefined && (await app.vault.adapter.read(dataPath)) !== content)
+				throw new Error(`${dataPath} is not as it was before toggle`);
+			return true;
+		}
+		case "toggle": {
+			const root = document.querySelector(leafSelector);
+			if (!root) throw new Error("the timeline view is not open");
+			const findRow = (text) => {
+				const matches = toggleRows(root, text);
+				if (matches.length !== 1)
+					throw new Error(`toggle: expected one row for "${text}", found ${matches.length}`);
+				return matches[0];
+			};
+			const initialRows = toggleTasks.map(findRow);
+			if (initialRows.some((row) => row.parentElement !== initialRows[0].parentElement))
+				throw new Error("toggle: the five tasks are not in one day column");
+			if (initialRows.some((row) => row.dataset.task !== " " || row.hasAttribute("aria-busy")))
+				throw new Error("toggle: the five tasks are not all open and idle");
+			const recorder = record(root);
+			const reloads = countReloads();
+			const reads = countReads();
+			const clicks = [];
+			let start = null;
+			// Observe before dispatch: a brief overlay can appear and clear between the polling intervals.
+			function click(text) {
+				let row = findRow(text);
+				if (row.dataset.task !== " " || row.hasAttribute("aria-busy"))
+					throw new Error(`toggle: "${text}" is not open and idle before its click`);
+				const checkbox = row.querySelector(":scope > .timeline > label.icon");
+				if (!checkbox) throw new Error(`toggle: "${text}" has no built-in checkbox label`);
+				const entry = { text, clickAt: null, overlayAt: null, realAt: null };
+				const observer = new MutationObserver((changes) => {
+					if (!row.isConnected) row = findRow(text);
+					if (
+						row.getAttribute("aria-busy") === "true" ||
+						changes.some(
+							(change) =>
+								change.target === row &&
+								change.attributeName === "aria-busy" &&
+								change.oldValue === "true",
+						)
+					)
+						entry.overlayAt ??= performance.now();
+					if (row.dataset.task === "x" && !row.hasAttribute("aria-busy")) entry.realAt ??= performance.now();
+				});
+				observer.observe(root, {
+					subtree: true,
+					childList: true,
+					attributes: true,
+					attributeOldValue: true,
+					attributeFilter: ["aria-busy", "data-task"],
+				});
+				entry.observer = observer;
+				clicks.push(entry);
+				// Constructed in this page, immediately before dispatch, with the same clock as the click guard.
+				const event = new MouseEvent("click", { bubbles: true, cancelable: true, view: window });
+				entry.clickAt = performance.now();
+				start ??= entry.clickAt;
+				checkbox.dispatchEvent(event);
+				return entry;
+			}
+			const overlay = async (entry) => {
+				while (entry.overlayAt === null && performance.now() - entry.clickAt < 200) await sleep(5);
+				return entry.overlayAt !== null && entry.overlayAt - entry.clickAt <= 200;
+			};
+			const real = (entry) =>
+				until(() => entry.realAt !== null, 30_000, `the written marker for "${entry.text}" without an overlay`);
+			try {
+				if (toggleMode === "burst") {
+					for (const text of toggleTasks) {
+						if (clicks.length) await sleep(Math.max(0, clicks.at(-1).clickAt + 200 - performance.now()));
+						click(text);
+					}
+					await overlay(clicks.at(-1));
+					for (const entry of clicks) if (entry.overlayAt !== null) await real(entry);
+				} else {
+					for (const text of toggleMode === "idle" ? toggleTasks.slice(0, 1) : toggleTasks) {
+						let entry;
+						for (let attempt = 0; attempt < 10; attempt++) {
+							entry = click(text);
+							if (toggleMode === "idle") {
+								await until(() => entry.overlayAt !== null, 30_000, `the idle overlay for "${text}"`);
+								break;
+							}
+							if (await overlay(entry)) break;
+							if (entry.overlayAt !== null)
+								throw new Error(
+									`toggle: "${text}" showed an overlay after 200 ms; cannot safely retry a write in progress`,
+								);
+							entry.observer.disconnect();
+							await sleep(300);
+						}
+						if (entry.overlayAt === null) throw new Error(`toggle: "${text}" was ignored ten times`);
+						await real(entry);
+					}
+				}
+				await sleep(quietMs);
+				await until(
+					() => recorder.seen.last === null || quietFor(recorder, quietMs)(),
+					30_000,
+					"the timeline to settle after toggle",
+				);
+				const { tasks, ...work } = recorder.stop(start);
+				return {
+					overlayMs: clicks[0].overlayAt === null ? null : clicks[0].overlayAt - clicks[0].clickAt,
+					renderedMs:
+						clicks[0].realAt === null
+							? null
+							: paintedAfter(recorder.seen, clicks[0].realAt) - clicks[0].clickAt,
+					...work,
+					reloadCalls: reloads(),
+					filesRead: reads(),
+					clicks: clicks.map(({ text, clickAt, overlayAt, realAt }) => ({
+						text,
+						clickAt: clickAt - start,
+						overlayMs: overlayAt === null ? null : overlayAt - clickAt,
+						realMs: realAt === null ? null : realAt - clickAt,
+					})),
+					content: await readBytes(),
+				};
+			} finally {
+				clicks.forEach((entry) => entry.observer.disconnect());
+				recorder.stop(start ?? 0);
+				reloads();
+				reads();
+			}
+		}
+		case "readNote":
+			return await readBytes();
 		case "restore": {
 			const file = app.vault.getAbstractFileByPath(path);
+			if (verifyRestore && !file) throw new Error(`toggle: cannot restore missing note ${path}`);
 			if (file && (await app.vault.read(file)) !== content) await app.vault.modify(file, content);
-			return true;
+			return verifyRestore ? await readBytes() : true;
 		}
 		default:
 			throw new Error(`unknown action ${action}`);

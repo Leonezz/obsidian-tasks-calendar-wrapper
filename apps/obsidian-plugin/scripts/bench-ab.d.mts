@@ -52,9 +52,20 @@ export interface CountRow {
 	readonly changed: boolean;
 }
 
+export interface UnpairedRow {
+	readonly name: string;
+	readonly kind: "timing" | "count";
+	readonly base: null;
+	readonly candidate: number;
+	readonly judged: false;
+	readonly verdict: "not judged";
+}
+
 export interface AbVerdict {
 	readonly rows: readonly TimingRow[];
 	readonly counts: readonly CountRow[];
+	/** Candidate-only measurements, kept apart from the paired rows. */
+	readonly unpaired: readonly UnpairedRow[];
 	/** How often a save without tasks reloaded the timeline, in each arm, and of how many such saves each. */
 	readonly reloads: { readonly base: number; readonly candidate: number; readonly runs: number };
 	readonly warnings: readonly string[];

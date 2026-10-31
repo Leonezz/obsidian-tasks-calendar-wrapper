@@ -30,6 +30,35 @@ export function counts(samples) {
 	return { median: median(samples), min: Math.min(...samples), max: Math.max(...samples), samples };
 }
 
+/** Checks zero-based task lines; splitting only at LF also preserves trailing spaces, CR and the final newline. */
+export function assertToggleChanges(original, actual, lines) {
+	const before = original.split("\n");
+	const after = actual.split("\n");
+	const ticked = new Set(lines);
+	for (const line of ticked) {
+		if (!Number.isInteger(line) || line < 0 || line >= before.length)
+			throw new Error(`toggle: invalid task line ${line + 1}`);
+	}
+	for (let line = 0; line < Math.max(before.length, after.length); line++) {
+		if (ticked.has(line)) {
+			if (!/^\s*[-*+] \[ \] /.test(before[line]) || !/^\s*[-*+] \[x\] /.test(after[line] ?? ""))
+				throw new Error(`toggle: line ${line + 1} was not ticked from [ ] to [x]`);
+		} else if (before[line] !== after[line]) {
+			throw new Error(`toggle: line ${line + 1} changed although it was not ticked`);
+		}
+	}
+}
+
+/** Restoration must read back the original bytes, including the final newline; a missing note fails too. */
+export function assertToggleRestored(path, original, actual) {
+	if (actual !== original) throw new Error(`toggle: could not restore ${path} to its original bytes`);
+}
+
+/** A null overlay time records a click with no overlay within the 200 ms guard check. */
+export function countIgnoredClicks(log) {
+	return log.filter((click) => click.overlayMs === null).length;
+}
+
 /** The long tasks summed up: the time Obsidian did not respond, and the longest freeze. */
 export function sumTasks(tasks) {
 	return {

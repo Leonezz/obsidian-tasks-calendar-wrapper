@@ -205,6 +205,63 @@ test("counts are shown for both arms, and a count that changed is a warning, not
 	]);
 });
 
+test("a scenario only the candidate has is listed, not judged, with the base shown as -", () => {
+	const verdict = compareAb(
+		slotsOf(
+			BASE.map(() => ({ toggle: { skipped: "the loaded plugin has no writer" } })),
+			BASE.map((ms) => ({ toggle: { overlayMs: timing(ms), reloadCalls: counts([1, 2, 1]) } })),
+		),
+		1,
+	);
+	assert.equal(verdict.slower, 0);
+	assert.deepEqual(verdict.warnings, []);
+	assert.deepEqual(verdict.unpaired, [
+		{
+			name: "toggle.overlayMs",
+			kind: "timing",
+			base: null,
+			candidate: 200.5,
+			judged: false,
+			verdict: "not judged",
+		},
+		{ name: "toggle.reloadCalls", kind: "count", base: null, candidate: 1, judged: false, verdict: "not judged" },
+	]);
+	assert.deepEqual(
+		verdict.lines.slice(1).map((line) => line.trim().split(/\s+/)),
+		[
+			["bench:", "toggle.overlayMs", "-", "200.5", "-", "-", "-", "-", "not", "judged"],
+			["bench:", "toggle.reloadCalls", "(count)", "-", "1", "-", "-", "-", "-", "not", "judged"],
+		],
+	);
+	assert.equal(new Set(verdict.lines.map((line) => line.replace(/ {2}not judged$/, "").length)).size, 1);
+});
+
+test("candidate-only metrics leave shared rows and output unchanged", () => {
+	const base = BASE.map((ms) => ({ saveWithTasks: { renderedMs: timing(ms), filesRead: counts([1]) } }));
+	const shared = compareAb(slotsOf(base, base), 1);
+	const extra = compareAb(
+		slotsOf(
+			base,
+			base.map((result, i) => ({
+				saveWithTasks: {
+					...result.saveWithTasks,
+					...(i > 0 ? { newMs: timing(12), newCount: counts([2]) } : {}),
+				},
+			})),
+		),
+		1,
+	);
+	assert.deepEqual(extra.rows, shared.rows);
+	assert.deepEqual(extra.counts, shared.counts);
+	assert.deepEqual(extra.warnings, shared.warnings);
+	assert.equal(extra.slower, shared.slower);
+	assert.deepEqual(extra.lines.slice(0, shared.lines.length), shared.lines);
+	assert.deepEqual(
+		extra.unpaired.map((row) => row.name),
+		["saveWithTasks.newMs", "saveWithTasks.newCount"],
+	);
+});
+
 test("another number of task rows than the base's is a warning", () => {
 	const verdict = compareAb(slotsOf(Array(6).fill({}), Array(6).fill({ initialLoad: { rows: 99 } })), 1);
 	assert.equal(verdict.slower, 0);
