@@ -8,8 +8,8 @@ import { readFileSync } from "node:fs";
 import { act, createElement, createRef } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { parseTaskLine, type Store, type Task } from "@tasks-calendar-wrapper/core";
-import { MarkdownView, Notice } from "./stubs/obsidian";
+import { parseTaskLine, type DateField, type Store, type Task, type TaskRowModel } from "@tasks-calendar-wrapper/core";
+import { MarkdownView, Notice, Platform } from "./stubs/obsidian";
 
 import { defaultUserOptions } from "../src/useroptions";
 import { TasksTimelineView, timelineTaskIndex } from "../src/views";
@@ -312,7 +312,7 @@ test("with the setting on, ✏️ is still hidden without Tasks", async (t) => {
 });
 
 /** A display-only writer event, mounted through the same stable store as a view. */
-async function mountPendingRow(t: TestContext, sourceLine: string, lines: readonly string[]) {
+async function mountPendingRow(t: TestContext, sourceLine: string, lines: readonly string[], dateActions = false) {
 	const task = parseTaskLine(sourceLine, { moment, path: "Note.md" });
 	assert.ok(task);
 	const pending = createPendingWrites();
@@ -322,6 +322,8 @@ async function mountPendingRow(t: TestContext, sourceLine: string, lines: readon
 	let tasks: readonly Task[] = [task];
 	let writes = 0;
 	let opens = 0;
+	const menuEvents: MouseEvent[] = [];
+	const pickedFields: DateField[] = [];
 	const callbacks = {
 		handleOpenFile: () => {
 			opens++;
@@ -330,6 +332,16 @@ async function mountPendingRow(t: TestContext, sourceLine: string, lines: readon
 		handleModifyTask: () => {
 			writes++;
 		},
+		handleRowMenu: dateActions
+			? (_model: TaskRowModel, event: MouseEvent) => {
+					menuEvents.push(event);
+				}
+			: undefined,
+		handleDateBadge: dateActions
+			? (_model: TaskRowModel, field: DateField) => {
+					pickedFields.push(field);
+				}
+			: undefined,
 		handleCompleteTask: () => {
 			writes++;
 			pending.apply(
@@ -365,6 +377,8 @@ async function mountPendingRow(t: TestContext, sourceLine: string, lines: readon
 		timeline,
 		task,
 		click,
+		menuEvents,
+		pickedFields,
 		writes: () => writes,
 		opens: () => opens,
 		renderTasks: async (next: readonly Task[]) => {
@@ -377,6 +391,123 @@ async function mountPendingRow(t: TestContext, sourceLine: string, lines: readon
 		},
 	};
 }
+
+test("right-click on a row opens the menu once and does not open the note", async (t) => {
+	const row = await mountPendingRow(t, "- [ ] a", ["- [x] a"], true);
+	let bubbled = 0;
+	const onContextMenu = () => bubbled++;
+	document.body.addEventListener("contextmenu", onContextMenu);
+	t.after(() => document.body.removeEventListener("contextmenu", onContextMenu));
+	const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, view: window });
+	await act(() => row.container.querySelector(".task .content")!.dispatchEvent(event));
+	assert.equal(event.defaultPrevented, true);
+	assert.deepEqual(row.menuEvents, [event]);
+	assert.equal(bubbled, 0);
+	assert.equal(row.opens(), 0);
+});
+
+test("dimmed and guarded right-clicks prevent the default without opening the menu", async (t) => {
+	t.mock.method(performance, "now", () => 1000);
+	t.mock.method(window.performance, "now", () => 1000);
+	const row = await mountPendingRow(t, "- [ ] a", ["- [x] a"], true);
+	await row.click();
+	const dispatch = async (selector = ".task") => {
+		const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, view: window });
+		Object.defineProperty(event, "timeStamp", { value: 990 });
+		await act(() => row.container.querySelector(selector)!.dispatchEvent(event));
+		assert.equal(event.defaultPrevented, true);
+	};
+	await dispatch();
+	assert.deepEqual(row.menuEvents, []);
+	const b = parseTaskLine("- [ ] b", { moment, path: "Other.md" });
+	assert.ok(b);
+	await row.renderTasks([b, row.task]);
+	assert.ok(row.container.querySelector(".task:not([aria-busy])"));
+	await dispatch(".task:not([aria-busy])");
+	assert.deepEqual(row.menuEvents, []);
+	assert.equal(row.opens(), 0);
+});
+
+test("mobile renders ⋯ after ✏️ and sends its click to the row menu; desktop renders no ⋯", async (t) => {
+	const previous = Platform.isMobile;
+	t.after(() => {
+		Platform.isMobile = previous;
+	});
+	Platform.isMobile = false;
+	const desktop = await mountPendingRow(t, "- [ ] a", ["- [x] a"], true);
+	assert.equal(desktop.container.querySelector(".info .menu"), null);
+	assert.doesNotMatch(desktop.container.querySelector(".info")!.textContent!, /⋯/u);
+	Platform.isMobile = true;
+	const mobile = await mountPendingRow(t, "- [ ] a", ["- [x] a"], true);
+	const button = mobile.container.querySelector<HTMLElement>(".info .menu");
+	assert.ok(button);
+	assert.equal(button.textContent, "⋯");
+	assert.equal(button.getAttribute("aria-label"), "Task menu");
+	assert.equal(button.previousElementSibling?.className, "modify");
+	const event = new MouseEvent("click", { bubbles: true, view: window });
+	await act(() => button.dispatchEvent(event));
+	assert.deepEqual(mobile.menuEvents, [event]);
+	assert.equal(mobile.opens(), 0);
+	await mobile.click();
+	await act(() => button.click());
+	assert.equal(mobile.menuEvents.length, 1, "a dimmed mobile row ignores its menu button");
+});
+
+test("the setting leaves the default context menu and hides ⋯ on mobile", async (t) => {
+	const previous = Platform.isMobile;
+	Platform.isMobile = true;
+	t.after(() => {
+		Platform.isMobile = previous;
+	});
+	const fixture = await mountNoteActions(t);
+	const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, view: window });
+	await act(() => fixture.container.querySelector(".task")!.dispatchEvent(event));
+	assert.equal(event.defaultPrevented, false);
+	assert.equal(fixture.container.querySelector(".info .menu"), null);
+	assert.equal(fixture.openFile.mock.callCount(), 0);
+	assert.equal(fixture.write.mock.callCount(), 0);
+});
+
+test("date badge clicks pick due, scheduled and start without opening the note", async (t) => {
+	const source = "- [ ] a 📅 2026-10-31 ⏳ 2026-10-30 🛫 2026-10-29 ✅ 2026-10-28";
+	const row = await mountPendingRow(t, source, [source.replace("[ ]", "[x]")], true);
+	const selectors = ["due at ", "scheduled to ", "start at ", "complete at "].map(
+		(prefix) => `.info > a[aria-label^="${prefix}"]`,
+	);
+	for (const selector of selectors) await row.click(selector);
+	assert.deepEqual([...row.pickedFields].sort(), ["due", "scheduled", "start"]);
+	assert.equal(row.opens(), 1, "the completion badge still opens the note");
+	await row.click();
+	for (const selector of selectors) await row.click(selector);
+	assert.equal(row.pickedFields.length, 3, "dimmed badges do not pick a date");
+	const withoutHandler = await mountPendingRow(t, source, []);
+	for (const selector of selectors) await withoutHandler.click(selector);
+	assert.equal(withoutHandler.opens(), 4, "without a handler every date badge bubbles to the row");
+});
+
+test("guarded mobile menu and date badge clicks do not open the note", async (t) => {
+	const previous = Platform.isMobile;
+	Platform.isMobile = true;
+	t.after(() => {
+		Platform.isMobile = previous;
+	});
+	t.mock.method(performance, "now", () => 1000);
+	t.mock.method(window.performance, "now", () => 1000);
+	const row = await mountPendingRow(t, "- [ ] a 📅 2026-10-31", [], true);
+	const other = parseTaskLine("- [ ] b", { moment, path: "Other.md" });
+	assert.ok(other);
+	await row.renderTasks([other, row.task]);
+	for (const selector of [".info .menu", '.info > a[aria-label^="due at "]']) {
+		const control = row.container.querySelector<HTMLElement>(selector);
+		assert.ok(control);
+		const event = new MouseEvent("click", { bubbles: true, view: window });
+		Object.defineProperty(event, "timeStamp", { value: 990 });
+		await act(() => control.dispatchEvent(event));
+	}
+	assert.deepEqual(row.menuEvents, []);
+	assert.deepEqual(row.pickedFields, []);
+	assert.equal(row.opens(), 0);
+});
 
 function assertIcon(container: HTMLElement, status: string, marker: string) {
 	assert.equal(

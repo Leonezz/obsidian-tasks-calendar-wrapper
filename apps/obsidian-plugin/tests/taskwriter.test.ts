@@ -1144,7 +1144,7 @@ test("setting scheduled keeps an impossible due date unchanged", async () => {
 	}
 });
 
-test("isNotReread shares the slow date guard until the note is re-read, including BOM handling", async () => {
+test("refuseIfNotReread shares the slow date guard until the note is re-read, including BOM handling", async () => {
 	for (const [content, line] of [
 		["- [ ] Pay", 0],
 		["\uFEFF- [ ] Pay", 0],
@@ -1154,30 +1154,43 @@ test("isNotReread shares the slow date guard until the note is re-read, includin
 		const w = h.create();
 		const target = Object.freeze(h.target(line));
 		try {
-			assert.equal(w.isNotReread(target), false);
+			assert.equal(w.refuseIfNotReread(target, "date"), undefined);
 			const edit = { kind: "date", field: "due", day: dayKey(moment("2026-10-26")) } as const;
 			assert.equal((await h.write(target, edit)).kind, "written");
-			assert.equal(w.isNotReread(target), false);
+			assert.equal(w.refuseIfNotReread(target, "date"), undefined);
 			await h.clock.advance(10_000);
 			const notices = [...h.notices];
 			const events = [...h.events];
 			const reads = [...h.readCalls];
-			assert.equal(w.isNotReread(target), true);
-			assert.equal(
-				w.isNotReread({ ...target, sourceLine: target.sourceLine.replace(/^\uFEFF/u, "") }),
-				line === 0,
+			const holds = new Map(h.holds);
+			const refusal = {
+				kind: "refused",
+				reason: "not-reread",
+				message:
+					"Obsidian hasn't re-read a yet, so the timeline can't change “Pay” again. Try again in a moment.",
+			};
+			const refused = w.refuseIfNotReread(target, "date");
+			assert.deepEqual(refused, refusal);
+			assert.ok(Object.isFrozen(refused));
+			assert.deepEqual(h.refusals, [
+				{ reason: "not-reread", context: { path: "a.md", line, text: "Pay", action: "date" } },
+			]);
+			assert.deepEqual(
+				w.refuseIfNotReread({ ...target, sourceLine: target.sourceLine.replace(/^\uFEFF/u, "") }, "date"),
+				line === 0 ? refusal : undefined,
 			);
-			assert.equal(w.isNotReread({ ...target, path: "other.md" }), false);
-			assert.equal(w.isNotReread({ ...target, line: line + 1 }), false);
-			assert.deepEqual(h.notices, notices);
+			assert.equal(w.refuseIfNotReread({ ...target, path: "other.md" }, "date"), undefined);
+			assert.equal(w.refuseIfNotReread({ ...target, line: line + 1 }, "date"), undefined);
+			assert.deepEqual(h.notices, [...notices, ...Array(line === 0 ? 2 : 1).fill(refusal.message)]);
 			assert.deepEqual(h.events, events);
 			assert.deepEqual(h.readCalls, reads);
+			assert.deepEqual(h.holds, holds);
 			const result = await h.write(target, edit);
 			assert.equal(result.kind, "refused");
 			if (result.kind === "refused") assert.equal(result.reason, "not-reread");
 			assert.equal(h.processCalls.length, 1);
 			await h.deliver();
-			assert.equal(w.isNotReread(target), false);
+			assert.equal(w.refuseIfNotReread(target, "date"), undefined);
 		} finally {
 			w.dispose();
 		}

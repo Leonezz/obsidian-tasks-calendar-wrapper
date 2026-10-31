@@ -156,7 +156,7 @@ test("quick entry inserted before a rename is reported added", async (t) => {
 
 test("quick entry into a missing note still asks Create note and creates it outside the writer", async (t) => {
 	const { vault, contents, writes } = fakeVault({});
-	const writer: Pick<TaskWriter, "insert" | "write" | "editInTasksDialog"> = {
+	const writer: Pick<TaskWriter, "insert" | "write" | "editInTasksDialog" | "refuseIfNotReread"> = {
 		write: async () => {
 			throw new Error("a new note must not use the writer");
 		},
@@ -164,6 +164,9 @@ test("quick entry into a missing note still asks Create note and creates it outs
 			throw new Error("a new note must not use the writer");
 		},
 		editInTasksDialog: async () => {
+			throw new Error("a new note must not use the writer");
+		},
+		refuseIfNotReread: () => {
 			throw new Error("a new note must not use the writer");
 		},
 	};

@@ -1,4 +1,4 @@
-import { MarkdownRenderer } from "obsidian";
+import { MarkdownRenderer, Platform } from "obsidian";
 import * as React from "react";
 import { getFileTitle, sameRowModel, type BadgeKind, type TaskRowModel } from "@tasks-calendar-wrapper/core";
 import { TasksTimelineView } from "../../../src/views";
@@ -91,8 +91,18 @@ class TaskRow extends React.Component<TaskRowProps> {
 			if (overlay?.dimmed || clickIsGuarded(evt.nativeEvent, clock)) return;
 			callbacks.handleModifyTask?.(model, evt.nativeEvent);
 		};
+		const onRowMenu = (evt: React.MouseEvent) => {
+			evt.stopPropagation();
+			if (overlay?.dimmed || clickIsGuarded(evt.nativeEvent, clock)) return;
+			callbacks.handleRowMenu?.(model, evt.nativeEvent);
+		};
+		const onContextMenu = (evt: React.MouseEvent) => {
+			evt.preventDefault();
+			onRowMenu(evt);
+		};
 		return (
 			<div
+				{...(callbacks.handleRowMenu ? { onContextMenu } : {})}
 				data-line={model.line}
 				data-task={model.statusMarker}
 				data-col={model.col}
@@ -117,13 +127,28 @@ class TaskRow extends React.Component<TaskRowProps> {
 					</div>
 					<div className="line info">
 						{callbacks.handleModifyTask && <ModifyBadge onClick={onModifyTask}></ModifyBadge>}
-						{model.badges.map((badge) => (
+						{callbacks.handleRowMenu && Platform.isMobile && (
+							<a className="menu" aria-label="Task menu" onClick={onRowMenu}>
+								⋯
+							</a>
+						)}
+						{model.badges.map(({ kind, ariaLabel, label }) => (
 							<DateStatusBadge
-								key={badge.kind}
-								className={badgeClasses[badge.kind]}
-								ariaLabel={badge.ariaLabel}
-								label={badge.label}
-								icon={badgeIcons[badge.kind]}
+								key={kind}
+								className={badgeClasses[kind]}
+								ariaLabel={ariaLabel}
+								label={label}
+								icon={badgeIcons[kind]}
+								onClick={
+									callbacks.handleDateBadge &&
+									(kind === "due" || kind === "scheduled" || kind === "start")
+										? (evt) => {
+												evt.stopPropagation();
+												if (overlay?.dimmed || clickIsGuarded(evt.nativeEvent, clock)) return;
+												callbacks.handleDateBadge?.(model, kind);
+											}
+										: undefined
+								}
 							/>
 						))}
 						<FileBadge filePath={model.path} subPath={model.subPath} />
@@ -224,10 +249,9 @@ const defaultBadgeProps = {
 	ariaLabel: "",
 	label: "",
 	icon: Icons.taskIcon,
-	//onClick: () => { },
 };
 
-type BadgeProps = Readonly<typeof defaultBadgeProps>;
+type BadgeProps = Readonly<typeof defaultBadgeProps> & { readonly onClick?: React.MouseEventHandler };
 
 class DateStatusBadge extends React.Component<BadgeProps> {
 	render(): React.ReactNode {
@@ -236,7 +260,7 @@ class DateStatusBadge extends React.Component<BadgeProps> {
 		const label = this.props.label;
 		const icon = this.props.icon;
 		return (
-			<a className={type} aria-label={aria_label} /*onClick={this.props.onClick}*/>
+			<a className={type} aria-label={aria_label} onClick={this.props.onClick}>
 				<div className="icon">{icon}</div>
 				<div className="label">{label}</div>
 			</a>

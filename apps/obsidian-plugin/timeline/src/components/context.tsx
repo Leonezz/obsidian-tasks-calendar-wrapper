@@ -1,5 +1,5 @@
 import { Pos, type UserEvent } from "obsidian";
-import type { QuickFilter, TaskRowModel } from "@tasks-calendar-wrapper/core";
+import type { DateField, QuickFilter, TaskRowModel } from "@tasks-calendar-wrapper/core";
 import * as React from "react";
 import { createPendingWrites } from "../pendingwrites";
 import type { ListChangeClock } from "./clickguard";
@@ -37,4 +37,6 @@ export const TaskItemEventHandlersContext = React.createContext({
 	handleCompleteTask: (model: TaskRowModel, evt: MouseEvent) => {},
 	handleTagClick: (tag: string) => {},
 	handleModifyTask: undefined as ((model: TaskRowModel, evt: MouseEvent) => void) | undefined,
+	handleRowMenu: undefined as ((model: TaskRowModel, evt: MouseEvent) => void) | undefined,
+	handleDateBadge: undefined as ((model: TaskRowModel, field: DateField) => void) | undefined,
 });

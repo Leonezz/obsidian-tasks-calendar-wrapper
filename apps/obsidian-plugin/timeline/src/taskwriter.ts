@@ -149,8 +149,8 @@ export interface TaskWriterDeps {
 export interface TaskWriter {
 	/** Samples the path to choose a queue, then reads the target again when its turn starts. The path must stay fixed. */
 	write(target: () => LineTarget, edit: TaskEdit): Promise<WriteResult>;
-	/** The row menu checks this before opening the date modal, without showing a notice. */
-	isNotReread(target: LineTarget): boolean;
+	/** Shows the not-reread refusal before opening a date modal, or returns undefined when editing can proceed. */
+	refuseIfNotReread(target: LineTarget, action: "date"): WriteResult | undefined;
 	/** Existing-note quick entry; its callback runs only after the encoding check, inside Vault.process. */
 	insert(path: string, edit: (content: string) => string): Promise<WriteResult>;
 	/** Waits for Tasks' dialog before checking its result and entering the write queue. */
@@ -739,10 +739,19 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 				edit,
 			);
 		},
-		isNotReread(target: LineTarget): boolean {
-			return tracking.notReread(
-				target.line === 0 ? { ...target, sourceLine: withoutBOM(target.sourceLine) } : target,
-			);
+		refuseIfNotReread(target: LineTarget, action: "date"): WriteResult | undefined {
+			const sourceLine = target.line === 0 ? withoutBOM(target.sourceLine) : target.sourceLine;
+			if (!tracking.notReread({ ...target, sourceLine })) return undefined;
+			return Object.freeze({
+				kind: "refused",
+				reason: "not-reread",
+				message: deps.notices.refuse("not-reread", {
+					path: target.path,
+					line: target.line,
+					text: displayText(sourceLine, deps),
+					action,
+				}),
+			});
 		},
 		insert(path: string, apply: (content: string) => string): Promise<WriteResult> {
 			return enqueue(() => ({ path, line: 0, sourceLine: "" }), { kind: "insert", apply });
