@@ -1,0 +1,496 @@
+import {
+	MarkdownView,
+	type App,
+	type DataAdapter,
+	type EditorChange,
+	type MetadataCache,
+	type Vault,
+	type Workspace,
+} from "obsidian";
+import {
+	checkEncoding,
+	decodeUtf8Strict,
+	deepFreeze,
+	lineOfText,
+	replaceSpan,
+	replaceTaskLine,
+	undoSpanFor,
+	type DayKey,
+	type DateField,
+	type LineTarget,
+	type MomentFactory,
+	type NewDateStyle,
+	type UndoSpan,
+} from "@tasks-calendar-wrapper/core";
+import { openNoteAt } from "../../src/open-note";
+import type { NoticeContext, NoticePresenter, RefuseReason } from "./notices";
+import type { SharedTaskIndex } from "./sharedindex";
+import type { TasksToggle } from "./tasksplugin";
+import { displayText, errorMessage, normalized, prepareEdit, sourceAt, withoutBOM } from "./writerchecks";
+import { createWriteTracking, writeSnapshot, type WriteRecord } from "./writerholds";
+
+export * from "./writerconstants";
+
+/** Edits whose new lines can be computed without waiting for user input. */
+export type TaskEdit =
+	| { readonly kind: "toggle" }
+	| { readonly kind: "date"; readonly field: DateField; readonly day: DayKey | null }
+	| { readonly kind: "replace"; readonly expected: string; readonly lines: readonly string[] };
+
+/** The exact span and neighbours from the write, ready for the later Undo implementation. Frozen. */
+export interface UndoRecord extends UndoSpan {
+	readonly id: number;
+	readonly path: string;
+	readonly line: number;
+	readonly above: string | null;
+	readonly below: string | null;
+	readonly edit: TaskEdit;
+}
+
+/** A write is finished before its metadata is necessarily indexed; callers can wait for either milestone. */
+export type WriteResult =
+	| { readonly kind: "written"; readonly delta: number; readonly indexed: Promise<void>; readonly undo?: UndoRecord }
+	| { readonly kind: "unchanged"; readonly alreadyUndone?: true }
+	| { readonly kind: "cancelled" }
+	| { readonly kind: "refused"; readonly reason: RefuseReason; readonly message: string }
+	| { readonly kind: "failed"; readonly unknownOutcome: boolean; readonly error: unknown };
+
+/** Events carry the write identity, so several pending writes of one row do not replace each other. Frozen. */
+export interface WriteEvent extends LineTarget {
+	readonly id: number;
+	readonly kind:
+		| "pending"
+		| "written"
+		| "unchanged"
+		| "refused"
+		| "failed"
+		| "indexed"
+		| "slow"
+		| "overwritten"
+		| "recheck"
+		| "released";
+	readonly lines: readonly string[];
+	readonly reason?: RefuseReason;
+	readonly unknownOutcome?: boolean;
+	/** Advances only for a token release. A failed save before the hold emits the current sequence. */
+	readonly releaseSeq?: number;
+}
+
+/** The public Obsidian operations the writer uses; App satisfies this structural surface. */
+export interface WriterApp {
+	readonly vault: Pick<Vault, "getFileByPath" | "cachedRead" | "process" | "on" | "offref"> & {
+		readonly adapter: Pick<DataAdapter, "readBinary">;
+	};
+	readonly metadataCache: Pick<MetadataCache, "on" | "offref">;
+	readonly workspace: Pick<Workspace, "getLeavesOfType">;
+}
+
+/** All clocks, effects and settings come from the plugin; timers must belong to its main window. */
+export interface TaskWriterDeps {
+	readonly app: WriterApp;
+	readonly index: Pick<SharedTaskIndex, "hold" | "markDirty">;
+	readonly tasks: () => TasksToggle;
+	readonly notices: Pick<NoticePresenter, "refuse" | "failed" | "mayNotSaved" | "slow" | "editNotSaved">;
+	readonly moment: MomentFactory & { locale(): string };
+	/** Obsidian's language for explaining unreadable local digits; defaults to its moment locale. */
+	readonly locale?: () => string;
+	readonly today: () => DayKey;
+	readonly now: () => number;
+	readonly setTimeout: (run: () => void, delay: number) => number;
+	readonly clearTimeout: (timer: number) => void;
+	readonly newDateStyle: () => NewDateStyle;
+	readonly logger: Pick<Console, "error" | "warn">;
+	/** Tests can observe opening a note; the plugin uses openNoteAt by default. */
+	readonly openNote?: (path: string, line: number) => void | Promise<unknown>;
+}
+
+/** One writer per plugin, with independent queues for its notes and counting index holds. */
+export interface TaskWriter {
+	/** Samples the path to choose a queue, then reads the target again when its turn starts. The path must stay fixed. */
+	write(target: () => LineTarget, edit: TaskEdit): Promise<WriteResult>;
+	/** Subscribes without owning view state; unsubscribe when the view closes. */
+	onWrite(listener: (event: WriteEvent) => void): () => void;
+	/** The latest actual token release; a reload captures this before asking the index for tasks. */
+	releaseSeq(): number;
+	/** Plugin unload abandons outstanding operations, releases holds and cancels its timers. */
+	dispose(): void;
+}
+
+/** A view's own line shifts, kept until a reload beginning after their releases has rendered. */
+export interface ShiftLedger {
+	/** Records a successful write in the coordinates at the time of that write. */
+	record(path: string, line: number, delta: number, releaseSeq: number): void;
+	/** Drops only shifts included in a completed reload. */
+	clearThrough(seq: number): void;
+	/** Applies retained writes in order to the view's original line. */
+	shift(path: string, line: number): number;
+}
+
+/** Keeps shifts local to the view that made them, rather than shifting another view's already-fresh rows. */
+export function createShiftLedger(): ShiftLedger {
+	let shifts: readonly { path: string; line: number; delta: number; seq: number }[] = [];
+	return Object.freeze({
+		record(path: string, line: number, delta: number, releaseSeq: number): void {
+			shifts = [...shifts, Object.freeze({ path, line, delta, seq: releaseSeq })];
+		},
+		clearThrough(seq: number): void {
+			shifts = shifts.filter((shift) => shift.seq > seq);
+		},
+		shift(path: string, line: number): number {
+			return shifts.reduce((at, shift) => (shift.path === path && shift.line < at ? at + shift.delta : at), line);
+		},
+	});
+}
+
+const origin = "tasks-calendar-wrapper";
+const timeoutMessage = "File system operation timed out.";
+
+class Refusal extends Error {
+	constructor(
+		readonly reason: RefuseReason,
+		readonly inside = false,
+	) {
+		super(reason);
+	}
+}
+class EditorSaveFailure extends Error {
+	constructor(
+		readonly cause: unknown,
+		readonly unknownOutcome: boolean,
+	) {
+		super(errorMessage(cause));
+	}
+}
+
+/** Makes a line-scoped transaction, including the newline when deleting a non-final line. */
+function editorChange(
+	before: string,
+	line: number,
+	expected: readonly string[],
+	lines: readonly string[],
+	eol = "\n",
+): EditorChange {
+	const first = lineOfText(before, line) ?? "";
+	const bom = line === 0 && first.startsWith("\uFEFF") ? 1 : 0;
+	if (expected.length === 0) return { from: { line, ch: bom }, to: { line, ch: bom }, text: lines.join(eol) + eol };
+	if (lines.length === 0 && lineOfText(before, line + expected.length) !== null) {
+		return { from: { line, ch: bom }, to: { line: line + expected.length, ch: 0 }, text: "" };
+	}
+	const end = line + expected.length - 1;
+	return {
+		from: { line, ch: bom },
+		to: { line: end, ch: (lineOfText(before, end) ?? "").length },
+		text: lines.join("\n"),
+	};
+}
+
+/** Coordinates preflight, saving, encoding and both write paths without running a UI command. */
+export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
+	let disposed = false;
+	const listeners = new Set<(event: WriteEvent) => void>();
+	const queues = new Map<string, Promise<unknown>>();
+	const aborts = new Set<() => void>();
+	const tracking = createWriteTracking(deps, (event) => {
+		for (const listener of listeners) listener(event);
+	});
+
+	function views(path: string): MarkdownView[] {
+		return deps.app.workspace
+			.getLeavesOfType("markdown")
+			.map((leaf) => leaf.view)
+			.filter((view): view is MarkdownView => view instanceof MarkdownView && view.file?.path === path);
+	}
+	function refused(
+		record: WriteRecord,
+		reason: RefuseReason,
+		inside = false,
+		details: Partial<NoticeContext> = {},
+	): WriteResult {
+		const context = { ...record.context, ...details };
+		if (reason === "line-changed") {
+			if (!record.token) deps.index.markDirty([record.target.path]);
+			tracking.lineChanged(record);
+		}
+		const result: WriteResult = Object.freeze({
+			kind: "refused",
+			reason,
+			message: deps.notices.refuse(reason, context),
+		});
+		tracking.finish(record, result);
+		tracking.release(record, reason !== "not-utf8" && !inside);
+		if (record.edit.kind === "replace") deps.notices.editNotSaved(context, record.lines.join("\n"));
+		return result;
+	}
+	function failed(record: WriteRecord, error: unknown, unknown: false | "timeout" | "editor"): WriteResult {
+		if (unknown) {
+			tracking.block(record.target.path);
+			deps.notices.mayNotSaved(record.context, unknown);
+		} else {
+			deps.logger.error("Tasks Calendar Wrapper: could not write", record.target.path, error);
+			deps.notices.failed(record.context, error);
+		}
+		const result: WriteResult = Object.freeze({ kind: "failed", unknownOutcome: Boolean(unknown), error });
+		tracking.finish(record, result);
+		tracking.release(record);
+		if (record.edit.kind === "replace") deps.notices.editNotSaved(record.context, record.lines.join("\n"));
+		return result;
+	}
+
+	async function run(target: LineTarget, edit: TaskEdit): Promise<WriteResult> {
+		const sourceLine =
+			target.line === 0
+				? withoutBOM(edit.kind === "replace" ? edit.expected : target.sourceLine)
+				: edit.kind === "replace"
+					? edit.expected
+					: target.sourceLine;
+		target = Object.freeze({ ...target, sourceLine });
+		const context: NoticeContext = {
+			path: target.path,
+			line: target.line,
+			text: displayText(sourceLine, deps),
+			action: edit.kind,
+		};
+		const early = (reason: RefuseReason) =>
+			refused(
+				tracking.begin(target, edit, Object.freeze(edit.kind === "replace" ? [...edit.lines] : []), context),
+				reason,
+			);
+		if (tracking.blocked(target.path)) return early("queue-blocked");
+		if (tracking.notReread(target)) return early("not-reread");
+		const file = deps.app.vault.getFileByPath(target.path);
+		if (!file) return early("moved-or-deleted");
+		const note = file;
+		const distance = tracking.distance(target.path);
+		if (distance > 0) {
+			const content = await deps.app.vault.cachedRead(file);
+			for (let line = Math.max(0, target.line - distance); line <= target.line + distance; line++) {
+				if (line !== target.line && sourceAt(content, line) === sourceLine) return early("ambiguous");
+			}
+		}
+		const prepared = prepareEdit(sourceLine, target.path, edit, deps);
+		const lines =
+			prepared.kind === "lines" ? prepared.lines : Object.freeze(edit.kind === "replace" ? [...edit.lines] : []);
+		const record = tracking.begin(target, edit, lines, context);
+		if (prepared.kind === "refused") {
+			if (prepared.reason === "tasks-too-old") {
+				try {
+					if (deps.openNote) await deps.openNote(target.path, target.line);
+					else await openNoteAt(deps.app as App, target.path, target.line);
+				} catch (error) {
+					return failed(record, error, false);
+				}
+			}
+			return refused(record, prepared.reason, false, prepared.details);
+		}
+		tracking.event(record, "pending");
+		let abandoned = false;
+		let timer: number | undefined;
+		let abort!: () => void;
+		const deadline = new Promise<never>((_, reject) => {
+			abort = () => {
+				abandoned = true;
+				reject(new Error(disposed ? "The plugin unloaded." : timeoutMessage));
+			};
+			timer = deps.setTimeout(abort, 60000);
+			aborts.add(abort);
+		});
+		function active(): void {
+			if (abandoned || disposed) throw new Error("The write was abandoned.");
+			if (record.invalidated) throw new Refusal("moved-or-deleted");
+		}
+		async function bytes(): Promise<string> {
+			const raw = await deps.app.vault.adapter.readBinary(target.path);
+			active();
+			const decoded = decodeUtf8Strict(new Uint8Array(raw));
+			if (decoded === null) throw new Refusal("not-utf8");
+			return decoded;
+		}
+		async function write(): Promise<WriteResult> {
+			let disk = await deps.app.vault.cachedRead(note);
+			active();
+			record.before = writeSnapshot(disk);
+			const predicted = replaceTaskLine(disk, target, lines);
+			if (predicted.kind === "replaced") record.after = writeSnapshot(predicted.content);
+			const open = views(target.path);
+			let verified: string | null = null;
+			for (const view of open) {
+				const text = view.getViewData();
+				if (text.includes("\uFFFD")) verified = await bytes();
+				active();
+				if (normalized(text) !== normalized(disk)) {
+					await view.save();
+					active();
+					disk = await deps.app.vault.cachedRead(note);
+					active();
+					verified = null;
+				}
+			}
+			for (const view of open)
+				if (sourceAt(view.getViewData(), target.line) !== sourceLine) throw new Refusal("line-changed");
+			const source = open.find((view) => view.getMode() === "source");
+			if (prepared.kind === "lines" && prepared.unchanged) {
+				if (source) {
+					const line = source.editor.getLine(target.line);
+					if ((target.line === 0 ? withoutBOM(line) : line) !== sourceLine) throw new Refusal("line-changed");
+				}
+				if (sourceAt(disk, target.line) !== sourceLine) throw new Refusal("line-changed");
+				record.before = record.after = writeSnapshot(source ? source.editor.getValue() : disk);
+				return Object.freeze({ kind: "unchanged" });
+			}
+			active();
+			if (!tracking.acquire(record)) throw new Refusal("moved-or-deleted");
+			let undo: UndoRecord | undefined;
+			function replacement(before: string): string {
+				const result = replaceTaskLine(before, target, lines);
+				if (result.kind === "mismatch") throw new Refusal("line-changed", !source);
+				record.before = writeSnapshot(before);
+				record.after = writeSnapshot(result.content);
+				record.delta = result.delta;
+				const span = undoSpanFor(before, target.line, lines);
+				undo = deepFreeze({
+					...span,
+					id: record.id,
+					path: target.path,
+					line: target.line,
+					edit,
+					above: sourceAt(before, target.line - 1),
+					below: sourceAt(before, target.line + 1),
+				});
+				return result.content;
+			}
+			if (source) {
+				if (source.editor.getValue().includes("\uFFFD") && verified === null) verified = await bytes();
+				active();
+				// No await between these checks and the transaction: typing cannot interleave with the replacement.
+				const line = source.editor.getLine(target.line);
+				if ((target.line === 0 ? withoutBOM(line) : line) !== sourceLine) throw new Refusal("line-changed");
+				const before = source.editor.getValue();
+				if (checkEncoding(before, verified).kind !== "ok") throw new Refusal("line-changed");
+				replacement(before);
+				source.editor.transaction(
+					{ changes: [editorChange(before, target.line, [sourceLine], lines)] },
+					origin,
+				);
+				try {
+					await source.save();
+				} catch (error) {
+					if (abandoned || errorMessage(error) === timeoutMessage) throw error;
+					const current = source.editor.getValue();
+					const span = undo!.span;
+					const reverse = replaceSpan(current, span, [undo!.original]);
+					if (reverse.kind === "mismatch") throw new EditorSaveFailure(error, true);
+					source.editor.transaction(
+						{ changes: [editorChange(current, span.line, span.expected, [undo!.original], span.eol)] },
+						origin,
+					);
+					throw new EditorSaveFailure(error, false);
+				}
+				active();
+			} else {
+				for (let attempt = 0; attempt < 2; attempt++) {
+					let needBytes = false;
+					let refusal: Refusal | undefined;
+					await deps.app.vault.process(note, (content) => {
+						if (abandoned || disposed || record.invalidated) return content;
+						record.before = writeSnapshot(content);
+						const encoding = checkEncoding(content, verified);
+						if (encoding.kind === "verify-bytes") {
+							needBytes = true;
+							return content;
+						}
+						if (encoding.kind === "changed") {
+							refusal = new Refusal("line-changed", true);
+							return content;
+						}
+						try {
+							return replacement(content);
+						} catch (error) {
+							if (!(error instanceof Refusal)) throw error;
+							refusal = error;
+							return content;
+						}
+					});
+					active();
+					if (refusal) throw refusal;
+					if (!needBytes) break;
+					verified = await bytes();
+				}
+			}
+			return Object.freeze({ kind: "written", delta: record.delta, indexed: record.indexedPromise, undo });
+		}
+		try {
+			const result = await Promise.race([write(), deadline]);
+			tracking.finish(record, result);
+			if (result.kind === "unchanged") tracking.release(record, false);
+			return result;
+		} catch (error) {
+			abandoned = true;
+			if (error instanceof Refusal) return refused(record, error.reason, error.inside);
+			if (error instanceof EditorSaveFailure)
+				return failed(record, error.cause, error.unknownOutcome ? "editor" : false);
+			return failed(record, error, errorMessage(error) === timeoutMessage ? "timeout" : false);
+		} finally {
+			if (timer !== undefined) deps.clearTimeout(timer);
+			aborts.delete(abort);
+		}
+	}
+
+	return Object.freeze({
+		write(target: () => LineTarget, edit: TaskEdit): Promise<WriteResult> {
+			if (disposed)
+				return Promise.resolve(
+					Object.freeze({ kind: "failed", unknownOutcome: false, error: new Error("The plugin unloaded.") }),
+				);
+			const path = target().path;
+			const request: TaskEdit =
+				edit.kind === "replace"
+					? Object.freeze({ ...edit, lines: Object.freeze([...edit.lines]) })
+					: Object.freeze({ ...edit });
+			const previous = queues.get(path) ?? Promise.resolve();
+			const next = previous.then(async () => {
+				const latest = target();
+				if (latest.path !== path) throw new Error("A queued task target changed notes.");
+				if (disposed)
+					return Object.freeze({
+						kind: "failed" as const,
+						unknownOutcome: false,
+						error: new Error("The plugin unloaded."),
+					});
+				try {
+					return await run(latest, request);
+				} catch (error) {
+					const lines = Object.freeze(request.kind === "replace" ? [...request.lines] : []);
+					const record = tracking.begin(latest, request, lines, {
+						path,
+						line: latest.line,
+						text: latest.sourceLine,
+						action: request.kind,
+					});
+					return failed(record, error, errorMessage(error) === timeoutMessage ? "timeout" : false);
+				}
+			});
+			const tail = next.then(
+				() => {},
+				() => {},
+			);
+			queues.set(path, tail);
+			void tail.then(() => {
+				if (queues.get(path) === tail) queues.delete(path);
+			});
+			return next;
+		},
+		onWrite(listener: (event: WriteEvent) => void): () => void {
+			listeners.add(listener);
+			return () => {
+				listeners.delete(listener);
+			};
+		},
+		releaseSeq: tracking.releaseSeq,
+		dispose(): void {
+			if (disposed) return;
+			disposed = true;
+			for (const abort of aborts) abort();
+			tracking.dispose();
+		},
+	});
+}
