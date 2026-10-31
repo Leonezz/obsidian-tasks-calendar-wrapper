@@ -47,6 +47,18 @@ test("the confirm button has the focus, so Enter answers yes as it did with the 
 	assert.equal(button(modal, "Cancel").buttonEl.focused, false);
 });
 
+test("recurrence confirm focuses Cancel", () => {
+	const modal = new ConfirmModal({} as App, {
+		title: "Remove recurrence?",
+		message: "The edited task no longer repeats.",
+		confirmText: "Save without recurrence",
+		focusCancel: true,
+	});
+	void modal.ask();
+	assert.equal(button(modal, "Cancel").buttonEl.focused, true);
+	assert.equal(button(modal, "Save without recurrence").buttonEl.focused, false);
+});
+
 test("pressing cancel answers no", async () => {
 	const modal = new ConfirmModal({} as App, options);
 	const answer = modal.ask();

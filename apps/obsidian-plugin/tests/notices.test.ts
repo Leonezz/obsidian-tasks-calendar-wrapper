@@ -12,6 +12,10 @@ import {
 	writeFailureText,
 	mayNotSavedText,
 	slowText,
+	tasksDialogTooOldText,
+	tasksDialogErrorText,
+	tasksDialogFailureText,
+	tasksDialogDeleteText,
 	undoNoticeText,
 	undoDoneText,
 	undoAlreadyText,
@@ -23,6 +27,35 @@ import {
 import { ButtonComponent, FakeElement, Notice } from "./stubs/obsidian";
 
 const context: NoticeContext = { path: "Notes/Home.md", line: 3, text: "Buy milk" };
+
+test("Tasks dialog notice texts are byte-exact", () => {
+	assert.equal(tasksDialogTooOldText(), "Tasks 7.21 or later edits here");
+	assert.equal(tasksDialogErrorText("unavailable"), "Could not reach the Tasks plugin: unavailable");
+	assert.equal(tasksDialogFailureText("broken"), "Tasks' edit dialog failed: broken");
+	assert.equal(
+		tasksDialogDeleteText(),
+		"Nothing was written. If you completed this task in the dialog: Tasks returns nothing for a task set to delete itself, so use the checkbox to complete it.",
+	);
+});
+
+test("Tasks dialog notices last eight seconds without buttons", () => {
+	Notice.instances = [];
+	const presenter = createNoticePresenter({} as App);
+	const cases = [
+		["too-old", tasksDialogTooOldText()],
+		["error", tasksDialogErrorText("broken")],
+		["failed", tasksDialogFailureText("broken")],
+		["delete", tasksDialogDeleteText()],
+	] as const;
+	for (const [kind, expected] of cases) {
+		assert.equal(presenter.tasksDialog(kind, context, "broken"), expected);
+		const notice = Notice.instances.at(-1)!;
+		assert.equal(notice.message, expected);
+		assert.equal(notice.duration, 8000);
+	}
+	presenter.dispose();
+	assert.ok(Notice.instances.every((notice) => notice.hidden));
+});
 
 const refusals: readonly [RefuseReason, Partial<NoticeContext>, string][] = [
 	[

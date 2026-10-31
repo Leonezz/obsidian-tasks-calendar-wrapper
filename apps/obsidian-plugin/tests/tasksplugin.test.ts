@@ -3,13 +3,86 @@ import assert from "node:assert/strict";
 import type { App } from "obsidian";
 import moment from "moment";
 import "moment/locale/fa";
-import { canEditInTasksDialog, getTasksToggle } from "../timeline/src/tasksplugin";
+import { canEditInTasksDialog, getTasksDialog, getTasksToggle } from "../timeline/src/tasksplugin";
 import { writerHarness } from "./writer-harness";
 
 /** Only the private registry is needed by the capability reader. */
 function appWith(apiV1: unknown): App {
 	return { plugins: { plugins: { "obsidian-tasks-plugin": { apiV1 } } } } as unknown as App;
 }
+
+test("the dialog accessor reads none, too-old, error and edit afresh each call", () => {
+	const registry: Record<string, unknown> = {};
+	const app = { plugins: { plugins: registry } } as unknown as App;
+	assert.deepEqual(getTasksDialog(app), { kind: "none" });
+	registry["obsidian-tasks-plugin"] = { apiV1: {} };
+	assert.deepEqual(getTasksDialog(app), { kind: "too-old" });
+	for (const value of [undefined, null, false, "edit", 1]) {
+		registry["obsidian-tasks-plugin"] = { apiV1: { editTaskLineModal: value } };
+		const dialog = getTasksDialog(app);
+		assert.equal(dialog.kind, "error");
+		if (dialog.kind === "error") {
+			assert.equal(
+				String(dialog.error),
+				"Error: Malformed Tasks plugin API: editTaskLineModal is not a function.",
+			);
+		}
+	}
+	registry["obsidian-tasks-plugin"] = { apiV1: { editTaskLineModal: () => Promise.resolve("") } };
+	const dialog = getTasksDialog(app);
+	assert.equal(dialog.kind, "edit");
+	assert.equal(Object.isFrozen(dialog), true);
+	delete registry["obsidian-tasks-plugin"];
+	assert.deepEqual(getTasksDialog(app), { kind: "none" });
+});
+
+test("the dialog accessor reports a throwing API or method getter", () => {
+	const error = new Error("dialog unavailable");
+	const throws = {
+		get: () => {
+			throw error;
+		},
+	};
+	const entry = Object.defineProperty({}, "apiV1", throws);
+	const app = { plugins: { plugins: { "obsidian-tasks-plugin": entry } } } as unknown as App;
+	assert.deepEqual(getTasksDialog(app), { kind: "error", error });
+	assert.deepEqual(getTasksDialog(appWith(Object.defineProperty({}, "editTaskLineModal", throws))), {
+		kind: "error",
+		error,
+	});
+});
+
+test("the dialog edit calls apiV1 as a method with the line and returns its promise", async () => {
+	const answer = Promise.resolve("- [ ] Edited");
+	const calls: unknown[][] = [];
+	const api = {
+		editTaskLineModal(line: string): Promise<string> {
+			calls.push([this, line]);
+			return answer;
+		},
+	};
+	const dialog = getTasksDialog(appWith(api));
+	if (dialog.kind !== "edit") assert.fail("edit capability expected");
+	assert.equal(dialog.edit("- [ ] Original"), answer);
+	assert.deepEqual(calls, [[api, "- [ ] Original"]]);
+	assert.equal(await answer, "- [ ] Edited");
+});
+
+test("a synchronous throw from the dialog edit propagates to its caller", () => {
+	const error = new Error("could not open");
+	const dialog = getTasksDialog(
+		appWith({
+			editTaskLineModal: () => {
+				throw error;
+			},
+		}),
+	);
+	if (dialog.kind !== "edit") assert.fail("edit capability expected");
+	assert.throws(
+		() => dialog.edit("- [ ] A"),
+		(caught) => caught === error,
+	);
+});
 
 test('app.plugins missing, a malformed entry, apiV1 not an object or the function not a function → explicit refusal, never "not installed"', async () => {
 	const malformed = [

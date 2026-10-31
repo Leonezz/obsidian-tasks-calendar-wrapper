@@ -22,7 +22,7 @@ export const UNDO_DONE_NOTICE_MS = 4000;
 export const UNDO_KEEP_MAX = 50;
 /** Longest a note stays blocked after a file-system operation has an unknown outcome. */
 export const FS_TIMEOUT_BLOCK_MS = 120000;
-/** Quiet period for the later Tasks dialog dependency check. */
+/** Quiet period after Tasks' dialog changes dependency values. */
 export const DEPENDENCY_QUIET_MS = 1500;
-/** Longest the later Tasks dialog waits for dependency edits. */
+/** Longest Tasks' dialog waits for dependency edits. */
 export const DEPENDENCY_WAIT_MAX_MS = 5000;

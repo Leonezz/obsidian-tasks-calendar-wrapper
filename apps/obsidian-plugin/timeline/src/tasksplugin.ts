@@ -21,6 +21,13 @@ export type TasksDialogCapability =
 	| { readonly kind: "too-old" }
 	| { readonly kind: "error"; readonly error: unknown };
 
+/** A fresh dialog capability whose edit method returns Tasks' own promise. */
+export type TasksDialog =
+	| { readonly kind: "none" }
+	| { readonly kind: "edit"; readonly edit: (line: string) => Promise<string> }
+	| { readonly kind: "too-old" }
+	| { readonly kind: "error"; readonly error: unknown };
+
 type ApiResult =
 	| { readonly kind: "none" }
 	| { readonly kind: "api"; readonly api: Record<string, unknown> }
@@ -82,13 +89,24 @@ export function getTasksToggle(app: App, moment: MomentLocale): TasksToggle {
 
 /** Reads the dialog capability afresh, without opening a dialog or relying on Tasks' version number. */
 export function canEditInTasksDialog(app: App): TasksDialogCapability {
+	const result = getTasksDialog(app);
+	return result.kind === "edit" ? Object.freeze({ kind: "edit" }) : result;
+}
+
+/** Reads Tasks on this action, preserving its method receiver and synchronous opening errors. */
+export function getTasksDialog(app: App): TasksDialog {
 	const result = readApi(app);
 	if (result.kind !== "api") return result;
 	try {
 		const edit = result.api.editTaskLineModal;
 		if (edit === undefined && !("editTaskLineModal" in result.api)) return Object.freeze({ kind: "too-old" });
 		if (typeof edit !== "function") malformed("editTaskLineModal is not a function");
-		return Object.freeze({ kind: "edit" });
+		return Object.freeze({
+			kind: "edit",
+			edit(line: string): Promise<string> {
+				return edit.call(result.api, line) as Promise<string>;
+			},
+		});
 	} catch (error) {
 		return Object.freeze({ kind: "error", error });
 	}

@@ -49,7 +49,12 @@ export function displayText(source: string, deps: TaskWriterDeps): string {
 
 /** A synchronous preflight result, computed before entering Obsidian's file-system queue. */
 export type PreparedEdit =
-	| { readonly kind: "lines"; readonly lines: readonly string[]; readonly unchanged: boolean }
+	| {
+			readonly kind: "lines";
+			readonly lines: readonly string[];
+			readonly unchanged: boolean;
+			readonly recurrenceRemoved: boolean;
+	  }
 	| { readonly kind: "refused"; readonly reason: RefuseReason; readonly details?: Partial<NoticeContext> };
 
 /** Checks the input and Tasks' output without saving a view or holding the index. */
@@ -129,7 +134,12 @@ export function prepareEdit(
 						}
 					: undefined,
 		};
-	return Object.freeze({ kind: "lines", lines: Object.freeze([...lines]), unchanged: checked.unchanged });
+	return Object.freeze({
+		kind: "lines",
+		lines: Object.freeze([...lines]),
+		unchanged: checked.unchanged,
+		recurrenceRemoved: checked.recurrenceRemoved,
+	});
 }
 
 /** Keeps thrown strings and Error messages readable without assuming a particular Tasks error type. */
