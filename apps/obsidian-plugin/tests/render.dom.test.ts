@@ -12,10 +12,13 @@ import { providerValues, renderedDays, rendersOf, resetRenderCounts } from "../t
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
 import { moment } from "../utils/moment";
 import { notesApp, openView } from "./view-harness";
+import type { TaskWriter, WriteResult } from "../timeline/src/taskwriter";
+import { deferred } from "./writer-harness";
 
 /** The view's bridge mounted in a real DOM, with its store already loaded. */
-async function mountTimeline(t: TestContext, notes: Record<string, string>) {
+async function mountTimeline(t: TestContext, notes: Record<string, string>, writer?: Pick<TaskWriter, "insert">) {
 	const app = notesApp(notes);
+	Object.assign(app.vault, { getFileByPath: (path: string) => (path in notes ? { path } : null) });
 	const opened = openView(app);
 	await opened.view.onUpdateOptions({ ...defaultUserOptions });
 	const container = document.body.appendChild(document.createElement("div"));
@@ -29,7 +32,14 @@ async function mountTimeline(t: TestContext, notes: Record<string, string>) {
 	});
 	const bridge = createRef<ObsidianBridge>();
 	await act(() => {
-		root.render(createElement(ObsidianBridge, { plugin: { app } as never, store: opened.store, ref: bridge }));
+		root.render(
+			createElement(ObsidianBridge, {
+				plugin: { app } as never,
+				store: opened.store,
+				writer: writer ?? opened.writer,
+				ref: bridge,
+			}),
+		);
 	});
 	return { opened, container, bridge };
 }
@@ -308,3 +318,43 @@ test("row models last within a day and refresh with the locale and next day", as
 		[...container.querySelectorAll<HTMLOptionElement>(".fileSelect option")].some((o) => o.value === dailyNote),
 	);
 });
+
+for (const outcome of ["refused", "failed"] as const) {
+	test(`quick entry keeps its input text on ${outcome} and clears it after success`, async (t) => {
+		const pending = deferred<WriteResult>();
+		const calls: { path: string; text: string }[] = [];
+		let result: WriteResult =
+			outcome === "refused"
+				? { kind: "refused", reason: "not-utf8", message: "Inbox is not saved as UTF-8." }
+				: { kind: "failed", unknownOutcome: false, error: new Error("disk full") };
+		const writer: Pick<TaskWriter, "insert"> = {
+			async insert(path, edit) {
+				calls.push({ path, text: edit("## Tasks\n") });
+				return calls.length === 1 ? pending.promise : result;
+			},
+		};
+		const { opened, container } = await mountTimeline(t, { "Inbox.md": "- [ ] older" }, writer);
+		await act(() =>
+			opened.view.onUpdateOptions({
+				...defaultUserOptions,
+				taskFiles: ["Inbox.md"],
+				sectionForNewTasks: "## Tasks",
+			}),
+		);
+		const input = container.querySelector<HTMLInputElement>('.quickEntryPanel input[type="text"]');
+		const submit = container.querySelector<HTMLButtonElement>(".quickEntryPanel button.ok");
+		assert.ok(input && submit);
+		input.value = "keep this draft";
+		await act(() => submit.click());
+		assert.equal(input.value, "keep this draft", "while the writer is still running");
+		await act(async () => {
+			pending.resolve(result);
+		});
+		assert.equal(input.value, "keep this draft");
+		assert.deepEqual(calls, [{ path: "Inbox.md", text: "## Tasks\n- [ ] keep this draft\n" }]);
+		result = { kind: "written", delta: 1, indexed: Promise.resolve() };
+		await act(() => submit.click());
+		assert.equal(input.value, "");
+		assert.equal(calls.length, 2);
+	});
+}

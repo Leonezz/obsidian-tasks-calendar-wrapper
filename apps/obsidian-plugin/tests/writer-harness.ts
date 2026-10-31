@@ -11,7 +11,15 @@ import {
 	type WriteEvent,
 	type WriteResult,
 } from "../timeline/src/taskwriter";
-import { refusalText, writeFailureText, mayNotSavedText, slowText } from "../timeline/src/notices";
+import {
+	refusalText,
+	writeFailureText,
+	mayNotSavedText,
+	slowText,
+	undoDoneText,
+	undoAlreadyText,
+	undoExpiredText,
+} from "../timeline/src/notices";
 
 /** Flushes the small async steps between a fake adapter and its listeners. */
 export async function flush(): Promise<void> {
@@ -299,6 +307,17 @@ export function writerHarness(notes: Record<string, string | Uint8Array> = { "a.
 				notices.push(slowText(context));
 			},
 			editNotSaved() {},
+			undoDone(context, dialogEdit) {
+				notices.push(undoDoneText(context, dialogEdit));
+			},
+			undoAlready(context) {
+				notices.push(undoAlreadyText(context));
+			},
+			undoExpired(context) {
+				const text = undoExpiredText(context);
+				notices.push(text);
+				return text;
+			},
 		},
 		today: () => dayKey(moment("2026-10-31", "YYYY-MM-DD")),
 		now: () => clock.now,

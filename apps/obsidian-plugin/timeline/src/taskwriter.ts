@@ -13,13 +13,13 @@ import {
 	deepFreeze,
 	lineOfText,
 	replaceSpan,
-	replaceTaskLine,
 	undoSpanFor,
 	type DayKey,
 	type DateField,
 	type LineTarget,
 	type MomentFactory,
 	type NewDateStyle,
+	type Span,
 	type UndoSpan,
 } from "@tasks-calendar-wrapper/core";
 import { openNoteAt } from "../../src/open-note";
@@ -28,6 +28,7 @@ import type { SharedTaskIndex } from "./sharedindex";
 import type { TasksToggle } from "./tasksplugin";
 import { displayText, errorMessage, normalized, prepareEdit, sourceAt, withoutBOM } from "./writerchecks";
 import { createWriteTracking, writeSnapshot, type WriteRecord } from "./writerholds";
+import { UNDO_KEEP_MAX } from "./writerconstants";
 
 export * from "./writerconstants";
 
@@ -35,16 +36,23 @@ export * from "./writerconstants";
 export type TaskEdit =
 	| { readonly kind: "toggle" }
 	| { readonly kind: "date"; readonly field: DateField; readonly day: DayKey | null }
-	| { readonly kind: "replace"; readonly expected: string; readonly lines: readonly string[] };
+	| { readonly kind: "replace"; readonly expected: string; readonly lines: readonly string[] }
+	| { readonly kind: "undo"; readonly record: UndoRecord };
 
-/** The exact span and neighbours from the write, ready for the later Undo implementation. Frozen. */
+/** Quick entry shares the queue and hold lifecycle without creating an undo or revert-check record. */
+export interface InsertEdit {
+	readonly kind: "insert";
+	readonly apply: (content: string) => string;
+}
+
+/** The exact span and neighbours from the write. The writer keeps shifted copies; callers retain this frozen handle. */
 export interface UndoRecord extends UndoSpan {
 	readonly id: number;
 	readonly path: string;
 	readonly line: number;
 	readonly above: string | null;
 	readonly below: string | null;
-	readonly edit: TaskEdit;
+	readonly edit: Exclude<TaskEdit, { kind: "undo" }>;
 }
 
 /** A write is finished before its metadata is necessarily indexed; callers can wait for either milestone. */
@@ -72,6 +80,8 @@ export interface WriteEvent extends LineTarget {
 	readonly lines: readonly string[];
 	readonly reason?: RefuseReason;
 	readonly unknownOutcome?: boolean;
+	/** A quick entry displaced the line at this position too, rather than replacing that line. */
+	readonly insertBefore?: true;
 	/** Advances only for a token release. A failed save before the hold emits the current sequence. */
 	readonly releaseSeq?: number;
 }
@@ -90,7 +100,10 @@ export interface TaskWriterDeps {
 	readonly app: WriterApp;
 	readonly index: Pick<SharedTaskIndex, "hold" | "markDirty">;
 	readonly tasks: () => TasksToggle;
-	readonly notices: Pick<NoticePresenter, "refuse" | "failed" | "mayNotSaved" | "slow" | "editNotSaved">;
+	readonly notices: Pick<
+		NoticePresenter,
+		"refuse" | "failed" | "mayNotSaved" | "slow" | "editNotSaved" | "undoDone" | "undoAlready" | "undoExpired"
+	>;
 	readonly moment: MomentFactory & { locale(): string };
 	/** Obsidian's language for explaining unreadable local digits; defaults to its moment locale. */
 	readonly locale?: () => string;
@@ -108,6 +121,12 @@ export interface TaskWriterDeps {
 export interface TaskWriter {
 	/** Samples the path to choose a queue, then reads the target again when its turn starts. The path must stay fixed. */
 	write(target: () => LineTarget, edit: TaskEdit): Promise<WriteResult>;
+	/** Existing-note quick entry; its callback runs only after the encoding check, inside Vault.process. */
+	insert(path: string, edit: (content: string) => string): Promise<WriteResult>;
+	/** The owning view calls this when its undo notice disappears, including after a hover. */
+	forgetUndo(record: UndoRecord): void;
+	/** Lets views hide a notice when its record is forgotten, evicted, or disposed. */
+	onUndoGone(listener: (record: UndoRecord) => void): () => void;
 	/** Subscribes without owning view state; unsubscribe when the view closes. */
 	onWrite(listener: (event: WriteEvent) => void): () => void;
 	/** The latest actual token release; a reload captures this before asking the index for tasks. */
@@ -119,7 +138,7 @@ export interface TaskWriter {
 /** A view's own line shifts, kept until a reload beginning after their releases has rendered. */
 export interface ShiftLedger {
 	/** Records a successful write in the coordinates at the time of that write. */
-	record(path: string, line: number, delta: number, releaseSeq: number): void;
+	record(path: string, line: number, delta: number, releaseSeq: number, insertBefore?: boolean): void;
 	/** Drops only shifts included in a completed reload. */
 	clearThrough(seq: number): void;
 	/** Applies retained writes in order to the view's original line. */
@@ -128,16 +147,22 @@ export interface ShiftLedger {
 
 /** Keeps shifts local to the view that made them, rather than shifting another view's already-fresh rows. */
 export function createShiftLedger(): ShiftLedger {
-	let shifts: readonly { path: string; line: number; delta: number; seq: number }[] = [];
+	let shifts: readonly { path: string; line: number; delta: number; seq: number; insertBefore: boolean }[] = [];
 	return Object.freeze({
-		record(path: string, line: number, delta: number, releaseSeq: number): void {
-			shifts = [...shifts, Object.freeze({ path, line, delta, seq: releaseSeq })];
+		record(path: string, line: number, delta: number, releaseSeq: number, insertBefore = false): void {
+			shifts = [...shifts, Object.freeze({ path, line, delta, seq: releaseSeq, insertBefore })];
 		},
 		clearThrough(seq: number): void {
 			shifts = shifts.filter((shift) => shift.seq > seq);
 		},
 		shift(path: string, line: number): number {
-			return shifts.reduce((at, shift) => (shift.path === path && shift.line < at ? at + shift.delta : at), line);
+			return shifts.reduce(
+				(at, shift) =>
+					shift.path === path && (shift.line < at || (shift.insertBefore && shift.line === at))
+						? at + shift.delta
+						: at,
+				line,
+			);
 		},
 	});
 }
@@ -169,9 +194,12 @@ function editorChange(
 	expected: readonly string[],
 	lines: readonly string[],
 	eol = "\n",
+	below?: string | null,
 ): EditorChange {
 	const first = lineOfText(before, line) ?? "";
-	const bom = line === 0 && first.startsWith("\uFEFF") ? 1 : 0;
+	// A deleted first line may have exposed a U+FEFF owned by the following line, as in replaceSpan.
+	const exposed = expected.length === 0 && below === first;
+	const bom = line === 0 && first.startsWith("\uFEFF") && !exposed ? 1 : 0;
 	if (expected.length === 0) return { from: { line, ch: bom }, to: { line, ch: bom }, text: lines.join(eol) + eol };
 	if (lines.length === 0 && lineOfText(before, line + expected.length) !== null) {
 		return { from: { line, ch: bom }, to: { line: line + expected.length, ch: 0 }, text: "" };
@@ -190,9 +218,28 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 	const listeners = new Set<(event: WriteEvent) => void>();
 	const queues = new Map<string, Promise<unknown>>();
 	const aborts = new Set<() => void>();
+	const undos = new Map<UndoRecord, UndoRecord>();
+	const undoListeners = new Set<(record: UndoRecord) => void>();
 	const tracking = createWriteTracking(deps, (event) => {
 		for (const listener of listeners) listener(event);
 	});
+
+	function forgetUndo(record: UndoRecord): void {
+		if (!undos.delete(record)) return;
+		for (const listener of undoListeners) listener(record);
+	}
+	function keepUndo(record: UndoRecord): void {
+		undos.set(record, record);
+		if (undos.size > UNDO_KEEP_MAX) forgetUndo(undos.keys().next().value!);
+	}
+	function shiftUndos(path: string, line: number, delta: number, insertBefore = false): void {
+		if (delta === 0) return;
+		for (const [handle, record] of undos) {
+			if (record.path !== path || record.line < line || (record.line === line && !insertBefore)) continue;
+			const shifted = record.line + delta;
+			undos.set(handle, deepFreeze({ ...record, line: shifted, span: { ...record.span, line: shifted } }));
+		}
+	}
 
 	function views(path: string): MarkdownView[] {
 		return deps.app.workspace
@@ -207,9 +254,9 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 		details: Partial<NoticeContext> = {},
 	): WriteResult {
 		const context = { ...record.context, ...details };
-		if (reason === "line-changed") {
+		if (reason === "line-changed" || reason === "undo-changed") {
 			if (!record.token) deps.index.markDirty([record.target.path]);
-			tracking.lineChanged(record);
+			if (reason === "line-changed") tracking.lineChanged(record);
 		}
 		const result: WriteResult = Object.freeze({
 			kind: "refused",
@@ -217,7 +264,8 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 			message: deps.notices.refuse(reason, context),
 		});
 		tracking.finish(record, result);
-		tracking.release(record, reason !== "not-utf8" && !inside);
+		tracking.release(record, reason === "undo-changed" || (reason !== "not-utf8" && !inside));
+		if (reason === "undo-changed") tracking.event(record, "recheck");
 		if (record.edit.kind === "replace") deps.notices.editNotSaved(context, record.lines.join("\n"));
 		return result;
 	}
@@ -236,7 +284,12 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 		return result;
 	}
 
-	async function run(target: LineTarget, edit: TaskEdit): Promise<WriteResult> {
+	async function run(target: LineTarget, edit: TaskEdit | InsertEdit): Promise<WriteResult> {
+		const undoing = edit.kind === "undo" ? undos.get(edit.record) : undefined;
+		if (edit.kind === "undo") {
+			const undo = undoing ?? edit.record;
+			target = { path: undo.path, line: undo.line, sourceLine: undo.original };
+		}
 		const sourceLine =
 			target.line === 0
 				? withoutBOM(edit.kind === "replace" ? edit.expected : target.sourceLine)
@@ -248,29 +301,64 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 			path: target.path,
 			line: target.line,
 			text: displayText(sourceLine, deps),
-			action: edit.kind,
+			action: edit.kind === "insert" ? undefined : edit.kind,
 		};
 		const early = (reason: RefuseReason) =>
 			refused(
 				tracking.begin(target, edit, Object.freeze(edit.kind === "replace" ? [...edit.lines] : []), context),
 				reason,
 			);
+		if (edit.kind === "undo" && !undoing) {
+			const record = tracking.begin(target, edit, [], context);
+			const result: WriteResult = Object.freeze({
+				kind: "refused",
+				reason: "undo-changed",
+				message: deps.notices.undoExpired(context),
+			});
+			tracking.finish(record, result);
+			tracking.release(record, false);
+			return result;
+		}
 		if (tracking.blocked(target.path)) return early("queue-blocked");
-		if (tracking.notReread(target)) return early("not-reread");
+		if (edit.kind !== "undo" && edit.kind !== "insert" && tracking.notReread(target)) return early("not-reread");
 		const file = deps.app.vault.getFileByPath(target.path);
 		if (!file) return early("moved-or-deleted");
 		const note = file;
 		const distance = tracking.distance(target.path);
-		if (distance > 0) {
+		if (edit.kind !== "undo" && edit.kind !== "insert" && distance > 0) {
 			const content = await deps.app.vault.cachedRead(file);
 			for (let line = Math.max(0, target.line - distance); line <= target.line + distance; line++) {
 				if (line !== target.line && sourceAt(content, line) === sourceLine) return early("ambiguous");
 			}
 		}
-		const prepared = prepareEdit(sourceLine, target.path, edit, deps);
+		const prepared =
+			edit.kind === "undo" || edit.kind === "insert"
+				? { kind: "lines" as const, lines: Object.freeze(undoing ? [undoing.original] : []), unchanged: false }
+				: prepareEdit(sourceLine, target.path, edit, deps);
 		const lines =
 			prepared.kind === "lines" ? prepared.lines : Object.freeze(edit.kind === "replace" ? [...edit.lines] : []);
 		const record = tracking.begin(target, edit, lines, context);
+		const span: Span = undoing?.span ?? { line: target.line, expected: [sourceLine] };
+		const changedReason = undoing ? "undo-changed" : "line-changed";
+		function replace(before: string) {
+			return replaceSpan(before, span, lines);
+		}
+		function alreadyUndone(before: string): boolean {
+			return (
+				undoing !== undefined &&
+				replace(before).kind === "mismatch" &&
+				replaceSpan(
+					before,
+					{
+						line: undoing.line,
+						expected: [undoing.original],
+						above: undoing.above,
+						below: undoing.below,
+					},
+					[undoing.original],
+				).kind === "replaced"
+			);
+		}
 		if (prepared.kind === "refused") {
 			if (prepared.reason === "tasks-too-old") {
 				try {
@@ -309,9 +397,11 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 			let disk = await deps.app.vault.cachedRead(note);
 			active();
 			record.before = writeSnapshot(disk);
-			const predicted = replaceTaskLine(disk, target, lines);
-			if (predicted.kind === "replaced") record.after = writeSnapshot(predicted.content);
-			const open = views(target.path);
+			if (edit.kind !== "insert") {
+				const predicted = replace(disk);
+				if (predicted.kind === "replaced") record.after = writeSnapshot(predicted.content);
+			}
+			const open = edit.kind === "insert" ? [] : views(target.path);
 			let verified: string | null = null;
 			for (const view of open) {
 				const text = view.getViewData();
@@ -325,50 +415,85 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 					verified = null;
 				}
 			}
-			for (const view of open)
-				if (sourceAt(view.getViewData(), target.line) !== sourceLine) throw new Refusal("line-changed");
+			const restored = undoing !== undefined && alreadyUndone(disk);
+			for (const view of open) {
+				const text = view.getViewData();
+				if (restored ? !alreadyUndone(text) : replace(text).kind === "mismatch")
+					throw new Refusal(changedReason);
+			}
 			const source = open.find((view) => view.getMode() === "source");
-			if (prepared.kind === "lines" && prepared.unchanged) {
+			if (restored || (prepared.kind === "lines" && prepared.unchanged)) {
 				if (source) {
 					const line = source.editor.getLine(target.line);
-					if ((target.line === 0 ? withoutBOM(line) : line) !== sourceLine) throw new Refusal("line-changed");
+					if ((target.line === 0 ? withoutBOM(line) : line) !== sourceLine) throw new Refusal(changedReason);
+					if (restored && !alreadyUndone(source.editor.getValue())) throw new Refusal(changedReason);
 				}
-				if (sourceAt(disk, target.line) !== sourceLine) throw new Refusal("line-changed");
+				if (sourceAt(disk, target.line) !== sourceLine) throw new Refusal(changedReason);
 				record.before = record.after = writeSnapshot(source ? source.editor.getValue() : disk);
-				return Object.freeze({ kind: "unchanged" });
+				return Object.freeze(restored ? { kind: "unchanged", alreadyUndone: true } : { kind: "unchanged" });
 			}
 			active();
 			if (!tracking.acquire(record)) throw new Refusal("moved-or-deleted");
 			let undo: UndoRecord | undefined;
+			let unchanged = false;
 			function replacement(before: string): string {
-				const result = replaceTaskLine(before, target, lines);
-				if (result.kind === "mismatch") throw new Refusal("line-changed", !source);
+				if (edit.kind === "insert") {
+					const after = edit.apply(before);
+					const oldLines = before.split("\n");
+					const newLines = after.split("\n");
+					const first = oldLines.findIndex((line, i) => line !== newLines[i]);
+					const line = first < 0 ? oldLines.length : first;
+					record.target = Object.freeze({ ...target, line, sourceLine: sourceAt(before, line) ?? "" });
+					record.context = { ...context, line };
+					record.before = writeSnapshot(before);
+					record.after = writeSnapshot(after);
+					record.delta = newLines.length - oldLines.length;
+					if (
+						record.delta > 0 &&
+						oldLines.slice(line).join("\n") === newLines.slice(line + record.delta).join("\n")
+					)
+						record.insertBefore = true;
+					unchanged = before === after;
+					return after;
+				}
+				const result = replace(before);
+				if (result.kind === "mismatch") {
+					if (!alreadyUndone(before)) throw new Refusal(changedReason, !source);
+					record.before = record.after = writeSnapshot(before);
+					unchanged = true;
+					return before;
+				}
 				record.before = writeSnapshot(before);
 				record.after = writeSnapshot(result.content);
 				record.delta = result.delta;
-				const span = undoSpanFor(before, target.line, lines);
-				undo = deepFreeze({
-					...span,
-					id: record.id,
-					path: target.path,
-					line: target.line,
-					edit,
-					above: sourceAt(before, target.line - 1),
-					below: sourceAt(before, target.line + 1),
-				});
+				if (edit.kind !== "undo") {
+					const saved = undoSpanFor(before, target.line, lines);
+					undo = deepFreeze({
+						...saved,
+						id: record.id,
+						path: target.path,
+						line: target.line,
+						edit,
+						above: saved.span.above !== undefined ? saved.span.above : sourceAt(before, target.line - 1),
+						below: saved.span.below !== undefined ? saved.span.below : sourceAt(before, target.line + 1),
+					});
+				}
 				return result.content;
 			}
 			if (source) {
 				if (source.editor.getValue().includes("\uFFFD") && verified === null) verified = await bytes();
 				active();
 				// No await between these checks and the transaction: typing cannot interleave with the replacement.
-				const line = source.editor.getLine(target.line);
-				if ((target.line === 0 ? withoutBOM(line) : line) !== sourceLine) throw new Refusal("line-changed");
+				if (!undoing) {
+					const line = source.editor.getLine(target.line);
+					if ((target.line === 0 ? withoutBOM(line) : line) !== sourceLine) throw new Refusal("line-changed");
+				}
 				const before = source.editor.getValue();
-				if (checkEncoding(before, verified).kind !== "ok") throw new Refusal("line-changed");
+				if (checkEncoding(before, verified).kind !== "ok") throw new Refusal(changedReason);
 				replacement(before);
+				if (unchanged) return Object.freeze({ kind: "unchanged", alreadyUndone: true });
 				source.editor.transaction(
-					{ changes: [editorChange(before, target.line, [sourceLine], lines)] },
+					{ changes: [editorChange(before, span.line, span.expected, lines, span.eol, span.below)] },
 					origin,
 				);
 				try {
@@ -376,11 +501,23 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 				} catch (error) {
 					if (abandoned || errorMessage(error) === timeoutMessage) throw error;
 					const current = source.editor.getValue();
-					const span = undo!.span;
-					const reverse = replaceSpan(current, span, [undo!.original]);
+					const rollback: Span = undoing ? { line: span.line, expected: lines } : undo!.span;
+					const originals = undoing ? span.expected : [undo!.original];
+					const reverse = replaceSpan(current, rollback, originals);
 					if (reverse.kind === "mismatch") throw new EditorSaveFailure(error, true);
 					source.editor.transaction(
-						{ changes: [editorChange(current, span.line, span.expected, [undo!.original], span.eol)] },
+						{
+							changes: [
+								editorChange(
+									current,
+									rollback.line,
+									rollback.expected,
+									originals,
+									rollback.eol,
+									rollback.below,
+								),
+							],
+						},
 						origin,
 					);
 					throw new EditorSaveFailure(error, false);
@@ -399,7 +536,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 							return content;
 						}
 						if (encoding.kind === "changed") {
-							refusal = new Refusal("line-changed", true);
+							refusal = new Refusal(changedReason, true);
 							return content;
 						}
 						try {
@@ -416,12 +553,25 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 					verified = await bytes();
 				}
 			}
-			return Object.freeze({ kind: "written", delta: record.delta, indexed: record.indexedPromise, undo });
+			if (unchanged)
+				return Object.freeze(undoing ? { kind: "unchanged", alreadyUndone: true } : { kind: "unchanged" });
+			shiftUndos(target.path, record.target.line, record.delta, record.insertBefore);
+			if (undo) keepUndo(undo);
+			return Object.freeze({
+				kind: "written",
+				delta: record.delta,
+				indexed: record.indexedPromise,
+				...(undo ? { undo } : {}),
+			});
 		}
 		try {
 			const result = await Promise.race([write(), deadline]);
 			tracking.finish(record, result);
 			if (result.kind === "unchanged") tracking.release(record, false);
+			if (undoing) {
+				if (result.kind === "written") deps.notices.undoDone(context, undoing.edit.kind === "replace");
+				else if (result.kind === "unchanged" && result.alreadyUndone) deps.notices.undoAlready(context);
+			}
 			return result;
 		} catch (error) {
 			abandoned = true;
@@ -435,49 +585,68 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 		}
 	}
 
+	function enqueue(target: () => LineTarget, edit: TaskEdit | InsertEdit): Promise<WriteResult> {
+		if (disposed)
+			return Promise.resolve(
+				Object.freeze({ kind: "failed", unknownOutcome: false, error: new Error("The plugin unloaded.") }),
+			);
+		const path = target().path;
+		const request: TaskEdit | InsertEdit =
+			edit.kind === "replace"
+				? Object.freeze({ ...edit, lines: Object.freeze([...edit.lines]) })
+				: Object.freeze({ ...edit });
+		const previous = queues.get(path) ?? Promise.resolve();
+		const next = previous.then(async () => {
+			const latest = target();
+			if (latest.path !== path) throw new Error("A queued task target changed notes.");
+			if (disposed)
+				return Object.freeze({
+					kind: "failed" as const,
+					unknownOutcome: false,
+					error: new Error("The plugin unloaded."),
+				});
+			try {
+				return await run(latest, request);
+			} catch (error) {
+				const lines = Object.freeze(request.kind === "replace" ? [...request.lines] : []);
+				const record = tracking.begin(latest, request, lines, {
+					path,
+					line: latest.line,
+					text: latest.sourceLine,
+					action: request.kind === "insert" ? undefined : request.kind,
+				});
+				return failed(record, error, errorMessage(error) === timeoutMessage ? "timeout" : false);
+			}
+		});
+		const tail = next.then(
+			() => {},
+			() => {},
+		);
+		queues.set(path, tail);
+		void tail.then(() => {
+			if (queues.get(path) === tail) queues.delete(path);
+		});
+		return next;
+	}
+
 	return Object.freeze({
 		write(target: () => LineTarget, edit: TaskEdit): Promise<WriteResult> {
-			if (disposed)
-				return Promise.resolve(
-					Object.freeze({ kind: "failed", unknownOutcome: false, error: new Error("The plugin unloaded.") }),
-				);
-			const path = target().path;
-			const request: TaskEdit =
-				edit.kind === "replace"
-					? Object.freeze({ ...edit, lines: Object.freeze([...edit.lines]) })
-					: Object.freeze({ ...edit });
-			const previous = queues.get(path) ?? Promise.resolve();
-			const next = previous.then(async () => {
-				const latest = target();
-				if (latest.path !== path) throw new Error("A queued task target changed notes.");
-				if (disposed)
-					return Object.freeze({
-						kind: "failed" as const,
-						unknownOutcome: false,
-						error: new Error("The plugin unloaded."),
-					});
-				try {
-					return await run(latest, request);
-				} catch (error) {
-					const lines = Object.freeze(request.kind === "replace" ? [...request.lines] : []);
-					const record = tracking.begin(latest, request, lines, {
-						path,
-						line: latest.line,
-						text: latest.sourceLine,
-						action: request.kind,
-					});
-					return failed(record, error, errorMessage(error) === timeoutMessage ? "timeout" : false);
-				}
-			});
-			const tail = next.then(
-				() => {},
-				() => {},
+			return enqueue(
+				edit.kind === "undo"
+					? () => ({ path: edit.record.path, line: edit.record.line, sourceLine: edit.record.original })
+					: target,
+				edit,
 			);
-			queues.set(path, tail);
-			void tail.then(() => {
-				if (queues.get(path) === tail) queues.delete(path);
-			});
-			return next;
+		},
+		insert(path: string, apply: (content: string) => string): Promise<WriteResult> {
+			return enqueue(() => ({ path, line: 0, sourceLine: "" }), { kind: "insert", apply });
+		},
+		forgetUndo,
+		onUndoGone(listener: (record: UndoRecord) => void): () => void {
+			undoListeners.add(listener);
+			return () => {
+				undoListeners.delete(listener);
+			};
 		},
 		onWrite(listener: (event: WriteEvent) => void): () => void {
 			listeners.add(listener);
@@ -491,6 +660,8 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 			disposed = true;
 			for (const abort of aborts) abort();
 			tracking.dispose();
+			for (const record of undos.keys()) forgetUndo(record);
+			undoListeners.clear();
 		},
 	});
 }

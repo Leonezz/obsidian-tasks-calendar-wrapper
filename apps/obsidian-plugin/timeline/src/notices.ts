@@ -235,6 +235,7 @@ export interface NoticePresenter {
 	undo(context: NoticeContext, change: UndoNoticeChange, undo: () => unknown): Notice;
 	undoDone(context: NoticeContext, dialogEdit?: boolean): void;
 	undoAlready(context: NoticeContext): void;
+	undoExpired(context: NoticeContext): string;
 	dispose(): void;
 }
 
@@ -322,6 +323,16 @@ export function createNoticePresenter(app: App, options: NoticePresenterOptions 
 		},
 		undoAlready(context: NoticeContext): void {
 			show(undoAlreadyText(context), UNDO_DONE_NOTICE_MS);
+		},
+		undoExpired(context: NoticeContext): string {
+			const message = undoExpiredText(context);
+			merged(
+				refusals,
+				JSON.stringify([context.path, "undo-expired"]),
+				fragment(message, [openButton(context)]),
+				REFUSAL_NOTICE_MS,
+			);
+			return message;
 		},
 		dispose(): void {
 			for (const notice of notices) notice.hide();

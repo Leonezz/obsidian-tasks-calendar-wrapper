@@ -257,6 +257,19 @@ test("not-utf8 has no Open note", () => {
 	presenter.dispose();
 });
 
+test("expired undo notices use the exact refusal text and merge while visible", () => {
+	Notice.instances = [];
+	const presenter = createNoticePresenter({} as App, { document: documentStub });
+	const message = "Could not undo: the change to “Buy milk” was too long ago. Nothing was written.";
+	assert.equal(presenter.undoExpired(context), message);
+	presenter.undoExpired(context);
+	assert.equal(Notice.instances.length, 1);
+	assert.equal(Notice.instances[0].duration, 8000);
+	assert.equal(Notice.instances[0].setMessages.length, 1);
+	assert.ok((Notice.instances[0].message as FakeElement).textContent.startsWith(message));
+	presenter.dispose();
+});
+
 test("Copy failure shows the failure text, the text box stays", async () => {
 	const copied: string[] = [];
 	const modal = new EditRecoveryModal({} as App, "Edit not saved", context, "- [ ] edited", {

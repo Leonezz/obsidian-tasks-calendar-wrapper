@@ -53,7 +53,12 @@ export type PreparedEdit =
 	| { readonly kind: "refused"; readonly reason: RefuseReason; readonly details?: Partial<NoticeContext> };
 
 /** Checks the input and Tasks' output without saving a view or holding the index. */
-export function prepareEdit(source: string, path: string, edit: TaskEdit, deps: TaskWriterDeps): PreparedEdit {
+export function prepareEdit(
+	source: string,
+	path: string,
+	edit: Exclude<TaskEdit, { kind: "undo" }>,
+	deps: TaskWriterDeps,
+): PreparedEdit {
 	if (!isTaskLine(source)) return { kind: "refused", reason: "not-task-line" };
 	if (edit.kind === "toggle") {
 		const impossible = findImpossibleDate(source);

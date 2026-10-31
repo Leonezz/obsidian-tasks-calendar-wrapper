@@ -3,7 +3,7 @@ import { taskLineCounts, type LineCounts, type LineTarget } from "@tasks-calenda
 import { contentIdOf, type ContentId } from "../../utils/contentid";
 import type { NoticeContext } from "./notices";
 import type { HoldToken } from "./taskindex";
-import type { TaskEdit, TaskWriterDeps, WriteEvent, WriteResult } from "./taskwriter";
+import type { InsertEdit, TaskEdit, TaskWriterDeps, WriteEvent, WriteResult } from "./taskwriter";
 import { normalized } from "./writerchecks";
 import {
 	AMBIGUITY_WINDOW_MS,
@@ -27,13 +27,14 @@ export interface WriteRecord {
 	readonly id: number;
 	target: LineTarget;
 	context: NoticeContext;
-	readonly edit: TaskEdit;
+	readonly edit: TaskEdit | InsertEdit;
 	readonly lines: readonly string[];
 	readonly keys: readonly string[];
 	status: "pending" | "written" | "unknown" | "unchanged" | "refused" | "failed";
 	before?: WriteSnapshot;
 	after?: WriteSnapshot;
 	delta: number;
+	insertBefore?: true;
 	resultAt: number;
 	writtenAt?: number;
 	releasedAt?: number;
@@ -86,7 +87,16 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 		timers.delete(timer);
 	}
 	function event(record: WriteRecord, kind: WriteEvent["kind"], extra: Partial<WriteEvent> = {}): void {
-		emit(Object.freeze({ ...record.target, id: record.id, lines: record.lines, kind, ...extra }));
+		emit(
+			Object.freeze({
+				...record.target,
+				id: record.id,
+				lines: record.lines,
+				kind,
+				...(record.insertBefore ? { insertBefore: true as const } : {}),
+				...extra,
+			}),
+		);
 	}
 	function of(path: string): WriteRecord[] {
 		return records.filter((record) => record.target.path === path);
@@ -242,7 +252,12 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 	});
 
 	return {
-		begin(target: LineTarget, edit: TaskEdit, lines: readonly string[], context: NoticeContext): WriteRecord {
+		begin(
+			target: LineTarget,
+			edit: TaskEdit | InsertEdit,
+			lines: readonly string[],
+			context: NoticeContext,
+		): WriteRecord {
 			// Run D will retain whole intersecting groups. Until then retain every active or recent write independently.
 			if (!records.some((record) => record.status === "pending"))
 				records = records.filter(
@@ -259,7 +274,17 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 				edit,
 				lines,
 				context,
-				keys: Object.freeze([...new Set([target.sourceLine, ...lines])]),
+				keys: Object.freeze(
+					edit.kind === "insert"
+						? []
+						: [
+								...new Set(
+									edit.kind === "undo"
+										? [...edit.record.span.expected, ...lines]
+										: [target.sourceLine, ...lines],
+								),
+							],
+				),
 				status: "pending",
 				delta: 0,
 				resultAt: deps.now(),

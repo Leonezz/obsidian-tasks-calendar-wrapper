@@ -2,8 +2,16 @@ import type { Store } from "@tasks-calendar-wrapper/core";
 import type { TimelineState } from "../src/state/timeline";
 import { TasksTimelineView } from "../src/views";
 import { createTaskIndex } from "../timeline/src/taskindex";
+import type { TaskWriter } from "../timeline/src/taskwriter";
 import { moment } from "../utils/moment";
 import { parseKeyOf } from "../utils/parsekey";
+
+/** Read-only view tests never submit an edit; fail explicitly if a test starts writing. */
+export const unusedWriter = {
+	async insert(): Promise<never> {
+		throw new Error("This view test does not provide a writer.");
+	},
+} as unknown as TaskWriter;
 
 /**
  * A timeline view opened on an app, counting the changes of the list shown. `edited` tells the view a note changed, as
@@ -12,7 +20,8 @@ import { parseKeyOf } from "../utils/parsekey";
 export function openView(app: unknown) {
 	// An index of the view's own: these apps fire no events, so `edited` marks it as watchNotes would.
 	const index = createTaskIndex({ app: app as never, moment, parseKey: () => parseKeyOf(moment) });
-	const view = new TasksTimelineView({ app } as never, index);
+	const writer = unusedWriter;
+	const view = new TasksTimelineView({ app } as never, index, writer);
 	const { store } = view as unknown as { store: Store<TimelineState> };
 	let changes = 0;
 	let shown = store.getSnapshot().shown;
@@ -20,7 +29,7 @@ export function openView(app: unknown) {
 		if (store.getSnapshot().shown !== shown) changes += 1;
 		shown = store.getSnapshot().shown;
 	});
-	return { view, store, changes: () => changes, edited: (path: string) => index.markDirty([path]) };
+	return { view, store, writer, changes: () => changes, edited: (path: string) => index.markDirty([path]) };
 }
 
 /**
