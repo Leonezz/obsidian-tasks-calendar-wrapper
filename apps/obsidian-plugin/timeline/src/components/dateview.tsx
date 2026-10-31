@@ -6,16 +6,24 @@ import {
 	type DayGroup,
 	type QuickFilter,
 	type ResolvedTask,
+	type TaskRowModel,
 } from "@tasks-calendar-wrapper/core";
 import * as Icons from "./asserts/icons";
-import { QuickEntryHandlerContext, TodayFocusEventHandlersContext, UserOptionContext } from "./context";
+import { QuickEntryHandlerContext, TodayFocusEventHandlersContext } from "./context";
 import { recordRender } from "./renderprobe";
 import { TaskItemView } from "./taskitemview";
+
+export type EntryProps = {
+	readonly counters: readonly CounterProps[];
+	readonly taskFiles: readonly string[];
+};
 
 type DateViewProps = {
 	readonly day: DayGroup;
 	/** The day's year in the locale's digits. */
 	readonly yearLabel: string;
+	readonly entry?: EntryProps;
+	readonly modelFor: (task: ResolvedTask) => TaskRowModel;
 };
 
 /**
@@ -23,26 +31,44 @@ type DateViewProps = {
  * rows when it lists any. The statuses it lists before the counter filter go on its data-types, as before.
  */
 export class DateView extends React.Component<DateViewProps> {
+	shouldComponentUpdate(next: DateViewProps): boolean {
+		const { day } = this.props;
+		return (
+			next.yearLabel !== this.props.yearLabel ||
+			next.modelFor !== this.props.modelFor ||
+			next.entry !== this.props.entry ||
+			next.day.key !== day.key ||
+			next.day.label !== day.label ||
+			next.day.isToday !== day.isToday ||
+			next.day.isEntry !== day.isEntry ||
+			next.day.dated !== day.dated ||
+			next.day.statuses.length !== day.statuses.length ||
+			next.day.statuses.some((status, index) => status !== day.statuses[index]) ||
+			next.day.tasks.length !== day.tasks.length ||
+			next.day.tasks.some((task, index) => task !== day.tasks[index])
+		);
+	}
+
 	render(): React.ReactNode {
 		// Counted for the tests only; the production build drops the call and the probe.
 		process.env.NODE_ENV !== "production" && recordRender("DateView", this.props.day.key);
-		const { day, yearLabel } = this.props;
+		const { day, yearLabel, entry, modelFor } = this.props;
 		const className = day.isToday ? "details today" : "details";
 		const types = day.statuses.join(" ");
 		return (
 			<div>
-				{day.isEntry && <TodayFocus visual={"Focus On Today"} />}
-				{day.isEntry && <Counters />}
-				{day.isEntry && (
+				{entry && <TodayFocus visual={"Focus On Today"} />}
+				{entry && <Counters counters={entry.counters} />}
+				{entry && (
 					<QuickEntryHandlerContext.Consumer>
-						{({ quickFilter }) => <QuickEntry applied={quickFilter} />}
+						{({ quickFilter }) => <QuickEntry applied={quickFilter} taskFiles={entry.taskFiles} />}
 					</QuickEntryHandlerContext.Consumer>
 				)}
 				{day.tasks.length > 0 && (
 					<div className={className} data-year={yearLabel} data-types={types}>
 						<DateHeader thisDate={day.label} />
 						<div className={className} data-year={yearLabel} data-types={types}>
-							<NormalDateContent tasks={day.tasks} />
+							<NormalDateContent tasks={day.tasks} modelFor={modelFor} />
 						</div>
 					</div>
 				)}
@@ -67,6 +93,7 @@ class DateHeader extends React.Component<DateHeaderProps> {
 
 type NormalDateContentProps = {
 	readonly tasks: readonly ResolvedTask[];
+	readonly modelFor: (task: ResolvedTask) => TaskRowModel;
 };
 
 class NormalDateContent extends React.Component<NormalDateContentProps> {
@@ -75,7 +102,7 @@ class NormalDateContent extends React.Component<NormalDateContentProps> {
 			<div className="content">
 				{/* Keyed by the task's place in the vault, so a row is never reused for another task, see issue #138. */}
 				{this.props.tasks.map((resolved) => (
-					<TaskItemView key={resolved.task.id} task={resolved} />
+					<TaskItemView key={resolved.task.id} model={this.props.modelFor(resolved)} />
 				))}
 			</div>
 		);
@@ -84,6 +111,7 @@ class NormalDateContent extends React.Component<NormalDateContentProps> {
 
 type QuickEntryProps = {
 	readonly applied?: QuickFilter;
+	readonly taskFiles: readonly string[];
 };
 const defaultQuickEntryState = {
 	selectedFile: "" as string,
@@ -170,6 +198,7 @@ class QuickEntry extends React.Component<QuickEntryProps, QuickEntryState> {
 
 	render(): React.ReactNode {
 		const filterNames = ["+", "date", "priority"];
+		const { taskFiles } = this.props;
 		return (
 			<div className="quickEntryPanel" ref={this.quickEntryPanel}>
 				<div className="left">
@@ -191,36 +220,27 @@ class QuickEntry extends React.Component<QuickEntryProps, QuickEntryState> {
 							</option>
 						</select>
 						{this.state.action === "append" ? (
-							<UserOptionContext.Consumer>
-								{({ taskFiles }) => (
-									<select
-										name="File name"
-										className="fileSelect"
-										ref={this.fileSecect}
-										aria-label="Select a note to add a new task to"
-										onChange={this.onQuickEntryFileSelectChange}
-										defaultValue={taskFiles[0]}
-									>
-										{[...taskFiles].map((f, i) => {
-											const secondParentFolder = !f.split("/")[f.split("/").length - 3]
-												? ""
-												: "… / ";
-											const parentFolder = !f.split("/")[f.split("/").length - 2]
-												? ""
-												: secondParentFolder +
-													"📂 " +
-													f.split("/")[f.split("/").length - 2] +
-													" / ";
-											const filePath = parentFolder + "📄 " + getFileTitle(f);
-											return (
-												<option style={{ whiteSpace: "nowrap" }} value={f} title={f} key={i}>
-													{filePath}
-												</option>
-											);
-										})}
-									</select>
-								)}
-							</UserOptionContext.Consumer>
+							<select
+								name="File name"
+								className="fileSelect"
+								ref={this.fileSecect}
+								aria-label="Select a note to add a new task to"
+								onChange={this.onQuickEntryFileSelectChange}
+								defaultValue={taskFiles[0]}
+							>
+								{[...taskFiles].map((f, i) => {
+									const secondParentFolder = !f.split("/")[f.split("/").length - 3] ? "" : "… / ";
+									const parentFolder = !f.split("/")[f.split("/").length - 2]
+										? ""
+										: secondParentFolder + "📂 " + f.split("/")[f.split("/").length - 2] + " / ";
+									const filePath = parentFolder + "📄 " + getFileTitle(f);
+									return (
+										<option style={{ whiteSpace: "nowrap" }} value={f} title={f} key={i}>
+											{filePath}
+										</option>
+									);
+								})}
+							</select>
 						) : (
 							<MultiSelect
 								key={0}
@@ -417,29 +437,23 @@ class TodayFocus extends React.Component<TodayFocusProps> {
 	}
 }
 
-const defaultCountersProps = {};
-
-type CountersProps = Readonly<typeof defaultCountersProps>;
+type CountersProps = { readonly counters: readonly CounterProps[] };
 
 class Counters extends React.Component<CountersProps> {
 	render(): React.ReactNode {
 		return (
-			<UserOptionContext.Consumer>
-				{(options) => (
-					<div className="counters">
-						{options.counters.map((c, i) => (
-							<CounterItem
-								onClick={c.onClick}
-								cnt={c.cnt}
-								id={c.id}
-								label={c.label}
-								ariaLabel={c.ariaLabel}
-								key={i}
-							/>
-						))}
-					</div>
-				)}
-			</UserOptionContext.Consumer>
+			<div className="counters">
+				{this.props.counters.map((c, i) => (
+					<CounterItem
+						onClick={c.onClick}
+						cnt={c.cnt}
+						id={c.id}
+						label={c.label}
+						ariaLabel={c.ariaLabel}
+						key={i}
+					/>
+				))}
+			</div>
 		);
 	}
 }

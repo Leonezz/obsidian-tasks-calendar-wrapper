@@ -6,7 +6,7 @@ import "moment/locale/zh-cn";
 import type { MomentFactory } from "../src/dates";
 import { parseNote, parseTaskLine } from "../src/parse";
 import { resolveTasks, type ResolvedTask, type ResolveSettings } from "../src/resolve";
-import { taskRowModel, type RowOptions } from "../src/row";
+import { sameRowModel, taskRowModel, type RowOptions, type TaskRowModel } from "../src/row";
 
 // Loading a locale file switches moment over to it, so the default is set back here.
 moment.locale("en");
@@ -32,6 +32,78 @@ test("the same task parsed twice gives the same row", () => {
 	const first = taskRowModel(resolved(line), options, env());
 	const second = taskRowModel(resolved(line), options, env());
 	assert.equal(JSON.stringify(first), JSON.stringify(second));
+});
+
+test("sameRowModel accepts the same model and equal models from re-read notes", () => {
+	const first = taskRowModel(resolved(line), options, env());
+	const second = taskRowModel(resolved(line), options, env());
+	assert.notEqual(first, second);
+	assert.notEqual(first.position, second.position);
+	assert.ok(sameRowModel(first, first));
+	assert.ok(sameRowModel(first, second));
+	assert.ok(sameRowModel(second, first));
+});
+
+test("sameRowModel checks every primitive field", () => {
+	const row = taskRowModel(resolved(line), options, env());
+	const changed: Omit<TaskRowModel, "position" | "badges" | "tags"> = {
+		display: row.display + " changed",
+		path: "Elsewhere.md",
+		line: row.line + 1,
+		col: row.col + 1,
+		link: "Elsewhere.md#section",
+		isDailyNote: !row.isDailyNote,
+		color: "#123456",
+		fileTitle: "Elsewhere",
+		subPath: "section",
+		statusMarker: "x",
+		status: "done",
+		useBuiltinStyle: !row.useBuiltinStyle,
+	};
+	for (const [field, value] of Object.entries(changed)) {
+		const other = { ...row, [field]: value };
+		assert.equal(sameRowModel(row, other), false, field);
+		assert.equal(sameRowModel(other, row), false, field);
+	}
+});
+
+test("sameRowModel checks both position endpoints by their numbers", () => {
+	const row = taskRowModel(resolved(line), options, env());
+	for (const endpoint of ["start", "end"] as const) {
+		for (const field of ["line", "col", "offset"] as const) {
+			const point = row.position[endpoint];
+			const other = {
+				...row,
+				position: { ...row.position, [endpoint]: { ...point, [field]: point[field] + 1 } },
+			};
+			assert.equal(sameRowModel(row, other), false, `${endpoint}.${field}`);
+			assert.equal(sameRowModel(other, row), false, `${endpoint}.${field}`);
+		}
+	}
+});
+
+test("sameRowModel checks badge and tag fields, lengths and order", () => {
+	const row = taskRowModel(resolved(line), options, env());
+	const changed: TaskRowModel[] = [
+		{ ...row, badges: row.badges.slice(1) },
+		{ ...row, badges: [...row.badges].reverse() },
+		{ ...row, tags: row.tags.slice(1) },
+		{ ...row, tags: [...row.tags].reverse() },
+		...Object.entries({ kind: "created", ariaLabel: "changed aria", label: "changed label" }).map(
+			([field, value]) => ({
+				...row,
+				badges: row.badges.map((badge, i) => (i === 0 ? { ...badge, [field]: value } : badge)),
+			}),
+		),
+		...Object.entries({ tag: "#changed", color: "#123456" }).map(([field, value]) => ({
+			...row,
+			tags: row.tags.map((tag, i) => (i === 0 ? { ...tag, [field]: value } : tag)),
+		})),
+	];
+	for (const other of changed) {
+		assert.equal(sameRowModel(row, other), false);
+		assert.equal(sameRowModel(other, row), false);
+	}
 });
 
 test("a row changes when the task's text, status or dates change", () => {

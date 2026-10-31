@@ -1,12 +1,10 @@
 import { Pos, type UserEvent } from "obsidian";
 import type { QuickFilter } from "@tasks-calendar-wrapper/core";
 import * as React from "react";
-import { CounterProps } from "./dateview";
 
 export const UserOptionContext = React.createContext({
 	taskFiles: [] as string[],
 	select: "" as string,
-	counters: [] as CounterProps[],
 	dateFormat: "YYYY-MM-DD" as string,
 	tagPalette: {} as Record<string, string>,
 	hideTags: [] as string[],

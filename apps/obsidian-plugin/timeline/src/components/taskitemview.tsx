@@ -1,41 +1,21 @@
 import { MarkdownRenderer } from "obsidian";
 import * as React from "react";
-import {
-	getFileTitle,
-	taskRowModel,
-	type BadgeKind,
-	type ResolvedTask,
-	type TaskRowModel,
-} from "@tasks-calendar-wrapper/core";
+import { getFileTitle, sameRowModel, type BadgeKind, type TaskRowModel } from "@tasks-calendar-wrapper/core";
 import { TasksTimelineView } from "../../../src/views";
-import { moment } from "../../../utils/moment";
 import * as Icons from "./asserts/icons";
-import { TaskItemEventHandlersContext, UserOptionContext } from "./context";
+import { TaskItemEventHandlersContext } from "./context";
 import { recordRender } from "./renderprobe";
 import { StripWithIcon } from "./statusmarker";
 
-type TaskItemProps = { readonly task: ResolvedTask };
+type TaskItemProps = { readonly model: TaskRowModel };
 
-const warn = (message: string, error: unknown) => console.warn(message, error);
-
-export class TaskItemView extends React.Component<TaskItemProps> {
+export class TaskItemView extends React.PureComponent<TaskItemProps> {
 	render(): React.ReactNode {
 		// Counted for the tests only; the production build drops the call and the probe.
 		process.env.NODE_ENV !== "production" && recordRender("TaskItemView");
 		return (
 			<TaskItemEventHandlersContext.Consumer>
-				{(callbacks) => (
-					<UserOptionContext.Consumer>
-						{({ dateFormat, hideTags, tagPalette, useBuiltinStyle }) => {
-							const model = taskRowModel(
-								this.props.task,
-								{ dateFormat, hideTags, tagPalette, useBuiltinStyle },
-								{ now: moment(), moment, warn },
-							);
-							return <TaskRow model={model} modelKey={JSON.stringify(model)} callbacks={callbacks} />;
-						}}
-					</UserOptionContext.Consumer>
-				)}
+				{(callbacks) => <TaskRow model={this.props.model} callbacks={callbacks} />}
 			</TaskItemEventHandlersContext.Consumer>
 		);
 	}
@@ -63,7 +43,6 @@ const badgeClasses: Record<BadgeKind, string> = {
 
 type TaskRowProps = {
 	model: TaskRowModel;
-	modelKey: string;
 	callbacks: React.ContextType<typeof TaskItemEventHandlersContext>;
 };
 
@@ -73,7 +52,7 @@ type TaskRowProps = {
  */
 class TaskRow extends React.Component<TaskRowProps> {
 	shouldComponentUpdate(next: TaskRowProps): boolean {
-		return next.modelKey !== this.props.modelKey || next.callbacks !== this.props.callbacks;
+		return !sameRowModel(next.model, this.props.model) || next.callbacks !== this.props.callbacks;
 	}
 
 	render(): React.ReactNode {

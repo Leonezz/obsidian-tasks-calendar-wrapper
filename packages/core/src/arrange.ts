@@ -318,7 +318,16 @@ export function createQuery(): (
 	return (tasks, view, env, prepared) => {
 		const day = dayKey(env.now);
 		let resolved = prepared;
-		if (!resolved) {
+		if (resolved) {
+			// A later render may no longer supply prepared, even while the tasks and resolve conditions stay equal.
+			resolvedFor = {
+				tasks,
+				settings: pickResolveSettings(view.settings),
+				day,
+				dateCache: env.dateCache,
+				resolved,
+			};
+		} else {
 			const settings = pickResolveSettings(view.settings);
 			if (
 				!env.dateCache ||
