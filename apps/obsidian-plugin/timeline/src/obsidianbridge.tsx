@@ -1,10 +1,22 @@
 import { App, ItemView, MarkdownView, Notice, normalizePath, Pos, type UserEvent } from "obsidian";
-import { createStore, normalizeNotePath, type QuickFilter, type Store, type Task } from "@tasks-calendar-wrapper/core";
+import {
+	createStore,
+	dayKey,
+	normalizeNotePath,
+	pickResolveSettings,
+	type DateValue,
+	type QuickFilter,
+	type Store,
+	type Task,
+} from "@tasks-calendar-wrapper/core";
 import * as React from "react";
+import isEqual from "underscore/modules/isEqual.js";
+import { createResolveEnv } from "../../src/state/resolveenv";
 import { initialTimelineState, type TimelineState } from "../../src/state/timeline";
 import { UserOption } from "../../src/useroptions";
 import { ConfirmModal } from "../../src/confirm-modal";
 import { openNoteAt } from "../../src/open-note";
+import { sameParseKey } from "../../utils/parsekey";
 import { tagSearchUri, tasksPluginCommand } from "../../utils/utils";
 import { appendTaskToNote } from "./appendtask";
 import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "./components/context";
@@ -15,7 +27,9 @@ const defaultObsidianBridgeProps = {
 	/** The view's state: the bridge renders its options, and the tasks read when the list shown last changed. */
 	store: createStore<TimelineState>(initialTimelineState()) as Store<TimelineState>,
 };
-type ObsidianBridgeProps = Readonly<typeof defaultObsidianBridgeProps>;
+type ObsidianBridgeProps = Readonly<typeof defaultObsidianBridgeProps> & {
+	readonly resolveEnv?: ReturnType<typeof createResolveEnv>;
+};
 interface ObsidianBridgeState {
 	readonly tasks: readonly Task[];
 	readonly userOptions: UserOption;
@@ -42,6 +56,7 @@ export function withNewList(state: ObsidianBridgeState, tasks: readonly Task[]):
 
 export class ObsidianBridge extends React.Component<ObsidianBridgeProps, ObsidianBridgeState> {
 	private readonly app: App;
+	private readonly resolveEnv: ReturnType<typeof createResolveEnv>;
 	private taskItemHandlers?: React.ContextType<typeof TaskItemEventHandlersContext>;
 	/** The view's state the bridge last took its own from. */
 	private seen: TimelineState;
@@ -50,6 +65,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		super(props);
 
 		this.app = this.props.plugin.app;
+		this.resolveEnv = props.resolveEnv ?? createResolveEnv();
 
 		this.handleCreateNewTask = this.handleCreateNewTask.bind(this);
 		this.handleTagClick = this.handleTagClick.bind(this);
@@ -222,7 +238,24 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		return this.taskItemHandlers;
 	}
 
+	/** Checked on every timeline render, including its own counter clicks after midnight or a parse change. */
+	private queryEnvFor(now: DateValue, tasks: readonly Task[], options: UserOption) {
+		const { env, parseKey } = this.resolveEnv(now);
+		const snapshot = this.props.store.getSnapshot();
+		const { resolved } = snapshot;
+		const prepared =
+			resolved &&
+			snapshot.tasks === tasks &&
+			isEqual(resolved.under.settings, pickResolveSettings(options)) &&
+			resolved.under.day === dayKey(now) &&
+			sameParseKey(resolved.under.parseKey, parseKey)
+				? resolved.shown
+				: undefined;
+		return { env, prepared };
+	}
+
 	render(): React.ReactNode {
+		const { tasks, userOptions } = this.state;
 		return (
 			<QuickEntryHandlerContext.Provider
 				value={{
@@ -233,9 +266,10 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 			>
 				<TaskItemEventHandlersContext.Provider value={this.getTaskItemHandlers()}>
 					<TimelineView
-						userOptions={this.state.userOptions}
-						tasks={this.state.tasks}
+						userOptions={userOptions}
+						tasks={tasks}
 						quickFilter={this.state.quickFilter}
+						queryEnv={(now) => this.queryEnvFor(now, tasks, userOptions)}
 					/>
 				</TaskItemEventHandlersContext.Provider>
 			</QuickEntryHandlerContext.Provider>

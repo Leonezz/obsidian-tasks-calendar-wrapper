@@ -1,12 +1,16 @@
 import { moment } from "../../../utils/moment";
 import * as React from "react";
 import { UserOption } from "../../../src/useroptions";
+import { createResolveEnv } from "../../../src/state/resolveenv";
 import {
 	counterClass,
 	createQuery,
 	quickEntryTargets,
 	type CounterFilter,
+	type DateValue,
+	type QueryEnv,
 	type QuickFilter,
+	type Resolved,
 	type Task,
 } from "@tasks-calendar-wrapper/core";
 import { TodayFocusEventHandlersContext, UserOptionContext } from "./context";
@@ -16,6 +20,7 @@ interface TimelineProps {
 	readonly userOptions: UserOption;
 	readonly tasks: readonly Task[];
 	readonly quickFilter?: QuickFilter;
+	readonly queryEnv?: (now: DateValue) => { env: QueryEnv; prepared?: Resolved };
 }
 const defaultTimelineStates = {
 	filter: "" as string,
@@ -38,6 +43,7 @@ function counterFilterOf(filter: string, behavior: string): CounterFilter {
 export class TimelineView extends React.Component<TimelineProps, TimelineStates> {
 	/** Remembers the last layout, so a click on a counter or on Focus on today resolves no task again. */
 	private readonly query = createQuery();
+	private readonly resolveEnv = createResolveEnv();
 	/** The options with the Filter behaviour, kept while the options are the same, see settingsFor. */
 	private filtering?: { readonly options: UserOption; readonly settings: UserOption };
 
@@ -84,11 +90,14 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 
 	render(): React.ReactNode {
 		const { userOptions } = this.props;
+		const now = moment();
+		const { env, prepared } = this.props.queryEnv?.(now) ?? { ...this.resolveEnv(now), prepared: undefined };
 		const counter = counterFilterOf(this.state.filter, userOptions.counterBehavior);
 		const { counts, years } = this.query(
 			this.props.tasks,
 			{ settings: this.settingsFor(userOptions, counter), counter, quickFilter: this.props.quickFilter },
-			{ now: moment(), moment },
+			env,
+			prepared,
 		);
 
 		const styles = new Array<string>();
