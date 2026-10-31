@@ -55,6 +55,7 @@
   "useFileBadge": true,
   "useSection": true,
   "useModifyBadge": true,
+  "openNoteInsteadOfInPlace": false,
   "hideStatusTasks": [
     "x",
     "-"

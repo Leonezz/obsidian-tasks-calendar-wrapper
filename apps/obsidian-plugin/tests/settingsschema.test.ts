@@ -61,8 +61,20 @@ test("the schema has one entry for each option, in the defaults' order", () => {
 		settingsSchema.map((spec) => spec.key),
 		Object.keys(defaultUserOptions),
 	);
-	assert.equal(settingsSchema.length, 45);
+	assert.equal(settingsSchema.length, 46);
 	assert.ok(Object.isFrozen(settingsSchema) && settingsSchema.every((spec) => Object.isFrozen(spec)));
+});
+
+test("openNoteInsteadOfInPlace defaults to false and is a taskItems toggle read on push", () => {
+	assert.equal(defaultUserOptions.openNoteInsteadOfInPlace, false);
+	assert.deepEqual(specOf("openNoteInsteadOfInPlace"), {
+		key: "openNoteInsteadOfInPlace",
+		type: "boolean",
+		control: "toggle",
+		group: "taskItems",
+		redrawsTab: false,
+		readWhen: "push",
+	});
 });
 
 test("the defaults, and every option of a full 0.3.7 data.json, are of the types the schema gives", () => {
@@ -237,10 +249,9 @@ test("the schema records the options read only when the plugin loads or a timeli
 });
 
 test("an open timeline keeps the filter and today focus it opened with, and takes other options when they change", async () => {
-	// React keeps a component's state across renders, unless getDerivedStateFromProps or componentDidUpdate copies the
-	// new props into it. TimelineView has neither, so a push sets its props, as here, and its state stays.
+	// A push changes the props while the user's filter and focus remain in state. The update hook only records
+	// changes to row order for the click guard.
 	assert.equal((TimelineView as { getDerivedStateFromProps?: unknown }).getDerivedStateFromProps, undefined);
-	assert.equal((TimelineView.prototype as { componentDidUpdate?: unknown }).componentDidUpdate, undefined);
 	const opened: UserOption = { ...defaultUserOptions, defaultFilters: "todoFilter", defaultTodayFocus: true };
 	const pushed: UserOption = { ...defaultUserOptions, useCounters: false };
 	const classOf = (view: TimelineView) => (view.render() as { props: { className: string } }).props.className;
@@ -249,6 +260,9 @@ test("an open timeline keeps the filter and today focus it opened with, and take
 	assert.match(atOpen, /todoFilter/);
 	assert.match(atOpen, /todayFocus/);
 	(view as { props: object }).props = { userOptions: pushed, tasks: [] };
+	const beforeUpdate = view.state;
+	view.componentDidUpdate();
+	assert.equal(view.state, beforeUpdate);
 	const afterPush = classOf(view);
 	assert.match(afterPush, /todoFilter/, "the filter it opened with");
 	assert.match(afterPush, /todayFocus/, "the today focus it opened with");

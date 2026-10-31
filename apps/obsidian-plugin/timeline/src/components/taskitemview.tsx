@@ -3,7 +3,9 @@ import * as React from "react";
 import { getFileTitle, sameRowModel, type BadgeKind, type TaskRowModel } from "@tasks-calendar-wrapper/core";
 import { TasksTimelineView } from "../../../src/views";
 import * as Icons from "./asserts/icons";
-import { TaskItemEventHandlersContext } from "./context";
+import { RowWriteContext, TaskItemEventHandlersContext } from "./context";
+import { clickIsGuarded, type ListChangeClock } from "./clickguard";
+import type { PendingWrite } from "../pendingwrites";
 import { recordRender } from "./renderprobe";
 import { StripWithIcon } from "./statusmarker";
 
@@ -15,7 +17,7 @@ export class TaskItemView extends React.PureComponent<TaskItemProps> {
 		process.env.NODE_ENV !== "production" && recordRender("TaskItemView");
 		return (
 			<TaskItemEventHandlersContext.Consumer>
-				{(callbacks) => <TaskRow model={this.props.model} callbacks={callbacks} />}
+				{(callbacks) => <SubscribedTaskRow model={this.props.model} callbacks={callbacks} />}
 			</TaskItemEventHandlersContext.Consumer>
 		);
 	}
@@ -44,7 +46,21 @@ const badgeClasses: Record<BadgeKind, string> = {
 type TaskRowProps = {
 	model: TaskRowModel;
 	callbacks: React.ContextType<typeof TaskItemEventHandlersContext>;
+	overlay?: PendingWrite;
+	clock: ListChangeClock;
 };
+
+function SubscribedTaskRow(props: Pick<TaskRowProps, "model" | "callbacks">) {
+	const { pendingWrites, clock } = React.useContext(RowWriteContext);
+	const id = `${props.model.path}:${props.model.line}`;
+	const subscribe = React.useCallback(
+		(listener: () => void) => pendingWrites.subscribe(id, listener),
+		[pendingWrites, id],
+	);
+	const snapshot = React.useCallback(() => pendingWrites.getSnapshot(id), [pendingWrites, id]);
+	const overlay = React.useSyncExternalStore(subscribe, snapshot, snapshot);
+	return <TaskRow {...props} overlay={overlay} clock={clock} />;
+}
 
 /**
  * One row, rendered only from its model. Every save re-renders the timeline with new task objects,
@@ -52,19 +68,30 @@ type TaskRowProps = {
  */
 class TaskRow extends React.Component<TaskRowProps> {
 	shouldComponentUpdate(next: TaskRowProps): boolean {
-		return !sameRowModel(next.model, this.props.model) || next.callbacks !== this.props.callbacks;
+		return (
+			!sameRowModel(next.model, this.props.model) ||
+			next.callbacks !== this.props.callbacks ||
+			next.overlay !== this.props.overlay ||
+			next.clock !== this.props.clock
+		);
 	}
 
 	render(): React.ReactNode {
-		const { model, callbacks } = this.props;
+		const { model, callbacks, overlay, clock } = this.props;
 		const openTaskFile = (evt: React.MouseEvent<HTMLDivElement>) => {
 			callbacks.handleOpenFile(model.path, model.position, evt.nativeEvent);
 		};
-		const onToggleTask = () => {
-			callbacks.handleCompleteTask(model.path, model.position);
+		const onToggleTask = (evt: React.MouseEvent) => {
+			evt.stopPropagation();
+			if (overlay?.dimmed || clickIsGuarded(evt.nativeEvent, clock)) return;
+			callbacks.handleCompleteTask(model, evt.nativeEvent);
 		};
-		const onModifyTask = () => {
-			callbacks.handleModifyTask?.(model.path, model.position);
+		const onModifyTask = (evt: React.MouseEvent) => {
+			if (overlay?.dimmed || clickIsGuarded(evt.nativeEvent, clock)) {
+				evt.stopPropagation();
+				return;
+			}
+			if (callbacks.handleModifyTask?.(model, evt.nativeEvent) === true) evt.stopPropagation();
 		};
 		return (
 			<div
@@ -76,12 +103,15 @@ class TaskRow extends React.Component<TaskRowProps> {
 				className={`task ${model.status}`}
 				style={{ "--task-color": model.color || "var(--text-muted)" } as React.CSSProperties}
 				aria-label={model.fileTitle}
+				aria-busy={overlay?.dimmed ? true : undefined}
+				aria-disabled={overlay?.dimmed ? true : undefined}
 			>
 				<StripWithIcon
 					onToggle={onToggleTask}
 					useBuiltinStyle={model.useBuiltinStyle}
 					marker={model.statusMarker}
 					status={model.status}
+					predicted={overlay}
 				/>
 				<div className="lines" onClick={openTaskFile}>
 					<div className="content">
@@ -217,7 +247,7 @@ class DateStatusBadge extends React.Component<BadgeProps> {
 }
 
 const defaultModifyBadgeProps = {
-	onClick: () => {},
+	onClick: (evt: React.MouseEvent) => {},
 };
 type ModifyBadgeProps = Readonly<typeof defaultModifyBadgeProps>;
 class ModifyBadge extends React.Component<ModifyBadgeProps> {

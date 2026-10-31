@@ -8,6 +8,7 @@
 		"build": "tsc --noEmit && node esbuild.config.mjs production",
 		"typecheck": "tsc --noEmit",
 		"api-floor": "node scripts/api-floor.mjs",
+		"private-api": "node scripts/private-api.mjs",
 		"test": "node scripts/test.mjs",
 		"capture:golden": "node scripts/capture-golden.mjs",
 		"capture:tasks-toggle": "node scripts/capture-tasks-toggle.mjs",

@@ -1,10 +1,14 @@
 import { App, CachedMetadata, debounce, ItemView, Notice, WorkspaceLeaf } from "obsidian";
-import { createStore, dayKey, pickResolveSettings, resolveTasks } from "@tasks-calendar-wrapper/core";
+import { createStore, dayKey, pickResolveSettings, resolveTasks, type LineTarget } from "@tasks-calendar-wrapper/core";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
 import { createReadReporter } from "../timeline/src/readreporter";
 import { createSharedTaskIndex, type ReaderSource, type SharedTaskIndex } from "../timeline/src/sharedindex";
 import { watchChanges, type TaskIndexReader } from "../timeline/src/taskindex";
-import type { TaskWriter } from "../timeline/src/taskwriter";
+import { createShiftLedger, type TaskWriter, type WriteEvent, type WriteResult } from "../timeline/src/taskwriter";
+import { createPendingWrites } from "../timeline/src/pendingwrites";
+import { createUndoNotices } from "../timeline/src/undonotices";
+import type { NoticePresenter } from "../timeline/src/notices";
+import { flushSync } from "react-dom";
 import { createRoot, Root } from "react-dom/client";
 import { moment } from "../utils/moment";
 import { parseKeyOf } from "../utils/parsekey";
@@ -30,6 +34,23 @@ export class TasksTimelineView extends ItemView {
 	/** The options, the tasks read last and the list shown, see TimelineState, which the bridge renders. */
 	private readonly store = createStore<TimelineState>(initialTimelineState());
 	private readonly resolveEnv = createResolveEnv();
+	readonly pendingWrites = createPendingWrites();
+	readonly ledger = createShiftLedger();
+	readonly viewWriter: Pick<TaskWriter, "write" | "insert">;
+	private readonly undoNotices: ReturnType<typeof createUndoNotices>;
+	private readonly stopWrites: () => void;
+	/** Events can release before the initiating call receives its result. */
+	private readonly writes = new Map<number, WriteEvent>();
+	private readonly releases = new Map<number, number>();
+	/**
+	 * The writes in flight per note, from pending until released or ended, and the held notes that changed meanwhile. A
+	 * reload during a hold reads the pinned entry and clears nothing, so their reload waits for the last release.
+	 */
+	private readonly heldWrites = new Map<string, Set<number>>();
+	private readonly changedWhileHeld = new Set<string>();
+	/** A renamed or deleted note may release while the applied write is still awaiting its save. */
+	private readonly renderedPending = new Set<number>();
+	private refreshTasks = false;
 	/**
 	 * This view's reader of the task index the plugin's timelines share, so a reload reads only the notes that may have
 	 * changed, see TaskIndex. Opened in the constructor, not in onOpen, as the plugin's view factory hands the view its
@@ -52,9 +73,13 @@ export class TasksTimelineView extends ItemView {
 		leaf: WorkspaceLeaf,
 		notes: ReaderSource,
 		private readonly writer: TaskWriter,
+		notices: Pick<NoticePresenter, "undo">,
 	) {
 		super(leaf);
 		this.reader = notes.openReader();
+		this.undoNotices = createUndoNotices(writer, notices, { onWriteResult: this.onWriteResult });
+		this.stopWrites = writer.onWrite((event) => this.onWrite(event));
+		this.viewWriter = writer;
 
 		TasksTimelineView.view = this;
 	}
@@ -89,12 +114,27 @@ export class TasksTimelineView extends ItemView {
 		container.empty();
 		this.root = createRoot(container);
 		this.root.render(
-			<ObsidianBridge plugin={this} store={this.store} resolveEnv={this.resolveEnv} writer={this.writer} />,
+			<ObsidianBridge
+				plugin={this}
+				store={this.store}
+				resolveEnv={this.resolveEnv}
+				writer={this.viewWriter}
+				ledger={this.ledger}
+				pendingWrites={this.pendingWrites}
+				onWriteResult={this.onWriteResult}
+			/>,
 		);
 	}
 
 	async onClose(): Promise<void> {
 		this.requestReload.cancel();
+		this.stopWrites();
+		this.undoNotices.close();
+		this.writes.clear();
+		this.releases.clear();
+		this.heldWrites.clear();
+		this.changedWhileHeld.clear();
+		this.renderedPending.clear();
 		// A reload that runs or waits goes on, and so does the one asked for while it ran; the last of them closes the
 		// reader, so the notes this view shows stay for them, and they read the changes the index marks until then.
 		// The last reader closed drops the shared index.
@@ -114,8 +154,68 @@ export class TasksTimelineView extends ItemView {
 		}
 	}
 
+	/** Only this view's own successful writes shift the targets it has already rendered. */
+	readonly onWriteResult = (target: LineTarget, result: WriteResult): void => {
+		if (result.kind !== "written") return;
+		if (!this.closed) this.recordShift(result);
+		this.undoNotices.show(result);
+	};
+
+	private recordShift(result: Extract<WriteResult, { kind: "written" }>): void {
+		const event = this.writes.get(result.id);
+		// A reload may have committed this release before the caller received its result.
+		if (!event || event.kind === "overwritten") return;
+		this.ledger.recordWrite(result.id, event.path, event.line, result.delta, event.insertBefore);
+		const seq = this.releases.get(result.id);
+		if (seq !== undefined) this.ledger.releaseWrite(result.id, seq);
+	}
+
+	private onWrite(event: WriteEvent): void {
+		if (event.kind === "pending") {
+			const held = this.heldWrites.get(event.path) ?? new Set<number>();
+			held.add(event.id);
+			this.heldWrites.set(event.path, held);
+		} else if (["released", "refused", "failed", "unchanged", "overwritten"].includes(event.kind)) {
+			const held = this.heldWrites.get(event.path);
+			if (held?.delete(event.id) && held.size === 0) {
+				this.heldWrites.delete(event.path);
+				if (this.changedWhileHeld.delete(event.path)) this.requestReload();
+			}
+		}
+		const { tasks, options } = this.store.getSnapshot();
+		this.pendingWrites.apply(event, tasks, options, this.resolveEnv(moment()).env);
+		const alreadyRendered = event.kind === "written" && this.renderedPending.delete(event.id);
+		if (
+			!alreadyRendered &&
+			(event.kind === "pending" ||
+				event.kind === "written" ||
+				(event.kind === "overwritten" && this.writes.has(event.id)))
+		)
+			this.writes.set(event.id, event);
+		if (["refused", "failed", "unchanged"].includes(event.kind)) {
+			this.writes.delete(event.id);
+			this.releases.delete(event.id);
+			this.renderedPending.delete(event.id);
+		}
+		if (event.kind === "released" && event.releaseSeq !== undefined && this.writes.has(event.id)) {
+			this.releases.set(event.id, event.releaseSeq);
+			this.ledger.releaseWrite(event.id, event.releaseSeq);
+		}
+		if (["refused", "failed", "unchanged", "overwritten"].includes(event.kind)) this.ledger.clearWrite(event.id);
+		if (event.kind === "recheck" || event.kind === "overwritten") {
+			this.refreshTasks = true;
+			this.requestReload();
+		}
+	}
+
 	private onFileChanged(paths: string[], cache: CachedMetadata | null): void {
-		if (changeAffectsTasks(paths, cache, this.filesWithTasks)) this.requestReload();
+		if (!changeAffectsTasks(paths, cache, this.filesWithTasks)) return;
+		// A reload cannot show a held note's changes or clear its overlays until its last write releases.
+		if (paths.every((path) => this.heldWrites.has(path))) {
+			for (const path of paths) this.changedWhileHeld.add(path);
+			return;
+		}
+		this.requestReload();
 	}
 
 	/** Reloads the tasks with the options. Returns once the reload is done. */
@@ -136,21 +236,45 @@ export class TasksTimelineView extends ItemView {
 		}
 		this.isReloading = true;
 		const { options } = this.store.getSnapshot();
+		const releaseSeq = this.writer.releaseSeq();
+		const refreshTasks = this.refreshTasks;
+		this.refreshTasks = false;
 		return this.reader
 			.update(options)
-			.then(({ tasks, warned, failures }) => {
+			.then(({ tasks, warned, failures, pinned }) => {
 				this.reporter.report({ warned, failures });
 				this.filesWithTasks = new Set(tasks.map((task) => task.path));
 				const { env, parseKey } = this.resolveEnv(moment());
 				const resolved = resolveTasks(tasks, options, env);
-				this.store.setState((state) =>
-					withReload(state, tasks, resolved.shown.map(heldOf), {
-						shown: resolved,
-						under: { settings: pickResolveSettings(options), day: dayKey(env.now), parseKey },
-					}),
-				);
+				const kept = new Set(pinned);
+				// The model and overlay reach React in one commit, so an old marker cannot flash between them.
+				flushSync(() => {
+					this.store.setState((state) =>
+						withReload(
+							state,
+							tasks,
+							resolved.shown.map(heldOf),
+							{
+								shown: resolved,
+								under: { settings: pickResolveSettings(options), day: dayKey(env.now), parseKey },
+							},
+							refreshTasks,
+						),
+					);
+					this.pendingWrites.clearThrough(releaseSeq, kept);
+					this.ledger.clearThrough(releaseSeq, kept);
+				});
+				for (const [id, event] of this.writes) {
+					const seq = this.releases.get(id);
+					if (seq !== undefined && seq <= releaseSeq && !kept.has(event.path)) {
+						if (event.kind === "pending") this.renderedPending.add(id);
+						this.writes.delete(id);
+						this.releases.delete(id);
+					}
+				}
 			})
 			.catch((reason) => {
+				this.refreshTasks ||= refreshTasks;
 				new Notice("Error when generating tasks from files: " + reason, 5000);
 				console.error("Tasks Calendar Wrapper: reloading tasks failed", reason);
 			})

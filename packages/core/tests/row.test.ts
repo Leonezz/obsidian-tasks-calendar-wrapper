@@ -44,11 +44,18 @@ test("sameRowModel accepts the same model and equal models from re-read notes", 
 	assert.ok(sameRowModel(second, first));
 });
 
+test("sameRowModel notices a changed sourceLine", () => {
+	const row = taskRowModel(resolved(line), options, env());
+	assert.equal(row.sourceLine, line);
+	assert.equal(sameRowModel(row, { ...row, sourceLine: "> " + line }), false);
+});
+
 test("sameRowModel checks every primitive field", () => {
 	const row = taskRowModel(resolved(line), options, env());
 	const changed: Omit<TaskRowModel, "position" | "badges" | "tags"> = {
 		display: row.display + " changed",
 		path: "Elsewhere.md",
+		sourceLine: "> " + line,
 		line: row.line + 1,
 		col: row.col + 1,
 		link: "Elsewhere.md#section",

@@ -5,9 +5,11 @@ import {
 	normalizeNotePath,
 	pickResolveSettings,
 	type DateValue,
+	type LineTarget,
 	type QuickFilter,
 	type Store,
 	type Task,
+	type TaskRowModel,
 } from "@tasks-calendar-wrapper/core";
 import * as React from "react";
 import isEqual from "underscore/modules/isEqual.js";
@@ -19,8 +21,16 @@ import { openNoteAt } from "../../src/open-note";
 import { sameParseKey } from "../../utils/parsekey";
 import { tagSearchUri, tasksPluginCommand } from "../../utils/utils";
 import { appendTaskToNote } from "./appendtask";
+import { changesInPlace } from "./taskactions";
 import { writeFailureText } from "./notices";
-import { REFUSAL_NOTICE_MS, type TaskWriter } from "./taskwriter";
+import {
+	createShiftLedger,
+	REFUSAL_NOTICE_MS,
+	type ShiftLedger,
+	type TaskWriter,
+	type WriteResult,
+} from "./taskwriter";
+import type { PendingWrites } from "./pendingwrites";
 import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "./components/context";
 import { recordProvider } from "./components/renderprobe";
 import { TimelineView } from "./components/timelineview";
@@ -31,7 +41,10 @@ const defaultObsidianBridgeProps = {
 	store: createStore<TimelineState>(initialTimelineState()) as Store<TimelineState>,
 };
 type ObsidianBridgeProps = Readonly<typeof defaultObsidianBridgeProps> & {
-	readonly writer: Pick<TaskWriter, "insert">;
+	readonly writer: Pick<TaskWriter, "insert" | "write">;
+	readonly ledger?: ShiftLedger;
+	readonly pendingWrites?: PendingWrites;
+	readonly onWriteResult?: (target: LineTarget, result: WriteResult) => void;
 	readonly resolveEnv?: ReturnType<typeof createResolveEnv>;
 };
 interface ObsidianBridgeState {
@@ -60,6 +73,7 @@ export function withNewList(state: ObsidianBridgeState, tasks: readonly Task[]):
 
 export class ObsidianBridge extends React.Component<ObsidianBridgeProps, ObsidianBridgeState> {
 	private readonly app: App;
+	private readonly ledger: ShiftLedger;
 	private readonly resolveEnv: ReturnType<typeof createResolveEnv>;
 	private taskItemHandlers?: React.ContextType<typeof TaskItemEventHandlersContext>;
 	private quickEntryHandlers?: React.ContextType<typeof QuickEntryHandlerContext>;
@@ -70,6 +84,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		super(props);
 
 		this.app = this.props.plugin.app;
+		this.ledger = props.ledger ?? createShiftLedger();
 		this.resolveEnv = props.resolveEnv ?? createResolveEnv();
 
 		this.handleCreateNewTask = this.handleCreateNewTask.bind(this);
@@ -97,9 +112,9 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 	}
 
 	/**
-	 * After the view's state changed. New options render the timeline again. Of a reload, only a change in the list
-	 * shown does, as only a changed list did before: the other tasks are hidden, and the next change or the quick entry
-	 * brings them along. Reloads and option changes keep the quick filter.
+	 * After the view's state changed. New options and a changed list render again. A writer recheck also hands over
+	 * the latest source lines when the visible list stays equal. Ordinary reloads keep the previous tasks until the
+	 * list changes or quick entry brings them along. Reloads and option changes keep the quick filter.
 	 */
 	onStateChanged() {
 		const next = this.props.store.getSnapshot();
@@ -108,7 +123,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		if (next.options !== before.options) this.setState({ userOptions: next.options });
 		// The tasks are read when React applies the change, as the old view's model was, so a reload that ends before
 		// then with the same list shown brings its tasks along.
-		if (next.shown !== before.shown)
+		if (next.shown !== before.shown || next.taskRevision !== before.taskRevision)
 			this.setState((state) => withNewList(state, this.props.store.getSnapshot().tasks));
 	}
 
@@ -133,7 +148,13 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		try {
 			const added = await appendTaskToNote(
 				this.app.vault,
-				this.props.writer,
+				{
+					insert: async (path, edit) => {
+						const result = await this.props.writer.insert(path, edit);
+						this.props.onWriteResult?.({ path, line: 0, sourceLine: "" }, result);
+						return result;
+					},
+				},
 				notePath,
 				this.state.userOptions.sectionForNewTasks,
 				"- [ ] " + append,
@@ -171,7 +192,12 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		});
 	}
 
-	handleModifyTask(path: string, position: Pos) {
+	handleModifyTask(model: TaskRowModel, evt: MouseEvent) {
+		const { path, position } = model;
+		if (!changesInPlace(this.state.userOptions)) {
+			this.handleOpenFile(path, position, evt);
+			return true;
+		}
 		openNoteAt(this.app, path, position.start.line)
 			.then((leaf) => {
 				if (leaf && leaf.view instanceof MarkdownView) {
@@ -191,40 +217,20 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 			});
 	}
 
-	handleCompleteTask(path: string, position: Pos) {
-		this.app.workspace
-			.openLinkText("", path)
-			.then(() => {
-				const file = this.app.workspace.getActiveFile();
-				if (!file) throw new Error("No such file: " + path);
-				this.app.workspace.getLeaf().openFile(file, { state: { mode: "source" } });
-				this.app.workspace.activeEditor?.editor?.setSelection(
-					{ line: position.start.line, ch: position.start.col },
-					{ line: position.end.line, ch: position.end.col },
-				);
-				if (!this.app.workspace.activeEditor?.editor?.hasFocus())
-					this.app.workspace.activeEditor?.editor?.focus();
-				const editor = this.app.workspace.activeEditor?.editor;
-				if (editor) {
-					const view = this.app.workspace.getLeaf().view;
-					tasksPluginCommand(
-						// @ts-expect-error commands is not part of the public API
-						this.app.commands.commands,
-						"obsidian-tasks-plugin:toggle-done",
-					).editorCheckCallback(false, editor, view);
-				}
-			})
-			.catch((reason) => {
-				// This used to be an uncaught error, so nothing happened and nothing was shown.
-				console.error("Tasks Calendar Wrapper: toggling a task failed", reason);
-				new Notice(
-					"Could not toggle the task in " +
-						path +
-						": " +
-						(reason instanceof Error ? reason.message : String(reason)),
-					5000,
-				);
-			});
+	/** Reads the row's target again when its turn in the note's write queue starts. */
+	async handleCompleteTask(model: TaskRowModel, evt: MouseEvent): Promise<WriteResult | void> {
+		if (!changesInPlace(this.state.userOptions)) {
+			this.handleOpenFile(model.path, model.position, evt);
+			return;
+		}
+		const { path } = model;
+		let target: LineTarget = model;
+		const result = await this.props.writer.write(
+			() => (target = { path, line: this.ledger.shift(path, model.line), sourceLine: model.sourceLine }),
+			{ kind: "toggle" },
+		);
+		this.props.onWriteResult?.(target, result);
+		return result;
 	}
 
 	/**
@@ -283,6 +289,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 					<TimelineView
 						userOptions={userOptions}
 						tasks={tasks}
+						pendingWrites={this.props.pendingWrites}
 						quickFilter={this.state.quickFilter}
 						queryEnv={(now) => this.queryEnvFor(now, tasks, userOptions)}
 					/>

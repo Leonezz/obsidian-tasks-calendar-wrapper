@@ -649,6 +649,55 @@ test("after a recurring completion (delta +1), clicking b below with its pre-wri
 	w.dispose();
 });
 
+test("write results identify their written events, including quick entry and Undo", async () => {
+	const h = writerHarness({ "a.md": "header\n- [ ] A" });
+	const writer = h.create();
+	const completed = await h.write(h.target(1));
+	assert.equal(completed.kind, "written");
+	if (completed.kind !== "written" || !completed.undo) throw new Error("expected completion");
+	assert.equal(completed.id, completed.undo.id);
+	const inserted = await writer.insert("a.md", (text) => "new header\n" + text);
+	const undone = await h.write(h.target(2), { kind: "undo", record: completed.undo });
+	for (const result of [completed, inserted, undone]) {
+		assert.equal(result.kind, "written");
+		if (result.kind !== "written") throw new Error("expected written");
+		assert.equal(typeof result.id, "number");
+		assert.equal(Object.isFrozen(result), true);
+		assert.equal(h.events.filter((event) => event.kind === "written" && event.id === result.id).length, 1);
+	}
+	writer.dispose();
+});
+
+test("line shifts wait for their own release and keep pinned notes", () => {
+	const ledger = createShiftLedger();
+	ledger.recordWrite(11, "a.md", 0, 1);
+	ledger.recordWrite(12, "b.md", 0, 2);
+	ledger.releaseWrite(12, 1);
+	ledger.clearThrough(1);
+	assert.equal(ledger.shift("a.md", 2), 3);
+	assert.equal(ledger.shift("b.md", 2), 2);
+	ledger.releaseWrite(11, 2);
+	ledger.clearThrough(2, new Set(["a.md"]));
+	assert.equal(ledger.shift("a.md", 2), 3);
+	ledger.clearThrough(2);
+	assert.equal(ledger.shift("a.md", 2), 2);
+});
+
+test("clearing one overwritten shift keeps a later Undo shift and legacy ledger entries", () => {
+	const ledger = createShiftLedger();
+	ledger.record("a.md", 0, 1, 4, true);
+	ledger.recordWrite(20, "a.md", 1, 1);
+	ledger.recordWrite(21, "a.md", 1, -1);
+	assert.equal(ledger.shift("a.md", 2), 3);
+	ledger.clearWrite(20);
+	assert.equal(ledger.shift("a.md", 2), 2);
+	ledger.clearThrough(4);
+	assert.equal(ledger.shift("a.md", 2), 1);
+	ledger.releaseWrite(21, 5);
+	ledger.clearThrough(5);
+	assert.equal(ledger.shift("a.md", 2), 2);
+});
+
 test("identical line nearby → refused (ambiguous)", async () => {
 	const first = "- [ ] a 🔁 every day";
 	const h = writerHarness({ "a.md": `${first}\n- [ ] b\n- [ ] b` });

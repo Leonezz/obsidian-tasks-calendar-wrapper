@@ -64,7 +64,7 @@ export default class TasksCalendarWrapper extends Plugin {
 		});
 		await this.loadOptions();
 		this.registerView(TIMELINE_VIEW, (leaf) => {
-			const view = new TasksTimelineView(leaf, this.taskIndex, this.writer);
+			const view = new TasksTimelineView(leaf, this.taskIndex, this.writer, this.writerNotices);
 			view.onUpdateOptions(this.userOptions);
 			return view;
 		});

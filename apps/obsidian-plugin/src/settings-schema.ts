@@ -334,6 +334,14 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				readWhen: PUSH,
 			},
 			{
+				key: "openNoteInsteadOfInPlace",
+				type: "boolean",
+				control: "toggle",
+				group: "taskItems",
+				redrawsTab: false,
+				readWhen: PUSH,
+			},
+			{
 				key: "hideStatusTasks",
 				type: "stringList",
 				control: "text",

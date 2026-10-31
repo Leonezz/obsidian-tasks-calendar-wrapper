@@ -1,6 +1,13 @@
 import { Pos, type UserEvent } from "obsidian";
-import type { QuickFilter } from "@tasks-calendar-wrapper/core";
+import type { QuickFilter, TaskRowModel } from "@tasks-calendar-wrapper/core";
 import * as React from "react";
+import { createPendingWrites } from "../pendingwrites";
+import type { ListChangeClock } from "./clickguard";
+
+export const RowWriteContext = React.createContext({
+	pendingWrites: createPendingWrites(),
+	clock: { lastListChangeAt: -Infinity } as ListChangeClock,
+});
 
 export const UserOptionContext = React.createContext({
 	taskFiles: [] as string[],
@@ -27,7 +34,8 @@ export const TodayFocusEventHandlersContext = React.createContext({
 
 export const TaskItemEventHandlersContext = React.createContext({
 	handleOpenFile: (filePath: string, position: Pos, evt?: UserEvent) => {},
-	handleCompleteTask: (filePath: string, position: Pos) => {},
+	handleCompleteTask: (model: TaskRowModel, evt: MouseEvent) => {},
 	handleTagClick: (tag: string) => {},
-	handleModifyTask: undefined as ((filePath: string, position: Pos) => void) | undefined,
+	/** Returning true stops the click from also opening the note through the row. */
+	handleModifyTask: undefined as ((model: TaskRowModel, evt: MouseEvent) => boolean | void) | undefined,
 });
