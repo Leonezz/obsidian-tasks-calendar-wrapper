@@ -294,7 +294,12 @@ test("the bridge resolves again when the day or parse key changes", async () => 
 		assert.equal(first.env.taskCache.resolutionCount, 0);
 		moment.now = () => GOLDEN_NOW + DAY;
 		assert.deepEqual(rows(), ["Inbox.md:0"]);
-		assert.equal(first.env.taskCache.resolutionCount, 1, "another day cannot use the prepared list");
+		// A new day also gets new caches; the bridge resolved into the one this day keeps.
+		const nextDay = resolveEnv(moment());
+		assert.notEqual(nextDay.env.taskCache, first.env.taskCache);
+		assert.ok(nextDay.env.taskCache);
+		assert.equal(first.env.taskCache.resolutionCount, 0);
+		assert.equal(nextDay.env.taskCache.resolutionCount, 1, "another day cannot use the prepared list");
 		process.env.TZ = "America/Los_Angeles";
 		const second = resolveEnv(moment());
 		assert.equal(dayKey(first.env.now.clone().add(1, "day")), dayKey(second.env.now));
