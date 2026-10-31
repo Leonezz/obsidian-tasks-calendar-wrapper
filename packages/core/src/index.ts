@@ -21,3 +21,5 @@ export * from "./syntax";
 export * from "./tags";
 export * from "./task";
 export * from "./whatsnew";
+export * from "./write";
+export * from "./writeline";

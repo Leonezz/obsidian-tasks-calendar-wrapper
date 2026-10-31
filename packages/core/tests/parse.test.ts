@@ -129,6 +129,27 @@ test("a leap day is still parsed", () => {
 	assert.equal(ymd(resolve("- [ ] Leap day 📅 2024-02-29").dates.due), "2024-02-29");
 });
 
+test("parse reads date emoji followed by U+FE0F", () => {
+	const cases = [
+		["- [ ] a 🗓️ 2026-10-25", "due"],
+		["- [ ] a 📅️ 2026-10-25", "due"],
+		["- [ ] a 📆️ 2026-10-25", "due"],
+		["- [ ] a ⏳️ 2026-10-25", "scheduled"],
+		["- [ ] a ⌛️ 2026-10-25", "scheduled"],
+		["- [ ] a 🛫️ 2026-10-25", "start"],
+		["- [x] a ✅️ 2026-10-25", "completion"],
+	] as const;
+	for (const [line, field] of cases) {
+		const parsed = task(line);
+		assert.equal(ymd(parsed.dates[field]), "2026-10-25", line);
+		assert.equal(parsed.visual, "a", line);
+	}
+	assert.equal(task("- [ ] a ➕️ 2026-10-25").visual, "a");
+	const recurring = task("- [ ] a 🔁️ every day");
+	assert.equal(recurring.recurrence, "every day");
+	assert.equal(recurring.visual, "a");
+});
+
 test("impossible start, scheduled and done dates are ignored", () => {
 	const resolved = resolve("- [x] All broken 🛫 2024-13-01 ⏳ 2024-04-31 ✅ 2024-02-30");
 	assert.equal(resolved.dates.start, undefined);
