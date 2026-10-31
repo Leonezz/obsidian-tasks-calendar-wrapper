@@ -4,7 +4,8 @@ import moment from "moment";
 
 import { parseTaskLine } from "../src/parse";
 import type { Task } from "../src/task";
-import { noteVisible, resolveTasks, type ResolveSettings } from "../src/resolve";
+import { createResolvedTaskCache, noteVisible, resolveTasks, type ResolveSettings } from "../src/resolve";
+import { createDailyNoteDateCache, dayKey, parseDailyNoteName, type MomentFactory } from "../src/dates";
 import { sortOptionLabels } from "../src/sort";
 
 // Ported from the parse-based tests of the plugin's tests/sort.test.ts, plus what resolveTasks adds: the order the
@@ -109,6 +110,116 @@ test("resolving gives new values and leaves the tasks passed in as they were", (
 	assert.equal(resolved.task.visual, "14:00 call");
 	assert.equal(JSON.stringify(tasks), before);
 	assert.ok(Object.isFrozen(resolved));
+});
+
+test("done task ignores the instant", () => {
+	const tasks = [task("- [x] a [scheduled:: 2026-10-24T15:00]")];
+	const dateCache = createDailyNoteDateCache();
+	const taskCache = createResolvedTaskCache();
+	const before = resolveTasks(tasks, {}, { now: moment("2026-10-24T14:59"), moment, dateCache, taskCache });
+	const after = resolveTasks(tasks, {}, { now: moment("2026-10-24T15:01"), moment, dateCache, taskCache });
+	assert.equal(before.shown[0].status, "done");
+	assert.equal(after.shown[0].status, "done");
+	assert.equal(after.shown[0], before.shown[0]);
+	assert.equal(taskCache.resolutionCount, 1);
+});
+
+test("equal-valued options reuse ResolvedTask", () => {
+	const tasks = [task("- [ ] a", "Daily/2026-09-18.md")];
+	const settings = { forward: true, hideStatusTasks: ["x", "-"], excludeProperties: { status: ["archived"] } };
+	const dateCache = createDailyNoteDateCache();
+	const taskCache = createResolvedTaskCache();
+	const env = { now: TODAY, moment, dateCache, taskCache };
+	const first = resolveTasks(tasks, settings, env);
+	assert.equal(taskCache.resolutionCount, 1);
+	const equalSettings = { ...settings, hideStatusTasks: ["x", "-"], excludeProperties: { status: ["archived"] } };
+	const second = resolveTasks([...tasks], equalSettings, env);
+	assert.equal(second.shown[0], first.shown[0]);
+	assert.equal(taskCache.resolutionCount, 1, "equal values resolve no task again");
+	const newTasks = [task("- [ ] a", "Daily/2026-09-18.md")];
+	const replacement = resolveTasks(newTasks, equalSettings, env);
+	assert.notEqual(replacement.shown[0], first.shown[0]);
+	assert.equal(taskCache.resolutionCount, 2, "a new Task object resolves again");
+	const changedSettings = { ...equalSettings, forward: false };
+	const changed = resolveTasks(newTasks, changedSettings, env);
+	assert.notEqual(changed.shown[0], replacement.shown[0]);
+	assert.equal(taskCache.resolutionCount, 3, "a setting value invalidates the cache");
+	const tomorrow = { ...env, now: TODAY.clone().add(1, "day") };
+	const nextDay = resolveTasks(newTasks, changedSettings, tomorrow);
+	assert.notEqual(nextDay.shown[0], changed.shown[0]);
+	assert.equal(taskCache.resolutionCount, 4, "a new day invalidates the cache");
+	const nextEnv = { ...tomorrow, dateCache: createDailyNoteDateCache() };
+	const newDates = resolveTasks(newTasks, changedSettings, nextEnv);
+	assert.notEqual(newDates.shown[0], nextDay.shown[0]);
+	assert.equal(taskCache.resolutionCount, 5, "a new date cache invalidates the cache");
+	changedSettings.excludeProperties.status.push("active");
+	const mutated = resolveTasks(newTasks, changedSettings, nextEnv);
+	assert.notEqual(mutated.shown[0], newDates.shown[0]);
+	assert.equal(taskCache.resolutionCount, 6, "changing the caller's nested settings invalidates the cache");
+});
+
+test("a task cache requires a daily-note date cache", () => {
+	assert.throws(
+		() => resolveTasks([], {}, { now: TODAY, moment, taskCache: createResolvedTaskCache() }),
+		/taskCache requires a dateCache/,
+	);
+});
+
+test("daily-note date caches keep misses and protect their dates", () => {
+	let parses = 0;
+	const factory: MomentFactory = Object.assign(
+		(...args: Parameters<MomentFactory>) => {
+			parses++;
+			return moment(...args);
+		},
+		{ locale: () => moment.locale() },
+	);
+	const cache = createDailyNoteDateCache();
+	for (const [path, format] of [
+		["Daily/2026-09-18.md", "YYYY-MM-DD"],
+		["Daily/2026/Sep/38th/Fri.md", "YYYY/MMM/Wo/ddd"],
+		["Inbox.md", "YYYY-MM-DD"],
+	]) {
+		const first = parseDailyNoteName(factory, path, format, cache);
+		const expected = first && dayKey(first);
+		const afterFirst = parses;
+		first?.add(1, "year");
+		const again = parseDailyNoteName(factory, path, format, cache);
+		assert.equal(again && dayKey(again), expected);
+		assert.equal(parses, afterFirst, "a cached match or miss does not parse again");
+	}
+	assert.equal(parseDailyNoteName(factory, "Daily/2026-09-18.md", "YYYY/MM/DD", cache), undefined);
+});
+
+test("lookup-format index rebuilt after updateLocale", () => {
+	const format = "gggg-[W]ww-e";
+	const name = "2026-W11-2";
+	const tasks = [task("- [ ] week", `Daily/${name}.md`)];
+	const taskCache = createResolvedTaskCache();
+	const lookupTask = task("- [ ] lookup", "Daily/2026/Jan/2nd/Sun.md");
+	const resolve = () => {
+		const env = { now: TODAY, moment, dateCache: createDailyNoteDateCache(), taskCache };
+		const [resolved] = resolveTasks(tasks, { dailyNoteFormat: format }, env).shown;
+		const strict = moment(name, format, true);
+		assert.ok(strict.isValid());
+		assert.ok(resolved.dates.start);
+		assert.equal(dayKey(resolved.dates.start), dayKey(strict));
+		// The ordinal week format cannot be parsed strictly, so it also exercises the lookup index.
+		const [lookup] = resolveTasks([lookupTask], { dailyNoteFormat: "YYYY/MMM/wo/ddd" }, env).shown;
+		assert.ok(lookup.dates.start);
+		return dayKey(lookup.dates.start);
+	};
+	let updated = false;
+	try {
+		moment.locale("en");
+		assert.equal(resolve(), "2026-01-04");
+		moment.updateLocale("en", { week: { dow: 1, doy: 4 } });
+		updated = true;
+		assert.equal(resolve(), "2026-01-11");
+	} finally {
+		if (updated) moment.updateLocale("en", null);
+		moment.locale("en");
+	}
 });
 
 // The note filters of the settings: paths, the note's own tags and its frontmatter properties

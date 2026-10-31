@@ -8,7 +8,15 @@ import { Notice } from "obsidian";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { parseTaskLine, resolveTasks, type ResolvedTask, type Store } from "@tasks-calendar-wrapper/core";
+import {
+	dayKey,
+	parseTaskLine,
+	resolveTasks,
+	type ResolvedTask,
+	type Store,
+	type Task,
+} from "@tasks-calendar-wrapper/core";
+import { createResolveEnv } from "../src/state/resolveenv";
 import { initialTimelineState, type TimelineState, withReload } from "../src/state/timeline";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { heldOf, TasksTimelineView } from "../src/views";
@@ -16,7 +24,7 @@ import { ObsidianBridge, quickFilterOf } from "../timeline/src/obsidianbridge";
 import { readTasks } from "../timeline/src/taskadapter";
 import { createTaskIndex } from "../timeline/src/taskindex";
 import { moment } from "../utils/moment";
-import { parseKeyOf } from "../utils/parsekey";
+import { parseKeyOf, sameParseKey } from "../utils/parsekey";
 import { deeplyFrozen } from "./frozen";
 import { goldenApp, loadVault } from "./golden-vault";
 import { rowsOf } from "./markup";
@@ -72,8 +80,8 @@ function notesApp(notes: Record<string, string>) {
  * The bridge of a view, mounted without a DOM: its state is applied at once, and it renders to markup. The bridge
  * listens to the view's models as it does in Obsidian.
  */
-function bridgeOf(opened: ReturnType<typeof openView>, app: unknown) {
-	const bridge = new ObsidianBridge({ plugin: { app } as never, store: opened.store });
+function bridgeOf(opened: ReturnType<typeof openView>, app: unknown, resolveEnv?: ReturnType<typeof createResolveEnv>) {
+	const bridge = new ObsidianBridge({ plugin: { app } as never, store: opened.store, resolveEnv });
 	const mounted = bridge as unknown as { state: object; props: object };
 	bridge.setState = ((update: object | ((state: object, props: object) => object)) => {
 		mounted.state = {
@@ -145,8 +153,8 @@ test("a reload of the same notes changes nothing, and so does a setting that cha
 });
 
 test("every reload hands the bridge new frozen tasks, also when nothing changed, and the options frozen", async () => {
-	// The timeline remembers what it worked out by the tasks array, and whether a done task counts as done depends on
-	// the moment it is worked out, so each reload must hand over a new array.
+	// The timeline remembers what it worked out by the tasks array. Status changes only with the day; each reload
+	// still hands over a new array, as it always has.
 	const { view, store } = openView(goldenApp(loadVault()));
 	await view.onUpdateOptions({ ...defaultUserOptions });
 	const first = store.getSnapshot().tasks;
@@ -204,6 +212,137 @@ test("a reload uses the options it started with, and options changed meanwhile r
 		shownIds.some((list) => list.length === 1 && list[0] === "Inbox.md:0"),
 		JSON.stringify(shownIds),
 	);
+});
+
+test("options pushed during a running reload never render the old list under new options", async () => {
+	const app = notesApp({ "Inbox.md": "- [ ] a 📅 2026-01-20", "Done.md": "- [x] b 📅 2026-01-21" });
+	const cachedRead = app.vault.cachedRead;
+	let release!: () => void;
+	let reading!: () => void;
+	const gate = new Promise<void>((resolve) => (release = resolve));
+	const started = new Promise<void>((resolve) => (reading = resolve));
+	app.vault.cachedRead = async (file) => {
+		reading();
+		await gate;
+		return cachedRead(file);
+	};
+	const opened = openView(app);
+	const { bridge, rows } = bridgeOf(opened, app);
+	const renders: { rows: string[]; expected: string[]; held: number; options: UserOption }[] = [];
+	const record = () => {
+		const { tasks, userOptions } = bridge.state as { tasks: readonly Task[]; userOptions: UserOption };
+		renders.push({
+			rows: rows(),
+			expected: ids(resolveTasks(tasks, userOptions, { now: moment(), moment }).shown.map((r) => r.task)),
+			held: opened.store.getSnapshot().shown.length,
+			options: userOptions,
+		});
+	};
+	const unsubscribe = opened.store.subscribe(record);
+	try {
+		const first = opened.view.onUpdateOptions({ ...defaultUserOptions, hideStatusTasks: ["x", "-"] });
+		await started;
+		const second = opened.view.onUpdateOptions({ ...defaultUserOptions, hideStatusTasks: [] });
+		release();
+		await first;
+		await second;
+		record();
+		assert.ok(renders.some((render) => render.held === 1 && render.options.hideStatusTasks.length === 0));
+		for (const render of renders) assert.deepEqual(render.rows.sort(), render.expected.sort());
+		assert.deepEqual(renders.at(-1)?.rows.sort(), ["Done.md:0", "Inbox.md:0"]);
+	} finally {
+		release();
+		unsubscribe();
+		bridge.componentWillUnmount();
+	}
+});
+
+test("equal-valued options reuse the reload's list", async () => {
+	const app = notesApp({ "Inbox.md": "- [ ] a 📅 2026-01-20" });
+	const opened = openView(app);
+	await opened.view.onUpdateOptions({ ...defaultUserOptions });
+	// This bridge's cache has never seen a task: any fallback resolve would increase its counter.
+	const resolveEnv = createResolveEnv();
+	const taskCache = resolveEnv(moment()).env.taskCache;
+	assert.ok(taskCache);
+	const { bridge, rows } = bridgeOf(opened, app, resolveEnv);
+	assert.equal(taskCache.resolutionCount, 0);
+	assert.deepEqual(rows(), ["Inbox.md:0"]);
+	assert.equal(taskCache.resolutionCount, 0, "the first render uses the reload's list");
+	const reloading = opened.view.onUpdateOptions({ ...opened.store.getSnapshot().options });
+	assert.deepEqual(rows(), ["Inbox.md:0"]);
+	assert.equal(taskCache.resolutionCount, 0, "equal-valued options reuse it before the new reload finishes");
+	await reloading;
+	assert.notEqual((bridge.state as { tasks: unknown }).tasks, opened.store.getSnapshot().tasks);
+	assert.deepEqual(rows(), ["Inbox.md:0"]);
+	assert.equal(taskCache.resolutionCount, 1, "a newer reload's list cannot replace the bridge's older tasks");
+	bridge.componentWillUnmount();
+});
+
+test("the bridge resolves again when the day or parse key changes", async () => {
+	const app = notesApp({ "Inbox.md": "- [ ] a 📅 2026-01-15" });
+	const opened = openView(app);
+	await opened.view.onUpdateOptions({ ...defaultUserOptions, forward: false });
+	const resolveEnv = createResolveEnv();
+	const first = resolveEnv(moment());
+	assert.ok(first.env.taskCache);
+	const { bridge } = bridgeOf(opened, app, resolveEnv);
+	// The child can render on a counter click without the bridge rendering again.
+	const tree = bridge.render() as ReactElement;
+	const rows = () => rowsOf(renderToStaticMarkup(tree));
+	try {
+		assert.deepEqual(rows(), ["Inbox.md:0"]);
+		assert.equal(first.env.taskCache.resolutionCount, 0);
+		moment.now = () => GOLDEN_NOW + DAY;
+		assert.deepEqual(rows(), ["Inbox.md:0"]);
+		assert.equal(first.env.taskCache.resolutionCount, 1, "another day cannot use the prepared list");
+		process.env.TZ = "America/Los_Angeles";
+		const second = resolveEnv(moment());
+		assert.equal(dayKey(first.env.now.clone().add(1, "day")), dayKey(second.env.now));
+		assert.ok(!sameParseKey(first.parseKey, second.parseKey));
+		assert.ok(second.env.taskCache);
+		assert.equal(second.env.taskCache.resolutionCount, 0);
+		assert.deepEqual(rows(), ["Inbox.md:0"]);
+		assert.equal(second.env.taskCache.resolutionCount, 1, "a new parse key cannot use the prepared list");
+	} finally {
+		moment.now = () => GOLDEN_NOW;
+		process.env.TZ = "UTC";
+		bridge.componentWillUnmount();
+	}
+});
+
+test("daily-note date cache drops on time-zone change", () => {
+	try {
+		process.env.TZ = "Asia/Shanghai";
+		const resolveEnv = createResolveEnv();
+		const task = parseTaskLine("- [ ] a", { moment, path: "Daily/2026-03-10.md" });
+		assert.ok(task);
+		const lookupTask = parseTaskLine("- [ ] b", { moment, path: "Daily/2026/Mar/11th/Tue.md" });
+		assert.ok(lookupTask);
+		const settings = { dailyNoteFormat: "YYYY-MM-DD" };
+		const lookupSettings = { dailyNoteFormat: "YYYY/MMM/Wo/ddd" };
+		const first = resolveEnv(moment());
+		const before = resolveTasks([task], settings, first.env).shown[0];
+		assert.ok(before.dates.start);
+		assert.equal(dayKey(before.dates.start), "2026-03-10");
+		const lookupBefore = resolveTasks([lookupTask], lookupSettings, first.env).shown[0];
+		assert.ok(lookupBefore.dates.start);
+		assert.equal(dayKey(lookupBefore.dates.start), "2026-03-10");
+		assert.equal(resolveEnv(moment()).env.dateCache, first.env.dateCache, "the same parse key keeps its cache");
+		process.env.TZ = "America/Los_Angeles";
+		const second = resolveEnv(moment());
+		assert.ok(!sameParseKey(first.parseKey, second.parseKey));
+		assert.notEqual(second.env.dateCache, first.env.dateCache);
+		assert.notEqual(second.env.taskCache, first.env.taskCache);
+		const after = resolveTasks([task], settings, second.env).shown[0];
+		assert.ok(after.dates.start);
+		assert.equal(dayKey(after.dates.start), "2026-03-10");
+		const lookupAfter = resolveTasks([lookupTask], lookupSettings, second.env).shown[0];
+		assert.ok(lookupAfter.dates.start);
+		assert.equal(dayKey(lookupAfter.dates.start), "2026-03-10");
+	} finally {
+		process.env.TZ = "UTC";
+	}
 });
 
 test("a reload that fails says so, and the next reload runs", async () => {

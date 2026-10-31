@@ -1,5 +1,5 @@
 import { App, CachedMetadata, debounce, ItemView, Notice, WorkspaceLeaf } from "obsidian";
-import { createStore, resolveTasks } from "@tasks-calendar-wrapper/core";
+import { createStore, dayKey, pickResolveSettings, resolveTasks } from "@tasks-calendar-wrapper/core";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
 import { createReadReporter } from "../timeline/src/readreporter";
 import { createSharedTaskIndex, type ReaderSource, type SharedTaskIndex } from "../timeline/src/sharedindex";
@@ -8,6 +8,7 @@ import { createRoot, Root } from "react-dom/client";
 import { moment } from "../utils/moment";
 import { parseKeyOf } from "../utils/parsekey";
 import { changeAffectsTasks } from "../utils/refresh";
+import { createResolveEnv } from "./state/resolveenv";
 import { heldOf, initialTimelineState, type TimelineState, withOptions, withReload } from "./state/timeline";
 import { UserOption } from "./useroptions";
 
@@ -27,6 +28,7 @@ export class TasksTimelineView extends ItemView {
 	private root?: Root;
 	/** The options, the tasks read last and the list shown, see TimelineState, which the bridge renders. */
 	private readonly store = createStore<TimelineState>(initialTimelineState());
+	private readonly resolveEnv = createResolveEnv();
 	/**
 	 * This view's reader of the task index the plugin's timelines share, so a reload reads only the notes that may have
 	 * changed, see TaskIndex. Opened in the constructor, not in onOpen, as the plugin's view factory hands the view its
@@ -81,7 +83,7 @@ export class TasksTimelineView extends ItemView {
 
 		container.empty();
 		this.root = createRoot(container);
-		this.root.render(<ObsidianBridge plugin={this} store={this.store} />);
+		this.root.render(<ObsidianBridge plugin={this} store={this.store} resolveEnv={this.resolveEnv} />);
 	}
 
 	async onClose(): Promise<void> {
@@ -132,8 +134,14 @@ export class TasksTimelineView extends ItemView {
 			.then(({ tasks, warned, failures }) => {
 				this.reporter.report({ warned, failures });
 				this.filesWithTasks = new Set(tasks.map((task) => task.path));
-				const { shown } = resolveTasks(tasks, options, { now: moment(), moment });
-				this.store.setState((state) => withReload(state, tasks, shown.map(heldOf)));
+				const { env, parseKey } = this.resolveEnv(moment());
+				const resolved = resolveTasks(tasks, options, env);
+				this.store.setState((state) =>
+					withReload(state, tasks, resolved.shown.map(heldOf), {
+						shown: resolved,
+						under: { settings: pickResolveSettings(options), day: dayKey(env.now), parseKey },
+					}),
+				);
 			})
 			.catch((reason) => {
 				new Notice("Error when generating tasks from files: " + reason, 5000);
