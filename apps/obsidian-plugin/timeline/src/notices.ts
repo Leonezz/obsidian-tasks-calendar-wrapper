@@ -121,6 +121,26 @@ export function slowText(context: NoticeContext): string {
 	return `Saved in ${noteName(context.path)}. The timeline will show the change once Obsidian has re-read the note.`;
 }
 
+/** Explains why an older Tasks version opened the note instead of its edit dialog. */
+export function tasksDialogTooOldText(): string {
+	return "Tasks 7.21 or later edits here";
+}
+
+/** Reports an unavailable Tasks API without treating it as a disabled plugin. */
+export function tasksDialogErrorText(reason: string): string {
+	return `Could not reach the Tasks plugin: ${reason}`;
+}
+
+/** Reports a dialog that could not open or finish. */
+export function tasksDialogFailureText(reason: string): string {
+	return `Tasks' edit dialog failed: ${reason}`;
+}
+
+/** Explains why an empty dialog result cannot complete a task that deletes itself. */
+export function tasksDialogDeleteText(): string {
+	return "Nothing was written. If you completed this task in the dialog: Tasks returns nothing for a task set to delete itself, so use the checkbox to complete it.";
+}
+
 /** The completed action selects the undo notice; it does not execute an undo. */
 export type UndoNoticeChange =
 	| {
@@ -227,6 +247,7 @@ export class EditRecoveryModal extends Modal {
 /** The writer presents outcomes through this port; views can later present their own undo notices. */
 export interface NoticePresenter {
 	refuse(reason: RefuseReason, context: NoticeContext): string;
+	tasksDialog(kind: "too-old" | "error" | "failed" | "delete", context: NoticeContext, reason?: string): string;
 	failed(context: NoticeContext, error: unknown): void;
 	mayNotSaved(context: NoticeContext, kind: "timeout" | "editor"): void;
 	slow(context: NoticeContext): void;
@@ -288,6 +309,16 @@ export function createNoticePresenter(app: App, options: NoticePresenterOptions 
 	}
 
 	return Object.freeze({
+		tasksDialog(kind: "too-old" | "error" | "failed" | "delete", context: NoticeContext, reason = ""): string {
+			const message = {
+				"too-old": tasksDialogTooOldText(),
+				error: tasksDialogErrorText(reason),
+				failed: tasksDialogFailureText(reason),
+				delete: tasksDialogDeleteText(),
+			}[kind];
+			merged(refusals, JSON.stringify([context.path, "tasks-dialog", kind]), message, REFUSAL_NOTICE_MS);
+			return message;
+		},
 		refuse(reason: RefuseReason, context: NoticeContext): string {
 			const message = refusalText(reason, context);
 			merged(

@@ -23,14 +23,16 @@ import {
 	type UndoSpan,
 } from "@tasks-calendar-wrapper/core";
 import { openNoteAt } from "../../src/open-note";
+import type { ConfirmOptions } from "../../src/confirm-modal";
 import type { NoticeContext, NoticePresenter, RefuseReason } from "./notices";
 import type { SharedTaskIndex } from "./sharedindex";
-import type { TasksToggle } from "./tasksplugin";
+import type { TasksDialog, TasksToggle } from "./tasksplugin";
 import { displayText, errorMessage, normalized, prepareEdit, sourceAt, withoutBOM } from "./writerchecks";
 import { createWriteTracking, writeSnapshot, type WriteRecord } from "./writerholds";
 import { createWriterWatch } from "./writerwatch";
 import { redoWrites } from "./writerredo";
 import { UNDO_KEEP_MAX } from "./writerconstants";
+import { createWriterDialog } from "./writerdialog";
 
 export * from "./writerconstants";
 export { DEFERRED_CHECKS_MAX } from "./revertcheck";
@@ -75,6 +77,8 @@ export type WriteResult =
 /** Events carry the write identity, so several pending writes of one row do not replace each other. Frozen. */
 export interface WriteEvent extends LineTarget {
 	readonly id: number;
+	/** Dialog edits only dim the row; Undo still predicts the restored status. */
+	readonly action?: "toggle" | "date" | "replace" | "undo";
 	readonly kind:
 		| "pending"
 		| "written"
@@ -111,6 +115,9 @@ export interface TaskWriterDeps {
 	readonly app: WriterApp;
 	readonly index: Pick<SharedTaskIndex, "hold" | "markDirty">;
 	readonly tasks: () => TasksToggle;
+	/** Omitted ports leave dialog editing unavailable and recurrence removal unconfirmed. */
+	readonly tasksDialog?: () => TasksDialog;
+	readonly confirm?: (options: ConfirmOptions) => Promise<boolean>;
 	readonly notices: Pick<
 		NoticePresenter,
 		| "refuse"
@@ -123,6 +130,7 @@ export interface TaskWriterDeps {
 		| "undoDone"
 		| "undoAlready"
 		| "undoExpired"
+		| "tasksDialog"
 	>;
 	readonly moment: MomentFactory & { locale(): string };
 	/** Obsidian's language for explaining unreadable local digits; defaults to its moment locale. */
@@ -143,6 +151,8 @@ export interface TaskWriter {
 	write(target: () => LineTarget, edit: TaskEdit): Promise<WriteResult>;
 	/** Existing-note quick entry; its callback runs only after the encoding check, inside Vault.process. */
 	insert(path: string, edit: (content: string) => string): Promise<WriteResult>;
+	/** Waits for Tasks' dialog before checking its result and entering the write queue. */
+	editInTasksDialog(target: () => LineTarget): Promise<WriteResult>;
 	/** The owning view calls this when its undo notice disappears, including after a hover. */
 	forgetUndo(record: UndoRecord): void;
 	/** Lets views hide a notice when its record is forgotten, evicted, or disposed. */
@@ -277,6 +287,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 		},
 	);
 	const watch = createWriterWatch(deps, tracking, (records) => redoWrites(deps, records, enqueue));
+	const dialog = createWriterDialog(deps, tracking, enqueue, () => disposed);
 
 	function forgetUndo(record: UndoRecord): void {
 		if (!undos.delete(record)) return;
@@ -345,6 +356,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 			const undo = undoing ?? edit.record;
 			target = { path: undo.path, line: undo.line, sourceLine: undo.original };
 		}
+		const latestSource = target.line === 0 ? withoutBOM(target.sourceLine) : target.sourceLine;
 		const sourceLine =
 			target.line === 0
 				? withoutBOM(edit.kind === "replace" ? edit.expected : target.sourceLine)
@@ -363,6 +375,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 				tracking.begin(target, edit, Object.freeze(edit.kind === "replace" ? [...edit.lines] : []), context),
 				reason,
 			);
+		if (edit.kind === "replace" && latestSource !== edit.expected) return early("line-changed");
 		if (edit.kind === "undo" && !undoing) {
 			const record = tracking.begin(target, edit, [], context);
 			const result: WriteResult = Object.freeze({
@@ -727,6 +740,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 		insert(path: string, apply: (content: string) => string): Promise<WriteResult> {
 			return enqueue(() => ({ path, line: 0, sourceLine: "" }), { kind: "insert", apply });
 		},
+		editInTasksDialog: dialog.edit,
 		forgetUndo,
 		onUndoGone(listener: (record: UndoRecord) => void): () => void {
 			undoListeners.add(listener);
@@ -744,6 +758,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 		dispose(): void {
 			if (disposed) return;
 			disposed = true;
+			dialog.dispose();
 			for (const abort of aborts) abort();
 			watch.dispose();
 			tracking.dispose();

@@ -36,6 +36,5 @@ export const TaskItemEventHandlersContext = React.createContext({
 	handleOpenFile: (filePath: string, position: Pos, evt?: UserEvent) => {},
 	handleCompleteTask: (model: TaskRowModel, evt: MouseEvent) => {},
 	handleTagClick: (tag: string) => {},
-	/** Returning true stops the click from also opening the note through the row. */
-	handleModifyTask: undefined as ((model: TaskRowModel, evt: MouseEvent) => boolean | void) | undefined,
+	handleModifyTask: undefined as ((model: TaskRowModel, evt: MouseEvent) => void) | undefined,
 });

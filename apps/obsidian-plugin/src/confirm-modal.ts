@@ -5,6 +5,8 @@ export interface ConfirmOptions {
 	message: string;
 	/** The label of the button that answers yes. */
 	confirmText: string;
+	/** Focus Cancel instead of the confirm button; defaults to false. */
+	focusCancel?: boolean;
 }
 
 /**
@@ -13,6 +15,7 @@ export interface ConfirmOptions {
  */
 export class ConfirmModal extends Modal {
 	private confirmed = false;
+	private cancelButton?: ButtonComponent;
 	private confirmButton?: ButtonComponent;
 	private readonly answer: Promise<boolean>;
 
@@ -27,15 +30,16 @@ export class ConfirmModal extends Modal {
 	/** Opens the dialog. Resolves once it closes, to whether the user confirmed. */
 	ask(): Promise<boolean> {
 		this.open();
-		// Opening focuses the first button, Cancel. The confirm button takes it, so Enter answers yes as with confirm().
-		this.confirmButton?.buttonEl.focus();
+		// Opening focuses the first button, Cancel. By default, confirm takes it, so Enter answers yes as with confirm().
+		// focusCancel keeps Enter on the safe answer.
+		(this.options.focusCancel ? this.cancelButton : this.confirmButton)?.buttonEl.focus();
 		return this.answer;
 	}
 
 	onOpen(): void {
 		this.setTitle(this.options.title).setContent(this.options.message);
 		const buttons = this.contentEl.createDiv({ cls: "modal-button-container" });
-		new ButtonComponent(buttons).setButtonText("Cancel").onClick(() => this.close());
+		this.cancelButton = new ButtonComponent(buttons).setButtonText("Cancel").onClick(() => this.close());
 		this.confirmButton = new ButtonComponent(buttons)
 			.setButtonText(this.options.confirmText)
 			.setCta()

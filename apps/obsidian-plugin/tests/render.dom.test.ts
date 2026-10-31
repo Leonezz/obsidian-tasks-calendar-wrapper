@@ -22,6 +22,8 @@ import { getTaskStatusIcon } from "../timeline/src/components/asserts/icons";
 import { createPendingWrites } from "../timeline/src/pendingwrites";
 import { clickTime, clickIsGuarded } from "../timeline/src/components/clickguard";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
+import { undoNoticeText } from "../timeline/src/notices";
+import { getTasksDialog } from "../timeline/src/tasksplugin";
 import { moment } from "../utils/moment";
 import type { WriteEvent } from "../timeline/src/taskwriter";
 import { flush, writerHarness } from "./writer-harness";
@@ -45,19 +47,27 @@ async function mountWritingTimeline(t: TestContext, text: string, toggle?: (line
 	const h = writerHarness({ "Note.md": text });
 	Object.assign(h.app, { plugins: { plugins: {} } });
 	const index = timelineTaskIndex(h.app as never);
-	const writer = h.create({ index, ...(toggle ? { tasks: () => ({ kind: "toggle" as const, toggle }) } : {}) });
+	const writer = h.create({
+		index,
+		tasksDialog: () => getTasksDialog(h.app as never),
+		...(toggle ? { tasks: () => ({ kind: "toggle" as const, toggle }) } : {}),
+	});
 	const write = t.mock.fn(writer.write);
+	const editInTasksDialog = t.mock.fn(writer.editInTasksDialog);
 	const undo: (() => Promise<void>)[] = [];
+	const undoNotices: Notice[] = [];
 	const view = new TasksTimelineView(
 		{ app: h.app } as never,
 		index,
-		{ ...writer, write },
+		{ ...writer, write, editInTasksDialog },
 		{
-			undo(_context, _change, run) {
+			undo(context, change, run) {
 				undo.push(async () => {
 					await run();
 				});
-				return new Notice("Undo", 10000) as never;
+				const notice = new Notice(undoNoticeText(context, change), 10000);
+				undoNotices.push(notice);
+				return notice as never;
 			},
 		},
 	);
@@ -93,10 +103,13 @@ async function mountWritingTimeline(t: TestContext, text: string, toggle?: (line
 			await flush();
 		});
 	};
-	return { h, view, store, writer, write, undo, container, click };
+	return { h, view, store, writer, write, editInTasksDialog, undo, undoNotices, container, click };
 }
 
-async function mountNoteActions(t: TestContext) {
+async function mountNoteActions(
+	t: TestContext,
+	{ openNoteInsteadOfInPlace = true, tasks = {} }: { openNoteInsteadOfInPlace?: boolean; tasks?: object | null } = {},
+) {
 	const text = "Heading\n\n- [ ] a";
 	const fixture = await mountWritingTimeline(t, text, (line) => line.replace("[ ]", "[x]"));
 	const noteView = new MarkdownView();
@@ -104,7 +117,7 @@ async function mountNoteActions(t: TestContext) {
 	const openFile = t.mock.fn(async () => {});
 	const getLeaf = t.mock.fn(() => ({ view: noteView, openFile }));
 	Object.assign(fixture.h.app.workspace, { getLeaf });
-	Object.assign(fixture.h.app, { plugins: { plugins: { "obsidian-tasks-plugin": {} } } });
+	Object.assign(fixture.h.app, { plugins: { plugins: tasks === null ? {} : { "obsidian-tasks-plugin": tasks } } });
 	const command = t.mock.fn();
 	const commands = t.mock.fn(() => ({
 		commands: { "obsidian-tasks-plugin:edit-task": { editorCheckCallback: command } },
@@ -114,7 +127,7 @@ async function mountNoteActions(t: TestContext) {
 		fixture.view.onUpdateOptions({
 			...defaultUserOptions,
 			hideStatusTasks: [],
-			openNoteInsteadOfInPlace: true,
+			openNoteInsteadOfInPlace,
 		}),
 	);
 	return { ...fixture, text, openFile, getLeaf, commands, command };
@@ -136,7 +149,8 @@ test("with the setting on, clicking a checkbox opens the note once and does not 
 });
 
 test("with the setting on, ✏️ opens the note once and runs no Tasks command", async (t) => {
-	const fixture = await mountNoteActions(t);
+	const editTaskLineModal = t.mock.fn(async () => "- [ ] edited");
+	const fixture = await mountNoteActions(t, { tasks: { apiV1: { editTaskLineModal } } });
 	const modify = fixture.container.querySelector<HTMLElement>(".task .modify");
 	assert.ok(modify);
 	await act(async () => {
@@ -151,9 +165,71 @@ test("with the setting on, ✏️ opens the note once and runs no Tasks command"
 	assert.equal(fixture.commands.mock.callCount(), 0);
 	assert.equal(fixture.command.mock.callCount(), 0);
 	assert.equal(fixture.write.mock.callCount(), 0);
+	assert.equal(fixture.editInTasksDialog.mock.callCount(), 0);
+	assert.equal(editTaskLineModal.mock.callCount(), 0);
 	assert.equal(fixture.view.pendingWrites.getSnapshot("Note.md:2"), undefined);
 	assert.equal(fixture.container.querySelector(".task")?.hasAttribute("aria-busy"), false);
 	assert.equal(fixture.h.text("Note.md"), fixture.text);
+});
+
+test("✏️ does not open the note through the row", async (t) => {
+	const editTaskLineModal = t.mock.fn(() => new Promise<string>(() => {}));
+	const fixture = await mountNoteActions(t, {
+		openNoteInsteadOfInPlace: false,
+		tasks: { apiV1: { editTaskLineModal } },
+	});
+	const modify = fixture.container.querySelector<HTMLElement>(".task .modify");
+	assert.ok(modify);
+	await act(async () => {
+		modify.click();
+		await flush();
+	});
+	assert.equal(editTaskLineModal.mock.callCount(), 1);
+	assert.deepEqual(editTaskLineModal.mock.calls[0].arguments, ["- [ ] a"]);
+	assert.equal(fixture.editInTasksDialog.mock.callCount(), 1);
+	assert.equal(fixture.openFile.mock.callCount(), 0);
+	assert.equal(fixture.commands.mock.callCount(), 0);
+	assert.equal(fixture.command.mock.callCount(), 0);
+	assert.equal(fixture.h.text("Note.md"), fixture.text);
+	assert.equal(fixture.view.pendingWrites.getSnapshot("Note.md:2"), undefined);
+	assert.deepEqual(fixture.h.events, []);
+});
+
+test("with the setting off, ✏️ writes the dialog edit and shows its Undo notice", async (t) => {
+	const editTaskLineModal = t.mock.fn(async () => "- [ ] edited");
+	const fixture = await mountNoteActions(t, {
+		openNoteInsteadOfInPlace: false,
+		tasks: { apiV1: { editTaskLineModal } },
+	});
+	const modify = fixture.container.querySelector<HTMLElement>(".task .modify");
+	assert.ok(modify);
+	await act(async () => {
+		modify.click();
+		await flush();
+	});
+	assert.equal(fixture.editInTasksDialog.mock.callCount(), 1);
+	assert.equal(editTaskLineModal.mock.callCount(), 1);
+	assert.deepEqual(editTaskLineModal.mock.calls[0].arguments, ["- [ ] a"]);
+	assert.equal((await fixture.editInTasksDialog.mock.calls[0].result)?.kind, "written");
+	assert.equal(fixture.h.text("Note.md"), "Heading\n\n- [ ] edited");
+	assert.equal(fixture.openFile.mock.callCount(), 0);
+	assert.equal(fixture.commands.mock.callCount(), 0);
+	assert.equal(fixture.undoNotices.length, 1);
+	assert.equal(fixture.undoNotices[0].message, "Saved your edit to “a” in Note.");
+});
+
+test("with the setting off, ✏️ visibility follows the Tasks entry", async (t) => {
+	for (const [name, tasks] of [
+		["dialog API", { apiV1: { editTaskLineModal: async () => "" } }],
+		["older API", { apiV1: {} }],
+		["malformed API", {}],
+		["absent", null],
+	] as const) {
+		await t.test(name, async (t) => {
+			const fixture = await mountNoteActions(t, { openNoteInsteadOfInPlace: false, tasks });
+			assert.equal(fixture.container.querySelector(".task .modify") !== null, tasks !== null);
+		});
+	}
 });
 
 test("with the setting off, the checkbox still writes through the writer", async (t) => {

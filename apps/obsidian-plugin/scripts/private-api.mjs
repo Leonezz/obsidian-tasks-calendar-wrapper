@@ -1,6 +1,6 @@
 /**
- * Checks that the plugin keeps Obsidian's private App APIs in tasksplugin.ts, apart from the step 8 allow list,
- * and has at most three @ts-expect-error comments, see scripts/private-api-check.mjs. It checks the plugin's own
+ * Checks that the plugin keeps Obsidian's private App APIs in tasksplugin.ts, with no exceptions,
+ * and has at most one @ts-expect-error comment, see scripts/private-api-check.mjs. It checks the plugin's own
  * source reached from src/main.ts, with the plugin's tsconfig. Prints each violation with its place and exits 1
  * when there is any, so CI fails on it. `node scripts/private-api.mjs`, or `pnpm private-api` from the repository root.
  */
@@ -47,5 +47,5 @@ for (const { message } of violations) console.error(message);
 if (violations.length > 0) process.exitCode = 1;
 else
 	console.log(
-		`private-api: ${files.length} files checked; private App APIs stay within the allowed accesses; ${tsExpectErrors.length} @ts-expect-error comments (maximum ${MAX_TS_EXPECT_ERROR}).`,
+		`private-api: ${files.length} files checked; private App APIs stay in timeline/src/tasksplugin.ts; ${tsExpectErrors.length} @ts-expect-error comments (maximum ${MAX_TS_EXPECT_ERROR}).`,
 	);

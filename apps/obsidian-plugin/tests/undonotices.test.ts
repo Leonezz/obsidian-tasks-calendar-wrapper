@@ -14,6 +14,33 @@ const documentStub = {
 	createTextNode: (text: string) => new FakeElement("#text", { text }),
 } as unknown as Document;
 
+test("a written replace shows Saved your edit", async (t) => {
+	const h = writerHarness({ "Note.md": "- [ ] Pay" });
+	const writer = h.create();
+	const presenter = createNoticePresenter({} as App, { document: documentStub });
+	const notices = createUndoNotices(writer, presenter, {
+		onWriteResult: () => {},
+		setTimeout: h.clock.setTimeout,
+		clearTimeout: h.clock.clearTimeout,
+	});
+	t.after(() => {
+		notices.close();
+		writer.dispose();
+		presenter.dispose();
+	});
+	const result = await writer.write(() => h.target(0, "Note.md"), {
+		kind: "replace",
+		expected: "- [ ] Pay",
+		lines: ["- [x] Pay rent"],
+	});
+	assert.equal(result.kind, "written");
+	notices.show(result);
+	assert.equal(
+		((Notice.instances.at(-1)!.message as FakeElement).children[0] as FakeElement).textContent,
+		"Saved your edit to “Pay” in Note.",
+	);
+});
+
 test("undo notices retain hovered records, forget disconnected notices, and stop polling", async (t) => {
 	const h = writerHarness({ "Note.md": "- [ ] Pay" });
 	const writer = { ...h.create() };

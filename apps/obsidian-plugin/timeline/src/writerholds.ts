@@ -108,6 +108,7 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 				id: record.id,
 				lines: record.lines,
 				kind,
+				...(record.edit.kind === "insert" ? {} : { action: record.edit.kind }),
 				...(record.edit.kind === "undo" && record.edit.record.span.expected.length > 0
 					? { written: record.edit.record.span.expected }
 					: {}),

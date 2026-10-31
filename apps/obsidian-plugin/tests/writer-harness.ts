@@ -2,7 +2,7 @@ import "./setup";
 import moment from "moment";
 import type { TFile } from "obsidian";
 import { dayKey, type LineTarget } from "@tasks-calendar-wrapper/core";
-import { MarkdownView } from "./stubs/obsidian";
+import { Events, MarkdownView } from "./stubs/obsidian";
 import { fakeVault, metadataOf } from "./fakevault";
 import {
 	createTaskWriter,
@@ -20,6 +20,10 @@ import {
 	undoAlreadyText,
 	undoExpiredText,
 	overwrittenText,
+	tasksDialogTooOldText,
+	tasksDialogErrorText,
+	tasksDialogFailureText,
+	tasksDialogDeleteText,
 	type NoticeContext,
 	type RefuseReason,
 } from "../timeline/src/notices";
@@ -215,6 +219,7 @@ export function writerHarness(notes: Record<string, string | Uint8Array> = { "a.
 	const refusals: { reason: RefuseReason; context: NoticeContext }[] = [];
 	const reverts: { context: NoticeContext; count: number; redo?: () => Promise<void> }[] = [];
 	const recoveries: { context: NoticeContext; editedLine: string }[] = [];
+	const unsavedEdits: { context: NoticeContext; editedLine: string }[] = [];
 	const events: WriteEvent[] = [];
 	const dirty: string[] = [];
 	const warnings: unknown[][] = [];
@@ -300,6 +305,8 @@ export function writerHarness(notes: Record<string, string | Uint8Array> = { "a.
 		app: app as never,
 		index,
 		tasks: () => ({ kind: "none" }),
+		tasksDialog: () => ({ kind: "none" }),
+		confirm: async () => false,
 		moment,
 		locale: () => moment.locale(),
 		notices: {
@@ -318,7 +325,19 @@ export function writerHarness(notes: Record<string, string | Uint8Array> = { "a.
 			slow(context) {
 				notices.push(slowText(context));
 			},
-			editNotSaved() {},
+			editNotSaved(context, editedLine) {
+				unsavedEdits.push({ context, editedLine });
+			},
+			tasksDialog(kind, _context, reason = "") {
+				const text = {
+					"too-old": tasksDialogTooOldText,
+					error: () => tasksDialogErrorText(reason),
+					failed: () => tasksDialogFailureText(reason),
+					delete: tasksDialogDeleteText,
+				}[kind]();
+				notices.push(text);
+				return text;
+			},
 			editChangedBack(context, editedLine) {
 				recoveries.push({ context, editedLine });
 			},
@@ -373,6 +392,7 @@ export function writerHarness(notes: Record<string, string | Uint8Array> = { "a.
 		refusals,
 		reverts,
 		recoveries,
+		unsavedEdits,
 		events,
 		dirty,
 		warnings,
@@ -384,6 +404,7 @@ export function writerHarness(notes: Record<string, string | Uint8Array> = { "a.
 		deps,
 		changed,
 		put,
+		modifyListeners: () => (app.vault as unknown as Events).handlerCount("modify"),
 		peak: () => peak,
 		text: (path = "a.md") => decode(bytes.get(path) ?? new Uint8Array()),
 		setDelivery(value: typeof delivery) {

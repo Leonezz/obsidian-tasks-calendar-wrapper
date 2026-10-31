@@ -4,11 +4,12 @@ import { TasksTimelineView, TIMELINE_VIEW, timelineTaskIndex } from "./views";
 
 import { dayKey, notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
 import { createNoticePresenter } from "../timeline/src/notices";
-import { getTasksToggle } from "../timeline/src/tasksplugin";
+import { getTasksDialog, getTasksToggle } from "../timeline/src/tasksplugin";
 import { createTaskWriter } from "../timeline/src/taskwriter";
 import { moment } from "../utils/moment";
 import { RELEASE_NOTES, SUPPORT_LINKS } from "../utils/whatsnew";
 import { WhatsNewModal } from "./whatsnew-modal";
+import { ConfirmModal } from "./confirm-modal";
 import { TasksCalendarSettingTab, UserOption } from "./settings";
 import {
 	changedState,
@@ -30,6 +31,8 @@ export default class TasksCalendarWrapper extends Plugin {
 		app: this.app,
 		index: this.taskIndex,
 		tasks: () => getTasksToggle(this.app, moment),
+		tasksDialog: () => getTasksDialog(this.app),
+		confirm: (options) => new ConfirmModal(this.app, options).ask(),
 		notices: this.writerNotices,
 		moment,
 		today: () => dayKey(moment()),
