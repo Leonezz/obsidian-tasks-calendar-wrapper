@@ -4,6 +4,7 @@ import "./setup";
 
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { act, createElement, createRef } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -24,6 +25,21 @@ import { ObsidianBridge } from "../timeline/src/obsidianbridge";
 import { moment } from "../utils/moment";
 import type { WriteEvent } from "../timeline/src/taskwriter";
 import { flush, writerHarness } from "./writer-harness";
+
+test("the dimmed row uses no layer-creating property", () => {
+	const css = readFileSync("styles.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+	const busyRules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, selector]) =>
+		selector.includes("[aria-busy"),
+	);
+	assert.ok(busyRules.length > 0);
+	for (const [, selector, body] of busyRules) {
+		assert.doesNotMatch(
+			body,
+			/(?:^|;)\s*(?:opacity|filter|transform|will-change|backdrop-filter)\s*:/i,
+			selector.trim(),
+		);
+	}
+});
 
 async function mountWritingTimeline(t: TestContext, text: string, toggle?: (line: string) => string) {
 	const h = writerHarness({ "Note.md": text });
