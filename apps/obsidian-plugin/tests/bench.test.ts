@@ -260,6 +260,20 @@ test("toggle: stored baselines without the scenario show no baseline and do not 
 	assert.match(result.lines.find((line) => line.includes("toggle.ignoredClicks")) ?? "", /\(count\).*-/);
 });
 
+test("the overlay paint timing is report-only against a stored baseline", () => {
+	const base = baselineWith({ toggle: { overlayMs: timing(200), overlayPaintedMs: timing(200) } });
+	for (const scale of [1, 10]) {
+		const result = compare(
+			base,
+			resultsWith({ toggle: { overlayMs: timing(400), overlayPaintedMs: timing(400) } }),
+			scale,
+		);
+		assert.equal(result.slower, 1);
+		assert.match(result.lines.find((line) => line.includes("toggle.overlayMs")) ?? "", / {2}SLOWER$/);
+		assert.match(result.lines.find((line) => line.includes("toggle.overlayPaintedMs")) ?? "", / {2}not judged$/);
+	}
+});
+
 interface PageRow {
 	nodeType: number;
 	isConnected: boolean;
@@ -279,7 +293,10 @@ interface PageClick {
 
 interface ToggleMeasurement {
 	overlayMs: number | null;
+	overlayPaintedMs: number | null;
 	renderedMs: number | null;
+	blockedMs: number;
+	longestMs: number;
 	reloadCalls: number;
 	filesRead: number;
 	clicks: { text: string; clickAt: number; overlayMs: number | null; realMs: number | null }[];
@@ -287,7 +304,13 @@ interface ToggleMeasurement {
 }
 
 /** Runs the source sent to Obsidian against a tiny page and a clock advanced only by its scheduled callbacks. */
-function togglePage({ ignoreFirst = false, missing = false, refuseRestore = false, overlayDelay = 10 } = {}) {
+function togglePage({
+	ignoreFirst = false,
+	missing = false,
+	refuseRestore = false,
+	overlayDelay = 10,
+	rowScanMs = 0,
+} = {}) {
 	let now = 1000;
 	let disk = "- [ ] Task\n";
 	const timers: { at: number; callback: () => void }[] = [];
@@ -376,7 +399,15 @@ function togglePage({ ignoreFirst = false, missing = false, refuseRestore = fals
 	);
 	const measure = runInNewContext(source + "\nmeasure", {
 		app: { plugins: { plugins: { test: plugin } }, workspace: { getLeavesOfType: () => [{ view }] }, vault },
-		document: { querySelector: () => root, getElementsByClassName: () => pageRows },
+		document: {
+			querySelector: () => root,
+			getElementsByClassName: () => ({
+				*[Symbol.iterator]() {
+					now += rowScanMs;
+					yield* pageRows;
+				},
+			}),
+		},
 		window: pageWindow,
 		performance: { now: () => now },
 		Node: { ELEMENT_NODE: 1 },
@@ -438,7 +469,7 @@ function togglePage({ ignoreFirst = false, missing = false, refuseRestore = fals
 				timers.sort((a, b) => a.at - b.at);
 				const timer = timers.shift();
 				if (!timer) continue;
-				now = timer.at;
+				now = Math.max(now, timer.at);
 				timer.callback();
 			}
 			assert.ok(done, "the page did not finish");
@@ -448,6 +479,19 @@ function togglePage({ ignoreFirst = false, missing = false, refuseRestore = fals
 		},
 	};
 }
+
+test("toggle: the overlay time does not include the recorder's first-row scan", async () => {
+	const page = togglePage({ rowScanMs: 60, overlayDelay: 10 });
+	const result = (await page.run({ action: "toggle" })) as ToggleMeasurement;
+	assert.equal(result.overlayMs, 10);
+	assert.equal(result.overlayPaintedMs, 11);
+});
+
+test("a step with no task over 50 ms reports blockedMs 0 and longestMs 0", async () => {
+	const result = (await togglePage().run({ action: "toggle" })) as ToggleMeasurement;
+	assert.equal(result.blockedMs, 0);
+	assert.equal(result.longestMs, 0);
+});
 
 test("toggle: the page clicks the label on its clock and waits for the real marker without busy", async () => {
 	const page = togglePage();

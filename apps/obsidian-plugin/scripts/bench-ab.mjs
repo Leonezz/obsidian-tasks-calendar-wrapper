@@ -23,7 +23,7 @@ export const AB_RUNS = { 1: { loads: 2, saves: 3, optionChanges: 2 }, 10: { load
 export const SIGNIFICANCE = 0.05;
 
 const ARMS = ["base", "candidate"];
-const AB_ONLY = ["--candidate", "--rounds", "--seed", "--report"];
+const AB_ONLY = ["--candidate", "--rounds", "--seed", "--report", "--any-base"];
 
 const median = (values) => counts(values).median;
 
@@ -57,6 +57,11 @@ export function abArgs(args, scale) {
 	const values = {};
 	let rest = args;
 	for (const name of ["--ab", ...AB_ONLY]) {
+		if (name === "--any-base") {
+			values[name] = rest.includes(name) ? true : undefined;
+			rest = rest.filter((arg) => arg !== name);
+			continue;
+		}
 		const taken = takeOption(rest, name);
 		values[name] = taken.value;
 		rest = taken.rest;
@@ -85,9 +90,18 @@ export function abArgs(args, scale) {
 			rounds,
 			seed,
 			report: values["--report"] ?? null,
+			allowOtherBase: values["--any-base"] === true,
 		},
 		rest,
 	};
+}
+
+/** A different base needs an explicit override so a stale local ref cannot silently change the comparison. */
+export function checkAbBase({ ref, baseCommit, mergeBase, allowOtherBase = false }) {
+	if (baseCommit === mergeBase) return null;
+	const warning = `bench: warning: base ref ${ref} resolves to ${baseCommit.slice(0, 7)}, but the candidate's merge base is ${mergeBase.slice(0, 7)}. Use --any-base to compare against this other base.`;
+	if (!allowOtherBase) throw new Error(warning);
+	return warning;
 }
 
 /**

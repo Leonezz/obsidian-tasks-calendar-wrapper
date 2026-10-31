@@ -14,6 +14,7 @@ export interface AbOptions {
 	readonly seed: number | null;
 	/** Where to write the report, or null. */
 	readonly report: string | null;
+	readonly allowOtherBase: boolean;
 }
 
 /** What one arm measured in one round: bench.mjs's results, the same shape as a baseline's. */
@@ -108,6 +109,12 @@ export const AB_RUNS: Readonly<
 >;
 export const SIGNIFICANCE: number;
 export function abArgs(args: readonly string[], scale: number): { ab: AbOptions | null; rest: string[] };
+export function checkAbBase(options: {
+	readonly ref: string;
+	readonly baseCommit: string;
+	readonly mergeBase: string;
+	readonly allowOtherBase?: boolean;
+}): string | null;
 export function abOrder(rounds: number, seed: number): Arm[][];
 export function compareAb(slots: readonly Slot[], scale: number): AbVerdict;
 

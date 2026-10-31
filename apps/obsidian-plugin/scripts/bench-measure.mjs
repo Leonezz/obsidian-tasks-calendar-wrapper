@@ -49,13 +49,20 @@ export async function measure({
 	 * token does, and the frames that showed them. A change is on screen once the browser has laid out and painted the
 	 * frame after it, which for thousands of new rows takes longer than the change itself.
 	 */
-	function record(root) {
+	function record(root, { rowsPresent = false } = {}) {
 		const longTasks = [];
 		const performanceObserver = new PerformanceObserver((list) => {
 			for (const entry of list.getEntries()) longTasks.push({ start: entry.startTime, duration: entry.duration });
 		});
 		performanceObserver.observe({ type: "longtask" });
-		const seen = { first: null, last: null, token: null, times: [], rowsAt: null, frames: [] };
+		const seen = {
+			first: null,
+			last: null,
+			token: null,
+			times: [],
+			rowsAt: rowsPresent ? performance.now() : null,
+			frames: [],
+		};
 		const liveRows = document.getElementsByClassName("task");
 		const inView = (node) =>
 			(node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement)?.closest(contentSelector);
@@ -223,7 +230,7 @@ export async function measure({
 		}
 		case "settle": {
 			// Lets the reloads that follow loading the plugin pass, so they do not land in the next measurement.
-			const recorder = record(document.body);
+			const recorder = record(document.body, { rowsPresent: true });
 			try {
 				await sleep(settleMs);
 				if (toggleTasks)
@@ -266,7 +273,7 @@ export async function measure({
 			if (!file) throw new Error(`the vault has no note ${path}`);
 			const root = document.querySelector(leafSelector);
 			if (!root) throw new Error("the timeline view is not open");
-			const recorder = record(root);
+			const recorder = record(root, { rowsPresent: true });
 			const reloadCalls = countReloads();
 			const reads = countReads();
 			let changed = null;
@@ -327,7 +334,7 @@ export async function measure({
 				externalCalls++;
 				return external.apply(this, args);
 			};
-			const recorder = record(leaf);
+			const recorder = record(leaf, { rowsPresent: true });
 			const reloadCalls = countReloads();
 			const reads = countReads();
 			// When the change that shows the setting was made: the frame after it is the one that shows it.
@@ -407,21 +414,13 @@ export async function measure({
 				throw new Error("toggle: the five tasks are not in one day column");
 			if (initialRows.some((row) => row.dataset.task !== " " || row.hasAttribute("aria-busy")))
 				throw new Error("toggle: the five tasks are not all open and idle");
-			const recorder = record(root);
-			const reloads = countReloads();
-			const reads = countReads();
 			const clicks = [];
-			let start = null;
-			// Observe before dispatch: a brief overlay can appear and clear between the polling intervals.
-			function click(text) {
-				let row = findRow(text);
-				if (row.dataset.task !== " " || row.hasAttribute("aria-busy"))
-					throw new Error(`toggle: "${text}" is not open and idle before its click`);
-				const checkbox = row.querySelector(":scope > .timeline > label.icon");
-				if (!checkbox) throw new Error(`toggle: "${text}" has no built-in checkbox label`);
-				const entry = { text, clickAt: null, overlayAt: null, realAt: null };
-				const observer = new MutationObserver((changes) => {
-					if (!row.isConnected) row = findRow(text);
+			// Stamp overlays before the recorder does its work, including changes between polling intervals.
+			const observer = new MutationObserver((changes) => {
+				for (const entry of clicks) {
+					if (entry.abandoned) continue;
+					if (!entry.row.isConnected) entry.row = findRow(entry.text);
+					const row = entry.row;
 					if (
 						row.getAttribute("aria-busy") === "true" ||
 						changes.some(
@@ -433,15 +432,26 @@ export async function measure({
 					)
 						entry.overlayAt ??= performance.now();
 					if (row.dataset.task === "x" && !row.hasAttribute("aria-busy")) entry.realAt ??= performance.now();
-				});
-				observer.observe(root, {
-					subtree: true,
-					childList: true,
-					attributes: true,
-					attributeOldValue: true,
-					attributeFilter: ["aria-busy", "data-task"],
-				});
-				entry.observer = observer;
+				}
+			});
+			observer.observe(root, {
+				subtree: true,
+				childList: true,
+				attributes: true,
+				attributeOldValue: true,
+				attributeFilter: ["aria-busy", "data-task"],
+			});
+			const recorder = record(root, { rowsPresent: true });
+			const reloads = countReloads();
+			const reads = countReads();
+			let start = null;
+			function click(text) {
+				const row = findRow(text);
+				if (row.dataset.task !== " " || row.hasAttribute("aria-busy"))
+					throw new Error(`toggle: "${text}" is not open and idle before its click`);
+				const checkbox = row.querySelector(":scope > .timeline > label.icon");
+				if (!checkbox) throw new Error(`toggle: "${text}" has no built-in checkbox label`);
+				const entry = { text, row, clickAt: null, overlayAt: null, realAt: null, abandoned: false };
 				clicks.push(entry);
 				// Constructed in this page, immediately before dispatch, with the same clock as the click guard.
 				const event = new MouseEvent("click", { bubbles: true, cancelable: true, view: window });
@@ -478,7 +488,7 @@ export async function measure({
 								throw new Error(
 									`toggle: "${text}" showed an overlay after 200 ms; cannot safely retry a write in progress`,
 								);
-							entry.observer.disconnect();
+							entry.abandoned = true;
 							await sleep(300);
 						}
 						if (entry.overlayAt === null) throw new Error(`toggle: "${text}" was ignored ten times`);
@@ -494,6 +504,10 @@ export async function measure({
 				const { tasks, ...work } = recorder.stop(start);
 				return {
 					overlayMs: clicks[0].overlayAt === null ? null : clicks[0].overlayAt - clicks[0].clickAt,
+					overlayPaintedMs:
+						clicks[0].overlayAt === null
+							? null
+							: paintedAfter(recorder.seen, clicks[0].overlayAt) - clicks[0].clickAt,
 					renderedMs:
 						clicks[0].realAt === null
 							? null
@@ -510,7 +524,7 @@ export async function measure({
 					content: await readBytes(),
 				};
 			} finally {
-				clicks.forEach((entry) => entry.observer.disconnect());
+				observer.disconnect();
 				recorder.stop(start ?? 0);
 				reloads();
 				reads();

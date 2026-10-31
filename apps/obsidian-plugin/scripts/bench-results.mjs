@@ -105,6 +105,7 @@ export function splitLoad(raw, burstGapMs) {
 /**
  * The timings shown but not judged in the vault at a scale:
  * - indexedMs: how long Obsidian takes to read a saved note, which is not up to the plugin;
+ * - overlayPaintedMs: the toggle overlay's first painted frame, recorded only for reporting;
  * - laterBlockedMs in the 40,000-task vault: the work after a load's first render. The plugin pushes its options to
  *   the view 200 ms after it loads; whether that lands before the first render is painted or after it is a race, and
  *   after it the timeline reloads and renders again. With the noise of a busy machine on top, this moved between
@@ -113,7 +114,9 @@ export function splitLoad(raw, burstGapMs) {
  *   4,000-task vault laterBlockedMs stayed within 230-245 ms over 20 loads, and is judged.
  */
 export function notJudgedAt(scale) {
-	return new Set(scale === 1 ? ["indexedMs"] : ["indexedMs", "laterBlockedMs"]);
+	return new Set(
+		scale === 1 ? ["indexedMs", "overlayPaintedMs"] : ["indexedMs", "overlayPaintedMs", "laterBlockedMs"],
+	);
 }
 
 const isTiming = (value) => typeof value === "object" && value !== null && "minMs" in value;

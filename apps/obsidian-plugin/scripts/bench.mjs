@@ -32,6 +32,7 @@
  * judges the rounds as pairs, with the same 25 % and 50 ms floor and the same counts. It also measures the main
  * thread's CPU time of every step, which a busy machine moves far less than the clock. `--rounds <n>` (8 at scale 1, 6 at
  * scale 10), `--candidate <ref>` builds the candidate from a ref too, and `--report <file>` writes every number as JSON.
+ * The base must be the candidate's merge base unless `--any-base` explicitly allows a different one.
  * Both arms get this checkout's manifest.json, so a different version does not make one of them save its options while
  * it loads. scripts/bench-nightly.mjs runs this for labelled PRs at night.
  *
@@ -46,7 +47,7 @@ import { randomInt } from "crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import os from "os";
 import path from "path";
-import { AB_RUNS, abArgs, abOrder, compareAb } from "./bench-ab.mjs";
+import { AB_RUNS, abArgs, abOrder, checkAbBase, compareAb } from "./bench-ab.mjs";
 import { buildAt, localBuild } from "./bench-builds.mjs";
 import { otherBenchProcesses } from "./bench-host.mjs";
 import { measure } from "./bench-measure.mjs";
@@ -155,7 +156,7 @@ function measureToggle(evaluate, timed, notes, scale, label, cpuSummary, cpuText
 			check(() => assertToggleChanges(prepared, step.content, lines.slice(0, 1)));
 			idle.push(step);
 			console.log(
-				`bench: ${label}toggle idle ${run + 1}: overlay ${round(step.overlayMs)} ms, real result ${round(step.renderedMs)} ms, blocked ${round(step.blockedMs)} ms, longest task ${round(step.longestMs)} ms${cpuText(step)}`,
+				`bench: ${label}toggle idle ${run + 1}: overlay ${round(step.overlayMs)} ms, overlay painted ${round(step.overlayPaintedMs)} ms, real result ${round(step.renderedMs)} ms, blocked ${round(step.blockedMs)} ms, longest task ${round(step.longestMs)} ms${cpuText(step)}`,
 			);
 		}
 		reset();
@@ -187,6 +188,7 @@ function measureToggle(evaluate, timed, notes, scale, label, cpuSummary, cpuText
 		return {
 			runs: idle.length,
 			overlayMs,
+			overlayPaintedMs: summary(idle.map((step) => step.overlayPaintedMs)),
 			renderedMs: summary(idle.map((step) => step.renderedMs)),
 			blockedMs: summary(idle.map((step) => step.blockedMs)),
 			longestTaskMs: summary(idle.map((step) => step.longestMs)),
@@ -392,6 +394,21 @@ const restoreSteps = (cli, notes) =>
  * exit code: 1 when something got slower.
  */
 function runAb(ab, scale) {
+	let mergeBase;
+	try {
+		const baseCommit = execFileSync("git", ["rev-parse", "--verify", "--end-of-options", `${ab.base}^{commit}`], {
+			cwd: repoRoot,
+			encoding: "utf8",
+		}).trim();
+		mergeBase = execFileSync("git", ["merge-base", "--", ab.base, ab.candidate ?? "HEAD"], {
+			cwd: repoRoot,
+			encoding: "utf8",
+		}).trim();
+		const warning = checkAbBase({ ref: ab.base, baseCommit, mergeBase, allowOtherBase: ab.allowOtherBase });
+		if (warning) console.warn(warning);
+	} catch (error) {
+		throw new ScriptError(error.message);
+	}
 	const others = otherBenchProcesses(
 		execFileSync("ps", ["-A", "-o", "pid=,ppid=,command="], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }),
 		process.pid,
@@ -497,7 +514,7 @@ function runAb(ab, scale) {
 				rounds: ab.rounds,
 				seed,
 				order,
-				base: record(builds.base),
+				base: { ...record(builds.base), mergeBase: mergeBase.slice(0, 7) },
 				candidate: record(builds.candidate),
 				identicalBuilds,
 				env,
@@ -543,7 +560,7 @@ await runScript("bench", async () => {
 	const unknown = rest.filter((arg) => arg !== "--update");
 	if (unknown.length)
 		throw new ScriptError(
-			`unknown arguments ${JSON.stringify(unknown)}; the only ones are --update, --scale 10, and --ab <ref> with --candidate <ref>, --rounds <n>, --seed <n> and --report <file>.`,
+			`unknown arguments ${JSON.stringify(unknown)}; the only ones are --update, --scale 10, and --ab <ref> with --candidate <ref>, --rounds <n>, --seed <n>, --report <file> and --any-base.`,
 		);
 	const update = args.includes("--update");
 	if (ab && update) throw new ScriptError("--ab compares two builds and records no baseline; leave out --update.");

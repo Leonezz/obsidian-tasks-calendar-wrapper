@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { abArgs, abOrder, compareAb, type Slot } from "../scripts/bench-ab.mjs";
+import * as benchAb from "../scripts/bench-ab.mjs";
 import { counts } from "../scripts/bench-results.mjs";
 
 // `pnpm bench --ab <ref>` measures the base and the candidate in turn and judges the candidate against the base, round
@@ -14,7 +15,7 @@ test("without --ab the arguments are left as they are", () => {
 
 test("--ab takes the base, and the rounds default to the scale's", () => {
 	assert.deepEqual(abArgs(["--ab", "master"], 1), {
-		ab: { base: "master", candidate: null, rounds: 8, seed: null, report: null },
+		ab: { base: "master", candidate: null, rounds: 8, seed: null, report: null, allowOtherBase: false },
 		rest: [],
 	});
 	assert.equal(abArgs(["--ab=master"], 10).ab?.rounds, 6);
@@ -24,7 +25,14 @@ test("--ab takes the base, and the rounds default to the scale's", () => {
 			1,
 		),
 		{
-			ab: { base: "master", candidate: "abc123", rounds: 10, seed: 42, report: "out.json" },
+			ab: {
+				base: "master",
+				candidate: "abc123",
+				rounds: 10,
+				seed: 42,
+				report: "out.json",
+				allowOtherBase: false,
+			},
 			rest: ["--update"],
 		},
 	);
@@ -39,6 +47,30 @@ test("wrong A/B arguments are errors that say what is wanted", () => {
 	assert.throws(() => abArgs(["--ab", "x", "--seed", "-1"], 1), /--seed must be a whole number/);
 	assert.throws(() => abArgs(["--ab", "x", "--seed", "abc"], 1), /--seed must be a whole number/);
 	assert.throws(() => abArgs(["--ab", "x", "--report"], 1), /--report needs a file/);
+	assert.throws(() => abArgs(["--any-base"], 1), /--any-base only go with --ab/);
+});
+
+test("--any-base allows another base only with --ab", () => {
+	assert.equal(abArgs(["--ab", "master"], 1).ab?.allowOtherBase, false);
+	const parsed = abArgs(["--any-base", "--ab", "master", "--seed", "42"], 1);
+	assert.equal(parsed.ab?.allowOtherBase, true);
+	assert.equal(parsed.ab?.seed, 42);
+	assert.deepEqual(parsed.rest, []);
+});
+
+test("an A/B base that is not the candidate's merge base is named in a warning", () => {
+	assert.equal(typeof benchAb.checkAbBase, "function");
+	const base = {
+		ref: "master",
+		baseCommit: "b94bd30" + "0".repeat(33),
+		mergeBase: "f72cf4b" + "0".repeat(33),
+		allowOtherBase: false,
+	};
+	const warning = benchAb.checkAbBase({ ...base, allowOtherBase: true });
+	assert.equal(typeof warning, "string");
+	for (const text of [base.ref, "b94bd30", "f72cf4b", "--any-base"]) assert.ok(warning?.includes(text));
+	assert.throws(() => benchAb.checkAbBase(base), { message: warning! });
+	assert.equal(benchAb.checkAbBase({ ...base, baseCommit: base.mergeBase }), null);
 });
 
 test("half the rounds start with the base and half with the candidate, in an order the seed decides", () => {
@@ -187,6 +219,27 @@ test("what is not judged at a scale is shown and never slower", () => {
 	assert.equal(later(10).slower, 0);
 	assert.equal(rowOf(later(10), "initialLoad.laterBlockedMs").verdict, "not judged");
 	assert.equal(later(1).slower, 1);
+});
+
+test("the overlay paint timing is report-only in A/B comparisons", () => {
+	const of = (ms: number) => ({ toggle: { overlayMs: timing(ms), overlayPaintedMs: timing(ms) } });
+	for (const scale of [1, 10]) {
+		const verdict = compareAb(
+			slotsOf(
+				BASE.map(of),
+				BASE.map((ms) => of(ms * 2)),
+			),
+			scale,
+		);
+		assert.equal(verdict.slower, 1);
+		assert.equal(rowOf(verdict, "toggle.overlayMs").verdict, "slower");
+		const painted = rowOf(verdict, "toggle.overlayPaintedMs");
+		assert.equal(painted.judged, false);
+		assert.equal(painted.verdict, "not judged");
+		assert.ok(
+			verdict.lines.some((line) => line.includes("toggle.overlayPaintedMs") && line.endsWith("  not judged")),
+		);
+	}
 });
 
 test("counts are shown for both arms, and a count that changed is a warning, not a failure", () => {
