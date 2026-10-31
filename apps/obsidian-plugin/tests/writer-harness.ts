@@ -225,6 +225,7 @@ export function writerHarness(notes: Record<string, string | Uint8Array> = { "a.
 	let peak = 0;
 	let delivery: "delayed" | "dropped" | "delivered" = "delayed";
 	let beforeProcess: (() => Promise<void> | void) | undefined;
+	let afterProcess: (() => Promise<void> | void) | undefined;
 	let beforeBinary: (() => Promise<void> | void) | undefined;
 	let afterBinary: (() => void) | undefined;
 	const app = {
@@ -253,6 +254,7 @@ export function writerHarness(notes: Record<string, string | Uint8Array> = { "a.
 				const after = fn(before);
 				cache.set(file.path, after);
 				if (after !== before) put(file.path, after);
+				await afterProcess?.();
 				return after;
 			},
 		}),
@@ -389,6 +391,9 @@ export function writerHarness(notes: Record<string, string | Uint8Array> = { "a.
 		},
 		onProcess(fn?: typeof beforeProcess) {
 			beforeProcess = fn;
+		},
+		afterProcess(fn?: typeof afterProcess) {
+			afterProcess = fn;
 		},
 		onBinary(fn?: typeof beforeBinary, after?: typeof afterBinary) {
 			beforeBinary = fn;

@@ -537,6 +537,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 					{ changes: [editorChange(before, span.line, span.expected, lines, span.eol, span.below)] },
 					origin,
 				);
+				record.applied = true;
 				try {
 					await source.save();
 				} catch (error) {
@@ -581,7 +582,9 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 							return content;
 						}
 						try {
-							return replacement(content);
+							const after = replacement(content);
+							if (after !== content) record.applied = true;
+							return after;
 						} catch (error) {
 							if (!(error instanceof Refusal)) throw error;
 							refusal = error;
@@ -596,8 +599,11 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 			}
 			if (unchanged)
 				return Object.freeze(undoing ? { kind: "unchanged", alreadyUndone: true } : { kind: "unchanged" });
-			shiftUndos(target.path, record.target.line, record.delta, record.insertBefore);
-			if (undo) keepUndo(undo);
+			shiftUndos(record.target.path, record.target.line, record.delta, record.insertBefore);
+			if (undo) {
+				undo = deepFreeze({ ...undo, path: record.target.path });
+				keepUndo(undo);
+			}
 			return Object.freeze({
 				kind: "written",
 				delta: record.delta,

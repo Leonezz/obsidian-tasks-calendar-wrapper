@@ -45,7 +45,8 @@ export interface WriteRecord {
 	windowEnd: number;
 	token?: HoldToken;
 	released: boolean;
-	/** A pending write must stop after its note moves, disappears, or the plugin unloads. */
+	applied?: true;
+	/** Stop an unapplied write after its note moves or disappears, and any write when the plugin unloads. */
 	invalidated: boolean;
 	indexed: boolean;
 	slow: boolean;
@@ -251,7 +252,7 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 		changes.delete(file.path);
 		hooks.deleted(file.path);
 		for (const record of of(file.path)) {
-			if (record.status === "pending") record.invalidated = true;
+			if (record.status === "pending" && !record.applied) record.invalidated = true;
 			release(record);
 		}
 	});
@@ -260,7 +261,7 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 		touch(file.path);
 		changes.delete(oldPath);
 		for (const record of of(oldPath)) {
-			if (record.status === "pending") record.invalidated = true;
+			if (record.status === "pending" && !record.applied) record.invalidated = true;
 			release(record);
 			if (!record.invalidated) {
 				record.target = Object.freeze({ ...record.target, path: file.path });

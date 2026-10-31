@@ -4,11 +4,12 @@ import "./setup";
 
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { act, createElement, createRef } from "react";
+import { act, createElement, createRef, type ContextType } from "react";
 import { createRoot } from "react-dom/client";
 
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { providerValues, renderedDays, rendersOf, resetRenderCounts } from "../timeline/src/components/renderprobe";
+import { QuickEntryHandlerContext } from "../timeline/src/components/context";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
 import { moment } from "../utils/moment";
 import { notesApp, openView } from "./view-harness";
@@ -358,3 +359,54 @@ for (const outcome of ["refused", "failed"] as const) {
 		assert.equal(calls.length, 2);
 	});
 }
+
+test("quick entry ignores a second submit while the first is pending", async (t) => {
+	const first = deferred<boolean>();
+	const second = deferred<boolean>();
+	const error = new Error("adding a task failed");
+	let rejection: Promise<void> | undefined;
+	t.mock.method(second.promise, "then", (...callbacks: Parameters<Promise<boolean>["then"]>) => {
+		const chained = Promise.prototype.then.call(second.promise, ...callbacks);
+		rejection = assert.rejects(chained, error);
+		return chained;
+	});
+	const { opened, container } = await mountTimeline(t, { "Inbox.md": "- [ ] older" });
+	await act(() => opened.view.onUpdateOptions({ ...defaultUserOptions, taskFiles: ["Inbox.md"] }));
+	const handlers = providerValues().QuickEntryHandlerContext as ContextType<typeof QuickEntryHandlerContext>;
+	let calls = 0;
+	const create = t.mock.method(handlers, "handleCreateNewTask", () => {
+		calls++;
+		if (calls === 1) return first.promise;
+		if (calls === 2) return second.promise;
+		return Promise.resolve(true);
+	});
+	const input = container.querySelector<HTMLInputElement>('.quickEntryPanel input[type="text"]');
+	const submit = container.querySelector<HTMLButtonElement>(".quickEntryPanel button.ok");
+	assert.ok(input && submit);
+	input.value = "add once";
+	resetRenderCounts();
+	await act(() => {
+		submit.click();
+		submit.click();
+		input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true }));
+	});
+	assert.equal(create.mock.callCount(), 1);
+	assert.deepEqual(create.mock.calls[0].arguments, ["Inbox.md", "add once"]);
+	assert.equal(input.value, "add once");
+	await act(async () => first.resolve(true));
+	assert.equal(input.value, "");
+	assert.equal(rendersOf("TaskItemView"), 0);
+	assert.equal(rendersOf("DateView"), 0);
+	input.value = "retry this";
+	await act(() => submit.click());
+	assert.equal(create.mock.callCount(), 2);
+	await act(async () => {
+		second.reject(error);
+		assert.ok(rejection, "the handler keeps rejection observable");
+		await rejection;
+	});
+	assert.equal(input.value, "retry this");
+	await act(() => submit.click());
+	assert.equal(create.mock.callCount(), 3);
+	assert.equal(input.value, "");
+});

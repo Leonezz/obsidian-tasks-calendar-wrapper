@@ -142,6 +142,18 @@ test("quick entry goes through the writer's queue after a running write of the s
 	assert.deepEqual(harness.processCalls, ["Inbox.md", "Inbox.md"]);
 });
 
+test("quick entry inserted before a rename is reported added", async (t) => {
+	const harness = writerHarness({ "a.md": "## Tasks\n" });
+	const writer = harness.create();
+	t.after(() => writer.dispose());
+	harness.afterProcess(() => harness.rename("a.md", "b.md"));
+	const vault = { ...fakeVault({}).vault, ...harness.app.vault };
+	assert.equal(await appendTaskToNote(vault, writer, "a.md", "## Tasks", task, neverAsked), true);
+	assert.equal(harness.text("b.md"), "## Tasks\n- [ ] new\n");
+	assert.deepEqual(harness.refusals, []);
+	assert.equal(harness.holds.get("a.md"), 0);
+});
+
 test("quick entry into a missing note still asks Create note and creates it outside the writer", async (t) => {
 	const { vault, contents, writes } = fakeVault({});
 	const writer: Pick<TaskWriter, "insert"> = {
