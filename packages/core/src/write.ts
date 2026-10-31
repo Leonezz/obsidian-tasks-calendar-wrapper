@@ -187,7 +187,8 @@ export function dateTokens(line: string): readonly DateToken[] {
 	const tokens: DateToken[] = [];
 	for (const match of line.matchAll(/(➕|🛫|⏳|⌛|📅|📆|🗓|✅|❌)️? */gu)) {
 		const start = match.index + match[0].length;
-		const word = /^\S*/u.exec(line.slice(start))![0];
+		// A value stops at the next date or recurrence emoji, so a date emoji ending the description reads no value.
+		const word = /^(?:(?!➕|🛫|⏳|⌛|📅|📆|🗓|✅|❌|🔁)\S)*/u.exec(line.slice(start))![0];
 		const time = /^ [0-9]{2}:[0-9]{2}(?::[0-9]{2})?(?=\s|$)/u.exec(line.slice(start + word.length))?.[0] ?? "";
 		const value = word + time;
 		tokens.push({ symbol: match[1], value, start, end: start + value.length });
@@ -299,11 +300,15 @@ export interface Neighbours {
 	readonly below: string | null;
 }
 
+// Uses textLines' model, where the empty segment after a final newline is a line, as undoSpanFor records neighbours.
 function adjacent(text: string, neighbours: Neighbours): boolean {
-	const normalized = normalizedText(text);
-	const lines = normalized === "" ? [] : normalized.split("\n");
+	const lines = normalizedText(text).split("\n");
 	for (let i = 0; i <= lines.length; i++) {
-		if ((lines[i - 1] ?? null) === neighbours.above && (lines[i] ?? null) === neighbours.below) return true;
+		if ((lines[i - 1] ?? null) !== neighbours.above) continue;
+		const below = lines[i] ?? null;
+		if (below === neighbours.below) return true;
+		// A deleted last line without an EOL leaves the [""] span, whose neighbours are recorded around that empty line.
+		if (neighbours.below === null && below === "" && i === lines.length - 1) return true;
 	}
 	return false;
 }

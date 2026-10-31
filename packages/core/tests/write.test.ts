@@ -382,6 +382,26 @@ test("checkReplacement refuses a new unreadable token", () => {
 	});
 });
 
+test("checkReplacement accepts a field written after a date emoji that ends the description", () => {
+	assert.deepEqual(
+		checkReplacement("- [ ] waiting on Bob ⌛", ["- [x] waiting on Bob ⌛ ✅ 2026-10-24"], "inplace"),
+		{ ok: true, unchanged: false, recurrenceRemoved: false },
+	);
+	assert.deepEqual(checkReplacement("- [ ] call ⏳", ["- [ ] call ⏳ 📅 2026-10-26"], "inplace"), {
+		ok: true,
+		unchanged: false,
+		recurrenceRemoved: false,
+	});
+	assert.deepEqual(
+		dateTokens("- [ ] a ⌛ ✅ 2026-10-24 📅2026-10-25🔁 every day").map(({ symbol, value }) => ({ symbol, value })),
+		[
+			{ symbol: "⌛", value: "" },
+			{ symbol: "✅", value: "2026-10-24" },
+			{ symbol: "📅", value: "2026-10-25" },
+		],
+	);
+});
+
 test("checkReplacement counts 🔁 markers", () => {
 	assert.equal(recurrenceMarkers("🔁 🔁️ [repeat:: every day] (RePeAt:: weekly)"), 4);
 	for (const marker of ["🔁 every day", "🔁️ every day", "[repeat:: every day]"]) {
@@ -578,6 +598,33 @@ test("findRevert needs a 🏁 deletion's neighbours to be adjacent", () => {
 		),
 		1,
 	);
+});
+
+test("findRevert sees a 🏁 deletion's neighbours as undoSpanFor records them on first and last lines", () => {
+	for (const [before, line] of [
+		["a\nX\nb", 1],
+		["X", 0],
+		["a\nX", 1],
+		["X\n", 0],
+		["X\nb", 0],
+		["a\nX\n", 1],
+	] as const) {
+		const { span, original } = undoSpanFor(before, line, []);
+		const deleted = contentOf(replaceSpan(before, { line, expected: [original] }, []));
+		assert.equal(contentOf(replaceSpan(deleted, span, [original])), before, JSON.stringify(before));
+		const neighbours = { above: span.above ?? null, below: span.below ?? null };
+		const adjacency = new Map([
+			[1, neighbours],
+			[2, neighbours],
+		]);
+		const snapshots = [counts(before), counts(deleted), counts(deleted), counts(before)];
+		assert.equal(findRevert(deleted, [counts(before)], snapshots, ["X"], adjacency), 2, JSON.stringify(before));
+		assert.equal(
+			findRevert(before.replace("X", "inserted"), [counts(before)], snapshots, ["X"], adjacency),
+			null,
+			JSON.stringify(before),
+		);
+	}
 });
 
 test("findRevert finds a revert on a BOM note's line 0 and does not misreport it", () => {
