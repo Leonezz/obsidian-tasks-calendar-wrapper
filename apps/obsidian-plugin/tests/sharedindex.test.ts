@@ -150,3 +150,115 @@ test("a reader asked for a full read after the unload, as by a view that opens t
 	assert.deepStrictEqual([...later.tasks], await readTasks(vault.app as never, {}, moment));
 	a.close();
 });
+
+test("a dropped index's token releases without error; releasing twice has no effect", async () => {
+	for (const drop of ["close", "dispose"] as const) {
+		const vault = fakeVault({ "a.md": "- [ ] a" });
+		const shared = sharedOf(vault);
+		const reader = shared.openReader();
+		await reader.update({});
+		const token = shared.hold("a.md");
+		assert.ok(Object.isFrozen(token));
+		if (drop === "close") reader.close();
+		else shared.dispose();
+		assert.equal(watchers(vault), 0, "a hold keeps no lease alive");
+		assert.doesNotThrow(() => token.release());
+		assert.doesNotThrow(() => token.release());
+		if (drop === "dispose") {
+			vault.write("a.md", "- [ ] after unload");
+			const read = readsOf(vault);
+			reader.rereadAll();
+			const after = await reader.update({});
+			assert.deepEqual(read(), ["a.md"], "dropping the lease also ends its pin");
+			assert.deepEqual(after.pinned, []);
+			assert.equal(after.tasks[0].visual, "after unload");
+		}
+	}
+	const vault = fakeVault({ "a.md": "- [ ] a" });
+	const shared = sharedOf(vault);
+	const reader = shared.openReader();
+	const first = await reader.update({});
+	const read = readsOf(vault);
+	const one = shared.hold("a.md");
+	const two = shared.hold("a.md");
+	one.release();
+	one.release();
+	const still = await reader.update({});
+	assert.deepEqual(read(), []);
+	assert.equal(still.tasks[0], first.tasks[0]);
+	assert.deepEqual(still.pinned, ["a.md"], "one token cannot release another token's claim");
+	two.release();
+	await reader.update({});
+	assert.deepEqual(read(), ["a.md"]);
+	reader.close();
+});
+
+test("hold and markDirty without an open timeline do nothing", async () => {
+	const vault = fakeVault({ "a.md": "- [ ] a" });
+	const shared = sharedOf(vault);
+	const empty = shared.hold("a.md");
+	assert.ok(Object.isFrozen(empty));
+	shared.markDirty(["a.md"]);
+	empty.release();
+	empty.release({ markDirty: false });
+	assert.equal(watchers(vault), 0);
+	assert.deepEqual(vault.reads, []);
+	assert.equal(vault.listings(), 0, "no index is made just for a writer");
+	const reader = shared.openReader();
+	const first = await reader.update({});
+	assert.deepEqual(first.pinned, []);
+	assert.deepEqual(vault.reads, ["a.md"]);
+	const read = readsOf(vault);
+	shared.markDirty(["a.md"]);
+	await reader.update({});
+	assert.deepEqual(read(), ["a.md"], "marks are forwarded while a timeline is open");
+	shared.dispose();
+	assert.doesNotThrow(() => shared.markDirty(["a.md"]));
+	const disposed = shared.hold("a.md");
+	assert.doesNotThrow(() => disposed.release());
+	assert.doesNotThrow(() => disposed.release());
+	assert.equal(watchers(vault), 0);
+	assert.deepEqual(read(), []);
+});
+
+test("a token from a dropped lease does not touch the next lease's index", async () => {
+	const vault = fakeVault({ "a.md": "- [ ] a" });
+	const shared = sharedOf(vault);
+	const oldReader = shared.openReader();
+	await oldReader.update({});
+	const old = shared.hold("a.md");
+	const otherOld = shared.hold("a.md");
+	oldReader.close();
+	const reader = shared.openReader();
+	const first = await reader.update({});
+	const current = shared.hold("a.md");
+	const read = readsOf(vault);
+	old.release();
+	old.release();
+	const retained = await reader.update({});
+	assert.deepEqual(read(), []);
+	assert.equal(retained.tasks[0], first.tasks[0]);
+	assert.deepEqual(retained.pinned, ["a.md"], "the old lease cannot release the new lease's pin");
+	current.release({ markDirty: false });
+	await reader.update({});
+	assert.deepEqual(read(), ["a.md"], "the held update kept no committed entry");
+	const stored = await reader.update({});
+	otherOld.release();
+	const unchanged = await reader.update({});
+	assert.deepEqual(read(), [], "the old token cannot mark the new index");
+	assert.equal(unchanged.tasks[0], stored.tasks[0]);
+	const held = shared.hold("a.md");
+	vault.write("a.md", "- [ ] changed", { indexed: false, pendingMetadata: "none" });
+	old.release();
+	const pinned = await reader.update({});
+	assert.deepEqual(read(), []);
+	assert.equal(pinned.tasks[0], stored.tasks[0]);
+	assert.deepEqual(pinned.pinned, ["a.md"]);
+	vault.indexPending();
+	held.release();
+	const changed = await reader.update({});
+	assert.deepEqual(read(), ["a.md"]);
+	assert.equal(changed.tasks[0].visual, "changed");
+	assert.deepEqual(changed.pinned, []);
+	reader.close();
+});

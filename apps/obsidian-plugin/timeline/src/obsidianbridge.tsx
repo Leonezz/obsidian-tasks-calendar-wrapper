@@ -19,6 +19,8 @@ import { openNoteAt } from "../../src/open-note";
 import { sameParseKey } from "../../utils/parsekey";
 import { tagSearchUri, tasksPluginCommand } from "../../utils/utils";
 import { appendTaskToNote } from "./appendtask";
+import { writeFailureText } from "./notices";
+import { REFUSAL_NOTICE_MS, type TaskWriter } from "./taskwriter";
 import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "./components/context";
 import { recordProvider } from "./components/renderprobe";
 import { TimelineView } from "./components/timelineview";
@@ -29,6 +31,7 @@ const defaultObsidianBridgeProps = {
 	store: createStore<TimelineState>(initialTimelineState()) as Store<TimelineState>,
 };
 type ObsidianBridgeProps = Readonly<typeof defaultObsidianBridgeProps> & {
+	readonly writer: Pick<TaskWriter, "insert">;
 	readonly resolveEnv?: ReturnType<typeof createResolveEnv>;
 };
 interface ObsidianBridgeState {
@@ -125,22 +128,24 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		}));
 	}
 
-	handleCreateNewTask(path: string, append: string) {
+	async handleCreateNewTask(path: string, append: string): Promise<boolean> {
 		const notePath = normalizePath(normalizeNotePath(path));
-		appendTaskToNote(
-			this.app.vault,
-			notePath,
-			this.state.userOptions.sectionForNewTasks,
-			"- [ ] " + append,
-			this.confirmCreateNote,
-		)
-			.then((added) => {
-				if (added) this.onUpdateTasks();
-			})
-			.catch((reason) => {
-				console.error("Tasks Calendar Wrapper: adding a task failed", reason);
-				new Notice("Could not add the task to " + notePath + ": " + reason, 5000);
-			});
+		try {
+			const added = await appendTaskToNote(
+				this.app.vault,
+				this.props.writer,
+				notePath,
+				this.state.userOptions.sectionForNewTasks,
+				"- [ ] " + append,
+				this.confirmCreateNote,
+			);
+			if (added) this.onUpdateTasks();
+			return added;
+		} catch (reason) {
+			console.error("Tasks Calendar Wrapper: adding a task failed", reason);
+			new Notice(writeFailureText({ path: notePath, line: 0, text: append }, reason), REFUSAL_NOTICE_MS);
+			return false;
+		}
 	}
 
 	private confirmCreateNote(path: string): Promise<boolean> {

@@ -4,6 +4,7 @@ import { ObsidianBridge } from "../timeline/src/obsidianbridge";
 import { createReadReporter } from "../timeline/src/readreporter";
 import { createSharedTaskIndex, type ReaderSource, type SharedTaskIndex } from "../timeline/src/sharedindex";
 import { watchChanges, type TaskIndexReader } from "../timeline/src/taskindex";
+import type { TaskWriter } from "../timeline/src/taskwriter";
 import { createRoot, Root } from "react-dom/client";
 import { moment } from "../utils/moment";
 import { parseKeyOf } from "../utils/parsekey";
@@ -47,7 +48,11 @@ export class TasksTimelineView extends ItemView {
 	private filesWithTasks: ReadonlySet<string> = new Set();
 	private readonly requestReload = debounce(() => this.onReloadTasks(), RELOAD_DELAY_MS, true);
 	static view: TasksTimelineView | null = null;
-	constructor(leaf: WorkspaceLeaf, notes: ReaderSource) {
+	constructor(
+		leaf: WorkspaceLeaf,
+		notes: ReaderSource,
+		private readonly writer: TaskWriter,
+	) {
 		super(leaf);
 		this.reader = notes.openReader();
 
@@ -83,7 +88,9 @@ export class TasksTimelineView extends ItemView {
 
 		container.empty();
 		this.root = createRoot(container);
-		this.root.render(<ObsidianBridge plugin={this} store={this.store} resolveEnv={this.resolveEnv} />);
+		this.root.render(
+			<ObsidianBridge plugin={this} store={this.store} resolveEnv={this.resolveEnv} writer={this.writer} />,
+		);
 	}
 
 	async onClose(): Promise<void> {

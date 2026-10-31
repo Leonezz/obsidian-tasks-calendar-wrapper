@@ -4,18 +4,22 @@ import "./setup";
 
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { act, createElement, createRef } from "react";
+import { act, createElement, createRef, type ContextType } from "react";
 import { createRoot } from "react-dom/client";
 
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { providerValues, renderedDays, rendersOf, resetRenderCounts } from "../timeline/src/components/renderprobe";
+import { QuickEntryHandlerContext } from "../timeline/src/components/context";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
 import { moment } from "../utils/moment";
 import { notesApp, openView } from "./view-harness";
+import type { TaskWriter, WriteResult } from "../timeline/src/taskwriter";
+import { deferred } from "./writer-harness";
 
 /** The view's bridge mounted in a real DOM, with its store already loaded. */
-async function mountTimeline(t: TestContext, notes: Record<string, string>) {
+async function mountTimeline(t: TestContext, notes: Record<string, string>, writer?: Pick<TaskWriter, "insert">) {
 	const app = notesApp(notes);
+	Object.assign(app.vault, { getFileByPath: (path: string) => (path in notes ? { path } : null) });
 	const opened = openView(app);
 	await opened.view.onUpdateOptions({ ...defaultUserOptions });
 	const container = document.body.appendChild(document.createElement("div"));
@@ -29,7 +33,14 @@ async function mountTimeline(t: TestContext, notes: Record<string, string>) {
 	});
 	const bridge = createRef<ObsidianBridge>();
 	await act(() => {
-		root.render(createElement(ObsidianBridge, { plugin: { app } as never, store: opened.store, ref: bridge }));
+		root.render(
+			createElement(ObsidianBridge, {
+				plugin: { app } as never,
+				store: opened.store,
+				writer: writer ?? opened.writer,
+				ref: bridge,
+			}),
+		);
 	});
 	return { opened, container, bridge };
 }
@@ -307,4 +318,95 @@ test("row models last within a day and refresh with the locale and next day", as
 	assert.ok(
 		[...container.querySelectorAll<HTMLOptionElement>(".fileSelect option")].some((o) => o.value === dailyNote),
 	);
+});
+
+for (const outcome of ["refused", "failed"] as const) {
+	test(`quick entry keeps its input text on ${outcome} and clears it after success`, async (t) => {
+		const pending = deferred<WriteResult>();
+		const calls: { path: string; text: string }[] = [];
+		let result: WriteResult =
+			outcome === "refused"
+				? { kind: "refused", reason: "not-utf8", message: "Inbox is not saved as UTF-8." }
+				: { kind: "failed", unknownOutcome: false, error: new Error("disk full") };
+		const writer: Pick<TaskWriter, "insert"> = {
+			async insert(path, edit) {
+				calls.push({ path, text: edit("## Tasks\n") });
+				return calls.length === 1 ? pending.promise : result;
+			},
+		};
+		const { opened, container } = await mountTimeline(t, { "Inbox.md": "- [ ] older" }, writer);
+		await act(() =>
+			opened.view.onUpdateOptions({
+				...defaultUserOptions,
+				taskFiles: ["Inbox.md"],
+				sectionForNewTasks: "## Tasks",
+			}),
+		);
+		const input = container.querySelector<HTMLInputElement>('.quickEntryPanel input[type="text"]');
+		const submit = container.querySelector<HTMLButtonElement>(".quickEntryPanel button.ok");
+		assert.ok(input && submit);
+		input.value = "keep this draft";
+		await act(() => submit.click());
+		assert.equal(input.value, "keep this draft", "while the writer is still running");
+		await act(async () => {
+			pending.resolve(result);
+		});
+		assert.equal(input.value, "keep this draft");
+		assert.deepEqual(calls, [{ path: "Inbox.md", text: "## Tasks\n- [ ] keep this draft\n" }]);
+		result = { kind: "written", delta: 1, indexed: Promise.resolve() };
+		await act(() => submit.click());
+		assert.equal(input.value, "");
+		assert.equal(calls.length, 2);
+	});
+}
+
+test("quick entry ignores a second submit while the first is pending", async (t) => {
+	const first = deferred<boolean>();
+	const second = deferred<boolean>();
+	const error = new Error("adding a task failed");
+	let rejection: Promise<void> | undefined;
+	t.mock.method(second.promise, "then", (...callbacks: Parameters<Promise<boolean>["then"]>) => {
+		const chained = Promise.prototype.then.call(second.promise, ...callbacks);
+		rejection = assert.rejects(chained, error);
+		return chained;
+	});
+	const { opened, container } = await mountTimeline(t, { "Inbox.md": "- [ ] older" });
+	await act(() => opened.view.onUpdateOptions({ ...defaultUserOptions, taskFiles: ["Inbox.md"] }));
+	const handlers = providerValues().QuickEntryHandlerContext as ContextType<typeof QuickEntryHandlerContext>;
+	let calls = 0;
+	const create = t.mock.method(handlers, "handleCreateNewTask", () => {
+		calls++;
+		if (calls === 1) return first.promise;
+		if (calls === 2) return second.promise;
+		return Promise.resolve(true);
+	});
+	const input = container.querySelector<HTMLInputElement>('.quickEntryPanel input[type="text"]');
+	const submit = container.querySelector<HTMLButtonElement>(".quickEntryPanel button.ok");
+	assert.ok(input && submit);
+	input.value = "add once";
+	resetRenderCounts();
+	await act(() => {
+		submit.click();
+		submit.click();
+		input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true }));
+	});
+	assert.equal(create.mock.callCount(), 1);
+	assert.deepEqual(create.mock.calls[0].arguments, ["Inbox.md", "add once"]);
+	assert.equal(input.value, "add once");
+	await act(async () => first.resolve(true));
+	assert.equal(input.value, "");
+	assert.equal(rendersOf("TaskItemView"), 0);
+	assert.equal(rendersOf("DateView"), 0);
+	input.value = "retry this";
+	await act(() => submit.click());
+	assert.equal(create.mock.callCount(), 2);
+	await act(async () => {
+		second.reject(error);
+		assert.ok(rejection, "the handler keeps rejection observable");
+		await rejection;
+	});
+	assert.equal(input.value, "retry this");
+	await act(() => submit.click());
+	assert.equal(create.mock.callCount(), 3);
+	assert.equal(input.value, "");
 });

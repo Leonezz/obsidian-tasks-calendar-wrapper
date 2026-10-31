@@ -1,5 +1,5 @@
 import { TFile, type App, type CachedMetadata, type EventRef } from "obsidian";
-import { hasTaskItems, noteVisible, parseNote } from "@tasks-calendar-wrapper/core";
+import { copyJsonValue, deepFreeze, hasTaskItems, noteVisible, parseNote } from "@tasks-calendar-wrapper/core";
 import type {
 	MomentFactory,
 	NoteFilterSettings,
@@ -48,7 +48,7 @@ export interface WarnedNote {
 	readonly warnings: readonly ParseWarning[];
 }
 
-/** What one update gives. Frozen, with new frozen arrays every time, also when nothing changed. */
+/** What one update gives, pins included. Frozen, with new frozen arrays every time, also when nothing changed. */
 export interface IndexUpdate {
 	/**
 	 * The tasks of every visible note: notes by path in code-unit order, each note's tasks in parseNote's order, as
@@ -65,6 +65,14 @@ export interface IndexUpdate {
 	readonly warned: readonly WarnedNote[];
 	/** The visible notes whose read or parse failed in this update, in path order. They are read again next time. */
 	readonly failures: readonly NoteReadFailure[];
+	/** The visible notes given from a write's pin, in path order, even when their read was already in flight. */
+	readonly pinned: readonly string[];
+}
+
+/** One write's claim on a note; see TaskIndex.hold. */
+export interface HoldToken {
+	/** Ends this claim. `markDirty` (default true) marks the note dirty as markDirty would. A second call does nothing. */
+	release(options?: { readonly markDirty?: boolean }): void;
 }
 
 /**
@@ -78,27 +86,37 @@ export interface IndexUpdate {
  *   after the parse key changed and back, or after a file went with no event and a note came at its path;
  * - each update that succeeds replaces the Map as a whole. It keeps the fresh entries of the notes it showed and of
  *   the notes it listed that another open reader's last update gave, and no other;
+ * - a write's hold pins the entry and its visibility until the last token releases. Every reader gives the pin,
+ *   without reading or storing it, even on a full read. A retired pin bridges release to the next read stored;
  * - the updates of every reader run one at a time, in the order asked for;
  * - it keeps no view state, no CachedMetadata and no TFile, and subscribes to nothing itself, see watchNotes.
  */
 export interface TaskIndex {
 	/**
-	 * These paths may have changed: no entry of theirs read before this call is used again, by any reader. Called for
+	 * These paths may have changed: no unpinned entry read before this call is used again, by any reader. Called for
 	 * every vault "modify", every metadata cache "changed" and "deleted", and every vault "rename" of a file (new and
 	 * old path), whatever changeAffectsTasks says. May be called at any time, also while an update runs or waits. O(1)
 	 * per path. No update takes the marks, so one reader's update cannot lose another reader's.
 	 */
 	markDirty(paths: readonly string[]): void;
-	/** A reader for one timeline. Its first update reads every note it shows, as its filters are new. */
+	/** A reader for one timeline. Its first update reads every unpinned note it shows, as its filters are new. */
 	openReader(): TaskIndexReader;
+	/**
+	 * One write's claim on a note. The first claim pins its committed entry, however old, and its tags, frontmatter
+	 * and task-item visibility now, or its retired pin if no entry is committed. With neither, updates read normally.
+	 * Claims count: only the last release retires the pin. A read stored later, or forget, drops the retired pin.
+	 */
+	hold(path: string): HoldToken;
+	/** A note was deleted or renamed (both paths): drop its retired pin so a later note cannot inherit it. */
+	forget(paths: readonly string[]): void;
 }
 
 /** One timeline's use of the shared index: its own full reads, note filters and notes held. */
 export interface TaskIndexReader {
 	/**
-	 * This reader's next update reads every note it shows that no update has read since this call, for when an event
-	 * may have been missed: when the view opens, on Obsidian's first "resolved" and on "window-open". The other readers
-	 * read nothing for it; they may use what its full read stores.
+	 * This reader's next update reads every unpinned note it shows that no update has read since this call, for when
+	 * an event may have been missed: when the view opens, on Obsidian's first "resolved" and on "window-open". The other
+	 * readers read nothing for it; they may use what its full read stores.
 	 */
 	rereadAll(): void;
 	/**
@@ -107,10 +125,13 @@ export interface TaskIndexReader {
 	 * without failure has none: it is new to the reader, or its read failed. It tells the user nothing: the view
 	 * hands the warned notes and failures to its ReadReporter, see readreporter.ts. `filters` may be the view's whole
 	 * options; only the five note filters count.
+	 * - A pinned note uses its pin's visibility and entry, including a pin acquired during the reads. It is neither
+	 *   read nor stored; a read already in flight is replaced. A pin seen by this update stays its result even if
+	 *   released before it commits, and is named in `pinned`. The note must be in this update's listing.
 	 * - It starts at once when no update of any reader runs or waits, so every read has started when it returns;
 	 *   otherwise right when every update asked for before it has settled, before their callers hear of it. A
 	 *   rejection stops none of the updates after it.
-	 * - Note filters other than those of this reader's last update that succeeded read every note it shows.
+	 * - Note filters other than those of this reader's last update that succeeded read every unpinned note it shows.
 	 * - It rejects with the error readTasks would throw when listing the notes, reading their metadata for the filters,
 	 *   or a filter of the wrong type throws, and when deps.parseKey throws. Nothing is stored then, and no mark, full
 	 *   read asked for, filters or notes held of any reader change.
@@ -133,6 +154,28 @@ interface Entry {
 	/** Null for a note without warnings, whose text is not hashed. */
 	readonly warned: WarnedNote | null;
 	readonly readAt: number;
+}
+
+/** A write's entry and a copy of the metadata needed to filter it while Obsidian has no cache. */
+interface Pin {
+	/** The committed entry at the first claim, or the entry of a retired pin. */
+	readonly entry: Entry;
+	/** The tags at pin time, so an include or exclude filter does not follow the pending metadata. */
+	readonly tags: readonly string[];
+	/** A frozen copy at pin time, with no reference to Obsidian's mutable frontmatter. */
+	readonly frontmatter: Readonly<Record<string, unknown>> | undefined;
+	/** Whether the metadata had task items at pin time, as listNotes checks for an unpinned note. */
+	readonly hasTaskItems: boolean;
+}
+
+/** The outstanding claims on one path, including claims made before any entry was available. */
+interface Hold {
+	/** Each token decrements once; the pin lasts until this reaches zero. */
+	count: number;
+	/** Chosen at the first claim only: a hold without a pin never takes a later read's entry. */
+	readonly pin: Pin | undefined;
+	/** A deletion or rename prevents a later release from restoring the retired pin that forget dropped. */
+	retire: boolean;
 }
 
 /** What reading one note gave. */
@@ -174,13 +217,14 @@ interface Running {
 	/** The generation its reads started at: an entry it stores is fresh until a mark of its path comes after it. */
 	readonly start: number;
 	readonly before: Committed;
-	/**
-	 * Every markdown path the update listed, visible or not, when another reader was open as it started; null when
-	 * none was, as there is nothing to keep for another then.
-	 */
-	readonly listed: ReadonlySet<string> | null;
+	/** Every markdown path initially listed, including notes a pin acquired during reads may make visible. */
+	readonly listed: ReadonlySet<string>;
 	readonly planned: readonly Planned[];
 	readonly filtersKey: string;
+	/** The filters used to list, also applied to pins acquired after that listing. */
+	readonly filters: NoteFilterSettings;
+	/** Pins seen during this update, retained even if released before its reads settle. */
+	readonly pins: Map<string, Pin>;
 	/** The parse key at its start is the one the entries were stored under. */
 	readonly keyHeldSince: boolean;
 }
@@ -193,19 +237,22 @@ const filterKeyOf = (f: NoteFilterSettings): string =>
 	JSON.stringify([f.includePaths, f.excludePaths, f.fileIncludeTags, f.fileExcludeTags, f.excludeProperties]);
 
 /**
- * The notes the filters keep that may have tasks, by path in code-unit order, and with `all`, the paths of every
- * markdown note. A note whose metadata has no task item gives no task and no warning, so it is not read, and one of
+ * The notes the filters keep that may have tasks, by path in code-unit order, and every listed markdown path.
+ * A note whose metadata has no task item gives no task and no warning, so it is not read, and one of
  * those that cannot be read tells nothing. A note Obsidian has given no metadata yet, new or being indexed again, is
  * listed as before, so its stored tasks stay and it is read when it is due. It is what readTasks lists, written out
  * again on purpose, so readTasks stays a reference of its own and the tests can tell when the two drift apart.
+ * A pin supplies its own visibility without consulting the current metadata.
  */
 function listNotes(
 	app: NoteSource,
 	filters: NoteFilterSettings,
-	all: boolean,
-): { listed: Set<string> | null; visible: TFile[] } {
+	pinOf: (path: string) => Pin | undefined,
+): { listed: Set<string>; visible: TFile[] } {
 	const files = app.vault.getMarkdownFiles();
 	const visible = files.filter((file) => {
+		const pin = pinOf(file.path);
+		if (pin !== undefined) return pinVisible(file.path, pin, filters);
 		const cache = app.metadataCache.getFileCache(file);
 		// The filters first, so a filter of the wrong type throws as it always has.
 		return (
@@ -217,10 +264,14 @@ function listNotes(
 		);
 	});
 	return {
-		listed: all ? new Set(files.map((file) => file.path)) : null,
+		listed: new Set(files.map((file) => file.path)),
 		visible: [...visible].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)),
 	};
 }
+
+/** Filters a pin without consulting metadata that may be absent or already describe the next text. */
+const pinVisible = (path: string, pin: Pin, filters: NoteFilterSettings): boolean =>
+	noteVisible({ path, tags: pin.tags, frontmatter: pin.frontmatter }, filters) && pin.hasTaskItems;
 
 /** An empty index. A closure like core's createStore; the objects it returns are frozen. */
 export function createTaskIndex(deps: TaskIndexDeps): TaskIndex {
@@ -233,12 +284,20 @@ export function createTaskIndex(deps: TaskIndexDeps): TaskIndex {
 	 * drops every entry a mark made stale, and then the marks.
 	 */
 	const marks = new Map<string, number>();
+	/** Active claims by path; a pin supplies no newly stored entry while the write waits for metadata. */
+	const holds = new Map<string, Hold>();
+	/** Released pins bridge another write before an update reads and stores the note. */
+	const retired = new Map<string, Pin>();
+	/** The one update in flight, so a hold that starts during its reads can replace them at commit. */
+	let running: Running | null = null;
+	const pinOf = (path: string) => holds.get(path)?.pin;
 	/** The open readers. */
 	const readers = new Set<ReaderState>();
 	const queue = createQueue();
 
 	async function readNote({ file, path }: Planned): Promise<Read> {
-		const content = await deps.app.vault.cachedRead(file);
+		// Metadata offsets exclude the BOM, but process can cache BOM-carrying text when it writes nothing.
+		const content = (await deps.app.vault.cachedRead(file)).replace(/^\uFEFF/, "");
 		const note = parse({ path, content, metadata: deps.app.metadataCache.getFileCache(file) }, deps.moment);
 		// Only a note that warns is hashed, so the notes of most vaults cost nothing more.
 		const warned =
@@ -268,19 +327,24 @@ export function createTaskIndex(deps: TaskIndexDeps): TaskIndex {
 			reader.held.has(path) &&
 			entry.readAt >= reader.dueAt &&
 			fresh(path, entry);
-		// An update of a closed reader is not among the readers: any open one is another.
-		const othersOpen = [...readers].some((other) => other !== reader);
-		const { listed, visible } = listNotes(deps.app, filters, othersOpen);
+		const { listed, visible } = listNotes(deps.app, filters, pinOf);
+		const pins = new Map<string, Pin>();
+		for (const [path, hold] of holds) if (hold.pin !== undefined && listed.has(path)) pins.set(path, hold.pin);
 		const planned: Planned[] = visible.map((file) => {
 			const path = file.path;
 			const entry = before.entries.get(path);
-			return { file, path, kept: usable(path, entry) ? entry : undefined };
+			return { file, path, kept: pins.get(path)?.entry ?? (usable(path, entry) ? entry : undefined) };
 		});
-		const settled = await Promise.allSettled(planned.filter((note) => note.kept === undefined).map(readNote));
-		// A key that changed while the notes were read: some may be parsed under each, so the next update reads all.
-		const keyHeld = sameParseKey(startKey, deps.parseKey());
-		const update: Running = { reader, start, before, listed, planned, filtersKey, keyHeldSince };
-		return commit(update, settled, keyHeld ? startKey : null);
+		const update: Running = { reader, start, before, listed, planned, filtersKey, filters, pins, keyHeldSince };
+		running = update;
+		try {
+			const settled = await Promise.allSettled(planned.filter((note) => note.kept === undefined).map(readNote));
+			// A key that changed while the notes were read: some may be parsed under each, so the next update reads all.
+			const keyHeld = sameParseKey(startKey, deps.parseKey());
+			return commit(update, settled, keyHeld ? startKey : null);
+		} finally {
+			running = null;
+		}
 	}
 
 	/** Stores what this update read and kept, and what the other open readers show, in one assignment. */
@@ -293,35 +357,56 @@ export function createTaskIndex(deps: TaskIndexDeps): TaskIndex {
 		const warnings: ParseWarning[] = [];
 		const warned: WarnedNote[] = [];
 		const failures: NoteReadFailure[] = [];
+		const pinned: string[] = [];
 		const given = new Set<string>();
 		let next = 0;
-		for (const { path, kept } of u.planned) {
-			const read = kept === undefined ? settled[next++] : undefined;
-			if (read?.status === "rejected") {
+		const planned = u.planned.map(({ path, kept }) => ({
+			path,
+			kept,
+			read: kept === undefined ? settled[next++] : undefined,
+		}));
+		// A pin acquired during the reads can make an initially hidden note visible. It must still have been listed.
+		if (u.pins.size > 0) {
+			const showing = new Set(planned.map(({ path }) => path));
+			for (const [path, pin] of u.pins)
+				if (!showing.has(path)) planned.push({ path, kept: pin.entry, read: undefined });
+			planned.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+		}
+		for (const { path, kept, read } of planned) {
+			const pin = u.pins.get(path);
+			if (pin !== undefined && !pinVisible(path, pin, u.filters)) continue;
+			if (pin === undefined && read?.status === "rejected") {
 				// Not stored, and not held by this reader: it reads the note again. The others keep theirs, see below.
 				failures.push(Object.freeze({ path, reason: read.reason }));
 				continue;
 			}
-			const entry = kept ?? Object.freeze({ ...(read as PromiseFulfilledResult<Read>).value, readAt: u.start });
+			const entry =
+				pin?.entry ??
+				kept ??
+				Object.freeze({ ...(read as PromiseFulfilledResult<Read>).value, readAt: u.start });
 			given.add(path);
+			if (pin !== undefined) pinned.push(path);
 			// One at a time, not spread, so a note with very many tasks cannot exceed the argument limit.
 			for (const task of entry.note.tasks) tasks.push(task);
 			for (const warning of entry.note.warnings) warnings.push(warning);
 			if (entry.warned !== null) warned.push(entry.warned);
 			// Marked again since the update started: returned as read, but not stored, so it is read again.
-			if ((reader.open || heldByOthers(path)) && fresh(path, entry)) entries.set(path, entry);
+			if (pin === undefined && (reader.open || heldByOthers(path)) && fresh(path, entry)) {
+				entries.set(path, entry);
+				if (read?.status === "fulfilled") retired.delete(path);
+			}
 		}
 		// The entries this update did not store, of notes the other readers hold and this update listed, stay while
-		// they are fresh: those it did not show, and those it could not read, as with an index each. With no other
-		// reader open as it started there are none, so one timeline's update costs what it did; after another parse
-		// key, none stays.
+		// they are fresh: those it did not show, and those it could not read, as with an index each. A pinned note
+		// may retain this earlier entry for another reader, never its pin or in-flight read. Any mark drops the entry
+		// before marks are cleared; after another parse key, none stays.
 		const { listed } = u;
-		if (listed !== null && u.keyHeldSince && others.length > 0)
+		if (u.keyHeldSince && others.length > 0)
 			for (const [path, entry] of u.before.entries)
 				if (!entries.has(path) && listed.has(path) && heldByOthers(path) && fresh(path, entry))
 					entries.set(path, entry);
 		committed = Object.freeze({ entries, parseKey });
-		// Every entry kept is fresh and those the marks made stale are gone, so the marks have done their work.
+		// Every earlier entry kept is fresh; marked entries are gone. Clearing marks cannot revive a stale pin's entry.
 		marks.clear();
 		if (reader.open) {
 			// A note it could not read is not held: it reads it again, also when an entry is kept for the others.
@@ -333,6 +418,50 @@ export function createTaskIndex(deps: TaskIndexDeps): TaskIndex {
 			warnings: Object.freeze(warnings),
 			warned: Object.freeze(warned),
 			failures: Object.freeze(failures),
+			pinned: Object.freeze(pinned),
+		});
+	}
+
+	/** Records a mark in constant time per path, including when a release marks a still-pinned note. */
+	function markDirty(paths: readonly string[]): void {
+		clock += 1;
+		for (const path of paths) marks.set(path, clock);
+	}
+
+	/** Takes the first claim's snapshot only once, so overlapping writes cannot move the pin forward. */
+	function hold(path: string): HoldToken {
+		let held = holds.get(path);
+		if (held === undefined) {
+			const entry = committed.entries.get(path);
+			let pin = retired.get(path);
+			if (entry !== undefined) {
+				const file = deps.app.vault.getMarkdownFiles().find((file) => file.path === path);
+				const cache = file === undefined ? null : deps.app.metadataCache.getFileCache(file);
+				pin = Object.freeze({
+					entry,
+					tags: Object.freeze(cache?.tags?.map((tag) => tag.tag) ?? []),
+					frontmatter: deepFreeze(copyJsonValue(cache?.frontmatter)),
+					hasTaskItems: hasTaskItems(cache),
+				});
+			}
+			held = { count: 0, pin, retire: true };
+			holds.set(path, held);
+		}
+		held.count += 1;
+		if (held.pin !== undefined && running?.listed.has(path)) running.pins.set(path, held.pin);
+		const claim = held;
+		let released = false;
+		return Object.freeze({
+			release(options?: { readonly markDirty?: boolean }): void {
+				if (released) return;
+				released = true;
+				if (options?.markDirty !== false) markDirty([path]);
+				claim.count -= 1;
+				if (claim.count === 0) {
+					holds.delete(path);
+					if (claim.pin !== undefined && claim.retire) retired.set(path, claim.pin);
+				}
+			},
 		});
 	}
 
@@ -354,11 +483,16 @@ export function createTaskIndex(deps: TaskIndexDeps): TaskIndex {
 	}
 
 	return Object.freeze({
-		markDirty(paths: readonly string[]): void {
-			clock += 1;
-			for (const path of paths) marks.set(path, clock);
-		},
+		markDirty,
 		openReader,
+		hold,
+		forget(paths: readonly string[]): void {
+			for (const path of paths) {
+				retired.delete(path);
+				const held = holds.get(path);
+				if (held !== undefined) held.retire = false;
+			}
+		},
 	});
 }
 
@@ -403,7 +537,7 @@ function createQueue(): <T>(job: () => Promise<T>) => Promise<T> {
 }
 
 /**
- * Marks the paths of every change, for the index, whatever the change:
+ * Marks the paths of every change, for the index, whatever the change; deleted and renamed paths also lose retired pins:
  * - metadata cache "changed" and "deleted": the note's path;
  * - vault "rename" of a file: the new path and the old one. A folder's own event is left out, as Obsidian sends one
  *   for each file inside it;
@@ -412,9 +546,20 @@ function createQueue(): <T>(job: () => Promise<T>) => Promise<T> {
  *   still has says the note has no task item.
  * Registered once per index, by createSharedTaskIndex. Returns the refs, for the caller to register and take off.
  */
-export function watchNotes(app: Pick<App, "vault" | "metadataCache">, index: Pick<TaskIndex, "markDirty">): EventRef[] {
+export function watchNotes(
+	app: Pick<App, "vault" | "metadataCache">,
+	index: Pick<TaskIndex, "markDirty" | "forget">,
+): EventRef[] {
+	const forgotten = (paths: string[]) => {
+		index.forget(paths);
+		index.markDirty(paths);
+	};
 	return [
-		...watchChanges(app, (paths) => index.markDirty(paths)),
+		app.metadataCache.on("changed", (file) => index.markDirty([file.path])),
+		app.metadataCache.on("deleted", (file) => forgotten([file.path])),
+		app.vault.on("rename", (file, oldPath) => {
+			if (file instanceof TFile) forgotten([file.path, oldPath]);
+		}),
 		app.vault.on("modify", (file) => {
 			if (file instanceof TFile) index.markDirty([file.path]);
 		}),

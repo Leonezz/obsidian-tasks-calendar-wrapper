@@ -46,12 +46,28 @@ export function requireApiVersion(version: string): boolean {
 /** Obsidian shows a toast. The stub keeps each message, so a test can check what the user was told. */
 export class Notice {
 	static shown: string[] = [];
+	static instances: Notice[] = [];
+	readonly setMessages: (string | FakeElement)[] = [];
+	readonly noticeEl = new FakeElement();
+	hidden = false;
 
 	constructor(
-		public message: string,
+		public message: string | FakeElement,
 		public duration?: number,
 	) {
-		Notice.shown.push(message);
+		Notice.shown.push(typeof message === "string" ? message : message.textContent);
+		Notice.instances.push(this);
+	}
+
+	setMessage(message: string | FakeElement): this {
+		this.message = message;
+		this.setMessages.push(message);
+		return this;
+	}
+
+	hide(): void {
+		this.hidden = true;
+		this.noticeEl.isConnected = false;
 	}
 }
 
@@ -71,7 +87,24 @@ export class Keymap {
 
 /** As in Obsidian: a markdown view has an editor. */
 export class MarkdownView {
-	editor!: { setCursor(position: { line: number; ch: number }): void };
+	file: { path: string } | null = null;
+	editor!: {
+		setCursor(position: { line: number; ch: number }): void;
+		getLine?(line: number): string;
+		getValue?(): string;
+		lineCount?(): number;
+		transaction?(transaction: { changes?: unknown }, origin?: string): void;
+	};
+
+	getMode(): "source" | "preview" {
+		return "preview";
+	}
+
+	getViewData(): string {
+		return "";
+	}
+
+	async save(): Promise<void> {}
 }
 
 /** What Obsidian's createEl and createDiv take: a class, or the class, the text and the attributes. */
@@ -84,10 +117,14 @@ export type FakeElementInfo =
  */
 export class FakeElement {
 	text = "";
+	value = "";
+	readOnly = false;
+	isConnected = true;
 	cls: string;
 	children: (FakeElement | ButtonComponent)[] = [];
 	focused = false;
 	readonly attr: Readonly<Record<string, string | number | boolean | null>>;
+	private clickHandlers: (() => unknown)[] = [];
 
 	constructor(
 		readonly tag = "div",
@@ -101,6 +138,25 @@ export class FakeElement {
 
 	get firstChild(): FakeElement | ButtonComponent | null {
 		return this.children[0] ?? null;
+	}
+
+	get textContent(): string {
+		return (
+			this.text +
+			this.children.map((child) => (child instanceof FakeElement ? child.textContent : child.buttonText)).join("")
+		);
+	}
+
+	set textContent(text: string) {
+		this.setText(text);
+	}
+
+	addEventListener(name: string, listener: () => unknown): void {
+		if (name === "click") this.clickHandlers.push(listener);
+	}
+
+	click(): void {
+		for (const handler of this.clickHandlers) handler();
 	}
 
 	focus(): void {

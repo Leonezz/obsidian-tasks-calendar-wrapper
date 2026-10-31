@@ -131,6 +131,7 @@ class QuickEntry extends React.Component<QuickEntryProps, QuickEntryState> {
 	private fileSecect;
 	private okButton;
 	private quickEntryPanel;
+	private appendPending = false;
 	constructor(props: QuickEntryProps) {
 		super(props);
 
@@ -334,6 +335,7 @@ class QuickEntry extends React.Component<QuickEntryProps, QuickEntryState> {
 								aria-label="Append new task to selected note"
 								onClick={() => {
 									if (this.state.action === "append") {
+										if (this.appendPending) return;
 										// there is an issue with this.state.selectedFile:
 										// the value is not setted when initialize.
 										// using this.fileSecect.current?.value for emergency.
@@ -341,10 +343,18 @@ class QuickEntry extends React.Component<QuickEntryProps, QuickEntryState> {
 										const newTask = this.textInput.current?.value;
 										if (!newTask || !filePath) return;
 										if (newTask.length > 1) {
-											callback.handleCreateNewTask(filePath, newTask);
-											if (this.textInput.current) {
-												this.textInput.current.value = "";
-											}
+											this.appendPending = true;
+											void callback.handleCreateNewTask(filePath, newTask).then(
+												(added) => {
+													this.appendPending = false;
+													if (added && this.textInput.current)
+														this.textInput.current.value = "";
+												},
+												(error: unknown) => {
+													this.appendPending = false;
+													throw error;
+												},
+											);
 										} else {
 											this.textInput.current?.focus();
 										}
