@@ -18,7 +18,7 @@ type ObsidianBridgeProps = Readonly<typeof defaultObsidianBridgeProps>;
 interface ObsidianBridgeState {
 	readonly tasks: readonly Task[];
 	readonly userOptions: UserOption;
-	/** The quick entry panel's filter, applied to the tasks until the list shown changes. */
+	/** The quick entry panel's filter, kept until the user clears it or adds a task through the quick entry. */
 	readonly quickFilter?: QuickFilter;
 }
 
@@ -34,9 +34,9 @@ export function quickFilterOf(
 	return Object.freeze({ from, to, priorities: Object.freeze([...priorities]) });
 }
 
-/** The bridge's state with the tasks of a new list shown. The quick filter goes with the old list, as it did. */
+/** The bridge's state with the tasks of a new list shown, keeping the quick filter. */
 export function withNewList(state: ObsidianBridgeState, tasks: readonly Task[]): ObsidianBridgeState {
-	return { ...state, tasks, quickFilter: undefined };
+	return { ...state, tasks };
 }
 
 export class ObsidianBridge extends React.Component<ObsidianBridgeProps, ObsidianBridgeState> {
@@ -77,7 +77,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 	/**
 	 * After the view's state changed. New options render the timeline again. Of a reload, only a change in the list
 	 * shown does, as only a changed list did before: the other tasks are hidden, and the next change or the quick entry
-	 * brings them along.
+	 * brings them along. Reloads and option changes keep the quick filter.
 	 */
 	onStateChanged() {
 		const next = this.props.store.getSnapshot();
@@ -92,12 +92,17 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 
 	/** Shows the tasks read last, without the quick filter, as adding a task through the quick entry always did. */
 	onUpdateTasks() {
-		this.setState((state) => withNewList(state, this.props.store.getSnapshot().tasks));
+		this.setState(() => ({ tasks: this.props.store.getSnapshot().tasks, quickFilter: undefined }));
 	}
 
 	/** The quick entry panel's filter, which core applies, see QuickFilter. */
 	handleFilterEnable(startDate: string | undefined, endDate: string | undefined, priorities: string[]) {
-		this.setState({ quickFilter: quickFilterOf(startDate, endDate, priorities) });
+		this.setState({
+			quickFilter:
+				!startDate && !endDate && priorities.length === 0
+					? undefined
+					: quickFilterOf(startDate, endDate, priorities),
+		});
 	}
 
 	handleCreateNewTask(path: string, append: string) {
@@ -236,6 +241,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 				value={{
 					handleCreateNewTask: this.handleCreateNewTask,
 					handleFilterEnable: this.handleFilterEnable,
+					quickFilter: this.state.quickFilter,
 				}}
 			>
 				<TaskItemEventHandlersContext.Provider value={this.getTaskItemHandlers()}>

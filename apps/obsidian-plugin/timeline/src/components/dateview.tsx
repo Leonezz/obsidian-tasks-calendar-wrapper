@@ -1,6 +1,12 @@
 import { moment } from "../../../utils/moment";
 import * as React from "react";
-import { expandShortcuts, getFileTitle, type DayGroup, type ResolvedTask } from "@tasks-calendar-wrapper/core";
+import {
+	expandShortcuts,
+	getFileTitle,
+	type DayGroup,
+	type QuickFilter,
+	type ResolvedTask,
+} from "@tasks-calendar-wrapper/core";
 import * as Icons from "./asserts/icons";
 import { QuickEntryHandlerContext, TodayFocusEventHandlersContext, UserOptionContext } from "./context";
 import { TaskItemView } from "./taskitemview";
@@ -24,7 +30,11 @@ export class DateView extends React.Component<DateViewProps> {
 			<div>
 				{day.isEntry && <TodayFocus visual={"Focus On Today"} />}
 				{day.isEntry && <Counters />}
-				{day.isEntry && <QuickEntry />}
+				{day.isEntry && (
+					<QuickEntryHandlerContext.Consumer>
+						{({ quickFilter }) => <QuickEntry applied={quickFilter} />}
+					</QuickEntryHandlerContext.Consumer>
+				)}
 				{day.tasks.length > 0 && (
 					<div className={className} data-year={yearLabel} data-types={types}>
 						<DateHeader thisDate={day.label} />
@@ -69,22 +79,29 @@ class NormalDateContent extends React.Component<NormalDateContentProps> {
 	}
 }
 
+type QuickEntryProps = {
+	readonly applied?: QuickFilter;
+};
 const defaultQuickEntryState = {
 	selectedFile: "" as string,
 	action: "append" as string,
 	filters: [] as string[],
+	draft: { from: "", to: "", priorities: [] as readonly string[] },
+	applied: undefined as QuickFilter | undefined,
 };
 type QuickEntryState = typeof defaultQuickEntryState;
 
-class QuickEntry extends React.Component<Record<string, unknown>, QuickEntryState> {
+function draftOf(applied?: QuickFilter): QuickEntryState["draft"] {
+	return { from: applied?.from ?? "", to: applied?.to ?? "", priorities: [...(applied?.priorities ?? [])] };
+}
+
+class QuickEntry extends React.Component<QuickEntryProps, QuickEntryState> {
 	private textInput;
 	private fileSecect;
 	private okButton;
 	private quickEntryPanel;
-	private dateFilter: string[] = new Array<string>(2);
-	private priorityFilter: string[] = new Array<string>();
-	constructor(none: Record<string, unknown>) {
-		super(none);
+	constructor(props: QuickEntryProps) {
+		super(props);
 
 		this.onQuickEntryFileSelectChange = this.onQuickEntryFileSelectChange.bind(this);
 		this.onQuickEntryNewTaskInput = this.onQuickEntryNewTaskInput.bind(this);
@@ -99,9 +116,23 @@ class QuickEntry extends React.Component<Record<string, unknown>, QuickEntryStat
 
 		this.state = {
 			selectedFile: "Inbox.md",
-			action: "append",
-			filters: [],
+			action: props.applied ? "filter" : "append",
+			filters: [
+				...(props.applied?.from || props.applied?.to ? ["date"] : []),
+				...(props.applied?.priorities.length ? ["priority"] : []),
+			],
+			draft: draftOf(props.applied),
+			applied: props.applied,
 		};
+	}
+
+	/** A newly applied filter replaces the draft; a reload keeps the filter's identity and the edits in progress. */
+	static getDerivedStateFromProps(
+		props: QuickEntryProps,
+		state: QuickEntryState,
+	): Pick<QuickEntryState, "draft" | "applied"> | null {
+		if (props.applied === state.applied) return null;
+		return { draft: draftOf(props.applied), applied: props.applied };
 	}
 
 	onQuickEntryFileSelectChange() {
@@ -193,6 +224,7 @@ class QuickEntry extends React.Component<Record<string, unknown>, QuickEntryStat
 								name="Filter Type"
 								className="filterSelector"
 								options={filterNames}
+								selected={this.state.filters}
 								fallbackValueIndex={0}
 								selectChangeHandler={(res) => {
 									this.setState({ filters: res });
@@ -224,13 +256,21 @@ class QuickEntry extends React.Component<Record<string, unknown>, QuickEntryStat
 												<input
 													key={1}
 													type="date"
-													onChange={(e) => (this.dateFilter[0] = e.target.value)}
+													value={this.state.draft.from}
+													onChange={(e) => {
+														const from = e.target.value;
+														this.setState((state) => ({ draft: { ...state.draft, from } }));
+													}}
 												/>
 												<a key={2}>{"  To: "}</a>
 												<input
 													key={3}
 													type="date"
-													onChange={(e) => (this.dateFilter[1] = e.target.value)}
+													value={this.state.draft.to}
+													onChange={(e) => {
+														const to = e.target.value;
+														this.setState((state) => ({ draft: { ...state.draft, to } }));
+													}}
 												/>
 											</div>
 										);
@@ -243,10 +283,13 @@ class QuickEntry extends React.Component<Record<string, unknown>, QuickEntryStat
 													name="priorityFilter"
 													className=""
 													options={["+", "1", "2", "3", "4"]}
+													selected={this.state.draft.priorities}
 													visual={["➕", "High", "Medium", "None", "Low"]}
 													fallbackValueIndex={0}
 													selectChangeHandler={(res) => {
-														this.priorityFilter = res;
+														this.setState((state) => ({
+															draft: { ...state.draft, priorities: res },
+														}));
 													}}
 												/>
 											</div>
@@ -283,11 +326,9 @@ class QuickEntry extends React.Component<Record<string, unknown>, QuickEntryStat
 											this.textInput.current?.focus();
 										}
 									} else {
-										callback.handleFilterEnable(
-											this.dateFilter[0],
-											this.dateFilter[1],
-											this.priorityFilter,
-										);
+										callback.handleFilterEnable(this.state.draft.from, this.state.draft.to, [
+											...this.state.draft.priorities,
+										]);
 									}
 								}}
 							>
@@ -305,23 +346,17 @@ const multiSelectProps = {
 	name: "" as string,
 	className: "" as string,
 	options: [] as string[],
+	selected: [] as readonly string[],
 	visual: [] as string[],
 	selectChangeHandler: {} as (options: string[]) => void,
 	fallbackValueIndex: 0 as number,
 };
 type MultiSelectProps = typeof multiSelectProps;
-const multiSelectStates = {
-	results: [] as string[],
-};
-type MultiSelectStates = Readonly<typeof multiSelectStates>;
-class MultiSelect extends React.Component<MultiSelectProps, MultiSelectStates> {
+class MultiSelect extends React.Component<MultiSelectProps> {
 	private selectElem;
 	constructor(props: MultiSelectProps) {
 		super(props);
 		this.selectElem = React.createRef<HTMLSelectElement>();
-		this.state = {
-			results: [],
-		};
 	}
 	render(): React.ReactNode {
 		return (
@@ -338,10 +373,10 @@ class MultiSelect extends React.Component<MultiSelectProps, MultiSelectStates> {
 						const idx = e.target.selectedIndex;
 						if (idx === this.props.fallbackValueIndex) return;
 						const value = this.props.options[idx];
-						const results = this.state.results;
-						if (results.includes(value)) results.remove(value);
-						else results.push(value);
-						this.setState({ results: results });
+						const selected = this.props.selected;
+						const results = selected.includes(value)
+							? selected.filter((result) => result !== value)
+							: [...selected, value];
 						this.props.selectChangeHandler(results);
 					}}
 				>
@@ -349,12 +384,12 @@ class MultiSelect extends React.Component<MultiSelectProps, MultiSelectStates> {
 						//.filter((_, i) => i !== this.props.fallbackValueIndex)
 						.map((n, i) => (
 							<option value={n} key={i}>
-								{this.props.visual[i] + (this.state.results.includes(n) ? "🎯" : " ")}
+								{this.props.visual[i] + (this.props.selected.includes(n) ? "🎯" : " ")}
 							</option>
 						))}
 				</select>
-				{this.state.results.map((f) => (
-					<a>{this.props.visual[this.props.options.indexOf(f)] + "🎯"}</a>
+				{this.props.selected.map((f) => (
+					<a key={f}>{this.props.visual[this.props.options.indexOf(f)] + "🎯"}</a>
 				))}
 			</div>
 		);

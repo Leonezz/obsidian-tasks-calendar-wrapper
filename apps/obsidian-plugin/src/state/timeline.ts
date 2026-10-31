@@ -4,8 +4,9 @@ import { defaultUserOptions, type UserOption } from "../useroptions";
 
 /**
  * What the old view's list held of a task it showed. Backbone compared that list to decide whether the timeline had
- * changed, and replacing it cleared the quick filter. It kept a task's forwarded and other dates in a Map, which
- * Backbone's comparison does not look into, and it had neither the note's tags nor what comes before the list marker.
+ * changed. The old view dropped the quick filter then; it now stays. It kept a task's forwarded and other dates in a
+ * Map, which Backbone's comparison does not look into, and it had neither the note's tags nor what comes before the
+ * list marker.
  */
 export function heldOf(resolved: ResolvedTask) {
 	const { task } = resolved;
@@ -38,8 +39,8 @@ export type HeldTask = ReturnType<typeof heldOf>;
 
 /**
  * What a timeline view holds: its options, the tasks read last, and what the old view's list held of the ones shown
- * then, see heldOf. The bridge renders again when the options are replaced, and when the list shown is, which also
- * drops the quick filter, as it did with the old view's Backbone models.
+ * then, see heldOf. The bridge renders again when the options are replaced, and when the list shown is, keeping the
+ * quick filter.
  */
 export interface TimelineState {
 	readonly options: UserOption;

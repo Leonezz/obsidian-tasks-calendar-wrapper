@@ -1,4 +1,5 @@
 import { Pos } from "obsidian";
+import type { QuickFilter } from "@tasks-calendar-wrapper/core";
 import * as React from "react";
 import { CounterProps } from "./dateview";
 
@@ -12,9 +13,14 @@ export const UserOptionContext = React.createContext({
 	useBuiltinStyle: true as boolean,
 });
 
-export const QuickEntryHandlerContext = React.createContext({
+export const QuickEntryHandlerContext = React.createContext<{
+	handleCreateNewTask: (filePath: string, content: string) => void;
+	handleFilterEnable: (startDate: string | undefined, enddate: string | undefined, priorities: string[]) => void;
+	quickFilter?: QuickFilter;
+}>({
 	handleCreateNewTask: (filePath: string, content: string) => {},
 	handleFilterEnable: (startDate: string | undefined, enddate: string | undefined, priorities: string[]) => {},
+	quickFilter: undefined,
 });
 
 export const TodayFocusEventHandlersContext = React.createContext({
