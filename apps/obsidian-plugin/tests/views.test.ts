@@ -8,72 +8,25 @@ import { Notice } from "obsidian";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import {
-	dayKey,
-	parseTaskLine,
-	resolveTasks,
-	type ResolvedTask,
-	type Store,
-	type Task,
-} from "@tasks-calendar-wrapper/core";
+import { dayKey, parseTaskLine, resolveTasks, type ResolvedTask, type Task } from "@tasks-calendar-wrapper/core";
 import { createResolveEnv } from "../src/state/resolveenv";
-import { initialTimelineState, type TimelineState, withReload } from "../src/state/timeline";
+import { initialTimelineState, withReload } from "../src/state/timeline";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
-import { heldOf, TasksTimelineView } from "../src/views";
+import { heldOf } from "../src/views";
 import { ObsidianBridge, quickFilterOf } from "../timeline/src/obsidianbridge";
 import { readTasks } from "../timeline/src/taskadapter";
-import { createTaskIndex } from "../timeline/src/taskindex";
 import { moment } from "../utils/moment";
-import { parseKeyOf, sameParseKey } from "../utils/parsekey";
+import { sameParseKey } from "../utils/parsekey";
 import { deeplyFrozen } from "./frozen";
 import { goldenApp, loadVault } from "./golden-vault";
 import { rowsOf } from "./markup";
+import { notesApp, openView } from "./view-harness";
 
 // The timeline's view reads the notes through its task index, which gives what readTasks gives, and hands the bridge
 // the tasks, and the list the old view held of the tasks it shows, in its state. The bridge renders again when the
 // options change, and when the list shown changes. The old view dropped the quick filter then; it now stays.
 
 const DAY = 24 * 60 * 60 * 1000;
-
-/**
- * A timeline view opened on an app, counting the changes of the list shown. `edited` tells the view a note changed, as
- * Obsidian's "changed" does through watchNotes, so that the next reload reads the note; these apps fire no events.
- */
-function openView(app: unknown) {
-	// An index of the view's own: these apps fire no events, so `edited` marks it as watchNotes would.
-	const index = createTaskIndex({ app: app as never, moment, parseKey: () => parseKeyOf(moment) });
-	const view = new TasksTimelineView({ app } as never, index);
-	const { store } = view as unknown as { store: Store<TimelineState> };
-	let changes = 0;
-	let shown = store.getSnapshot().shown;
-	store.subscribe(() => {
-		if (store.getSnapshot().shown !== shown) changes += 1;
-		shown = store.getSnapshot().shown;
-	});
-	return { view, store, changes: () => changes, edited: (path: string) => index.markDirty([path]) };
-}
-
-/**
- * An app whose notes have one task each, on their first line, and can be edited between reloads. Each edit is told to
- * the view with `edited`, see openView.
- */
-function notesApp(notes: Record<string, string>) {
-	return {
-		vault: {
-			getMarkdownFiles: () => Object.keys(notes).map((path) => ({ path })),
-			cachedRead: async (file: { path: string }) => notes[file.path],
-		},
-		metadataCache: {
-			getFileCache: (file: { path: string }) => {
-				const end =
-					notes[file.path].indexOf("\n") < 0 ? notes[file.path].length : notes[file.path].indexOf("\n");
-				const position = { start: { line: 0, col: 0, offset: 0 }, end: { line: 0, col: end, offset: end } };
-				return { listItems: [{ task: " ", parent: -1, position }], sections: [], links: [], tags: [] };
-			},
-		},
-		plugins: { plugins: {} },
-	};
-}
 
 /**
  * The bridge of a view, mounted without a DOM: its state is applied at once, and it renders to markup. The bridge

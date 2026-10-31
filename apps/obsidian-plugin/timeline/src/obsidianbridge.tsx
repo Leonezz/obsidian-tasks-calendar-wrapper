@@ -20,6 +20,7 @@ import { sameParseKey } from "../../utils/parsekey";
 import { tagSearchUri, tasksPluginCommand } from "../../utils/utils";
 import { appendTaskToNote } from "./appendtask";
 import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "./components/context";
+import { recordProvider } from "./components/renderprobe";
 import { TimelineView } from "./components/timelineview";
 
 const defaultObsidianBridgeProps = {
@@ -58,6 +59,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 	private readonly app: App;
 	private readonly resolveEnv: ReturnType<typeof createResolveEnv>;
 	private taskItemHandlers?: React.ContextType<typeof TaskItemEventHandlersContext>;
+	private quickEntryHandlers?: React.ContextType<typeof QuickEntryHandlerContext>;
 	/** The view's state the bridge last took its own from. */
 	private seen: TimelineState;
 	private unsubscribe?: () => void;
@@ -114,12 +116,13 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 
 	/** The quick entry panel's filter, which core applies, see QuickFilter. */
 	handleFilterEnable(startDate: string | undefined, endDate: string | undefined, priorities: string[]) {
-		this.setState({
-			quickFilter:
-				!startDate && !endDate && priorities.length === 0
-					? undefined
-					: quickFilterOf(startDate, endDate, priorities),
-		});
+		const quickFilter =
+			!startDate && !endDate && priorities.length === 0
+				? undefined
+				: quickFilterOf(startDate, endDate, priorities);
+		this.setState((state) => ({
+			quickFilter: isEqual(state.quickFilter, quickFilter) ? state.quickFilter : quickFilter,
+		}));
 	}
 
 	handleCreateNewTask(path: string, append: string) {
@@ -238,6 +241,17 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		return this.taskItemHandlers;
 	}
 
+	private getQuickEntryHandlers(): React.ContextType<typeof QuickEntryHandlerContext> {
+		if (!this.quickEntryHandlers || this.quickEntryHandlers.quickFilter !== this.state.quickFilter) {
+			this.quickEntryHandlers = {
+				handleCreateNewTask: this.handleCreateNewTask,
+				handleFilterEnable: this.handleFilterEnable,
+				quickFilter: this.state.quickFilter,
+			};
+		}
+		return this.quickEntryHandlers;
+	}
+
 	/** Checked on every timeline render, including its own counter clicks after midnight or a parse change. */
 	private queryEnvFor(now: DateValue, tasks: readonly Task[], options: UserOption) {
 		const { env, parseKey } = this.resolveEnv(now);
@@ -256,14 +270,10 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 
 	render(): React.ReactNode {
 		const { tasks, userOptions } = this.state;
+		const quickEntryHandlers = this.getQuickEntryHandlers();
+		process.env.NODE_ENV !== "production" && recordProvider("QuickEntryHandlerContext", quickEntryHandlers);
 		return (
-			<QuickEntryHandlerContext.Provider
-				value={{
-					handleCreateNewTask: this.handleCreateNewTask,
-					handleFilterEnable: this.handleFilterEnable,
-					quickFilter: this.state.quickFilter,
-				}}
-			>
+			<QuickEntryHandlerContext.Provider value={quickEntryHandlers}>
 				<TaskItemEventHandlersContext.Provider value={this.getTaskItemHandlers()}>
 					<TimelineView
 						userOptions={userOptions}

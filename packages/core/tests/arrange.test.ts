@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import moment from "moment";
 import "moment/locale/ar";
 
-import { arrange, query, type ViewState } from "../src/arrange";
+import { arrange, createQuery, query, type ViewState } from "../src/arrange";
+import { createDailyNoteDateCache } from "../src/dates";
 import { parseTaskLine } from "../src/parse";
 import { resolveTasks, type ResolveSettings } from "../src/resolve";
 import type { Task } from "../src/task";
@@ -403,6 +404,37 @@ test("query resolves and arranges in one go, and every part of the result is fro
 	assert.deepEqual(listed(result), listed(inTwoSteps));
 	assert.deepEqual(result.counts, inTwoSteps.counts);
 	assert.deepEqual(unfrozen(result), []);
+});
+
+test("createQuery keeps prepared task identities when equal settings next need a fallback", () => {
+	const tasks = [task("- [ ] later 📅 2026-09-25")];
+	const current = view();
+	const cachedEnv = { ...env, dateCache: createDailyNoteDateCache() };
+	const prepared = resolveTasks(tasks, current.settings, cachedEnv);
+	const run = createQuery();
+	const first = run(tasks, current, cachedEnv, prepared);
+	const next = run(tasks, structuredClone(current), cachedEnv);
+	assert.strictEqual(next.shown, first.shown);
+	assert.strictEqual(next.shown[0], prepared.shown[0]);
+});
+
+test("createQuery checks the day, resolve settings and date cache before reusing prepared tasks", () => {
+	const tasks = [task("- [ ] late 📅 2026-09-01")];
+	const current = view();
+	const cachedEnv = { ...env, dateCache: createDailyNoteDateCache() };
+	const prepared = resolveTasks(tasks, current.settings, cachedEnv);
+	for (const [name, nextView, nextEnv] of [
+		["day", current, { ...cachedEnv, now: TODAY.clone().add(1, "day") }],
+		["settings", view({}, { forward: false }), cachedEnv],
+		["date cache", current, { ...cachedEnv, dateCache: createDailyNoteDateCache() }],
+		["no date cache", current, env],
+	] as const) {
+		const run = createQuery();
+		run(tasks, current, cachedEnv, prepared);
+		const next = run(tasks, nextView, nextEnv);
+		assert.notStrictEqual(next.shown[0], prepared.shown[0], name);
+		assert.deepEqual(next, query(tasks, nextView, nextEnv), name);
+	}
 });
 
 /** Every array and plain object reachable from a value that is not frozen. Dates are left out: they are typed read-only. */
