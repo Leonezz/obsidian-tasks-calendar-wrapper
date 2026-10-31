@@ -119,17 +119,19 @@ const context = await esbuild.context({
 
 if (prod) {
 	await context.rebuild();
-	// Esbuild preserves these module filenames in comments, so the guard does not depend on React's warning text.
+	// Esbuild writes these filenames in path comments, which minify drops.
+	// React's key warning is a string only development builds hold, so it survives minify.
 	const bundle = readFileSync(`${releaseDir}/main.js`, "utf8");
-	for (const developmentBuild of [
+	for (const developmentMarker of [
 		"react.development.js",
 		"react-dom.development.js",
 		"react-jsx-runtime.development.js",
 		"scheduler.development.js",
+		'Each child in a list should have a unique "key" prop',
 	]) {
-		if (bundle.includes(developmentBuild))
+		if (bundle.includes(developmentMarker))
 			throw new Error(
-				`main.js contains "${developmentBuild}"; define process.env.NODE_ENV as "production" so the release bundles React's production builds.`,
+				`main.js contains "${developmentMarker}"; define process.env.NODE_ENV as "production" so the release bundles React's production builds.`,
 			);
 	}
 	process.exit(0);
