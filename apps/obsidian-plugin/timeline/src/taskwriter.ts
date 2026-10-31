@@ -60,7 +60,13 @@ export interface UndoRecord extends UndoSpan {
 
 /** A write is finished before its metadata is necessarily indexed; callers can wait for either milestone. */
 export type WriteResult =
-	| { readonly kind: "written"; readonly delta: number; readonly indexed: Promise<void>; readonly undo?: UndoRecord }
+	| {
+			readonly kind: "written";
+			readonly id: number;
+			readonly delta: number;
+			readonly indexed: Promise<void>;
+			readonly undo?: UndoRecord;
+	  }
 	| { readonly kind: "unchanged"; readonly alreadyUndone?: true }
 	| { readonly kind: "cancelled" }
 	| { readonly kind: "refused"; readonly reason: RefuseReason; readonly message: string }
@@ -151,21 +157,43 @@ export interface TaskWriter {
 export interface ShiftLedger {
 	/** Records a successful write in the coordinates at the time of that write. */
 	record(path: string, line: number, delta: number, releaseSeq: number, insertBefore?: boolean): void;
+	/** Records a write before its own release sequence is known. */
+	recordWrite(id: number, path: string, line: number, delta: number, insertBefore?: boolean): void;
+	/** Attaches the sequence from this write's released event. */
+	releaseWrite(id: number, seq: number): void;
+	/** An overwritten write no longer displaces the rows. */
+	clearWrite(id: number): void;
 	/** Drops only shifts included in a completed reload. */
-	clearThrough(seq: number): void;
+	clearThrough(seq: number, pinned?: ReadonlySet<string>): void;
 	/** Applies retained writes in order to the view's original line. */
 	shift(path: string, line: number): number;
 }
 
 /** Keeps shifts local to the view that made them, rather than shifting another view's already-fresh rows. */
 export function createShiftLedger(): ShiftLedger {
-	let shifts: readonly { path: string; line: number; delta: number; seq: number; insertBefore: boolean }[] = [];
+	let shifts: readonly {
+		id?: number;
+		path: string;
+		line: number;
+		delta: number;
+		seq: number;
+		insertBefore: boolean;
+	}[] = [];
 	return Object.freeze({
 		record(path: string, line: number, delta: number, releaseSeq: number, insertBefore = false): void {
 			shifts = [...shifts, Object.freeze({ path, line, delta, seq: releaseSeq, insertBefore })];
 		},
-		clearThrough(seq: number): void {
-			shifts = shifts.filter((shift) => shift.seq > seq);
+		recordWrite(id: number, path: string, line: number, delta: number, insertBefore = false): void {
+			shifts = [...shifts, Object.freeze({ id, path, line, delta, seq: Infinity, insertBefore })];
+		},
+		releaseWrite(id: number, seq: number): void {
+			shifts = shifts.map((shift) => (shift.id === id ? Object.freeze({ ...shift, seq }) : shift));
+		},
+		clearWrite(id: number): void {
+			shifts = shifts.filter((shift) => shift.id !== id);
+		},
+		clearThrough(seq: number, pinned?: ReadonlySet<string>): void {
+			shifts = shifts.filter((shift) => shift.seq > seq || pinned?.has(shift.path));
 		},
 		shift(path: string, line: number): number {
 			return shifts.reduce(
@@ -231,6 +259,8 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 	const queues = new Map<string, Promise<unknown>>();
 	const aborts = new Set<() => void>();
 	const undos = new Map<UndoRecord, UndoRecord>();
+	// Clicking Undo accepts the record before Obsidian removes its notice. Queued requests still follow own shifts.
+	const undoRequests = new Set<{ record: UndoRecord }>();
 	const undoListeners = new Set<(record: UndoRecord) => void>();
 	const tracking = createWriteTracking(
 		deps,
@@ -256,11 +286,13 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 	}
 	function shiftUndos(path: string, line: number, delta: number, insertBefore = false): void {
 		if (delta === 0) return;
-		for (const [handle, record] of undos) {
-			if (record.path !== path || record.line < line || (record.line === line && !insertBefore)) continue;
+		function shiftedRecord(record: UndoRecord): UndoRecord {
+			if (record.path !== path || record.line < line || (record.line === line && !insertBefore)) return record;
 			const shifted = record.line + delta;
-			undos.set(handle, deepFreeze({ ...record, line: shifted, span: { ...record.span, line: shifted } }));
+			return deepFreeze({ ...record, line: shifted, span: { ...record.span, line: shifted } });
 		}
+		for (const [handle, record] of undos) undos.set(handle, shiftedRecord(record));
+		for (const request of undoRequests) request.record = shiftedRecord(request.record);
 	}
 
 	function views(path: string): MarkdownView[] {
@@ -306,8 +338,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 		return result;
 	}
 
-	async function run(target: LineTarget, edit: TaskEdit | InsertEdit): Promise<WriteResult> {
-		const undoing = edit.kind === "undo" ? undos.get(edit.record) : undefined;
+	async function run(target: LineTarget, edit: TaskEdit | InsertEdit, undoing?: UndoRecord): Promise<WriteResult> {
 		if (edit.kind === "undo") {
 			const undo = undoing ?? edit.record;
 			target = { path: undo.path, line: undo.line, sourceLine: undo.original };
@@ -606,6 +637,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 			}
 			return Object.freeze({
 				kind: "written",
+				id: record.id,
 				delta: record.delta,
 				indexed: record.indexedPromise,
 				...(undo ? { undo } : {}),
@@ -642,6 +674,9 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 			edit.kind === "replace"
 				? Object.freeze({ ...edit, lines: Object.freeze([...edit.lines]) })
 				: Object.freeze({ ...edit });
+		const undo = edit.kind === "undo" ? undos.get(edit.record) : undefined;
+		const undoRequest = undo ? { record: undo } : undefined;
+		if (undoRequest) undoRequests.add(undoRequest);
 		const previous = queues.get(path) ?? Promise.resolve();
 		const next = previous.then(async () => {
 			await watch.ready(path);
@@ -654,7 +689,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 					error: new Error("The plugin unloaded."),
 				});
 			try {
-				return await run(latest, request);
+				return await run(latest, request, undoRequest?.record);
 			} catch (error) {
 				const lines = Object.freeze(request.kind === "replace" ? [...request.lines] : []);
 				const record = tracking.begin(latest, request, lines, {
@@ -666,10 +701,10 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 				return failed(record, error, errorMessage(error) === timeoutMessage ? "timeout" : false);
 			}
 		});
-		const tail = next.then(
-			() => {},
-			() => {},
-		);
+		const settled = () => {
+			if (undoRequest) undoRequests.delete(undoRequest);
+		};
+		const tail = next.then(settled, settled);
 		queues.set(path, tail);
 		void tail.then(() => {
 			if (queues.get(path) === tail) queues.delete(path);

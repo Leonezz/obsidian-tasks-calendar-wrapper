@@ -1,5 +1,9 @@
 /* Styles of the timeline view. Everything is scoped under .taskido so themes and other plugins are not affected. */
 
+.taskido .task[aria-busy="true"] {
+	opacity: 0.5;
+}
+
 .taskido {
 	cursor: default;
 	user-select: none;

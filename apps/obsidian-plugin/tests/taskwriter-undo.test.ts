@@ -419,6 +419,35 @@ test("a forgotten undo record refuses without writing", async () => {
 	writer.dispose();
 });
 
+test("Undo clicked before its notice disappears still runs after forgetUndo", async () => {
+	const h = writerHarness();
+	const writer = h.create();
+	const record = undoRecord(await h.write());
+	const undo = h.write(h.target(), { kind: "undo", record });
+	writer.forgetUndo(record);
+	assert.equal((await undo).kind, "written");
+	assert.equal(h.text(), "- [ ] A");
+	assert.deepEqual(h.notices, ["Undid the change to “A”."]);
+	writer.dispose();
+});
+
+test("a clicked Undo keeps following queued line shifts after its notice disappears", async () => {
+	const h = writerHarness({ "a.md": "header\n- [ ] A" });
+	const writer = h.create();
+	const record = undoRecord(await h.write(h.target(1)));
+	const gate = deferred();
+	h.onProcess(() => gate.promise);
+	const insert = writer.insert("a.md", (text) => "another header\n" + text);
+	await flush();
+	const undo = h.write(h.target(1), { kind: "undo", record });
+	writer.forgetUndo(record);
+	gate.resolve();
+	assert.equal((await insert).kind, "written");
+	assert.equal((await undo).kind, "written");
+	assert.equal(h.text(), "another header\nheader\n- [ ] A");
+	writer.dispose();
+});
+
 test("undo checks every written line in every open view", async () => {
 	const task = "- [ ] A 🔁 every day";
 	const h = writerHarness({ "a.md": task });

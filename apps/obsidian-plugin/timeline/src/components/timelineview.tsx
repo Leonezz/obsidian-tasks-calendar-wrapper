@@ -20,7 +20,8 @@ import {
 	type TaskRowModel,
 	type Task,
 } from "@tasks-calendar-wrapper/core";
-import { TodayFocusEventHandlersContext, UserOptionContext } from "./context";
+import { RowWriteContext, TodayFocusEventHandlersContext, UserOptionContext } from "./context";
+import { createPendingWrites, type PendingWrites } from "../pendingwrites";
 import { YearView } from "./yearview";
 import type { EntryProps } from "./dateview";
 import { recordProvider } from "./renderprobe";
@@ -28,6 +29,7 @@ import { recordProvider } from "./renderprobe";
 interface TimelineProps {
 	readonly userOptions: UserOption;
 	readonly tasks: readonly Task[];
+	readonly pendingWrites?: PendingWrites;
 	readonly quickFilter?: QuickFilter;
 	readonly queryEnv?: (now: DateValue) => { env: QueryEnv; prepared?: Resolved };
 }
@@ -52,6 +54,9 @@ function counterFilterOf(filter: string, behavior: string): CounterFilter {
 }
 
 export class TimelineView extends React.Component<TimelineProps, TimelineStates> {
+	private readonly rowWrites: React.ContextType<typeof RowWriteContext>;
+	private renderedIds: readonly string[] = [];
+	private committedIds: readonly string[] = [];
 	/** Remembers the last layout, so a click on a counter or on Focus on today resolves no task again. */
 	private readonly query = createQuery();
 	private readonly resolveEnv = createResolveEnv();
@@ -166,6 +171,10 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 
 	constructor(props: TimelineProps) {
 		super(props);
+		this.rowWrites = {
+			pendingWrites: props.pendingWrites ?? createPendingWrites(),
+			clock: { lastListChangeAt: -Infinity },
+		};
 
 		this.handleCounterFilterClick = this.handleCounterFilterClick.bind(this);
 		this.handleTodayFocus = this.handleTodayFocus.bind(this);
@@ -180,6 +189,19 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 			filter: this.props.userOptions.defaultFilters,
 			todayFocus: this.props.userOptions.defaultTodayFocus,
 		};
+	}
+
+	componentDidMount(): void {
+		this.committedIds = this.renderedIds;
+	}
+
+	componentDidUpdate(): void {
+		if (
+			this.renderedIds.length !== this.committedIds.length ||
+			this.renderedIds.some((id, index) => id !== this.committedIds[index])
+		)
+			this.rowWrites.clock.lastListChangeAt = performance.now();
+		this.committedIds = this.renderedIds;
 	}
 
 	handleCounterFilterClick(filterName: string) {
@@ -211,6 +233,7 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 			env,
 			prepared,
 		);
+		this.renderedIds = years.flatMap((year) => year.days.flatMap((day) => day.tasks.map(({ task }) => task.id)));
 
 		const styles = new Array<string>();
 		if (!this.props.userOptions.useCounters) styles.push("noCounters");
@@ -246,19 +269,21 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 		process.env.NODE_ENV !== "production" && recordProvider("UserOptionContext", userOptionValue);
 		return (
 			<div className={`taskido ${baseStyles} ${counterFilter} ${todayFocus}`}>
-				<TodayFocusEventHandlersContext.Provider value={this.todayHandlers}>
-					<UserOptionContext.Provider value={userOptionValue}>
-						<span>
-							{years.map((year, i) => (
-								// Keyed by place, then by year, as before: a year added in front of the entry's year makes
-								// React build the entry day, and with it the quick entry panel, again.
-								<React.Fragment key={i}>
-									<YearView year={year} entry={entry} modelFor={modelFor} key={year.year} />
-								</React.Fragment>
-							))}
-						</span>
-					</UserOptionContext.Provider>
-				</TodayFocusEventHandlersContext.Provider>
+				<RowWriteContext.Provider value={this.rowWrites}>
+					<TodayFocusEventHandlersContext.Provider value={this.todayHandlers}>
+						<UserOptionContext.Provider value={userOptionValue}>
+							<span>
+								{years.map((year, i) => (
+									// Keyed by place, then by year, as before: a year added in front of the entry's year makes
+									// React build the entry day, and with it the quick entry panel, again.
+									<React.Fragment key={i}>
+										<YearView year={year} entry={entry} modelFor={modelFor} key={year.year} />
+									</React.Fragment>
+								))}
+							</span>
+						</UserOptionContext.Provider>
+					</TodayFocusEventHandlersContext.Provider>
+				</RowWriteContext.Provider>
 			</div>
 		);
 	}

@@ -41,7 +41,7 @@ function fakeVault(notes: Record<string, string>, folders: string[] = []) {
 	const writer: Pick<TaskWriter, "insert"> = {
 		async insert(path, edit) {
 			await vault.process({ path } as TFile, edit);
-			return { kind: "written", delta: 1, indexed: Promise.resolve() };
+			return { kind: "written", id: 1, delta: 1, indexed: Promise.resolve() };
 		},
 	};
 	return { vault, writer, contents, writes };
@@ -156,7 +156,10 @@ test("quick entry inserted before a rename is reported added", async (t) => {
 
 test("quick entry into a missing note still asks Create note and creates it outside the writer", async (t) => {
 	const { vault, contents, writes } = fakeVault({});
-	const writer: Pick<TaskWriter, "insert"> = {
+	const writer: Pick<TaskWriter, "insert" | "write"> = {
+		write: async () => {
+			throw new Error("a new note must not use the writer");
+		},
 		insert: async () => {
 			throw new Error("a new note must not use the writer");
 		},

@@ -43,6 +43,7 @@ export interface RowTag {
 export interface TaskRowModel {
 	readonly display: string;
 	readonly path: string;
+	readonly sourceLine: string;
 	readonly position: TextRange;
 	readonly line: number;
 	readonly col: number;
@@ -65,6 +66,7 @@ export function sameRowModel(left: TaskRowModel, right: TaskRowModel): boolean {
 		left === right ||
 		(left.display === right.display &&
 			left.path === right.path &&
+			left.sourceLine === right.sourceLine &&
 			left.line === right.line &&
 			left.col === right.col &&
 			left.link === right.link &&
@@ -137,6 +139,7 @@ export function taskRowModel(resolved: ResolvedTask, options: RowOptions, env: R
 	return Object.freeze({
 		display: resolved.visual || task.text,
 		path: task.path,
+		sourceLine: task.sourceLine,
 		position: task.position,
 		line: task.line,
 		col: task.position.end.col,

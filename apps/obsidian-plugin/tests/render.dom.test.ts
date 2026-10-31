@@ -6,15 +6,361 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { act, createElement, createRef, type ContextType } from "react";
 import { createRoot } from "react-dom/client";
+import { renderToStaticMarkup } from "react-dom/server";
+import { parseTaskLine, type Store, type Task } from "@tasks-calendar-wrapper/core";
+import { Notice } from "./stubs/obsidian";
 
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
+import { TasksTimelineView, timelineTaskIndex } from "../src/views";
+import type { TimelineState } from "../src/state/timeline";
 import { providerValues, renderedDays, rendersOf, resetRenderCounts } from "../timeline/src/components/renderprobe";
-import { QuickEntryHandlerContext } from "../timeline/src/components/context";
+import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "../timeline/src/components/context";
+import { TimelineView } from "../timeline/src/components/timelineview";
+import { StripWithIcon } from "../timeline/src/components/statusmarker";
+import { getTaskStatusIcon } from "../timeline/src/components/asserts/icons";
+import { createPendingWrites } from "../timeline/src/pendingwrites";
+import { clickTime, clickIsGuarded } from "../timeline/src/components/clickguard";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
 import { moment } from "../utils/moment";
 import { notesApp, openView } from "./view-harness";
-import type { TaskWriter, WriteResult } from "../timeline/src/taskwriter";
-import { deferred } from "./writer-harness";
+import type { TaskWriter, WriteEvent, WriteResult } from "../timeline/src/taskwriter";
+import { deferred, flush, writerHarness } from "./writer-harness";
+
+async function mountWritingTimeline(t: TestContext, text: string, toggle?: (line: string) => string) {
+	const h = writerHarness({ "Note.md": text });
+	Object.assign(h.app, { plugins: { plugins: {} } });
+	const index = timelineTaskIndex(h.app as never);
+	const writer = h.create({ index, ...(toggle ? { tasks: () => ({ kind: "toggle" as const, toggle }) } : {}) });
+	const undo: (() => Promise<void>)[] = [];
+	const view = new TasksTimelineView({ app: h.app } as never, index, writer, {
+		undo(_context, _change, run) {
+			undo.push(async () => {
+				await run();
+			});
+			return new Notice("Undo", 10000) as never;
+		},
+	});
+	h.leaves.push({ view });
+	const store = (view as unknown as { store: Store<TimelineState> }).store;
+	await view.onUpdateOptions({ ...defaultUserOptions, hideStatusTasks: [] });
+	const container = document.body.appendChild(document.createElement("div"));
+	const root = createRoot(container);
+	await act(() =>
+		root.render(
+			createElement(ObsidianBridge, {
+				plugin: view,
+				store,
+				writer: view.viewWriter,
+				ledger: view.ledger,
+				pendingWrites: view.pendingWrites,
+				onWriteResult: view.onWriteResult,
+			}),
+		),
+	);
+	t.after(async () => {
+		await act(() => root.unmount());
+		await view.onClose();
+		writer.dispose();
+		index.dispose();
+		container.remove();
+	});
+	const click = async (line: number) => {
+		const control = container.querySelector<HTMLElement>(`.task[data-line="${line}"] label.icon`);
+		assert.ok(control);
+		await act(async () => {
+			control.click();
+			await flush();
+		});
+	};
+	return { h, view, store, writer, undo, container, click };
+}
+
+/** A display-only writer event, mounted through the same stable store as a view. */
+async function mountPendingRow(t: TestContext, sourceLine: string, lines: readonly string[]) {
+	const task = parseTaskLine(sourceLine, { moment, path: "Note.md" });
+	assert.ok(task);
+	const pending = createPendingWrites();
+	const container = document.body.appendChild(document.createElement("div"));
+	const root = createRoot(container);
+	const options = { ...defaultUserOptions, hideStatusTasks: [] };
+	let tasks: readonly Task[] = [task];
+	let writes = 0;
+	let opens = 0;
+	const callbacks = {
+		handleOpenFile: () => {
+			opens++;
+		},
+		handleTagClick: () => {},
+		handleModifyTask: () => {
+			writes++;
+		},
+		handleCompleteTask: () => {
+			writes++;
+			pending.apply(
+				{ id: 1, kind: "pending", path: task.path, line: task.line, sourceLine, lines },
+				tasks,
+				options,
+				{ now: moment(), moment },
+			);
+		},
+	};
+	const timeline = createRef<TimelineView>();
+	const render = () =>
+		root.render(
+			createElement(
+				TaskItemEventHandlersContext.Provider,
+				{ value: callbacks },
+				createElement(TimelineView, { ref: timeline, tasks, userOptions: options, pendingWrites: pending }),
+			),
+		);
+	await act(render);
+	t.after(async () => {
+		await act(() => root.unmount());
+		container.remove();
+	});
+	const click = async (selector = ".task label.icon") => {
+		const control = container.querySelector<HTMLElement>(selector);
+		assert.ok(control);
+		await act(() => control.click());
+	};
+	return {
+		container,
+		pending,
+		timeline,
+		task,
+		click,
+		writes: () => writes,
+		opens: () => opens,
+		renderTasks: async (next: readonly Task[]) => {
+			tasks = next;
+			await act(render);
+		},
+		commit: (next: readonly Task[]) => {
+			tasks = next;
+			render();
+		},
+	};
+}
+
+function assertIcon(container: HTMLElement, status: string, marker: string) {
+	assert.equal(
+		container.querySelector(".task label.icon")?.innerHTML,
+		renderToStaticMarkup(getTaskStatusIcon(status)),
+	);
+	assert.equal(container.querySelector(".task input")?.getAttribute("data-task"), marker);
+	assert.equal(container.querySelector(".task")?.getAttribute("aria-busy"), "true");
+	assert.equal(container.querySelector(".task")?.getAttribute("aria-disabled"), "true");
+	assert.equal(container.querySelector(".task input")?.hasAttribute("disabled"), false);
+}
+
+test("' '→'x' shows the done icon", async (t) => {
+	const row = await mountPendingRow(t, "- [ ] a", ["- [x] a"]);
+	await row.click();
+	assertIcon(row.container, "done", "x");
+	await row.click();
+	await row.click(".modify");
+	assert.equal(row.writes(), 1);
+	assert.equal(row.opens(), 0, "a dimmed edit click does not open the note");
+});
+
+test("custom cycle shows in-progress", async (t) => {
+	const row = await mountWritingTimeline(t, "- [ ] a", () => "- [/] a");
+	await row.click(0);
+	assertIcon(row.container, "process", "/");
+});
+
+test("un-complete shows the resolved status", async (t) => {
+	const before = moment.now;
+	moment.now = () => Date.parse("2026-10-24T12:00:00Z");
+	t.after(() => {
+		moment.now = before;
+	});
+	const row = await mountPendingRow(t, "- [x] a 📅 2026-10-01 ✅ 2026-10-02", ["- [ ] a 📅 2026-10-01"]);
+	await row.click();
+	assertIcon(row.container, "overdue", " ");
+});
+
+test("recurring completion picks the done line", async (t) => {
+	const row = await mountPendingRow(t, "- [ ] a 🔁 every day 📅 2026-01-15", [
+		"- [ ] a 🔁 every day 📅 2026-01-16",
+		"- [x] a 🔁 every day 📅 2026-01-15 ✅ 2026-01-15",
+	]);
+	await row.click();
+	assertIcon(row.container, "done", "x");
+});
+
+test("recurring completion then Undo keeps both shifts", async (t) => {
+	const original = "- [ ] a 🔁 every day 📅 2026-01-15";
+	const fixture = await mountWritingTimeline(t, original + "\n- [ ] b", (line) =>
+		line === original
+			? "- [ ] a 🔁 every day 📅 2026-01-16\n- [x] a 🔁 every day 📅 2026-01-15 ✅ 2026-01-15"
+			: line.replace("[ ]", "[x]"),
+	);
+	await fixture.click(0);
+	assert.equal(fixture.view.ledger.shift("Note.md", 1), 2);
+	assert.equal(fixture.undo.length, 1);
+	await fixture.h.clock.advance(1000);
+	await act(() => fixture.undo[0]());
+	assert.equal(fixture.view.ledger.shift("Note.md", 1), 1, "both +1 and -1 remain before re-read");
+	await fixture.click(1);
+	assert.equal(fixture.h.events.filter((event) => event.kind === "written").at(-1)?.line, 1);
+	assert.equal(fixture.h.text("Note.md"), original + "\n- [x] b");
+});
+
+test("slow rows accept a checkbox click while keeping the written icon", async (t) => {
+	const fixture = await mountWritingTimeline(t, "- [ ] a");
+	fixture.h.setDelivery("dropped");
+	await fixture.click(0);
+	assert.equal(fixture.container.querySelector(".task")?.getAttribute("aria-busy"), "true");
+	await act(() => fixture.h.clock.advance(10000));
+	const row = fixture.container.querySelector(".task");
+	assert.ok(row);
+	assert.equal(row.hasAttribute("aria-busy"), false);
+	assert.equal(row.hasAttribute("aria-disabled"), false);
+	assert.equal(row.querySelector("input")?.getAttribute("data-task"), "x");
+	assert.equal(row.querySelector("input")?.hasAttribute("disabled"), false);
+	assert.equal(row.querySelector("label.icon")?.innerHTML, renderToStaticMarkup(getTaskStatusIcon("done")));
+	await fixture.click(0);
+	assert.equal(fixture.h.refusals.at(-1)?.reason, "not-reread");
+	assert.equal(fixture.h.events.filter((event) => event.kind === "written").length, 1);
+	assert.equal(row.querySelector("input")?.getAttribute("data-task"), "x");
+});
+
+test("a pending write renders only its subscribed row and keeps provider values", async (t) => {
+	const fixture = await mountWritingTimeline(t, "- [ ] a\n- [ ] b");
+	const before = providerValues();
+	const untouched = fixture.container.querySelector('.task[data-line="1"]');
+	assert.ok(untouched);
+	const html = untouched.outerHTML;
+	const render = StripWithIcon.prototype.render;
+	let icons = 0;
+	t.mock.method(StripWithIcon.prototype, "render", function (this: StripWithIcon) {
+		icons++;
+		return render.call(this);
+	});
+	await fixture.click(0);
+	assert.equal(icons, 1, "only the affected row renders its icon");
+	assert.equal(untouched.outerHTML, html);
+	const after = providerValues();
+	for (const name of ["QuickEntryHandlerContext", "TodayFocusEventHandlersContext", "UserOptionContext"] as const)
+		assert.strictEqual(after[name], before[name], name);
+});
+
+test("overlay cleared only in the commit that shows the written text", async (t) => {
+	const row = await mountWritingTimeline(t, "- [ ] a");
+	await row.click(0);
+	const frames: string[] = [];
+	const observer = new window.MutationObserver(() => {
+		if (!row.container.querySelector(".task")?.hasAttribute("aria-busy"))
+			frames.push(row.container.querySelector(".task input")?.getAttribute("data-task") ?? "missing");
+	});
+	observer.observe(row.container, { subtree: true, attributes: true, childList: true });
+	await act(async () => {
+		await row.h.deliver();
+		await row.view.onReloadTasks();
+	});
+	observer.disconnect();
+	assert.ok(frames.length > 0);
+	assert.deepEqual([...new Set(frames)], ["x"]);
+	assert.equal(row.container.querySelector(".task")?.hasAttribute("aria-disabled"), false);
+});
+
+test("click clock in a popout", (t) => {
+	t.mock.method(performance, "now", () => 3602000);
+	const event = { timeStamp: 1400, view: { performance: { now: () => 2000 } } } as unknown as MouseEvent;
+	assert.equal(clickTime(event), 3601400);
+	assert.equal(clickIsGuarded(event, { lastListChangeAt: 3601000 }), false);
+});
+
+test("click stamped before a list change is ignored", async (t) => {
+	t.mock.method(performance, "now", () => 1000);
+	t.mock.method(window.performance, "now", () => 1000);
+	const row = await mountPendingRow(t, "- [ ] a", ["- [x] a"]);
+	const b = parseTaskLine("- [ ] b", { moment, path: "Other.md" });
+	assert.ok(b);
+	await row.renderTasks([b, row.task]);
+	const dispatch = async (selector: string, timeStamp: number) => {
+		const event = new MouseEvent("click", { bubbles: true, view: window });
+		Object.defineProperty(event, "timeStamp", { value: timeStamp });
+		const control = row.container.querySelector<HTMLElement>(selector);
+		assert.ok(control);
+		await act(() => control.dispatchEvent(event));
+	};
+	await dispatch(".task label.icon", 990);
+	await dispatch(".task .modify", 990);
+	assert.equal(row.writes(), 0);
+	assert.equal(row.opens(), 0);
+	await dispatch(".task label.icon", 1400);
+	assert.equal(row.writes(), 1);
+});
+
+test("pending writes map identical source lines only when the event line identifies one", () => {
+	const sourceLine = "- [ ] same";
+	const first = parseTaskLine(sourceLine, { moment, path: "Note.md" });
+	assert.ok(first);
+	const second = { ...first, line: 3, id: "Note.md:3" };
+	const pending = createPendingWrites();
+	const event: WriteEvent = { id: 1, kind: "pending", path: first.path, line: 2, sourceLine, lines: ["- [x] same"] };
+	const apply = (next: WriteEvent, tasks = [first, second]) =>
+		pending.apply(next, tasks, defaultUserOptions, { now: moment(), moment });
+	apply(event);
+	assert.equal(pending.getSnapshot(first.id), undefined);
+	assert.equal(pending.getSnapshot(second.id), undefined);
+	apply({ ...event, line: 3 });
+	assert.equal(pending.getSnapshot(first.id), undefined);
+	assert.equal(pending.getSnapshot(second.id)?.id, 1);
+	apply({ ...event, id: 2, line: 20 }, [first]);
+	assert.equal(pending.getSnapshot(first.id)?.id, 2, "a unique source match may have shifted");
+});
+
+test("pending writes release independently, keep pinned notes, and notify only their row", () => {
+	const task = parseTaskLine("- [ ] a", { moment, path: "Note.md" });
+	assert.ok(task);
+	const pending = createPendingWrites();
+	const notifications: string[] = [];
+	const stop = pending.subscribe(task.id, () => notifications.push(task.id));
+	pending.subscribe("Other.md:0", () => notifications.push("other"));
+	const event: WriteEvent = {
+		id: 1,
+		kind: "pending",
+		path: task.path,
+		line: 0,
+		sourceLine: task.sourceLine,
+		lines: ["- [x] a"],
+	};
+	const apply = (next: WriteEvent) => pending.apply(next, [task], defaultUserOptions, { now: moment(), moment });
+	apply(event);
+	apply({ ...event, id: 2, lines: [task.sourceLine] });
+	apply({ ...event, kind: "released", releaseSeq: 1 });
+	pending.clearThrough(1);
+	assert.equal(pending.getSnapshot(task.id)?.id, 2);
+	assert.deepEqual(notifications, [task.id, task.id], "releasing an older prediction does not redraw the latest");
+	apply({ ...event, id: 2, kind: "released", releaseSeq: 2 });
+	pending.clearThrough(2, new Set([task.path]));
+	assert.equal(pending.getSnapshot(task.id)?.id, 2);
+	pending.clearThrough(2);
+	assert.equal(pending.getSnapshot(task.id), undefined);
+	assert.ok(notifications.every((id) => id === task.id));
+	stop();
+	const count = notifications.length;
+	apply({ ...event, id: 3 });
+	assert.equal(notifications.length, count);
+});
+
+test("an Undo of recurring completion predicts the restored status", () => {
+	const sourceLine = "- [ ] a 🔁 every day 📅 2026-01-16";
+	const task = parseTaskLine(sourceLine, { moment, path: "Note.md" });
+	assert.ok(task);
+	const pending = createPendingWrites();
+	pending.apply(
+		{ id: 1, kind: "pending", path: task.path, line: 0, sourceLine, lines: [sourceLine] },
+		[task],
+		defaultUserOptions,
+		{ now: moment(), moment },
+	);
+	assert.equal(pending.getSnapshot(task.id)?.status, "scheduled");
+	assert.equal(pending.getSnapshot(task.id)?.marker, " ");
+});
 
 /** The view's bridge mounted in a real DOM, with its store already loaded. */
 async function mountTimeline(t: TestContext, notes: Record<string, string>, writer?: Pick<TaskWriter, "insert">) {
@@ -37,7 +383,7 @@ async function mountTimeline(t: TestContext, notes: Record<string, string>, writ
 			createElement(ObsidianBridge, {
 				plugin: { app } as never,
 				store: opened.store,
-				writer: writer ?? opened.writer,
+				writer: { ...opened.writer, ...writer },
 				ref: bridge,
 			}),
 		);
@@ -353,7 +699,7 @@ for (const outcome of ["refused", "failed"] as const) {
 		});
 		assert.equal(input.value, "keep this draft");
 		assert.deepEqual(calls, [{ path: "Inbox.md", text: "## Tasks\n- [ ] keep this draft\n" }]);
-		result = { kind: "written", delta: 1, indexed: Promise.resolve() };
+		result = { kind: "written", id: 1, delta: 1, indexed: Promise.resolve() };
 		await act(() => submit.click());
 		assert.equal(input.value, "");
 		assert.equal(calls.length, 2);
