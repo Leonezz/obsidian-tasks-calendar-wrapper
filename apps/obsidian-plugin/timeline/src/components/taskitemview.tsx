@@ -11,6 +11,7 @@ import { TasksTimelineView } from "../../../src/views";
 import { moment } from "../../../utils/moment";
 import * as Icons from "./asserts/icons";
 import { TaskItemEventHandlersContext, UserOptionContext } from "./context";
+import { recordRender } from "./renderprobe";
 import { StripWithIcon } from "./statusmarker";
 
 type TaskItemProps = { readonly task: ResolvedTask };
@@ -19,6 +20,8 @@ const warn = (message: string, error: unknown) => console.warn(message, error);
 
 export class TaskItemView extends React.Component<TaskItemProps> {
 	render(): React.ReactNode {
+		// Counted for the tests only; the production build drops the call and the probe.
+		process.env.NODE_ENV !== "production" && recordRender("TaskItemView");
 		return (
 			<TaskItemEventHandlersContext.Consumer>
 				{(callbacks) => (

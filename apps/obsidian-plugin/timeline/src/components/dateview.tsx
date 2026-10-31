@@ -9,6 +9,7 @@ import {
 } from "@tasks-calendar-wrapper/core";
 import * as Icons from "./asserts/icons";
 import { QuickEntryHandlerContext, TodayFocusEventHandlersContext, UserOptionContext } from "./context";
+import { recordRender } from "./renderprobe";
 import { TaskItemView } from "./taskitemview";
 
 type DateViewProps = {
@@ -23,6 +24,8 @@ type DateViewProps = {
  */
 export class DateView extends React.Component<DateViewProps> {
 	render(): React.ReactNode {
+		// Counted for the tests only; the production build drops the call and the probe.
+		process.env.NODE_ENV !== "production" && recordRender("DateView", this.props.day.key);
 		const { day, yearLabel } = this.props;
 		const className = day.isToday ? "details today" : "details";
 		const types = day.statuses.join(" ");
