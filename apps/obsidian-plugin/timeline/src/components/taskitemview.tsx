@@ -75,8 +75,8 @@ class TaskRow extends React.Component<TaskRowProps> {
 
 	render(): React.ReactNode {
 		const { model, callbacks } = this.props;
-		const openTaskFile = () => {
-			callbacks.handleOpenFile(model.path, model.position);
+		const openTaskFile = (evt: React.MouseEvent<HTMLDivElement>) => {
+			callbacks.handleOpenFile(model.path, model.position, evt.nativeEvent);
 		};
 		const onToggleTask = () => {
 			callbacks.handleCompleteTask(model.path, model.position);

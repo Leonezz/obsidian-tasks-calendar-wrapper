@@ -1,9 +1,10 @@
-import { App, ItemView, Notice, normalizePath, Pos } from "obsidian";
+import { App, ItemView, MarkdownView, Notice, normalizePath, Pos, type UserEvent } from "obsidian";
 import { createStore, normalizeNotePath, type QuickFilter, type Store, type Task } from "@tasks-calendar-wrapper/core";
 import * as React from "react";
 import { initialTimelineState, type TimelineState } from "../../src/state/timeline";
 import { UserOption } from "../../src/useroptions";
 import { ConfirmModal } from "../../src/confirm-modal";
+import { openNoteAt } from "../../src/open-note";
 import { tagSearchUri, tasksPluginCommand } from "../../utils/utils";
 import { appendTaskToNote } from "./appendtask";
 import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "./components/context";
@@ -131,48 +132,34 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		window.open(tagSearchUri(this.app.vault.getName(), tag));
 	}
 
-	handleOpenFile(path: string, position: Pos, openTaskEdit = false) {
-		this.app.vault.adapter
-			.exists(path)
-			.then((exist) => {
-				if (!exist) {
-					new Notice("No such file: " + path, 5000);
-					return;
-				}
-				this.app.workspace.openLinkText("", path).then(() => {
-					try {
-						const file = this.app.workspace.getActiveFile();
-						file && this.app.workspace.getLeaf().openFile(file, { state: { mode: "source" } });
-						this.app.workspace.activeEditor?.editor?.setSelection(
-							{ line: position.start.line, ch: position.start.col },
-							{ line: position.start.line, ch: position.end.col },
-						);
-						if (!this.app.workspace.activeEditor?.editor?.hasFocus()) {
-							this.app.workspace.activeEditor?.editor?.focus();
-						}
-						if (openTaskEdit) {
-							const editor = this.app.workspace.activeEditor?.editor;
-							if (editor) {
-								const view = this.app.workspace.getLeaf().view;
-								tasksPluginCommand(
-									// @ts-expect-error commands is not part of the public API
-									this.app.commands.commands,
-									"obsidian-tasks-plugin:edit-task",
-								).editorCheckCallback(false, editor, view);
-							}
-						}
-					} catch (err) {
-						new Notice("Error when trying open file: " + err, 5000);
-					}
-				});
-			})
-			.catch((reason) => {
-				new Notice("Something went wrong: " + reason, 5000);
-			});
+	handleOpenFile(path: string, position: Pos, evt?: UserEvent) {
+		openNoteAt(this.app, path, position.start.line, evt).catch((reason) => {
+			console.error("Tasks Calendar Wrapper: opening a note failed", reason);
+			new Notice(
+				"Could not open " + path + ": " + (reason instanceof Error ? reason.message : String(reason)),
+				5000,
+			);
+		});
 	}
 
 	handleModifyTask(path: string, position: Pos) {
-		this.handleOpenFile(path, position, true);
+		openNoteAt(this.app, path, position.start.line)
+			.then((leaf) => {
+				if (leaf && leaf.view instanceof MarkdownView) {
+					tasksPluginCommand(
+						// @ts-expect-error commands is not part of the public API
+						this.app.commands.commands,
+						"obsidian-tasks-plugin:edit-task",
+					).editorCheckCallback(false, leaf.view.editor, leaf.view);
+				}
+			})
+			.catch((reason) => {
+				console.error("Tasks Calendar Wrapper: opening a note failed", reason);
+				new Notice(
+					"Could not open " + path + ": " + (reason instanceof Error ? reason.message : String(reason)),
+					5000,
+				);
+			});
 	}
 
 	handleCompleteTask(path: string, position: Pos) {

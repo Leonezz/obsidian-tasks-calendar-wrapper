@@ -1,4 +1,4 @@
-import { Pos } from "obsidian";
+import { Pos, type UserEvent } from "obsidian";
 import * as React from "react";
 import { CounterProps } from "./dateview";
 
@@ -22,7 +22,7 @@ export const TodayFocusEventHandlersContext = React.createContext({
 });
 
 export const TaskItemEventHandlersContext = React.createContext({
-	handleOpenFile: (filePath: string, position: Pos) => {},
+	handleOpenFile: (filePath: string, position: Pos, evt?: UserEvent) => {},
 	handleCompleteTask: (filePath: string, position: Pos) => {},
 	handleTagClick: (tag: string) => {},
 	handleModifyTask: undefined as ((filePath: string, position: Pos) => void) | undefined,

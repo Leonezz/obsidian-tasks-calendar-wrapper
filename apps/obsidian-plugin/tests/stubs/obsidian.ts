@@ -55,6 +55,25 @@ export class Notice {
 	}
 }
 
+/** As in Obsidian: modifier keys and the middle button choose a new tab, split or window. */
+export class Keymap {
+	static isModEvent(
+		evt?: { metaKey?: boolean; ctrlKey?: boolean; altKey?: boolean; shiftKey?: boolean; button?: number } | null,
+	): "tab" | "split" | "window" | boolean {
+		if (!evt) return false;
+		if (evt.metaKey || evt.ctrlKey) {
+			if (evt.altKey) return evt.shiftKey ? "window" : "split";
+			return "tab";
+		}
+		return evt.button === 1 ? "tab" : false;
+	}
+}
+
+/** As in Obsidian: a markdown view has an editor. */
+export class MarkdownView {
+	editor!: { setCursor(position: { line: number; ch: number }): void };
+}
+
 /** What Obsidian's createEl and createDiv take: a class, or the class, the text and the attributes. */
 export type FakeElementInfo =
 	string | { cls?: string; text?: string; attr?: Record<string, string | number | boolean | null>; href?: string };
