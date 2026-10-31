@@ -185,7 +185,7 @@ test("two source views still one transaction", async () => {
 	const w = h.create();
 	assert.equal((await h.write()).kind, "written");
 	assert.equal(first.transactions.length + second.transactions.length, 1);
-	assert.deepEqual(second.reads, []);
+	assert.ok(second.reads.every((read) => read === "getValue"));
 	w.dispose();
 });
 
@@ -408,9 +408,9 @@ test("5 writes to one note 200 ms apart → peak count > 1; index updates meanwh
 		await h.clock.advance(200);
 	}
 	assert.ok(h.peak() > 1);
-	const reads = h.readCalls.length;
 	h.changed();
 	await flush();
+	const reads = h.readCalls.length;
 	assert.equal(h.events.filter((e) => e.kind === "indexed").length, 5);
 	assert.equal(h.releases.length, 5);
 	const final = await reader.update({});

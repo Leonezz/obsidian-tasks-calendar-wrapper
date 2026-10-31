@@ -232,6 +232,7 @@ export interface NoticePresenter {
 	slow(context: NoticeContext): void;
 	editNotSaved(context: NoticeContext, editedLine: string): void;
 	editChangedBack(context: NoticeContext, editedLine: string): void;
+	overwritten(context: NoticeContext, count: number, redo?: () => Promise<void>): void;
 	undo(context: NoticeContext, change: UndoNoticeChange, undo: () => unknown): Notice;
 	undoDone(context: NoticeContext, dialogEdit?: boolean): void;
 	undoAlready(context: NoticeContext): void;
@@ -311,6 +312,15 @@ export function createNoticePresenter(app: App, options: NoticePresenterOptions 
 		},
 		editChangedBack(context: NoticeContext, editedLine: string): void {
 			recovery("Edit changed back", context, editedLine);
+		},
+		overwritten(context: NoticeContext, count: number, redo?: () => Promise<void>): void {
+			show(
+				fragment(overwrittenText(context, count), [
+					...(redo ? [{ text: "Redo", run: redo }] : []),
+					openButton(context),
+				]),
+				0,
+			);
 		},
 		undo(context: NoticeContext, change: UndoNoticeChange, undo: () => unknown): Notice {
 			return show(

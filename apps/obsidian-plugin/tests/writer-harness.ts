@@ -19,6 +19,9 @@ import {
 	undoDoneText,
 	undoAlreadyText,
 	undoExpiredText,
+	overwrittenText,
+	type NoticeContext,
+	type RefuseReason,
 } from "../timeline/src/notices";
 
 /** Flushes the small async steps between a fake adapter and its listeners. */
@@ -50,6 +53,9 @@ export class WriterClock {
 	clearTimeout = (id: number): void => {
 		this.timers.delete(id);
 	};
+	elapse(ms: number): void {
+		this.now += ms;
+	}
 	async advance(ms: number): Promise<void> {
 		const end = this.now + ms;
 		await flush();
@@ -58,7 +64,7 @@ export class WriterClock {
 				.filter(([, timer]) => timer.at <= end)
 				.sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
 			if (!next) break;
-			this.now = next[1].at;
+			this.now = Math.max(this.now, next[1].at);
 			this.timers.delete(next[0]);
 			next[1].run();
 			await flush();
@@ -206,6 +212,9 @@ export function writerHarness(notes: Record<string, string | Uint8Array> = { "a.
 	const processCalls: string[] = [];
 	const writes: string[] = [];
 	const notices: string[] = [];
+	const refusals: { reason: RefuseReason; context: NoticeContext }[] = [];
+	const reverts: { context: NoticeContext; count: number; redo?: () => Promise<void> }[] = [];
+	const recoveries: { context: NoticeContext; editedLine: string }[] = [];
 	const events: WriteEvent[] = [];
 	const dirty: string[] = [];
 	const warnings: unknown[][] = [];
@@ -293,6 +302,7 @@ export function writerHarness(notes: Record<string, string | Uint8Array> = { "a.
 		locale: () => moment.locale(),
 		notices: {
 			refuse(reason, context) {
+				refusals.push({ reason, context });
 				const text = refusalText(reason, context);
 				notices.push(text);
 				return text;
@@ -307,6 +317,13 @@ export function writerHarness(notes: Record<string, string | Uint8Array> = { "a.
 				notices.push(slowText(context));
 			},
 			editNotSaved() {},
+			editChangedBack(context, editedLine) {
+				recoveries.push({ context, editedLine });
+			},
+			overwritten(context, count, redo) {
+				reverts.push({ context, count, redo });
+				notices.push(overwrittenText(context, count));
+			},
 			undoDone(context, dialogEdit) {
 				notices.push(undoDoneText(context, dialogEdit));
 			},
@@ -351,6 +368,9 @@ export function writerHarness(notes: Record<string, string | Uint8Array> = { "a.
 		processCalls,
 		writes,
 		notices,
+		refusals,
+		reverts,
+		recoveries,
 		events,
 		dirty,
 		warnings,

@@ -1,5 +1,5 @@
 import { MarkdownView } from "obsidian";
-import { taskLineCounts, type LineCounts, type LineTarget } from "@tasks-calendar-wrapper/core";
+import { taskLineCounts, type LineCounts, type LineTarget, type Neighbours } from "@tasks-calendar-wrapper/core";
 import { contentIdOf, type ContentId } from "../../utils/contentid";
 import type { NoticeContext } from "./notices";
 import type { HoldToken } from "./taskindex";
@@ -30,8 +30,12 @@ export interface WriteRecord {
 	readonly edit: TaskEdit | InsertEdit;
 	readonly lines: readonly string[];
 	readonly keys: readonly string[];
-	status: "pending" | "written" | "unknown" | "unchanged" | "refused" | "failed";
+	status: "pending" | "written" | "unknown" | "unchanged" | "already-undone" | "reported" | "refused" | "failed";
 	before?: WriteSnapshot;
+	deletedNeighbours?: Neighbours;
+	undoNeighbours?: Neighbours;
+	source?: MarkdownView;
+	editorIndexed?: boolean;
 	after?: WriteSnapshot;
 	delta: number;
 	insertBefore?: true;
@@ -58,8 +62,18 @@ export function writeSnapshot(text: string): WriteSnapshot {
 	return Object.freeze({ id: contentIdOf(normalized(text)), counts: taskLineCounts(text) });
 }
 
+export type CheckTrigger = "changed" | "indexed" | "slow" | "window" | "result";
+
+/** Keeps metadata release and revert checks ordered around the same per-write records. */
+export interface TrackingHooks {
+	check(path: string, trigger: CheckTrigger, at: number, text?: string): Promise<void>;
+	finished(record: WriteRecord, result: WriteResult, current?: string): void;
+	renamed(from: string, to: string): void;
+	deleted(path: string): void;
+}
+
 /** Owns counting holds and the main-window timers; no view reloads or revert decisions live here. */
-export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEvent) => void) {
+export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEvent) => void, hooks: TrackingHooks) {
 	let records: WriteRecord[] = [];
 	let serial = 0;
 	let sequence = 0;
@@ -124,7 +138,9 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 			record.releasedAt + OVERWRITE_AFTER_RELEASE_MS,
 		);
 		if (disposed) return;
+		const scheduledAt = record.windowEnd;
 		record.windowTimer = later(() => {
+			void hooks.check(record.target.path, "window", scheduledAt);
 			const writes = of(record.target.path).filter(
 				(item) => item.status === "written" || item.status === "unknown",
 			);
@@ -151,14 +167,15 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 		if (record.status === "refused" || record.status === "failed")
 			records = records.filter((item) => item !== record);
 	}
-	function indexed(record: WriteRecord): void {
+	function indexed(record: WriteRecord, markDirty = true): void {
 		if (record.indexed) return;
 		record.indexed = true;
 		record.slow = false;
 		cancel(record.slowTimer);
-		release(record);
+		release(record, markDirty);
 		record.resolveIndexed();
 		event(record, "indexed");
+		void hooks.check(record.target.path, "indexed", deps.now());
 	}
 	function touch(path: string): void {
 		versions.set(path, (versions.get(path) ?? 0) + 1);
@@ -167,7 +184,7 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 		changes.set(path, [...(changes.get(path) ?? []), text]);
 	}
 
-	async function changed(path: string, text: string): Promise<void> {
+	async function changed(path: string, text: string, checking?: Promise<void>): Promise<void> {
 		if (disposed) return;
 		if (pending(path)) {
 			defer(path, text);
@@ -175,7 +192,9 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 		}
 		const version = versions.get(path) ?? 0;
 		const currentRecords = of(path);
-		const writes = currentRecords.filter((record) => record.status === "written" || record.status === "unknown");
+		const writes = currentRecords.filter(
+			(record) => record.status === "written" || record.status === "unknown" || record.status === "reported",
+		);
 		const lastRecord = currentRecords[currentRecords.length - 1]?.id;
 		const id = contentIdOf(normalized(text));
 		const matches = writes.filter((record) => record.after?.id === id);
@@ -215,6 +234,8 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 				if (contentIdOf(normalized(current)) !== id) return;
 			}
 		}
+		await checking;
+		if (disposed || (versions.get(path) ?? 0) !== version) return;
 		for (const record of writes) release(record);
 	}
 
@@ -222,11 +243,13 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 	const vault = deps.app.vault;
 	const changedRef = metadata.on("changed", (file, text) => {
 		touch(file.path);
-		void changed(file.path, text);
+		const checking = hooks.check(file.path, "changed", deps.now(), text);
+		void changed(file.path, text, checking);
 	});
 	const deletedRef = metadata.on("deleted", (file) => {
 		touch(file.path);
 		changes.delete(file.path);
+		hooks.deleted(file.path);
 		for (const record of of(file.path)) {
 			if (record.status === "pending") record.invalidated = true;
 			release(record);
@@ -244,6 +267,7 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 				record.context = { ...record.context, path: file.path };
 			}
 		}
+		hooks.renamed(oldPath, file.path);
 		deps.index.markDirty([oldPath, file.path]);
 	});
 	const modifyRef = vault.on("modify", (file) => {
@@ -258,12 +282,6 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 			lines: readonly string[],
 			context: NoticeContext,
 		): WriteRecord {
-			// Run D will retain whole intersecting groups. Until then retain every active or recent write independently.
-			if (!records.some((record) => record.status === "pending"))
-				records = records.filter(
-					(record) =>
-						!record.released || deps.now() <= record.windowEnd || deps.now() - record.resultAt < 60000,
-				);
 			let resolveIndexed!: () => void;
 			const indexedPromise = new Promise<void>((resolve) => {
 				resolveIndexed = resolve;
@@ -316,27 +334,37 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 		},
 		event,
 		release,
-		finish(record: WriteRecord, result: WriteResult): void {
+		indexed,
+		drop(dropped: readonly WriteRecord[]): void {
+			const gone = new Set(dropped);
+			records = records.filter((record) => !gone.has(record) || !record.released);
+		},
+		finish(record: WriteRecord, result: WriteResult, current?: string): void {
 			record.resultAt = deps.now();
 			record.status =
 				result.kind === "failed" && result.unknownOutcome
 					? "unknown"
 					: result.kind === "cancelled"
 						? "refused"
-						: result.kind;
+						: result.kind === "unchanged" && result.alreadyUndone
+							? "already-undone"
+							: result.kind;
 			if (result.kind === "written") {
 				record.writtenAt = deps.now();
 				record.delta = result.delta;
+				const scheduledAt = record.resultAt + INDEXED_NOTICE_MS;
 				if (!record.released && !disposed)
 					record.slowTimer = later(() => {
-						if (record.indexed || record.released) return;
-						record.slow = true;
-						const path = record.target.path;
-						if ((slowUntil.get(path) ?? -Infinity) <= deps.now()) {
-							deps.notices.slow(record.context);
-							slowUntil.set(path, deps.now() + SLOW_NOTICE_MS);
-						}
-						event(record, "slow");
+						void hooks.check(record.target.path, "slow", scheduledAt).then(() => {
+							if (record.indexed || record.released) return;
+							record.slow = true;
+							const path = record.target.path;
+							if ((slowUntil.get(path) ?? -Infinity) <= deps.now()) {
+								deps.notices.slow(record.context);
+								slowUntil.set(path, deps.now() + SLOW_NOTICE_MS);
+							}
+							event(record, "slow");
+						});
 					}, INDEXED_NOTICE_MS);
 			}
 			windowTimer(record);
@@ -351,6 +379,7 @@ export function createWriteTracking(deps: TaskWriterDeps, emit: (event: WriteEve
 						? { reason: result.reason }
 						: {},
 			);
+			hooks.finished(record, result, current);
 			const queued = changes.get(record.target.path) ?? [];
 			changes.delete(record.target.path);
 			for (const text of queued) void changed(record.target.path, text);

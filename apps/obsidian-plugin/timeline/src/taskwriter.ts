@@ -28,9 +28,12 @@ import type { SharedTaskIndex } from "./sharedindex";
 import type { TasksToggle } from "./tasksplugin";
 import { displayText, errorMessage, normalized, prepareEdit, sourceAt, withoutBOM } from "./writerchecks";
 import { createWriteTracking, writeSnapshot, type WriteRecord } from "./writerholds";
+import { createWriterWatch } from "./writerwatch";
+import { redoWrites } from "./writerredo";
 import { UNDO_KEEP_MAX } from "./writerconstants";
 
 export * from "./writerconstants";
+export { DEFERRED_CHECKS_MAX } from "./revertcheck";
 
 /** Edits whose new lines can be computed without waiting for user input. */
 export type TaskEdit =
@@ -102,7 +105,16 @@ export interface TaskWriterDeps {
 	readonly tasks: () => TasksToggle;
 	readonly notices: Pick<
 		NoticePresenter,
-		"refuse" | "failed" | "mayNotSaved" | "slow" | "editNotSaved" | "undoDone" | "undoAlready" | "undoExpired"
+		| "refuse"
+		| "failed"
+		| "mayNotSaved"
+		| "slow"
+		| "editNotSaved"
+		| "editChangedBack"
+		| "overwritten"
+		| "undoDone"
+		| "undoAlready"
+		| "undoExpired"
 	>;
 	readonly moment: MomentFactory & { locale(): string };
 	/** Obsidian's language for explaining unreadable local digits; defaults to its moment locale. */
@@ -220,9 +232,19 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 	const aborts = new Set<() => void>();
 	const undos = new Map<UndoRecord, UndoRecord>();
 	const undoListeners = new Set<(record: UndoRecord) => void>();
-	const tracking = createWriteTracking(deps, (event) => {
-		for (const listener of listeners) listener(event);
-	});
+	const tracking = createWriteTracking(
+		deps,
+		(event) => {
+			for (const listener of listeners) listener(event);
+		},
+		{
+			check: (...args) => watch.check(...args),
+			finished: (...args) => watch.finished(...args),
+			renamed: (from, to) => watch.renamed(from, to),
+			deleted: (path) => watch.deleted(path),
+		},
+	);
+	const watch = createWriterWatch(deps, tracking, (records) => redoWrites(deps, records, enqueue));
 
 	function forgetUndo(record: UndoRecord): void {
 		if (!undos.delete(record)) return;
@@ -370,7 +392,9 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 			}
 			return refused(record, prepared.reason, false, prepared.details);
 		}
+		watch.begin(record);
 		tracking.event(record, "pending");
+		let resultText: string | undefined;
 		let abandoned = false;
 		let timer: number | undefined;
 		let abort!: () => void;
@@ -398,6 +422,13 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 			active();
 			record.before = writeSnapshot(disk);
 			if (edit.kind !== "insert") {
+				if (undoing && undoing.span.above !== undefined && undoing.span.below !== undefined)
+					record.undoNeighbours = { above: undoing.above, below: undoing.below };
+				if (lines.length === 0)
+					record.deletedNeighbours = {
+						above: sourceAt(disk, target.line - 1),
+						below: sourceAt(disk, target.line + 1),
+					};
 				const predicted = replace(disk);
 				if (predicted.kind === "replaced") record.after = writeSnapshot(predicted.content);
 			}
@@ -422,6 +453,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 					throw new Refusal(changedReason);
 			}
 			const source = open.find((view) => view.getMode() === "source");
+			record.source = source;
 			if (restored || (prepared.kind === "lines" && prepared.unchanged)) {
 				if (source) {
 					const line = source.editor.getLine(target.line);
@@ -429,7 +461,8 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 					if (restored && !alreadyUndone(source.editor.getValue())) throw new Refusal(changedReason);
 				}
 				if (sourceAt(disk, target.line) !== sourceLine) throw new Refusal(changedReason);
-				record.before = record.after = writeSnapshot(source ? source.editor.getValue() : disk);
+				resultText = source ? source.editor.getValue() : disk;
+				record.before = record.after = writeSnapshot(resultText);
 				return Object.freeze(restored ? { kind: "unchanged", alreadyUndone: true } : { kind: "unchanged" });
 			}
 			active();
@@ -459,6 +492,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 				const result = replace(before);
 				if (result.kind === "mismatch") {
 					if (!alreadyUndone(before)) throw new Refusal(changedReason, !source);
+					resultText = before;
 					record.before = record.after = writeSnapshot(before);
 					unchanged = true;
 					return before;
@@ -466,6 +500,13 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 				record.before = writeSnapshot(before);
 				record.after = writeSnapshot(result.content);
 				record.delta = result.delta;
+				if (undoing && undoing.span.above !== undefined && undoing.span.below !== undefined)
+					record.undoNeighbours = { above: undoing.above, below: undoing.below };
+				if (lines.length === 0)
+					record.deletedNeighbours = {
+						above: sourceAt(before, target.line - 1),
+						below: sourceAt(before, target.line + 1),
+					};
 				if (edit.kind !== "undo") {
 					const saved = undoSpanFor(before, target.line, lines);
 					undo = deepFreeze({
@@ -566,7 +607,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 		}
 		try {
 			const result = await Promise.race([write(), deadline]);
-			tracking.finish(record, result);
+			tracking.finish(record, result, resultText);
 			if (result.kind === "unchanged") tracking.release(record, false);
 			if (undoing) {
 				if (result.kind === "written") deps.notices.undoDone(context, undoing.edit.kind === "replace");
@@ -597,6 +638,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 				: Object.freeze({ ...edit });
 		const previous = queues.get(path) ?? Promise.resolve();
 		const next = previous.then(async () => {
+			await watch.ready(path);
 			const latest = target();
 			if (latest.path !== path) throw new Error("A queued task target changed notes.");
 			if (disposed)
@@ -659,6 +701,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 			if (disposed) return;
 			disposed = true;
 			for (const abort of aborts) abort();
+			watch.dispose();
 			tracking.dispose();
 			for (const record of undos.keys()) forgetUndo(record);
 			undoListeners.clear();
