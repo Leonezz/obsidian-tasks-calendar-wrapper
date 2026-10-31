@@ -24,6 +24,10 @@ Obsidian Tasks
   Copyright (c) 2021 Clare Macrae, Ilyas Landikov and Martin Schenck, MIT License
   The task line parsing in packages/core/src/syntax.ts and
   packages/core/src/parse.ts is adapted from Obsidian Tasks.
+  The toggling rewrite in packages/core/src/writeline.ts follows Tasks 8.6.0's
+  serializer and status rules. packages/core/tests/support/tasksreader.ts is
+  a test-only port of Task.extractTaskComponents and
+  DefaultTaskSerializer.deserialize from Tasks 8.6.0.
 
 The MIT License of Obsidian Dataview and Obsidian Tasks:
 
