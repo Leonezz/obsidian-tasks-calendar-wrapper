@@ -20,7 +20,7 @@ import { sameParseKey } from "../utils/parsekey";
 import { deeplyFrozen } from "./frozen";
 import { goldenApp, loadVault } from "./golden-vault";
 import { rowsOf } from "./markup";
-import { notesApp, openView, unusedWriter } from "./view-harness";
+import { notesApp, openView, unusedNotices, unusedWriter } from "./view-harness";
 import { writerHarness, deferred, flush } from "./writer-harness";
 import { createNoticePresenter } from "../timeline/src/notices";
 import { FakeElement, Notice as TestNotice } from "./stubs/obsidian";
@@ -742,6 +742,98 @@ test("the overlay clears after a reload that started after release though shown 
 	assert.equal(opened.store.getSnapshot().shown, before);
 	assert.equal(opened.view.pendingWrites.getSnapshot("Note.md:0"), undefined);
 	assert.equal(render.mock.callCount(), 0);
+});
+
+/** A controllable writer feed with the real shared index's holds and the view's debounce. */
+async function heldWriteView(t: TestContext) {
+	const lines = ["- [ ] first", "- [ ] second", "- [ ] third"];
+	const h = writerHarness({ "Note.md": lines.join("\n"), "Other.md": "- [ ] other" });
+	t.mock.method(globalThis, "setTimeout", h.clock.setTimeout as never);
+	t.mock.method(globalThis, "clearTimeout", h.clock.clearTimeout as never);
+	const shared = timelineTaskIndex(h.app as never);
+	const listeners = new Set<(event: WriteEvent) => void>();
+	let seq = 0;
+	const writer: TaskWriter = {
+		...unusedWriter,
+		onWrite(listener) {
+			listeners.add(listener);
+			return () => {
+				listeners.delete(listener);
+			};
+		},
+		releaseSeq: () => seq,
+	};
+	const view = new TasksTimelineView({ app: h.app } as never, shared, writer, unusedNotices);
+	await view.onUpdateOptions({ ...defaultUserOptions });
+	await view.onOpen();
+	h.app.metadataCache.trigger("resolved");
+	await h.clock.advance(500);
+	const reload = t.mock.method(view, "onReloadTasks");
+	const held = new Map<number, { event: WriteEvent; token: ReturnType<typeof shared.hold> }>();
+	t.after(async () => {
+		await view.onClose();
+		shared.dispose();
+	});
+	return {
+		h,
+		view,
+		reloads: () => reload.mock.callCount(),
+		pending(id: number) {
+			const event: WriteEvent = {
+				id,
+				kind: "pending",
+				path: "Note.md",
+				line: id - 1,
+				sourceLine: lines[id - 1],
+				lines: [lines[id - 1].replace("[ ]", "[x]")],
+			};
+			held.set(id, { event, token: shared.hold(event.path) });
+			for (const listener of listeners) listener(event);
+			assert.ok(view.pendingWrites.getSnapshot(`Note.md:${id - 1}`));
+		},
+		released(id: number) {
+			const write = held.get(id);
+			assert.ok(write);
+			write.token.release();
+			held.delete(id);
+			seq++;
+			for (const listener of listeners) listener({ ...write.event, kind: "released", releaseSeq: seq });
+		},
+	};
+}
+
+test("changes to a note held by writes reload once, after its last write releases", async (t) => {
+	const f = await heldWriteView(t);
+	f.pending(1);
+	f.h.changed("Note.md");
+	await f.h.clock.advance(600);
+	assert.equal(f.reloads(), 0);
+	f.pending(2);
+	f.released(1);
+	f.h.changed("Note.md");
+	await f.h.clock.advance(600);
+	assert.equal(f.reloads(), 0);
+	f.pending(3);
+	f.released(2);
+	f.h.changed("Note.md");
+	await f.h.clock.advance(600);
+	assert.equal(f.reloads(), 0);
+	for (let line = 0; line < 3; line++) assert.ok(f.view.pendingWrites.getSnapshot(`Note.md:${line}`));
+	f.released(3);
+	await f.h.clock.advance(500);
+	assert.equal(f.reloads(), 1);
+	for (let line = 0; line < 3; line++) assert.equal(f.view.pendingWrites.getSnapshot(`Note.md:${line}`), undefined);
+});
+
+test("a change to another note during a hold still reloads after 500 ms", async (t) => {
+	const f = await heldWriteView(t);
+	f.pending(1);
+	f.h.changed("Other.md");
+	await f.h.clock.advance(499);
+	assert.equal(f.reloads(), 0);
+	await f.h.clock.advance(1);
+	assert.equal(f.reloads(), 1);
+	assert.ok(f.view.pendingWrites.getSnapshot("Note.md:0"));
 });
 
 test("a reload started before release does not clear it", async (t) => {

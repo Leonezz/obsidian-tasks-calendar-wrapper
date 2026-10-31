@@ -42,6 +42,12 @@ export class TasksTimelineView extends ItemView {
 	/** Events can release before the initiating call receives its result. */
 	private readonly writes = new Map<number, WriteEvent>();
 	private readonly releases = new Map<number, number>();
+	/**
+	 * The writes in flight per note, from pending until released or ended, and the held notes that changed meanwhile. A
+	 * reload during a hold reads the pinned entry and clears nothing, so their reload waits for the last release.
+	 */
+	private readonly heldWrites = new Map<string, Set<number>>();
+	private readonly changedWhileHeld = new Set<string>();
 	/** A renamed or deleted note may release while the applied write is still awaiting its save. */
 	private readonly renderedPending = new Set<number>();
 	private refreshTasks = false;
@@ -126,6 +132,8 @@ export class TasksTimelineView extends ItemView {
 		this.undoNotices.close();
 		this.writes.clear();
 		this.releases.clear();
+		this.heldWrites.clear();
+		this.changedWhileHeld.clear();
 		this.renderedPending.clear();
 		// A reload that runs or waits goes on, and so does the one asked for while it ran; the last of them closes the
 		// reader, so the notes this view shows stay for them, and they read the changes the index marks until then.
@@ -163,6 +171,17 @@ export class TasksTimelineView extends ItemView {
 	}
 
 	private onWrite(event: WriteEvent): void {
+		if (event.kind === "pending") {
+			const held = this.heldWrites.get(event.path) ?? new Set<number>();
+			held.add(event.id);
+			this.heldWrites.set(event.path, held);
+		} else if (["released", "refused", "failed", "unchanged", "overwritten"].includes(event.kind)) {
+			const held = this.heldWrites.get(event.path);
+			if (held?.delete(event.id) && held.size === 0) {
+				this.heldWrites.delete(event.path);
+				if (this.changedWhileHeld.delete(event.path)) this.requestReload();
+			}
+		}
 		const { tasks, options } = this.store.getSnapshot();
 		this.pendingWrites.apply(event, tasks, options, this.resolveEnv(moment()).env);
 		const alreadyRendered = event.kind === "written" && this.renderedPending.delete(event.id);
@@ -190,7 +209,13 @@ export class TasksTimelineView extends ItemView {
 	}
 
 	private onFileChanged(paths: string[], cache: CachedMetadata | null): void {
-		if (changeAffectsTasks(paths, cache, this.filesWithTasks)) this.requestReload();
+		if (!changeAffectsTasks(paths, cache, this.filesWithTasks)) return;
+		// A reload cannot show a held note's changes or clear its overlays until its last write releases.
+		if (paths.every((path) => this.heldWrites.has(path))) {
+			for (const path of paths) this.changedWhileHeld.add(path);
+			return;
+		}
+		this.requestReload();
 	}
 
 	/** Reloads the tasks with the options. Returns once the reload is done. */
