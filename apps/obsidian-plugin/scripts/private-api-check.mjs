@@ -1,20 +1,14 @@
 /**
- * Keeps Obsidian's private App APIs in tasksplugin.ts, with two counted exceptions until step 9. Receiver types
- * must name the App class in Obsidian's typings, inherit it, or contain it in a union or intersection. Structural
- * lookalikes and any do not count. Comments in the checked files also have a budget for @ts-expect-error.
+ * Keeps Obsidian's private App APIs in tasksplugin.ts, with no exceptions. Receiver types must name the App class
+ * in Obsidian's typings, inherit it, or contain it in a union or intersection. Structural lookalikes and any do
+ * not count. Comments in the checked files also have a budget for @ts-expect-error.
  * scripts/private-api.mjs runs it on the plugin; the tests import it.
  */
 import path from "path";
 import ts from "typescript";
 
-// Step 9 makes this exactly 1, in tasksplugin.ts.
-export const MAX_TS_EXPECT_ERROR = 3;
-
-// Step 9 deletes this list: the pencil's visibility and edit-task command move into tasksplugin.ts.
-export const STEP_8_ALLOW = [
-	{ file: "timeline/src/obsidianbridge.tsx", name: "plugins", count: 1 },
-	{ file: "timeline/src/obsidianbridge.tsx", name: "commands", count: 1 },
-];
+// The remaining comment is in tasksplugin.ts; removing it would also satisfy this budget.
+export const MAX_TS_EXPECT_ERROR = 1;
 
 const PRIVATE_NAMES = new Set(["commands", "plugins", "internalPlugins"]);
 const relativeFile = (fileName, relativeTo) => path.relative(relativeTo, fileName).replaceAll("\\", "/");
@@ -82,11 +76,10 @@ function expectErrorPlaces(sourceFile, file) {
 }
 
 /** Private accesses and an exceeded comment budget, with plugin-relative paths and lines from 1. */
-export function privateApiViolations(program, { isPluginFile, relativeTo, allow = STEP_8_ALLOW }) {
+export function privateApiViolations(program, { isPluginFile, relativeTo }) {
 	const checker = program.getTypeChecker();
 	const violations = [];
 	const tsExpectErrors = [];
-	const remaining = allow.map((entry) => ({ ...entry }));
 	for (const sourceFile of program.getSourceFiles()) {
 		if (
 			sourceFile.isDeclarationFile ||
@@ -104,19 +97,13 @@ export function privateApiViolations(program, { isPluginFile, relativeTo, allow 
 					? node.argumentExpression.text
 					: null;
 			if (PRIVATE_NAMES.has(name) && containsApp(checker.getTypeAtLocation(node.expression), checker)) {
-				const allowed = remaining.find(
-					(entry) => entry.file === file && entry.name === name && entry.count > 0,
-				);
-				if (allowed) allowed.count--;
-				else {
-					const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-					violations.push({
-						file,
-						line: line + 1,
-						name,
-						message: `private API app.${name} at ${file}:${line + 1}`,
-					});
-				}
+				const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+				violations.push({
+					file,
+					line: line + 1,
+					name,
+					message: `private API app.${name} at ${file}:${line + 1}`,
+				});
 			}
 			ts.forEachChild(node, visit);
 		};

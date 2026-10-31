@@ -2,26 +2,7 @@ import "./setup";
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { tagSearchUri, tasksPluginCommand } from "../utils/utils";
-
-// Toggling a task with the Tasks plugin disabled threw an uncaught TypeError and showed nothing
-
-test("an available Tasks command is returned", () => {
-	const editorCheckCallback = () => true;
-	const commands = { "obsidian-tasks-plugin:toggle-done": { editorCheckCallback } };
-	assert.equal(
-		tasksPluginCommand(commands, "obsidian-tasks-plugin:toggle-done"),
-		commands["obsidian-tasks-plugin:toggle-done"],
-	);
-});
-
-test("a missing Tasks command raises an error that says what to do", () => {
-	assert.throws(() => tasksPluginCommand({}, "obsidian-tasks-plugin:toggle-done"), /Tasks plugin is not enabled/);
-	assert.throws(
-		() => tasksPluginCommand({ "obsidian-tasks-plugin:toggle-done": {} }, "obsidian-tasks-plugin:toggle-done"),
-		/Tasks plugin is not enabled/,
-	);
-});
+import { tagSearchUri } from "../utils/utils";
 
 // Clicking a tag searches for it through the documented search URI, not the private search plugin
 

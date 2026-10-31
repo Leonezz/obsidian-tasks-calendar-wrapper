@@ -1,4 +1,4 @@
-import { App, ItemView, MarkdownView, Notice, normalizePath, Pos, type UserEvent } from "obsidian";
+import { App, ItemView, Notice, normalizePath, Pos, type UserEvent } from "obsidian";
 import {
 	createStore,
 	dayKey,
@@ -19,9 +19,10 @@ import { UserOption } from "../../src/useroptions";
 import { ConfirmModal } from "../../src/confirm-modal";
 import { openNoteAt } from "../../src/open-note";
 import { sameParseKey } from "../../utils/parsekey";
-import { tagSearchUri, tasksPluginCommand } from "../../utils/utils";
+import { tagSearchUri } from "../../utils/utils";
 import { appendTaskToNote } from "./appendtask";
 import { changesInPlace } from "./taskactions";
+import { canEditInTasksDialog } from "./tasksplugin";
 import { writeFailureText } from "./notices";
 import {
 	createShiftLedger,
@@ -41,7 +42,7 @@ const defaultObsidianBridgeProps = {
 	store: createStore<TimelineState>(initialTimelineState()) as Store<TimelineState>,
 };
 type ObsidianBridgeProps = Readonly<typeof defaultObsidianBridgeProps> & {
-	readonly writer: Pick<TaskWriter, "insert" | "write">;
+	readonly writer: Pick<TaskWriter, "insert" | "write" | "editInTasksDialog">;
 	readonly ledger?: ShiftLedger;
 	readonly pendingWrites?: PendingWrites;
 	readonly onWriteResult?: (target: LineTarget, result: WriteResult) => void;
@@ -192,29 +193,18 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		});
 	}
 
-	handleModifyTask(model: TaskRowModel, evt: MouseEvent) {
+	async handleModifyTask(model: TaskRowModel, evt: MouseEvent): Promise<WriteResult | void> {
 		const { path, position } = model;
 		if (!changesInPlace(this.state.userOptions)) {
 			this.handleOpenFile(path, position, evt);
-			return true;
+			return;
 		}
-		openNoteAt(this.app, path, position.start.line)
-			.then((leaf) => {
-				if (leaf && leaf.view instanceof MarkdownView) {
-					tasksPluginCommand(
-						// @ts-expect-error commands is not part of the public API
-						this.app.commands.commands,
-						"obsidian-tasks-plugin:edit-task",
-					).editorCheckCallback(false, leaf.view.editor, leaf.view);
-				}
-			})
-			.catch((reason) => {
-				console.error("Tasks Calendar Wrapper: opening a note failed", reason);
-				new Notice(
-					"Could not open " + path + ": " + (reason instanceof Error ? reason.message : String(reason)),
-					5000,
-				);
-			});
+		let target: LineTarget = model;
+		const result = await this.props.writer.editInTasksDialog(
+			() => (target = { path, line: this.ledger.shift(path, model.line), sourceLine: model.sourceLine }),
+		);
+		this.props.onWriteResult?.(target, result);
+		return result;
 	}
 
 	/** Reads the row's target again when its turn in the note's write queue starts. */
@@ -238,9 +228,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 	 * change can skip rendering (issue #63). Modifying a task needs the Tasks plugin.
 	 */
 	getTaskItemHandlers(): React.ContextType<typeof TaskItemEventHandlersContext> {
-		const handleModifyTask =
-			// @ts-expect-error plugins is not part of the public API
-			this.app.plugins.plugins["obsidian-tasks-plugin"] === undefined ? undefined : this.handleModifyTask;
+		const handleModifyTask = canEditInTasksDialog(this.app).kind !== "none" ? this.handleModifyTask : undefined;
 		if (!this.taskItemHandlers || this.taskItemHandlers.handleModifyTask !== handleModifyTask) {
 			this.taskItemHandlers = {
 				handleOpenFile: this.handleOpenFile,

@@ -1,15 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createRequire } from "module";
 import path from "path";
 import ts from "typescript";
 
-import {
-	MAX_TS_EXPECT_ERROR,
-	STEP_8_ALLOW,
-	isPluginSourceFile,
-	privateApiViolations,
-} from "../scripts/private-api-check.mjs";
+import { MAX_TS_EXPECT_ERROR, isPluginSourceFile, privateApiViolations } from "../scripts/private-api-check.mjs";
 
 /** The tests run from apps/obsidian-plugin, see scripts/test.mjs. */
 const PLUGIN_ROOT = path.resolve(".");
@@ -57,7 +53,6 @@ function check(files: Record<string, string>) {
 	return privateApiViolations(programFor(files), {
 		relativeTo: PLUGIN_ROOT,
 		isPluginFile: () => true,
-		allow: STEP_8_ALLOW,
 	});
 }
 
@@ -93,62 +88,41 @@ test("the same code in timeline/src/tasksplugin.ts passes", () => {
 	assert.deepEqual(result.tsExpectErrors, [{ file: "timeline/src/tasksplugin.ts", line: 5 }]);
 });
 
-test("the allow list admits exactly the two obsidianbridge.tsx accesses", () => {
-	const source =
-		HEADER +
-		`// @ts-expect-error plugins is not public.
-app.plugins;
-// @ts-expect-error commands is not public.
-app.commands;
-`;
-	const options = { relativeTo: PLUGIN_ROOT, isPluginFile: () => true, allow: STEP_8_ALLOW };
-	const program = programFor({ "timeline/src/obsidianbridge.tsx": source });
-	assert.deepEqual(privateApiViolations(program, options).violations, []);
-	assert.deepEqual(privateApiViolations(program, options).violations, [], "allow counts are local to each check");
-	const result = check({
-		"timeline/src/obsidianbridge.tsx":
-			source +
-			`// @ts-expect-error commands is not public.
-app.commands;
-`,
-	});
-	assert.deepEqual(
-		result.violations.map((use) => use.message),
-		["private API app.commands at timeline/src/obsidianbridge.tsx:8"],
-	);
+test("an app.plugins or app.commands access in obsidianbridge.tsx fails", () => {
+	for (const name of ["plugins", "commands"]) {
+		const result = check({
+			"timeline/src/obsidianbridge.tsx": HEADER + `// @ts-expect-error ${name} is not public.\napp.${name};\n`,
+		});
+		assert.deepEqual(
+			result.violations.map((use) => use.message),
+			[`private API app.${name} at timeline/src/obsidianbridge.tsx:4`],
+		);
+	}
 });
 
-test("a fourth @ts-expect-error fails", () => {
-	assert.equal(MAX_TS_EXPECT_ERROR, 3);
+test("a second @ts-expect-error fails", () => {
+	assert.equal(MAX_TS_EXPECT_ERROR, 1);
 	const first = `export {};
 // @ts-expect-error an intentional type error.
 const one: number = "one";
+`;
+	const second = `export {};
 /* @ts-expect-error an intentional type error. */
 const two: number = "two";
 `;
-	const second = `export {};
-// @ts-expect-error an intentional type error.
-const three: number = "three";
-`;
-	assert.deepEqual(check({ "timeline/src/tasksplugin.ts": first, "utils/x.ts": second }).violations, []);
+	assert.deepEqual(check({ "timeline/src/tasksplugin.ts": first }).violations, []);
 	const result = check({
 		"timeline/src/tasksplugin.ts": first,
-		"utils/x.ts":
-			second +
-			`// @ts-expect-error an intentional type error.
-const four: number = "four";
-`,
+		"utils/x.ts": second,
 	});
 	assert.deepEqual(result.tsExpectErrors, [
 		{ file: "timeline/src/tasksplugin.ts", line: 2 },
-		{ file: "timeline/src/tasksplugin.ts", line: 4 },
 		{ file: "utils/x.ts", line: 2 },
-		{ file: "utils/x.ts", line: 4 },
 	]);
 	assert.equal(result.violations.length, 1);
 	const [violation] = result.violations;
 	assert.equal(violation.name, "@ts-expect-error");
-	assert.match(violation.message, /4/);
+	assert.match(violation.message, /2 @ts-expect-error comments exceed the maximum 1/);
 	for (const { file, line } of result.tsExpectErrors) assert.ok(violation.message.includes(`${file}:${line}`));
 });
 
@@ -163,7 +137,7 @@ app.internalPlugins;
 `,
 	});
 	assert.deepEqual(
-		result.violations.map((use) => use.message),
+		result.violations.filter((use) => use.name !== "@ts-expect-error").map((use) => use.message),
 		["private API app.plugins at timeline/src/x.ts:4", "private API app.internalPlugins at timeline/src/x.ts:6"],
 	);
 });
@@ -197,7 +171,7 @@ intersection.internalPlugins;
 `,
 	});
 	assert.deepEqual(
-		result.violations.map((use) => use.message),
+		result.violations.filter((use) => use.name !== "@ts-expect-error").map((use) => use.message),
 		[
 			"private API app.commands at timeline/src/x.ts:8",
 			"private API app.plugins at timeline/src/x.ts:10",
@@ -248,4 +222,12 @@ const value: number = "text";
 	});
 	assert.deepEqual(result.violations, []);
 	assert.deepEqual(result.tsExpectErrors, [{ file: "timeline/src/x.ts", line: 6 }]);
+});
+
+test("the real plugin has one @ts-expect-error comment and no private API violations", () => {
+	const output = execFileSync(process.execPath, ["scripts/private-api.mjs"], {
+		cwd: PLUGIN_ROOT,
+		encoding: "utf8",
+	});
+	assert.match(output, /1 @ts-expect-error comments \(maximum 1\)/);
 });

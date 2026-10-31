@@ -87,11 +87,9 @@ class TaskRow extends React.Component<TaskRowProps> {
 			callbacks.handleCompleteTask(model, evt.nativeEvent);
 		};
 		const onModifyTask = (evt: React.MouseEvent) => {
-			if (overlay?.dimmed || clickIsGuarded(evt.nativeEvent, clock)) {
-				evt.stopPropagation();
-				return;
-			}
-			if (callbacks.handleModifyTask?.(model, evt.nativeEvent) === true) evt.stopPropagation();
+			evt.stopPropagation();
+			if (overlay?.dimmed || clickIsGuarded(evt.nativeEvent, clock)) return;
+			callbacks.handleModifyTask?.(model, evt.nativeEvent);
 		};
 		return (
 			<div

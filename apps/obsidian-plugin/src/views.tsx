@@ -36,7 +36,7 @@ export class TasksTimelineView extends ItemView {
 	private readonly resolveEnv = createResolveEnv();
 	readonly pendingWrites = createPendingWrites();
 	readonly ledger = createShiftLedger();
-	readonly viewWriter: Pick<TaskWriter, "write" | "insert">;
+	readonly viewWriter: Pick<TaskWriter, "write" | "insert" | "editInTasksDialog">;
 	private readonly undoNotices: ReturnType<typeof createUndoNotices>;
 	private readonly stopWrites: () => void;
 	/** Events can release before the initiating call receives its result. */

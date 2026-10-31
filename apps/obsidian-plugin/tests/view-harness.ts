@@ -21,6 +21,9 @@ export const unusedWriter = {
 	async insert(): Promise<never> {
 		throw new Error("This view test does not provide a writer.");
 	},
+	async editInTasksDialog(): Promise<never> {
+		throw new Error("This view test does not provide a writer.");
+	},
 } as unknown as TaskWriter;
 
 /**
