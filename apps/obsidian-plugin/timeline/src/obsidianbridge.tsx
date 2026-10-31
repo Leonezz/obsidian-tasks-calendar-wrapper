@@ -21,6 +21,7 @@ import { openNoteAt } from "../../src/open-note";
 import { sameParseKey } from "../../utils/parsekey";
 import { tagSearchUri, tasksPluginCommand } from "../../utils/utils";
 import { appendTaskToNote } from "./appendtask";
+import { changesInPlace } from "./taskactions";
 import { writeFailureText } from "./notices";
 import {
 	createShiftLedger,
@@ -193,6 +194,10 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 
 	handleModifyTask(model: TaskRowModel, evt: MouseEvent) {
 		const { path, position } = model;
+		if (!changesInPlace(this.state.userOptions)) {
+			this.handleOpenFile(path, position, evt);
+			return true;
+		}
 		openNoteAt(this.app, path, position.start.line)
 			.then((leaf) => {
 				if (leaf && leaf.view instanceof MarkdownView) {
@@ -213,7 +218,11 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 	}
 
 	/** Reads the row's target again when its turn in the note's write queue starts. */
-	async handleCompleteTask(model: TaskRowModel, evt: MouseEvent): Promise<WriteResult> {
+	async handleCompleteTask(model: TaskRowModel, evt: MouseEvent): Promise<WriteResult | void> {
+		if (!changesInPlace(this.state.userOptions)) {
+			this.handleOpenFile(model.path, model.position, evt);
+			return;
+		}
 		const { path } = model;
 		let target: LineTarget = model;
 		const result = await this.props.writer.write(

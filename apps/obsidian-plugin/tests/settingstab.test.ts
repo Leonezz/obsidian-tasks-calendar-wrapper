@@ -123,11 +123,11 @@ for (const fixture of FIXTURE_NAMES) {
 	});
 }
 
-test("the tab with the defaults has 40 rows, three of them headings", async (t) => {
+test("the tab with the defaults has 41 rows, three of them headings", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const { tab, container } = await drawnTab(t, null);
 	const rows = rowsOf(container);
-	assert.equal(rows.length, 40);
+	assert.equal(rows.length, 41);
 	assert.deepEqual(
 		rows.filter((row) => row.heading).map((row) => row.name),
 		["Interface", "Task items", "Formats and filters"],
@@ -135,6 +135,32 @@ test("the tab with the defaults has 40 rows, three of them headings", async (t) 
 	// Drawing the tab again replaces what it drew.
 	tab.display();
 	assert.deepEqual(rowsOf(container), rows);
+});
+
+test("the tab shows the open-note toggle with the exact label and description", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const label = "Open the note instead of changing tasks in place";
+	const rows = rowsOf((await drawnTab(t, null)).container);
+	const index = rows.findIndex((row) => row.name === label);
+	assert.ok(index >= 0);
+	assert.equal(
+		rows
+			.slice(0, index)
+			.reverse()
+			.find((row) => row.heading)?.name,
+		"Task items",
+	);
+	assert.deepEqual(rows[index], {
+		name: label,
+		desc: "The checkbox and ✏️ open the note at the task instead of changing it from the timeline. While this is on, ✏️ does not open Tasks' edit dialog. While it is off, the timeline tells you when another save changes its edit back within a few seconds, but it cannot notice every such change, for example a note replaced by an old synced copy.",
+		controls: [{ type: "toggle", value: false }],
+	});
+	assert.deepEqual(await change(t, null, label, 0, true), {
+		writes: [{ openNoteInsteadOfInPlace: true }],
+		redrawn: false,
+	});
+	const saved = rowsOf((await drawnTab(t, JSON.stringify({ openNoteInsteadOfInPlace: true }))).container);
+	assert.deepEqual(saved.find((row) => row.name === label)?.controls, [{ type: "toggle", value: true }]);
 });
 
 test("the rows for the quick entry, the tag palette and the tag filters show only when they are on", async (t) => {
@@ -245,8 +271,8 @@ test("options the tab cannot draw stop it where they are, as today", async (t) =
 		return rowsOf(tab.containerEl as unknown as FakeElement).length;
 	};
 	assert.equal(await throwsAt({ tagColorPalette: null }, /Cannot convert undefined or null to object/), 26);
-	assert.equal(await throwsAt({ excludeProperties: null }, /Cannot convert undefined or null to object/), 38);
-	assert.equal(await throwsAt({ excludePaths: "Archive" }, /join is not a function/), 37);
+	assert.equal(await throwsAt({ excludeProperties: null }, /Cannot convert undefined or null to object/), 39);
+	assert.equal(await throwsAt({ excludePaths: "Archive" }, /join is not a function/), 38);
 });
 
 /** The controls of the top rows that hold a value, with their row's name, as drawn now. */

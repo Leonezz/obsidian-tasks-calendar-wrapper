@@ -173,6 +173,10 @@ export const defaultUserOptions = {
 	 */
 	useModifyBadge: true as boolean,
 	/**
+	 * Open the note at the task instead of changing it from the timeline.
+	 */
+	openNoteInsteadOfInPlace: false as boolean,
+	/**
 	 * USE INFO END
 	 */
 	/**

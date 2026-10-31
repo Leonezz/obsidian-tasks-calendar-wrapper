@@ -8,7 +8,7 @@ import { act, createElement, createRef, type ContextType } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { parseTaskLine, type Store, type Task } from "@tasks-calendar-wrapper/core";
-import { Notice } from "./stubs/obsidian";
+import { MarkdownView, Notice } from "./stubs/obsidian";
 
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { TasksTimelineView, timelineTaskIndex } from "../src/views";
@@ -31,15 +31,21 @@ async function mountWritingTimeline(t: TestContext, text: string, toggle?: (line
 	Object.assign(h.app, { plugins: { plugins: {} } });
 	const index = timelineTaskIndex(h.app as never);
 	const writer = h.create({ index, ...(toggle ? { tasks: () => ({ kind: "toggle" as const, toggle }) } : {}) });
+	const write = t.mock.fn(writer.write);
 	const undo: (() => Promise<void>)[] = [];
-	const view = new TasksTimelineView({ app: h.app } as never, index, writer, {
-		undo(_context, _change, run) {
-			undo.push(async () => {
-				await run();
-			});
-			return new Notice("Undo", 10000) as never;
+	const view = new TasksTimelineView(
+		{ app: h.app } as never,
+		index,
+		{ ...writer, write },
+		{
+			undo(_context, _change, run) {
+				undo.push(async () => {
+					await run();
+				});
+				return new Notice("Undo", 10000) as never;
+			},
 		},
-	});
+	);
 	h.leaves.push({ view });
 	const store = (view as unknown as { store: Store<TimelineState> }).store;
 	await view.onUpdateOptions({ ...defaultUserOptions, hideStatusTasks: [] });
@@ -72,8 +78,147 @@ async function mountWritingTimeline(t: TestContext, text: string, toggle?: (line
 			await flush();
 		});
 	};
-	return { h, view, store, writer, undo, container, click };
+	return { h, view, store, writer, write, undo, container, click };
 }
+
+async function mountNoteActions(t: TestContext) {
+	const text = "Heading\n\n- [ ] a";
+	const fixture = await mountWritingTimeline(t, text, (line) => line.replace("[ ]", "[x]"));
+	const noteView = new MarkdownView();
+	noteView.editor = { setCursor: () => {} };
+	const openFile = t.mock.fn(async () => {});
+	const getLeaf = t.mock.fn(() => ({ view: noteView, openFile }));
+	Object.assign(fixture.h.app.workspace, { getLeaf });
+	Object.assign(fixture.h.app, { plugins: { plugins: { "obsidian-tasks-plugin": {} } } });
+	const command = t.mock.fn();
+	const commands = t.mock.fn(() => ({
+		commands: { "obsidian-tasks-plugin:edit-task": { editorCheckCallback: command } },
+	}));
+	Object.defineProperty(fixture.h.app, "commands", { get: commands });
+	await act(() =>
+		fixture.view.onUpdateOptions({
+			...defaultUserOptions,
+			hideStatusTasks: [],
+			openNoteInsteadOfInPlace: true,
+		}),
+	);
+	return { ...fixture, text, openFile, getLeaf, commands, command };
+}
+
+test("with the setting on, clicking a checkbox opens the note once and does not call the writer", async (t) => {
+	const fixture = await mountNoteActions(t);
+	await fixture.click(2);
+	assert.equal(fixture.openFile.mock.callCount(), 1);
+	assert.deepEqual(fixture.openFile.mock.calls[0].arguments, [
+		fixture.h.app.vault.getFileByPath("Note.md"),
+		{ active: true, eState: { line: 2 } },
+	]);
+	assert.equal(fixture.write.mock.callCount(), 0);
+	assert.equal(fixture.commands.mock.callCount(), 0);
+	assert.equal(fixture.view.pendingWrites.getSnapshot("Note.md:2"), undefined);
+	assert.equal(fixture.container.querySelector(".task")?.hasAttribute("aria-busy"), false);
+	assert.equal(fixture.h.text("Note.md"), fixture.text);
+});
+
+test("with the setting on, ✏️ opens the note once and runs no Tasks command", async (t) => {
+	const fixture = await mountNoteActions(t);
+	const modify = fixture.container.querySelector<HTMLElement>(".task .modify");
+	assert.ok(modify);
+	await act(async () => {
+		modify.click();
+		await flush();
+	});
+	assert.equal(fixture.openFile.mock.callCount(), 1);
+	assert.deepEqual(fixture.openFile.mock.calls[0].arguments, [
+		fixture.h.app.vault.getFileByPath("Note.md"),
+		{ active: true, eState: { line: 2 } },
+	]);
+	assert.equal(fixture.commands.mock.callCount(), 0);
+	assert.equal(fixture.command.mock.callCount(), 0);
+	assert.equal(fixture.write.mock.callCount(), 0);
+	assert.equal(fixture.view.pendingWrites.getSnapshot("Note.md:2"), undefined);
+	assert.equal(fixture.container.querySelector(".task")?.hasAttribute("aria-busy"), false);
+	assert.equal(fixture.h.text("Note.md"), fixture.text);
+});
+
+test("with the setting off, the checkbox still writes through the writer", async (t) => {
+	const fixture = await mountNoteActions(t);
+	await act(() =>
+		fixture.view.onUpdateOptions({
+			...defaultUserOptions,
+			hideStatusTasks: [],
+			openNoteInsteadOfInPlace: false,
+		}),
+	);
+	await fixture.click(2);
+	assert.equal(fixture.write.mock.callCount(), 1);
+	assert.equal(fixture.openFile.mock.callCount(), 0);
+	assert.equal(fixture.h.text("Note.md"), "Heading\n\n- [x] a");
+	assert.equal(fixture.container.querySelector(".task")?.getAttribute("aria-busy"), "true");
+});
+
+test("with the setting on, mod-clicking either control opens a new tab", async (t) => {
+	const fixture = await mountNoteActions(t);
+	for (const selector of [".task label.icon", ".task .modify"]) {
+		const control = fixture.container.querySelector<HTMLElement>(selector);
+		assert.ok(control);
+		await act(async () => {
+			control.dispatchEvent(new MouseEvent("click", { bubbles: true, view: window, metaKey: true }));
+			await flush();
+		});
+	}
+	assert.equal(fixture.openFile.mock.callCount(), 2);
+	assert.deepEqual(
+		fixture.getLeaf.mock.calls.map((call) => call.arguments),
+		[["tab"], ["tab"]],
+	);
+	assert.equal(fixture.write.mock.callCount(), 0);
+	assert.equal(fixture.commands.mock.callCount(), 0);
+});
+
+test("with the setting on, the native checkbox opens the note without changing its marker", async (t) => {
+	const fixture = await mountNoteActions(t);
+	await act(() => fixture.view.onUpdateOptions({ ...fixture.store.getSnapshot().options, useBuiltinStyle: false }));
+	const checkbox = fixture.container.querySelector<HTMLInputElement>('.task input[type="checkbox"]');
+	assert.ok(checkbox);
+	await act(async () => {
+		checkbox.click();
+		await flush();
+	});
+	assert.equal(fixture.openFile.mock.callCount(), 1);
+	assert.equal(fixture.write.mock.callCount(), 0);
+	assert.equal(checkbox.checked, false);
+	assert.equal(fixture.h.text("Note.md"), fixture.text);
+});
+
+test("with the setting on, guarded control clicks do not open the note", async (t) => {
+	t.mock.method(performance, "now", () => 1000);
+	t.mock.method(window.performance, "now", () => 1000);
+	const fixture = await mountNoteActions(t);
+	await act(async () => {
+		fixture.h.put("Note.md", fixture.text + "\n- [ ] b");
+		fixture.h.changed("Note.md");
+		await fixture.view.onReloadTasks();
+	});
+	for (const selector of [".task label.icon", ".task .modify"]) {
+		const control = fixture.container.querySelector<HTMLElement>(selector);
+		assert.ok(control);
+		const event = new MouseEvent("click", { bubbles: true, view: window });
+		Object.defineProperty(event, "timeStamp", { value: 990 });
+		await act(() => control.dispatchEvent(event));
+	}
+	assert.equal(fixture.openFile.mock.callCount(), 0);
+	assert.equal(fixture.write.mock.callCount(), 0);
+	assert.equal(fixture.commands.mock.callCount(), 0);
+});
+
+test("with the setting on, ✏️ is still hidden without Tasks", async (t) => {
+	const fixture = await mountWritingTimeline(t, "- [ ] a");
+	await act(() =>
+		fixture.view.onUpdateOptions({ ...fixture.store.getSnapshot().options, openNoteInsteadOfInPlace: true }),
+	);
+	assert.equal(fixture.container.querySelector(".task .modify"), null);
+});
 
 /** A display-only writer event, mounted through the same stable store as a view. */
 async function mountPendingRow(t: TestContext, sourceLine: string, lines: readonly string[]) {

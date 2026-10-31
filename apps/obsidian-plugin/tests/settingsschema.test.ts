@@ -61,8 +61,20 @@ test("the schema has one entry for each option, in the defaults' order", () => {
 		settingsSchema.map((spec) => spec.key),
 		Object.keys(defaultUserOptions),
 	);
-	assert.equal(settingsSchema.length, 45);
+	assert.equal(settingsSchema.length, 46);
 	assert.ok(Object.isFrozen(settingsSchema) && settingsSchema.every((spec) => Object.isFrozen(spec)));
+});
+
+test("openNoteInsteadOfInPlace defaults to false and is a taskItems toggle read on push", () => {
+	assert.equal(defaultUserOptions.openNoteInsteadOfInPlace, false);
+	assert.deepEqual(specOf("openNoteInsteadOfInPlace"), {
+		key: "openNoteInsteadOfInPlace",
+		type: "boolean",
+		control: "toggle",
+		group: "taskItems",
+		redrawsTab: false,
+		readWhen: "push",
+	});
 });
 
 test("the defaults, and every option of a full 0.3.7 data.json, are of the types the schema gives", () => {

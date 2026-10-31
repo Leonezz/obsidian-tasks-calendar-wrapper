@@ -703,7 +703,9 @@ async function writingViews(t: TestContext, text = "- [ ] Pay", toggle?: (line: 
 		model,
 		counts,
 		async click(which = 0, line = 0) {
-			return opened[which].bridge.handleCompleteTask(model(which, line), {} as MouseEvent);
+			const result = await opened[which].bridge.handleCompleteTask(model(which, line), {} as MouseEvent);
+			assert.ok(result, "in-place clicks return the writer result");
+			return result;
 		},
 	};
 }

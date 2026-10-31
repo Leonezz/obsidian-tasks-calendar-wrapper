@@ -556,6 +556,17 @@
     "redrawn": false
   },
   {
+    "row": "Open the note instead of changing tasks in place",
+    "type": "toggle",
+    "input": true,
+    "writes": [
+      {
+        "openNoteInsteadOfInPlace": true
+      }
+    ],
+    "redrawn": false
+  },
+  {
     "row": "Date Format",
     "type": "moment-format",
     "input": "",

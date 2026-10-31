@@ -91,7 +91,7 @@ class TaskRow extends React.Component<TaskRowProps> {
 				evt.stopPropagation();
 				return;
 			}
-			callbacks.handleModifyTask?.(model, evt.nativeEvent);
+			if (callbacks.handleModifyTask?.(model, evt.nativeEvent) === true) evt.stopPropagation();
 		};
 		return (
 			<div

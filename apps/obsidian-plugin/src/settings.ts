@@ -413,6 +413,16 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 				tg.onChange(async (v) => await this.onOptionUpdate({ useModifyBadge: v }));
 			});
 
+		new Setting(containerEl)
+			.setName("Open the note instead of changing tasks in place")
+			.setDesc(
+				"The checkbox and ✏️ open the note at the task instead of changing it from the timeline. While this is on, ✏️ does not open Tasks' edit dialog. While it is off, the timeline tells you when another save changes its edit back within a few seconds, but it cannot notice every such change, for example a note replaced by an old synced copy.",
+			)
+			.addToggle((tg) => {
+				tg.setValue(this.plugin.userOptions.openNoteInsteadOfInPlace);
+				tg.onChange(async (v) => await this.onOptionUpdate({ openNoteInsteadOfInPlace: v }));
+			});
+
 		new Setting(containerEl).setName("Formats and filters").setHeading();
 		new Setting(containerEl)
 			.setName("Date Format")
