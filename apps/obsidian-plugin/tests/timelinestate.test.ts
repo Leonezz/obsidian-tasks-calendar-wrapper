@@ -14,7 +14,7 @@ import { moment } from "../utils/moment";
 import { deeplyFrozen, nothingFrozen } from "./frozen";
 
 // The timeline view's state, which replaced two Backbone models. A reload hands the bridge a new list shown exactly
-// when Backbone saw the list change, which is when the old view rendered again and dropped the quick filter.
+// when Backbone saw the list change. The old view dropped the quick filter then; it now stays.
 
 const task = (line: string) => {
 	const parsed = parseTaskLine(line, { moment, path: "Inbox.md" });

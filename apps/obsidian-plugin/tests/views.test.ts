@@ -23,8 +23,7 @@ import { rowsOf } from "./markup";
 
 // The timeline's view reads the notes through its task index, which gives what readTasks gives, and hands the bridge
 // the tasks, and the list the old view held of the tasks it shows, in its state. The bridge renders again when the
-// options change, and when the list shown changes, which also clears the quick filter, as when the old list, and the
-// quick filter applied to it, was replaced.
+// options change, and when the list shown changes. The old view dropped the quick filter then; it now stays.
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -234,7 +233,7 @@ test("the quick filter keeps the priorities it was applied with, while the panel
 	assert.ok(Object.isFrozen(filter) && Object.isFrozen(filter.priorities));
 });
 
-test("the quick filter lasts until the list shown changes, as it did", async () => {
+test("the quick filter lasts across reloads and option changes", async () => {
 	const notes = {
 		"Inbox.md": "- [ ] beta 📅 2026-01-20",
 		"Later.md": "- [ ] alpha 📅 2026-01-25",
@@ -262,27 +261,97 @@ test("the quick filter lasts until the list shown changes, as it did", async () 
 	assert.deepEqual(rows(), ["Inbox.md:0"]);
 	// Nothing shown changed, so the timeline does not render again, as before.
 	assert.equal((bridge.state as { tasks: unknown }).tasks, before);
-	// Showing the cancelled task changes the list shown, which clears it.
+	// Showing the cancelled task changes the list shown, but keeps the quick filter.
 	await opened.view.onUpdateOptions({ ...options, hideStatusTasks: ["x"] });
-	assert.deepEqual(rows().sort(), ["Done.md:0", "Inbox.md:0", "Later.md:0", "Someday.md:0"]);
+	assert.deepEqual(rows(), ["Inbox.md:0"]);
 });
 
-test("a task edited where it is shown clears the quick filter, and so does a task added by the quick entry", async () => {
+test("quick filter survives a reload that changes the list", async () => {
+	const notes = {
+		"Inbox.md": "- [ ] beta 📅 2026-01-20",
+		"Later.md": "- [ ] alpha 📅 2026-01-25",
+		"Done.md": "- [x] gamma 📅 2026-01-20",
+	};
+	const app = notesApp(notes);
+	const opened = openView(app);
+	await opened.view.onUpdateOptions({ ...defaultUserOptions });
+	const { bridge, rows } = bridgeOf(opened, app);
+	bridge.handleFilterEnable("2026-01-19", "2026-01-21", []);
+	const filter = bridge.state.quickFilter;
+	const tasks = bridge.state.tasks;
+	assert.deepEqual(rows(), ["Inbox.md:0"]);
+
+	notes["Inbox.md"] = "- [ ] beta, renamed 📅 2026-01-20";
+	opened.edited("Inbox.md");
+	await opened.view.onReloadTasks();
+	assert.notEqual(bridge.state.tasks, tasks);
+	assert.ok(bridge.state.tasks.some((task) => task.text.includes("beta, renamed")));
+	assert.equal(bridge.state.quickFilter, filter);
+	assert.deepEqual(rows(), ["Inbox.md:0"]);
+
+	const shown = opened.store.getSnapshot().shown;
+	await opened.view.onUpdateOptions({ ...defaultUserOptions, hideStatusTasks: [] });
+	assert.notEqual(opened.store.getSnapshot().shown, shown);
+	assert.equal(bridge.state.quickFilter, filter);
+	assert.deepEqual(rows().sort(), ["Done.md:0", "Inbox.md:0"]);
+});
+
+test("quick entry clears the quick filter", async () => {
 	const notes = { "Inbox.md": "- [ ] beta 📅 2026-01-20", "Later.md": "- [ ] alpha 📅 2026-01-25" };
 	const app = notesApp(notes);
 	const opened = openView(app);
 	await opened.view.onUpdateOptions({ ...defaultUserOptions });
 	const { bridge, rows } = bridgeOf(opened, app);
 	bridge.handleFilterEnable("2026-01-19", "2026-01-21", []);
-	notes["Later.md"] = "- [ ] alpha, renamed 📅 2026-01-25";
-	opened.edited("Later.md");
-	await opened.view.onReloadTasks();
-	assert.deepEqual(rows().sort(), ["Inbox.md:0", "Later.md:0"]);
-
-	bridge.handleFilterEnable("2026-01-19", "2026-01-21", []);
+	assert.ok(bridge.state.quickFilter);
 	assert.deepEqual(rows(), ["Inbox.md:0"]);
+	await opened.view.onReloadTasks();
+	assert.notEqual(bridge.state.tasks, opened.store.getSnapshot().tasks);
 	bridge.onUpdateTasks();
+	assert.equal(bridge.state.quickFilter, undefined);
+	assert.equal(bridge.state.tasks, opened.store.getSnapshot().tasks);
 	assert.deepEqual(rows().sort(), ["Inbox.md:0", "Later.md:0"]);
+});
+
+test("clearing the input clears the filter", async () => {
+	const notes = { "Inbox.md": "- [ ] beta 📅 2026-01-20", "Later.md": "- [ ] alpha 📅 2026-01-25" };
+	const app = notesApp(notes);
+	const opened = openView(app);
+	await opened.view.onUpdateOptions({ ...defaultUserOptions });
+	const { bridge, rows } = bridgeOf(opened, app);
+	for (const empty of ["", undefined]) {
+		bridge.handleFilterEnable("2026-01-19", "2026-01-21", []);
+		assert.deepEqual(rows(), ["Inbox.md:0"]);
+		bridge.handleFilterEnable(empty, empty, []);
+		assert.equal(bridge.state.quickFilter, undefined);
+		assert.deepEqual(rows().sort(), ["Inbox.md:0", "Later.md:0"]);
+	}
+});
+
+test("inputs show the applied filter after a reload", async () => {
+	const notes = { "Inbox.md": "- [ ] beta ⏫ 📅 2026-01-20", "Later.md": "- [ ] alpha 📅 2026-01-25" };
+	const app = notesApp(notes);
+	const opened = openView(app);
+	await opened.view.onUpdateOptions({ ...defaultUserOptions });
+	const { bridge } = bridgeOf(opened, app);
+	const markup = () => renderToStaticMarkup(bridge.render() as ReactElement);
+	const unfiltered = markup();
+	assert.match(unfiltered, /<option value="append" selected="">New Task<\/option>/);
+	assert.doesNotMatch(unfiltered, /<input[^>]*type="date"/);
+
+	// The priority selector passes its option value, as before.
+	bridge.handleFilterEnable("2026-01-19", "2026-01-21", ["1"]);
+	notes["Inbox.md"] = "- [ ] beta, renamed ⏫ 📅 2026-01-20";
+	opened.edited("Inbox.md");
+	await opened.view.onReloadTasks();
+	const filtered = markup();
+	assert.deepEqual(
+		[...filtered.matchAll(/<input\b[^>]*type="date"[^>]*>/g)].map((match) => /value="([^"]*)"/.exec(match[0])?.[1]),
+		["2026-01-19", "2026-01-21"],
+	);
+	assert.match(filtered, /<option value="filter" selected="">Filter<\/option>/);
+	assert.match(filtered, /<option value="1">High🎯<\/option>/);
+	assert.match(filtered, /<a>High🎯<\/a>/);
 });
 
 test("new options reach the bridge at once, and keep the quick filter while the list shown stays", async () => {
@@ -348,7 +417,7 @@ test("a reload that ends before the bridge renders with the same list shown brin
 	assert.deepEqual(rows().sort(), ["A.md:0", "B.md:0"]);
 });
 
-test("a bridge mounted before the first reload keeps the quick filter until the list shown changes", async () => {
+test("a bridge mounted before the first reload keeps the quick filter", async () => {
 	const notes = { "Inbox.md": "- [ ] beta 📅 2026-01-20", "Done.md": "- [x] gamma 📅 2026-01-15" };
 	const app = notesApp(notes);
 	const opened = openView(app);
