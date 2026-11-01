@@ -14,7 +14,8 @@ import { initialTimelineState, withReload } from "../src/state/timeline";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { ConfirmModal } from "../src/confirm-modal";
 import { heldOf, TasksTimelineView, timelineTaskIndex } from "../src/views";
-import { ObsidianBridge, quickFilterOf } from "../timeline/src/obsidianbridge";
+import { quickFilterOf } from "../timeline/src/obsidianbridge";
+import { bridgeActions, type BridgeHandle, type BridgeProps } from "./component-harness";
 import { readTasks } from "../timeline/src/taskadapter";
 import { moment } from "../utils/moment";
 import { sameParseKey } from "../utils/parsekey";
@@ -41,23 +42,13 @@ const DAY = 24 * 60 * 60 * 1000;
  * listens to the view's models as it does in Obsidian.
  */
 function bridgeOf(opened: ReturnType<typeof openView>, app: unknown, resolveEnv?: ReturnType<typeof createResolveEnv>) {
-	const bridge = new ObsidianBridge({
+	const bridge = bridgeActions({
 		plugin: { app } as never,
 		store: opened.store,
 		writer: opened.writer,
 		onListCommitted: opened.view.onListCommitted,
 		resolveEnv,
 	});
-	const mounted = bridge as unknown as { state: object; props: object };
-	bridge.setState = ((update: object | ((state: object, props: object) => object)) => {
-		const before = bridge.state;
-		mounted.state = {
-			...mounted.state,
-			...(typeof update === "function" ? update(mounted.state, mounted.props) : update),
-		};
-		bridge.componentDidUpdate(bridge.props, before);
-	}) as never;
-	bridge.componentDidMount();
 	return { bridge, rows: () => rowsOf(renderToStaticMarkup(bridge.render() as ReactElement)) };
 }
 
@@ -66,56 +57,19 @@ function bridgeOf(opened: ReturnType<typeof openView>, app: unknown, resolveEnv?
  * does when it renders, a moment after the change.
  */
 function deferredBridgeOf(opened: ReturnType<typeof openView>, app: unknown, mount = true) {
-	const bridge = new ObsidianBridge({
+	const props = {
 		plugin: { app } as never,
 		store: opened.store,
 		writer: opened.writer,
 		onListCommitted: opened.view.onListCommitted,
-	});
-	const mounted = bridge as unknown as { state: object; props: object };
-	type Update = object | ((state: object, props: object) => object);
-	let queued: Update[] = [];
-	let commits: (typeof bridge.state)[] = [];
-	bridge.setState = ((update: Update) => {
-		queued = [...queued, update];
-	}) as never;
-	const apply = (update: Update) => {
-		commits.push(bridge.state);
-		mounted.state = {
-			...mounted.state,
-			...(typeof update === "function" ? update(mounted.state, mounted.props) : update),
-		};
-	};
-	const commit = () => {
-		const before = commits;
-		commits = [];
-		for (const state of before) bridge.componentDidUpdate(bridge.props, state);
-	};
-	// Applying without committing models a transition that read the store before yielding.
-	const renderPending = () => {
-		const updates = queued;
-		queued = [];
-		for (const update of updates) apply(update);
-	};
-	const flush = () => {
-		const updates = queued;
-		queued = [];
-		for (const update of updates) {
-			apply(update);
-			commit();
-		}
-	};
+	} satisfies BridgeProps;
+	const bridge = bridgeActions(props, { mode: "deferred", mount });
+	const { flush, renderPending, commit } = bridge;
 	// Quick entry can commit its urgent update ahead of the queued transition.
 	const flushLatest = () => {
-		const update = queued.pop();
+		const update = bridge.flushLatest();
 		assert.ok(update);
-		apply(update);
-		commit();
 	};
-	if (mount) {
-		bridge.componentDidMount();
-		flush();
-	}
 	return {
 		bridge,
 		flush,
@@ -261,7 +215,7 @@ test("options pushed during a running reload never render the old list under new
 	} finally {
 		release();
 		unsubscribe();
-		bridge.componentWillUnmount();
+		bridge.unmount();
 	}
 });
 
@@ -284,7 +238,7 @@ test("equal-valued options reuse the reload's list", async () => {
 	assert.notEqual((bridge.state as { tasks: unknown }).tasks, opened.store.getSnapshot().tasks);
 	assert.deepEqual(rows(), ["Inbox.md:0"]);
 	assert.equal(taskCache.resolutionCount, 1, "a newer reload's list cannot replace the bridge's older tasks");
-	bridge.componentWillUnmount();
+	bridge.unmount();
 });
 
 test("the bridge resolves again when the day or parse key changes", async () => {
@@ -320,7 +274,7 @@ test("the bridge resolves again when the day or parse key changes", async () => 
 	} finally {
 		moment.now = () => GOLDEN_NOW;
 		process.env.TZ = "UTC";
-		bridge.componentWillUnmount();
+		bridge.unmount();
 	}
 });
 
@@ -526,26 +480,25 @@ test("the bridge takes in what changed between drawing it and mounting it, and n
 	const notes = { "Inbox.md": "- [ ] beta 📅 2026-01-20" };
 	const app = notesApp(notes);
 	const opened = openView(app);
-	const bridge = new ObsidianBridge({
+	const props = {
 		plugin: { app } as never,
 		store: opened.store,
 		writer: opened.writer,
 		onListCommitted: opened.view.onListCommitted,
-	});
+	} satisfies BridgeProps;
+	const bridge = bridgeActions(props, { mount: false });
 	let updates = 0;
-	const mounted = bridge as unknown as { state: object };
-	bridge.setState = ((update: object | ((state: object) => object)) => {
-		const before = bridge.state;
+	const setState = bridge.setState;
+	bridge.setState = (update) => {
 		updates += 1;
-		mounted.state = { ...mounted.state, ...(typeof update === "function" ? update(mounted.state) : update) };
-		bridge.componentDidUpdate(bridge.props, before);
-	}) as never;
+		setState(update);
+	};
 	await opened.view.onUpdateOptions({ ...defaultUserOptions, dateFormat: "DD.MM.YYYY" });
-	bridge.componentDidMount();
+	bridge.mount();
 	const state = () => bridge.state as { userOptions: UserOption; tasks: readonly { id: string }[] };
 	assert.equal(state().userOptions.dateFormat, "DD.MM.YYYY");
 	assert.deepEqual(ids(state().tasks), ["Inbox.md:0"]);
-	bridge.componentWillUnmount();
+	bridge.unmount();
 	const before = updates;
 	notes["Inbox.md"] = "- [ ] beta, edited 📅 2026-01-20";
 	opened.edited("Inbox.md");
@@ -699,7 +652,7 @@ async function writingViews(
 	const opened: {
 		view: TasksTimelineView;
 		store: Store<TimelineState>;
-		bridge: ObsidianBridge;
+		bridge: BridgeHandle;
 		renders: () => number;
 		reloads: () => number;
 	}[] = [];
@@ -709,7 +662,7 @@ async function writingViews(
 		const store = (view as unknown as { store: Store<TimelineState> }).store;
 		await view.onUpdateOptions({ ...defaultUserOptions, hideStatusTasks: [] });
 		await view.onOpen();
-		const bridge = new ObsidianBridge({
+		const props = {
 			plugin: { app: h.app } as never,
 			store,
 			writer: view.viewWriter,
@@ -718,18 +671,15 @@ async function writingViews(
 			onWriteResult: view.onWriteResult,
 			onQuickEntryWritten: view.reloadWhenIndexed,
 			onListCommitted: view.onListCommitted,
-		});
+		} satisfies BridgeProps;
+		const bridge = bridgeActions(props, { mount: false });
 		let renders = 0;
-		bridge.setState = ((update: object | ((state: object, props: object) => object)) => {
-			const before = bridge.state;
+		const setState = bridge.setState;
+		bridge.setState = (update) => {
 			renders++;
-			(bridge as unknown as { state: object }).state = {
-				...bridge.state,
-				...(typeof update === "function" ? update(bridge.state, bridge.props) : update),
-			};
-			bridge.componentDidUpdate(bridge.props, before);
-		}) as never;
-		bridge.componentDidMount();
+			setState(update);
+		};
+		bridge.mount();
 		let reloads = 0;
 		const reload = view.onReloadTasks.bind(view);
 		view.onReloadTasks = () => {
@@ -749,7 +699,7 @@ async function writingViews(
 	};
 	t.after(async () => {
 		for (const { view, bridge } of opened) {
-			bridge.componentWillUnmount();
+			bridge.unmount();
 			await view.onClose();
 		}
 		writer.dispose();
@@ -789,7 +739,7 @@ test("the overlay clears after a reload that started after release though shown 
 	const { bridge } = bridgeOf(opened, app);
 	const render = t.mock.method(bridge, "setState");
 	t.after(async () => {
-		bridge.componentWillUnmount();
+		bridge.unmount();
 		await opened.view.onClose();
 	});
 	const event = { id: 1, path: "Note.md", line: 0, sourceLine: "- [ ] Pay", lines: ["- [x] Pay"] };
@@ -1374,7 +1324,7 @@ test("closing the view before indexed: no reload", async (t) => {
 	// The harness calls onOpen directly; load/unload removes its event listeners as a real close would.
 	first.view.load();
 	first.view.unload();
-	first.bridge.componentWillUnmount();
+	first.bridge.unmount();
 	await first.view.onClose();
 	await f.h.deliver();
 	assert.equal(f.h.events.filter((event) => event.kind === "indexed").length, 1);
@@ -1457,7 +1407,7 @@ async function transitionWrites(t: TestContext) {
 test("a reload with an unchanged list clears at once when nothing is pending", async (t) => {
 	const f = await transitionWrites(t);
 	const { bridge } = bridgeOf(f, f.h.app);
-	t.after(() => bridge.componentWillUnmount());
+	t.after(() => bridge.unmount());
 	const render = t.mock.method(bridge, "setState");
 	const write = f.pending(1);
 	f.view.ledger.recordWrite(1, "Note.md", 0, 1);
@@ -1473,7 +1423,7 @@ test("a reload with an unchanged list clears at once when nothing is pending", a
 test("a reload with an unchanged list during a pending list transition clears when that transition commits", async (t) => {
 	const f = await transitionWrites(t);
 	const b = deferredBridgeOf(f, f.h.app);
-	t.after(() => b.bridge.componentWillUnmount());
+	t.after(() => b.bridge.unmount());
 	const first = f.pending(1);
 	const second = f.pending(2, "Other.md");
 	first.release();
@@ -1495,7 +1445,7 @@ test("a reload with an unchanged list during a pending list transition clears wh
 test("an unchanged-list reload that ends after the pending render read the store still clears at that commit", async (t) => {
 	const f = await transitionWrites(t);
 	const b = deferredBridgeOf(f, f.h.app);
-	t.after(() => b.bridge.componentWillUnmount());
+	t.after(() => b.bridge.unmount());
 	const first = f.pending(1);
 	const second = f.pending(2, "Other.md");
 	f.view.ledger.recordWrite(2, "Other.md", 0, 1);
@@ -1532,7 +1482,7 @@ test("without a committed bridge a reload clears at once", async (t) => {
 test("queued clears apply in order", async (t) => {
 	const f = await transitionWrites(t);
 	const b = deferredBridgeOf(f, f.h.app);
-	t.after(() => b.bridge.componentWillUnmount());
+	t.after(() => b.bridge.unmount());
 	const first = f.pending(1);
 	const second = f.pending(2, "Note.md", 1);
 	f.view.ledger.recordWrite(1, "Note.md", 0, 1);
@@ -1555,7 +1505,7 @@ test("queued clears apply in order", async (t) => {
 test("quick entry while a list transition is pending clears what its list shows", async (t) => {
 	const f = await transitionWrites(t);
 	const b = deferredBridgeOf(f, f.h.app);
-	t.after(() => b.bridge.componentWillUnmount());
+	t.after(() => b.bridge.unmount());
 	b.bridge.handleFilterEnable("2026-01-19", "2026-01-21", []);
 	b.flush();
 	const write = f.pending(1);
@@ -1595,7 +1545,7 @@ test("closing the view while a list transition is pending clears nothing afterwa
 		},
 	};
 	const reloading = f.view.onReloadTasks();
-	b.bridge.componentWillUnmount();
+	b.bridge.unmount();
 	await f.view.onClose();
 	const render = t.mock.method(b.bridge, "setState");
 	let clears = 0;
@@ -1613,12 +1563,12 @@ test("closing the view while a list transition is pending clears nothing afterwa
 test("a bridge mounting an older snapshot matches writes against the list it committed", async (t) => {
 	const f = await transitionWrites(t);
 	const b = deferredBridgeOf(f, f.h.app, false);
-	t.after(() => b.bridge.componentWillUnmount());
+	t.after(() => b.bridge.unmount());
 	const mountedTasks = b.bridge.state.tasks;
 	f.edit("Note.md", "paragraph\n- [ ] first\n- [ ] second");
 	await f.view.onReloadTasks();
 	assert.notEqual(f.store.getSnapshot().tasks, mountedTasks);
-	b.bridge.componentDidMount();
+	b.bridge.mount();
 	assert.equal(b.bridge.state.tasks, mountedTasks, "the catch-up transition has not committed");
 	f.pending(1, "Note.md", 1);
 	assert.equal(f.view.pendingWrites.getSnapshot("Note.md:1")?.id, 1, "the old second row is on screen");

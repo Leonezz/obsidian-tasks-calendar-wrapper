@@ -6,7 +6,7 @@ import { appendTaskToNote } from "../timeline/src/appendtask";
 import { createStore, type LineTarget } from "@tasks-calendar-wrapper/core";
 import { ConfirmModal } from "../src/confirm-modal";
 import { initialTimelineState } from "../src/state/timeline";
-import { ObsidianBridge } from "../timeline/src/obsidianbridge";
+import { bridgeActions, type BridgeProps } from "./component-harness";
 import type { TaskWriter, WriteResult } from "../timeline/src/taskwriter";
 import { ButtonComponent, FakeElement } from "./stubs/obsidian";
 import { deferred, flush, writerHarness } from "./writer-harness";
@@ -190,11 +190,12 @@ test("quick entry into a missing note still asks Create note and creates it outs
 		this.close();
 		return Promise.resolve(true);
 	});
-	const bridge = new ObsidianBridge({
+	const props = {
 		plugin: { app: { vault } } as never,
 		store: createStore(initialTimelineState()),
 		writer,
-	});
+	} satisfies BridgeProps;
+	const bridge = bridgeActions(props, { mount: false });
 	bridge.onUpdateTasks = () => {};
 	assert.equal(await bridge.handleCreateNewTask("Inbox.md", "new"), true);
 	assert.equal(asked, true);
@@ -227,13 +228,14 @@ test("written quick entry notifies indexed reload once, after its write result",
 	const onQuickEntryWritten = t.mock.fn((_path: string, _indexed: Promise<void>) => {
 		order.push("quick entry");
 	});
-	const bridge = new ObsidianBridge({
+	const props = {
 		plugin: { app: { vault: { ...fakeVault({}).vault, ...harness.app.vault } } } as never,
 		store: createStore(initialTimelineState()),
 		writer: { ...writer, insert },
 		onWriteResult,
 		onQuickEntryWritten,
-	});
+	} satisfies BridgeProps;
+	const bridge = bridgeActions(props, { mount: false });
 	bridge.onUpdateTasks = () => {};
 	assert.equal(await bridge.handleCreateNewTask("inbox.md", "new"), true);
 	assert.equal(insert.mock.callCount(), 1);
@@ -259,13 +261,14 @@ for (const result of [
 		const insert = t.mock.fn(async () => result);
 		const onQuickEntryWritten = t.mock.fn();
 		const onWriteResult = t.mock.fn((_target: LineTarget, _result: WriteResult) => {});
-		const bridge = new ObsidianBridge({
+		const props = {
 			plugin: { app: { vault: { ...fakeVault({}).vault, ...harness.app.vault } } } as never,
 			store: createStore(initialTimelineState()),
 			writer: { ...writer, insert },
 			onWriteResult,
 			onQuickEntryWritten,
-		});
+		} satisfies BridgeProps;
+		const bridge = bridgeActions(props, { mount: false });
 		assert.equal(await bridge.handleCreateNewTask("Inbox.md", "new"), false);
 		assert.equal(onWriteResult.mock.callCount(), 1);
 		assert.equal(onWriteResult.mock.calls[0].arguments[1], result);
@@ -283,13 +286,14 @@ for (const accepted of [false, true]) {
 		const ask = t.mock.method(ConfirmModal.prototype, "ask", async () => accepted);
 		const onQuickEntryWritten = t.mock.fn();
 		const onWriteResult = t.mock.fn((_target: LineTarget, _result: WriteResult) => {});
-		const bridge = new ObsidianBridge({
+		const props = {
 			plugin: { app: { vault } } as never,
 			store: createStore(initialTimelineState()),
 			writer: { ...writer, insert },
 			onWriteResult,
 			onQuickEntryWritten,
-		});
+		} satisfies BridgeProps;
+		const bridge = bridgeActions(props, { mount: false });
 		bridge.onUpdateTasks = () => {};
 		assert.equal(await bridge.handleCreateNewTask("Inbox.md", "new"), accepted);
 		assert.equal(ask.mock.callCount(), 1);

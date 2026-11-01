@@ -13,7 +13,7 @@ import {
 } from "@tasks-calendar-wrapper/core";
 import { initialTimelineState } from "../src/state/timeline";
 import { DateModal, type DateAnswer } from "../timeline/src/datemodal";
-import { ObsidianBridge } from "../timeline/src/obsidianbridge";
+import { bridgeActions, type BridgeProps } from "./component-harness";
 import type { TaskEdit } from "../timeline/src/taskwriter";
 import { moment } from "../utils/moment";
 import { ButtonComponent, FakeElement, Menu } from "./stubs/obsidian";
@@ -35,7 +35,7 @@ function picking(sourceLine: string, field: DateField = "due", path = "Note.md")
 	let modal: DateModal | undefined;
 	let answer: Promise<DateAnswer> | undefined;
 	const writes: { target: LineTarget; edit: TaskEdit }[] = [];
-	const bridge = new ObsidianBridge({
+	const props = {
 		plugin: { app: {} } as never,
 		store: createStore(initialTimelineState()),
 		writer: {
@@ -52,7 +52,8 @@ function picking(sourceLine: string, field: DateField = "due", path = "Note.md")
 			answer = modal.ask();
 			return answer;
 		},
-	});
+	} satisfies BridgeProps;
+	const bridge = bridgeActions(props, { mount: false });
 	bridge.handleRowMenu({ path, line: 0, sourceLine } as TaskRowModel, {} as MouseEvent);
 	const pick = Menu.instances.at(-1)!.items.find((item) => item.title === `Pick ${field} date…`);
 	assert.ok(pick);
@@ -209,7 +210,7 @@ test("the bridge's default modal saves only while in-place changes remain enable
 		const app = {};
 		const writes: TaskEdit[] = [];
 		const sourceLine = "- [ ] Pay ⏳ 2026-01-12";
-		const bridge = new ObsidianBridge({
+		const props = {
 			plugin: { app } as never,
 			store: createStore(initialTimelineState()),
 			writer: {
@@ -221,7 +222,8 @@ test("the bridge's default modal saves only while in-place changes remain enable
 					return { kind: "unchanged" };
 				},
 			},
-		});
+		} satisfies BridgeProps;
+		const bridge = bridgeActions(props, { mount: false });
 		bridge.handleRowMenu({ path: "Note.md", line: 0, sourceLine } as TaskRowModel, {} as MouseEvent);
 		void Menu.instances
 			.at(-1)!
