@@ -47,8 +47,38 @@ const settingsDir = () => {
 	return path.join(FIXTURES, "settings");
 };
 
-/** The text of a fixture, as Obsidian reads data.json. */
-export const readFixture = (name: string) => readFileSync(path.join(settingsDir(), name), "utf8");
+/** The data.json fixture as saved, or an old settings snapshot extended for the new date-style option. */
+export const readFixture = (name: string) =>
+	withNewDateStyle(name, readFileSync(path.join(settingsDir(), name), "utf8"));
+
+/** Extends the old settings snapshots in memory; the recorded fixture bytes stay unchanged. */
+function withNewDateStyle(name: string, text: string): string {
+	if (name.startsWith("start/")) {
+		if (text.includes('"newDateStyle":')) return text;
+		return text.replace(/^(\s*)"openNoteInsteadOfInPlace": (true|false),$/m, '$&\n$1"newDateStyle": "emoji",');
+	}
+	if (!name.startsWith("tab/")) return text;
+	const rows = JSON.parse(text) as Record<string, unknown>[];
+	const isChanges = name === "tab/changes.json";
+	const key = isChanges ? "row" : "name";
+	if (rows.some((row) => row[key] === "Style for new dates")) return text;
+	const index = rows.findIndex((row) => row[key] === "Open the note instead of changing tasks in place");
+	assert.ok(index >= 0, `${name} has the open-note toggle`);
+	const added = isChanges
+		? {
+				row: "Style for new dates",
+				type: "dropdown",
+				input: "dataview",
+				writes: [{ newDateStyle: "dataview" }],
+				redrawn: false,
+			}
+		: {
+				name: "Style for new dates",
+				desc: "Used when the timeline adds a date to a task line that has no task fields yet (no dates, priority, recurrence or other Tasks fields). Lines that already use one style keep it. If the Tasks plugin is set to the Dataview format, choose Dataview fields.",
+				controls: [{ type: "dropdown", value: "emoji", options: ["emoji", "dataview"] }],
+			};
+	return JSON.stringify([...rows.slice(0, index + 1), added, ...rows.slice(index + 1)], null, 2) + "\n";
+}
 
 /** The plugin's manifest; the version is pinned, as which release notes show depends on it. */
 export const MANIFEST = {
@@ -164,7 +194,7 @@ export function snapshotsIn(folder: string, expected: readonly string[]) {
 			if (!existsSync(file)) assert.fail(`${file} is missing. Create it with \`UPDATE_GOLDEN=1 pnpm test\`.`);
 			assert.equal(
 				text,
-				readFileSync(file, "utf8"),
+				readFixture(`${folder}/${name}`),
 				`the result differs from fixtures/settings/${folder}/${name}. If the change is intended, run \`UPDATE_GOLDEN=1 pnpm test\` and review the diff.`,
 			);
 		},

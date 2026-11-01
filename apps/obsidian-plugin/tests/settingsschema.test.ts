@@ -61,7 +61,7 @@ test("the schema has one entry for each option, in the defaults' order", () => {
 		settingsSchema.map((spec) => spec.key),
 		Object.keys(defaultUserOptions),
 	);
-	assert.equal(settingsSchema.length, 46);
+	assert.equal(settingsSchema.length, 47);
 	assert.ok(Object.isFrozen(settingsSchema) && settingsSchema.every((spec) => Object.isFrozen(spec)));
 });
 
@@ -75,6 +75,20 @@ test("openNoteInsteadOfInPlace defaults to false and is a taskItems toggle read 
 		redrawsTab: false,
 		readWhen: "push",
 	});
+});
+
+test("newDateStyle defaults to emoji and follows the open-note toggle as a taskItems dropdown read on push", () => {
+	assert.equal(defaultUserOptions.newDateStyle, "emoji");
+	assert.deepEqual(specOf("newDateStyle"), {
+		key: "newDateStyle",
+		type: "string",
+		control: "dropdown",
+		group: "taskItems",
+		redrawsTab: false,
+		readWhen: "push",
+	});
+	const index = settingsSchema.findIndex((spec) => spec.key === "openNoteInsteadOfInPlace");
+	assert.equal(settingsSchema[index + 1].key, "newDateStyle");
 });
 
 test("the defaults, and every option of a full 0.3.7 data.json, are of the types the schema gives", () => {

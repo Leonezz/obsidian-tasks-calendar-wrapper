@@ -1,4 +1,4 @@
-import { App, ButtonComponent, Modal, Notice } from "obsidian";
+import { App, ButtonComponent, Modal, Notice, Platform } from "obsidian";
 import { openNoteAt } from "../../src/open-note";
 import { REFUSAL_NOTICE_MS, SLOW_NOTICE_MS, UNDO_DONE_NOTICE_MS, UNDO_NOTICE_MS } from "./writerconstants";
 
@@ -30,6 +30,7 @@ export interface NoticeContext {
 	readonly text: string;
 	readonly field?: string;
 	readonly value?: string;
+	readonly menuFixable?: boolean;
 	readonly token?: string;
 	readonly localDigits?: boolean;
 	readonly locale?: string;
@@ -52,12 +53,17 @@ export function noteName(path: string): string {
 }
 
 /** Builds a refusal without touching the DOM, so every caller uses the same wording. */
-export function refusalText(reason: RefuseReason, context: NoticeContext): string {
+export function refusalText(reason: RefuseReason, context: NoticeContext, touch = false): string {
 	const text = displayTask(context.text);
 	const note = noteName(context.path);
 	switch (reason) {
 		case "impossible-date":
-			return `“${text}” has a ${context.field} date that does not exist (${context.value}). Nothing was written. Fix it in the note.`;
+			return (
+				`“${text}” has a ${context.field} date that does not exist (${context.value}). Nothing was written.` +
+				(context.menuFixable
+					? ` Change it with ${touch ? "⋯" : "right-click"} → Pick ${context.field} date….`
+					: " Fix it in the note.")
+			);
 		case "unreadable-date": {
 			const message =
 				context.action === "toggle" || context.action === undefined
@@ -208,6 +214,7 @@ export interface NoticePresenterOptions {
 	readonly document?: Document;
 	readonly clipboard?: Pick<Clipboard, "writeText">;
 	readonly openNote?: (path: string, line: number) => Promise<unknown>;
+	readonly touch?: () => boolean;
 }
 
 /** Keeps an unsaved dialog result available to copy without putting the line in a toast. */
@@ -268,6 +275,7 @@ export function createNoticePresenter(app: App, options: NoticePresenterOptions 
 	const notices = new Set<Notice>();
 	const modals = new Set<EditRecoveryModal>();
 	const open = options.openNote ?? ((path, line) => openNoteAt(app, path, line));
+	const touch = options.touch ?? (() => Platform.isMobile);
 
 	function fragment(message: string, buttons: readonly { text: string; run: () => unknown }[]): DocumentFragment {
 		const doc = options.document ?? document;
@@ -320,7 +328,7 @@ export function createNoticePresenter(app: App, options: NoticePresenterOptions 
 			return message;
 		},
 		refuse(reason: RefuseReason, context: NoticeContext): string {
-			const message = refusalText(reason, context);
+			const message = refusalText(reason, context, touch());
 			merged(
 				refusals,
 				JSON.stringify([context.path, reason]),

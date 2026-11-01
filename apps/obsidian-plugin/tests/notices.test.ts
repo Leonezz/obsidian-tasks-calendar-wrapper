@@ -24,7 +24,9 @@ import {
 	type NoticeContext,
 	type RefuseReason,
 } from "../timeline/src/notices";
-import { ButtonComponent, FakeElement, Notice } from "./stubs/obsidian";
+import { prepareEdit } from "../timeline/src/writerchecks";
+import { ButtonComponent, FakeElement, Notice, Platform } from "./stubs/obsidian";
+import { writerHarness } from "./writer-harness";
 
 const context: NoticeContext = { path: "Notes/Home.md", line: 3, text: "Buy milk" };
 
@@ -60,8 +62,8 @@ test("Tasks dialog notices last eight seconds without buttons", () => {
 const refusals: readonly [RefuseReason, Partial<NoticeContext>, string][] = [
 	[
 		"impossible-date",
-		{ field: "due", value: "2026-02-30" },
-		"“Buy milk” has a due date that does not exist (2026-02-30). Nothing was written. Fix it in the note.",
+		{ field: "due", value: "2026-02-30", menuFixable: true },
+		"“Buy milk” has a due date that does not exist (2026-02-30). Nothing was written. Change it with right-click → Pick due date….",
 	],
 	[
 		"unreadable-date",
@@ -160,6 +162,73 @@ for (const [reason, extra, expected] of refusals) {
 	});
 }
 
+test("impossible-date menu suffix follows the field and token form", () => {
+	const harness = writerHarness();
+	const cases = [
+		["📅", "due", true],
+		["📆", "due", true],
+		["🗓", "due", true],
+		["⏳", "scheduled", true],
+		["⌛", "scheduled", true],
+		["🛫", "start", true],
+		["✅", "completion", false],
+		["❌", "cancelled", false],
+		["➕", "created", false],
+	] as const;
+	const tokens: (readonly [string, string, boolean])[] = cases.flatMap(([symbol, field, fixable]) =>
+		["", "\uFE0F"].map((variation) => [`${symbol}${variation} 2026-02-31`, field, fixable] as const),
+	);
+	for (const field of ["due", "scheduled", "start", "completion", "cancelled", "created"] as const) {
+		tokens.push([`[${field}:: 2026-02-31]`, field, ["due", "scheduled", "start"].includes(field)]);
+		tokens.push([`(${field}:: 2026-02-31)`, field, false]);
+	}
+	for (const [token, field, menuFixable] of tokens) {
+		const prepared = prepareEdit(`- [ ] Buy milk ${token}`, context.path, { kind: "toggle" }, harness.deps);
+		assert.equal(prepared.kind, "refused", token);
+		if (prepared.kind !== "refused") continue;
+		assert.equal(prepared.reason, "impossible-date", token);
+		assert.deepEqual(prepared.details, { field, value: "2026-02-31", menuFixable }, token);
+		for (const touch of [false, true]) {
+			assert.equal(
+				refusalText(prepared.reason, { ...context, ...prepared.details }, touch),
+				`“Buy milk” has a ${field} date that does not exist (2026-02-31). Nothing was written.` +
+					(menuFixable
+						? ` Change it with ${touch ? "⋯" : "right-click"} → Pick ${field} date….`
+						: " Fix it in the note."),
+				token,
+			);
+		}
+	}
+});
+
+test("impossible-date menuFixable uses the token position with comments masked", () => {
+	const harness = writerHarness();
+	for (const [fields, menuFixable] of [
+		["(due:: 2026-02-01) [due:: 2026-02-31]", true],
+		["[due:: 2026-02-01] (due:: 2026-02-31)", false],
+		["(due:: 2026-02-31) [due:: 2026-02-31]", false],
+		["[due:: 2026-02-31] (due:: 2026-02-31)", true],
+		["(due:: 📅 2026-02-31 )", false],
+		["(reminder 📅 2026-02-31 )", true],
+		["(see [due:: 2026-02-31])", true],
+		["%% (due:: 2026-02-01) %% [due:: 2026-02-31]", true],
+		["%% (due:: 2026-02-31) %% [due:: 2026-02-31]", false],
+		["%% [due:: 2026-02-31] %% (due:: 2026-02-31)", false],
+	] as const) {
+		const prepared = prepareEdit(`- [ ] Buy milk ${fields}`, context.path, { kind: "toggle" }, harness.deps);
+		assert.equal(prepared.kind, "refused");
+		if (prepared.kind !== "refused") continue;
+		assert.deepEqual(prepared.details, { field: "due", value: "2026-02-31", menuFixable }, fields);
+	}
+});
+
+test("impossible-date without menuFixable keeps the note instruction", () => {
+	assert.equal(
+		refusalText("impossible-date", { ...context, field: "due", value: "2026-02-31" }),
+		"“Buy milk” has a due date that does not exist (2026-02-31). Nothing was written. Fix it in the note.",
+	);
+});
+
 test("write failure, unknown outcome and slow notice texts", () => {
 	assert.equal(writeFailureText(context, new Error("disk full")), "Could not write to Home: disk full");
 	assert.equal(writeFailureText(context, "denied"), "Could not write to Home: denied");
@@ -243,6 +312,47 @@ const documentStub = {
 	createElement: (tag: string) => new FakeElement(tag),
 	createTextNode: (text: string) => new FakeElement("#text", { text }),
 } as unknown as Document;
+
+test("the presenter uses the touch override for impossible dates", () => {
+	Notice.instances = [];
+	const presenter = createNoticePresenter({} as App, { document: documentStub, touch: () => true });
+	const expected =
+		"“Buy milk” has a due date that does not exist (2026-02-31). Nothing was written. Change it with ⋯ → Pick due date….";
+	assert.equal(
+		presenter.refuse("impossible-date", { ...context, field: "due", value: "2026-02-31", menuFixable: true }),
+		expected,
+	);
+	assert.ok((Notice.instances[0].message as FakeElement).textContent.startsWith(expected));
+	presenter.dispose();
+});
+
+test("the default presenter reads Platform.isMobile when showing an impossible date", () => {
+	Notice.instances = [];
+	const previous = Platform.isMobile;
+	const presenter = createNoticePresenter({} as App, { document: documentStub });
+	try {
+		for (const [touch, gesture] of [
+			[false, "right-click"],
+			[true, "⋯"],
+		] as const) {
+			Platform.isMobile = touch;
+			const expected = `“Buy milk” has a due date that does not exist (2026-02-31). Nothing was written. Change it with ${gesture} → Pick due date….`;
+			assert.equal(
+				presenter.refuse("impossible-date", {
+					...context,
+					field: "due",
+					value: "2026-02-31",
+					menuFixable: true,
+				}),
+				expected,
+			);
+			assert.ok((Notice.instances[0].message as FakeElement).textContent.startsWith(expected));
+		}
+	} finally {
+		Platform.isMobile = previous;
+		presenter.dispose();
+	}
+});
 
 function elementButtons(element: FakeElement): FakeElement[] {
 	return element.children.flatMap((child) =>

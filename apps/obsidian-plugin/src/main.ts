@@ -39,7 +39,7 @@ export default class TasksCalendarWrapper extends Plugin {
 		now: () => Date.now(),
 		setTimeout: (run, delay) => window.setTimeout(run, delay),
 		clearTimeout: (timer) => window.clearTimeout(timer),
-		newDateStyle: () => "emoji",
+		newDateStyle: () => this.userOptions.newDateStyle,
 		logger: console,
 	});
 	/** The settings tab, made in onload. */

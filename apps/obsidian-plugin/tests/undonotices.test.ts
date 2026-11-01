@@ -14,6 +14,34 @@ const documentStub = {
 	createTextNode: (text: string) => new FakeElement("#text", { text }),
 } as unknown as Document;
 
+for (const [source, day, expected] of [
+	["- [ ] Pay", "2026-10-25", "Set the due date of “Pay” to 2026-10-25."],
+	["- [ ] Pay 📅 2026-10-25", null, "Removed the due date from “Pay”."],
+] as const) {
+	test(`a written date ${day ? "edit" : "removal"} shows its Undo notice`, async (t) => {
+		const h = writerHarness({ "Note.md": source });
+		const writer = h.create();
+		const presenter = createNoticePresenter({} as App, { document: documentStub });
+		const notices = createUndoNotices(writer, presenter, {
+			onWriteResult: () => {},
+			setTimeout: h.clock.setTimeout,
+			clearTimeout: h.clock.clearTimeout,
+		});
+		t.after(() => {
+			notices.close();
+			writer.dispose();
+			presenter.dispose();
+		});
+		const result = await writer.write(() => h.target(0, "Note.md"), { kind: "date", field: "due", day });
+		assert.equal(result.kind, "written");
+		notices.show(result);
+		assert.equal(
+			((Notice.instances.at(-1)!.message as FakeElement).children[0] as FakeElement).textContent,
+			expected,
+		);
+	});
+}
+
 test("a written replace shows Saved your edit", async (t) => {
 	const h = writerHarness({ "Note.md": "- [ ] Pay" });
 	const writer = h.create();

@@ -1,5 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import moment from "moment";
 
 import { parseTaskLine } from "../src/parse";
@@ -7,6 +9,7 @@ import type { Task } from "../src/task";
 import { createResolvedTaskCache, noteVisible, resolveTasks, type ResolveSettings } from "../src/resolve";
 import { createDailyNoteDateCache, dayKey, parseDailyNoteName, type MomentFactory } from "../src/dates";
 import { sortOptionLabels } from "../src/sort";
+import { setTaskDate } from "../src/writeline";
 
 // Ported from the parse-based tests of the plugin's tests/sort.test.ts, plus what resolveTasks adds: the order the
 // tasks come in, the note filters and the 24-hour option.
@@ -279,6 +282,31 @@ test("without a daily note format, notes named YYYY-MM-DD are daily notes", () =
 	assert.equal(resolved.dates.scheduled?.format("YYYY-MM-DD"), "2026-09-15");
 	// Strictly YYYY-MM-DD: a name moment would read without a format is not a daily note.
 	assert.ok(!resolveTasks([task("- [ ] a", "Journal/20260915.md")], {}, { now: TODAY, moment }).shown[0].dailyNote);
+});
+
+test("setting a date on a daily-note task drops the note's dates", () => {
+	const notePath = "Daily/2026-01-15.md";
+	const fixtures = process.env.GOLDEN_FIXTURES ?? path.resolve("../../fixtures");
+	const source = readFileSync(path.join(fixtures, "golden-vault", notePath), "utf8").split("\n")[2];
+	const resolve = (line: string) => resolveTasks([task(line, notePath)], {}, { now: TODAY, moment }).shown[0];
+	const original = resolve(source);
+	for (const field of ["start", "scheduled", "created"] as const)
+		assert.equal(original.dates[field]?.format("YYYY-MM-DD"), "2026-01-15");
+
+	const added = setTaskDate(source, "due", "2026-01-20", { newFieldStyle: "emoji", moment });
+	assert.equal(added.kind, "line");
+	if (added.kind !== "line") return;
+	const dated = resolve(added.line);
+	assert.equal(dated.dates.due?.format("YYYY-MM-DD"), "2026-01-20");
+	for (const field of ["start", "scheduled", "created"] as const) assert.equal(dated.dates[field], undefined);
+
+	const removed = setTaskDate(added.line, "due", null, { newFieldStyle: "emoji", moment });
+	assert.equal(removed.kind, "line");
+	if (removed.kind !== "line") return;
+	assert.equal(removed.line, source);
+	const restored = resolve(removed.line);
+	assert.equal(restored.dates.due, undefined);
+	assert.deepEqual(restored.dates, original.dates);
 });
 
 test("a status the status order does not name sorts first, with order 0", () => {

@@ -67,12 +67,35 @@ export function prepareEdit(
 	if (!isTaskLine(source)) return { kind: "refused", reason: "not-task-line" };
 	if (edit.kind === "toggle") {
 		const impossible = findImpossibleDate(source);
-		if (impossible)
+		if (impossible) {
+			const field = fields[impossible.field] ?? impossible.field;
+			const original = dateTokens(source).find(
+				(token) => token.symbol === impossible.field && token.value === impossible.value,
+			);
+			const visible = source.replace(/%%[\s\S]*?%%/g, (comment) => " ".repeat(comment.length));
+			const token = dateTokens(visible).find(
+				(token) => token.start === original?.start && token.symbol === impossible.field,
+			);
+			const parenthesized =
+				token !== undefined &&
+				[...visible.matchAll(/\(([^()]*?)::[^)]*\)/gu)].some(
+					(match) =>
+						Object.values(fields).includes(match[1].trim()) &&
+						match.index < token.start &&
+						token.end <= match.index + match[0].length,
+				);
+			const menuFixable =
+				["due", "scheduled", "start"].includes(field) &&
+				token !== undefined &&
+				!parenthesized &&
+				(token.symbol in fields ||
+					new RegExp("\\[\\s*" + field + "\\s*::\\s*$", "u").test(visible.slice(0, token.start)));
 			return {
 				kind: "refused",
 				reason: "impossible-date",
-				details: { field: fields[impossible.field] ?? impossible.field, value: impossible.value },
+				details: { field, value: impossible.value, menuFixable },
 			};
+		}
 	}
 	let lines: readonly string[];
 	if (edit.kind === "replace") lines = [...edit.lines];

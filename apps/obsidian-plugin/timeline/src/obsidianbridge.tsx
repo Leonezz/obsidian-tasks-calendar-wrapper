@@ -1,10 +1,12 @@
-import { App, ItemView, Notice, normalizePath, Pos, type UserEvent } from "obsidian";
+import { App, ItemView, Menu, Notice, normalizePath, Pos, type UserEvent } from "obsidian";
 import {
 	createStore,
 	dayKey,
 	normalizeNotePath,
 	pickResolveSettings,
+	type DateField,
 	type DateValue,
+	type DayKey,
 	type LineTarget,
 	type QuickFilter,
 	type Store,
@@ -20,7 +22,10 @@ import { ConfirmModal } from "../../src/confirm-modal";
 import { openNoteAt } from "../../src/open-note";
 import { sameParseKey } from "../../utils/parsekey";
 import { tagSearchUri } from "../../utils/utils";
+import { moment } from "../../utils/moment";
 import { appendTaskToNote } from "./appendtask";
+import { DateModal, type DateAnswer } from "./datemodal";
+import { rowMenuItems, showRowMenu } from "./rowmenu";
 import { changesInPlace } from "./taskactions";
 import { canEditInTasksDialog } from "./tasksplugin";
 import { writeFailureText } from "./notices";
@@ -42,11 +47,12 @@ const defaultObsidianBridgeProps = {
 	store: createStore<TimelineState>(initialTimelineState()) as Store<TimelineState>,
 };
 type ObsidianBridgeProps = Readonly<typeof defaultObsidianBridgeProps> & {
-	readonly writer: Pick<TaskWriter, "insert" | "write" | "editInTasksDialog">;
+	readonly writer: Pick<TaskWriter, "insert" | "write" | "editInTasksDialog" | "refuseIfNotReread">;
 	readonly ledger?: ShiftLedger;
 	readonly pendingWrites?: PendingWrites;
 	readonly onWriteResult?: (target: LineTarget, result: WriteResult) => void;
 	readonly resolveEnv?: ReturnType<typeof createResolveEnv>;
+	readonly askDate?: (field: DateField, sourceLine: string) => Promise<DateAnswer>;
 };
 interface ObsidianBridgeState {
 	readonly tasks: readonly Task[];
@@ -93,6 +99,8 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		this.confirmCreateNote = this.confirmCreateNote.bind(this);
 		this.handleOpenFile = this.handleOpenFile.bind(this);
 		this.handleCompleteTask = this.handleCompleteTask.bind(this);
+		this.handleRowMenu = this.handleRowMenu.bind(this);
+		this.handleDateBadge = this.handleDateBadge.bind(this);
 		this.onUpdateTasks = this.onUpdateTasks.bind(this);
 		this.onStateChanged = this.onStateChanged.bind(this);
 		this.handleModifyTask = this.handleModifyTask.bind(this);
@@ -223,18 +231,68 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		return result;
 	}
 
+	/** Opens a menu for the captured row; each item uses the writer's current target checks. */
+	handleRowMenu(model: TaskRowModel, evt: MouseEvent): void {
+		const items = rowMenuItems(model.sourceLine, {
+			changesInPlace: changesInPlace(this.state.userOptions),
+			moment,
+		});
+		showRowMenu(Menu, items, evt, (action) => {
+			if (action.kind === "pick") return this.handleDateBadge(model, action.field);
+			return this.handleSetDate(model, action.field, action.kind === "set" ? action.day() : null);
+		});
+	}
+
+	/** Picks a date for a menu item or badge, refusing stale rows before opening the modal. */
+	async handleDateBadge(model: TaskRowModel, field: DateField): Promise<WriteResult | void> {
+		if (!changesInPlace(this.state.userOptions)) return;
+		const { path } = model;
+		const target = { path, line: this.ledger.shift(path, model.line), sourceLine: model.sourceLine };
+		const refused = this.props.writer.refuseIfNotReread(target, "date");
+		if (refused) {
+			this.props.onWriteResult?.(target, refused);
+			return refused;
+		}
+		const answer = await (this.props.askDate
+			? this.props.askDate(field, model.sourceLine)
+			: new DateModal(this.app, field, model.sourceLine).ask());
+		if (answer) return this.handleSetDate(model, field, answer.kind === "day" ? answer.day : null);
+	}
+
+	/** Reads the date edit's target again when its turn in the note's write queue starts. */
+	async handleSetDate(model: TaskRowModel, field: DateField, day: DayKey | null): Promise<WriteResult | void> {
+		if (!changesInPlace(this.state.userOptions)) return;
+		const { path } = model;
+		let target: LineTarget = model;
+		const result = await this.props.writer.write(
+			() => (target = { path, line: this.ledger.shift(path, model.line), sourceLine: model.sourceLine }),
+			{ kind: "date", field, day },
+		);
+		this.props.onWriteResult?.(target, result);
+		return result;
+	}
+
 	/**
 	 * The same object on every render while the handlers stay the same, so task rows that did not
 	 * change can skip rendering (issue #63). Modifying a task needs the Tasks plugin.
 	 */
 	getTaskItemHandlers(): React.ContextType<typeof TaskItemEventHandlersContext> {
 		const handleModifyTask = canEditInTasksDialog(this.app).kind !== "none" ? this.handleModifyTask : undefined;
-		if (!this.taskItemHandlers || this.taskItemHandlers.handleModifyTask !== handleModifyTask) {
+		const handleRowMenu = changesInPlace(this.state.userOptions) ? this.handleRowMenu : undefined;
+		const handleDateBadge = changesInPlace(this.state.userOptions) ? this.handleDateBadge : undefined;
+		if (
+			!this.taskItemHandlers ||
+			this.taskItemHandlers.handleModifyTask !== handleModifyTask ||
+			this.taskItemHandlers.handleRowMenu !== handleRowMenu ||
+			this.taskItemHandlers.handleDateBadge !== handleDateBadge
+		) {
 			this.taskItemHandlers = {
 				handleOpenFile: this.handleOpenFile,
 				handleCompleteTask: this.handleCompleteTask,
 				handleTagClick: this.handleTagClick,
 				handleModifyTask,
+				handleRowMenu,
+				handleDateBadge,
 			};
 		}
 		return this.taskItemHandlers;
