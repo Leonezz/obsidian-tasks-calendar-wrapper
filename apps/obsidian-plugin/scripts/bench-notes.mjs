@@ -40,17 +40,23 @@ const TAGS = ["#work", "#home", "#urgent", "#later", "#idea", "#errand", "#call"
 
 /** The notes `pnpm bench` saves; toggle temporarily adds five same-day tasks to its own note. */
 export const BENCH_TARGETS = {
-	withTasks: "Projects/Work/Project 0010.md",
+	withTasks: "Projects/Learning/Project 0228.md",
 	withoutTasks: "Reference/Note 0001.md",
 	toggle: "Reference/Note 0002.md",
 };
 
 /** The task line edited by saveWithTasks, identified by its vault path and zero-based line. */
-export const SAVE_MARKER = Object.freeze({ path: BENCH_TARGETS.withTasks, line: -1, text: "" });
+export const SAVE_MARKER = Object.freeze({ path: BENCH_TARGETS.withTasks, line: 12, text: "Task 0228 b" });
 
 /** Inserts a save token after the marker's task text while preserving every other byte of the note. */
 export function withSaveToken(original, token) {
-	throw new Error("not implemented");
+	const lines = original.split("\n");
+	const task = `- [ ] ${SAVE_MARKER.text}`;
+	const line = lines[SAVE_MARKER.line];
+	if (!line?.startsWith(task) || (line.length > task.length && !/\s/.test(line[task.length])))
+		throw new Error(`${SAVE_MARKER.path} has no "${task}" task to edit.`);
+	lines[SAVE_MARKER.line] = `${task} ${token}${line.slice(task.length)}`;
+	return lines.join("\n");
 }
 
 /** mulberry32: a small seeded generator, so the vault is the same on every machine. */

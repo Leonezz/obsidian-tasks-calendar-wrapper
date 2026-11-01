@@ -252,6 +252,7 @@ test("counts are shown for both arms, and a count that changed is a warning, not
 		base: { min: 2000, median: 2000, max: 2000 },
 		candidate: { min: 1, median: 1, max: 1 },
 		changed: true,
+		reportOnly: false,
 	});
 	assert.deepEqual(verdict.warnings, [
 		"bench: warning: saveWithTasks.filesRead changed: median 2000 with the base, 1 with the candidate.",

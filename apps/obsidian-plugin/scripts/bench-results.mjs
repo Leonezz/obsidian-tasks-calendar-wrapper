@@ -8,31 +8,64 @@ export const SLOWER_RATIO = 1.25;
 export const SLOWER_MS = 50;
 
 /** Full scenario.metric names of counts reported without change warnings or verdicts. */
-export const REPORT_ONLY_COUNTS = Object.freeze(new Set());
+export const REPORT_ONLY_COUNTS = Object.freeze(
+	new Set(["heapAfterLoad.usedBytes", "scroll.framesOver50Ms", "scroll.frames"]),
+);
 
 /** Summarises a view control's measured clicks, with CPU timings only when requested. */
 export function clickResults(steps, cpu) {
-	throw new Error("not implemented");
+	return {
+		runs: steps.length,
+		paintedMs: summary(steps.map((step) => step.paintedMs)),
+		blockedMs: summary(steps.map((step) => step.blockedMs)),
+		longestTaskMs: summary(steps.map((step) => step.longestMs)),
+		...(cpu ? { cpuMs: summary(steps.map((step) => step.cpuMs)) } : {}),
+	};
 }
 
 /** Summarises the on and off clicks separately under the flat Focus on today scenario names. */
 export function focusTodayResults(pairs, cpu) {
-	throw new Error("not implemented");
+	return {
+		"focusToday.on": clickResults(
+			pairs.map((pair) => pair.on),
+			cpu,
+		),
+		"focusToday.off": clickResults(
+			pairs.map((pair) => pair.off),
+			cpu,
+		),
+	};
 }
 
 /** Computes nearest-rank p95 and counts from consecutive animation-frame timestamps. */
 export function frameStats(timestamps) {
-	throw new Error("not implemented");
+	if (timestamps.length < 2) throw new Error("scroll: expected at least two animation-frame timestamps.");
+	if (timestamps.some((time, i) => !Number.isFinite(time) || (i > 0 && time <= timestamps[i - 1])))
+		throw new Error("scroll: animation-frame timestamps must be finite and strictly increasing.");
+	const durations = timestamps.slice(1).map((time, i) => time - timestamps[i]);
+	const sorted = [...durations].sort((a, b) => a - b);
+	return {
+		p95FrameMs: round(sorted[Math.ceil(0.95 * sorted.length) - 1]),
+		framesOver50Ms: durations.filter((duration) => duration > 50).length,
+		frames: durations.length,
+	};
 }
 
 /** Summarises scroll frame timings and counts, retaining the observed visibility states. */
 export function scrollResults(runs) {
-	throw new Error("not implemented");
+	const stats = runs.map((run) => frameStats(run.timestamps));
+	return {
+		runs: runs.length,
+		p95FrameMs: summary(stats.map((run) => run.p95FrameMs)),
+		framesOver50Ms: counts(stats.map((run) => run.framesOver50Ms)),
+		frames: counts(stats.map((run) => run.frames)),
+		visibilityState: [...new Set(runs.map((run) => run.visibilityState))].join(", "),
+	};
 }
 
 /** Summarises used heap bytes collected after garbage collection. */
 export function heapResults(usedSizes) {
-	throw new Error("not implemented");
+	return { usedBytes: counts(usedSizes) };
 }
 
 const median = (values) => {

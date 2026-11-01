@@ -23,6 +23,14 @@ export async function measure({
 	toggleMode,
 	toggleReady = false,
 	options,
+	taskPath,
+	taskLine,
+	direction,
+	burstGapMs,
+	durationMs,
+	pxPerMs,
+	minScrollPx,
+	todayCheck = false,
 	verifyRestore = false,
 	slowness = 1,
 }) {
@@ -180,6 +188,55 @@ export async function measure({
 		[...root.querySelectorAll(`.task a.file[aria-label="${CSS.escape(path)}"]`)]
 			.map((link) => link.closest(".task"))
 			.filter((row) => row.querySelector(":scope > .lines > .content")?.textContent.trim() === text);
+	function viewElements() {
+		const leaf = document.querySelector(leafSelector);
+		if (!leaf) throw new Error(`${action}: the timeline view is not open`);
+		const root = leaf.querySelector(".taskido");
+		if (!root) throw new Error(`${action}: the timeline leaf has no .taskido`);
+		return { leaf, root };
+	}
+	/** Watches setup and restoration changes, including work after the click or scroll returns. */
+	async function settleView(change) {
+		const recorder = record(document.body, { rowsPresent: true });
+		try {
+			await change();
+			await sleep(quietMs);
+			await until(
+				() => recorder.seen.last === null || quietFor(recorder, quietMs)(),
+				30_000,
+				"the timeline to stop changing",
+			);
+		} finally {
+			recorder.stop(0);
+		}
+	}
+	/** Measures either view control through the first burst of changes and its paint. */
+	async function clickView(selector, className, name) {
+		const { leaf, root } = viewElements();
+		if (direction !== "on" && direction !== "off") throw new Error(`${action}: expected direction on or off`);
+		const on = direction === "on";
+		if (root.classList.contains(className) === on)
+			throw new Error(`${action}: expected ${name} to be ${on ? "off" : "on"} before the click`);
+		const control = root.querySelector(selector);
+		if (!control) throw new Error(`${action}: the timeline has no ${name} control (${selector})`);
+		const recorder = record(leaf, { rowsPresent: true });
+		const start = performance.now();
+		try {
+			control.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+			await until(() => root.classList.contains(className) === on, 10_000, `${name} to turn ${direction}`);
+			await until(quietFor(recorder, quietMs), 30_000, "the timeline to stop changing");
+			if (root.classList.contains(className) !== on)
+				throw new Error(`${action}: expected ${name} to remain ${direction} after the click`);
+			const { seen } = recorder;
+			const times = seen.times.filter((time) => time >= start);
+			let burstEnd = times[0];
+			for (let i = 1; i < times.length && times[i] - times[i - 1] < burstGapMs; i++) burstEnd = times[i];
+			const { tasks, ...work } = recorder.stop(start);
+			return { paintedMs: paintedAfter(seen, burstEnd) - start, ...work };
+		} finally {
+			recorder.stop(start);
+		}
+	}
 
 	switch (action) {
 		case "unload": {
@@ -268,6 +325,93 @@ export async function measure({
 				recorder.stop(0);
 			}
 		}
+		case "reveal": {
+			const view = app.workspace.getLeavesOfType(viewType)[0]?.view;
+			if (typeof view?.revealTask !== "function") return { revealed: false };
+			const id = `${taskPath}:${taskLine}`;
+			try {
+				await view.revealTask(id);
+			} catch (error) {
+				throw new Error(`reveal: revealTask("${id}") failed: ${error?.message ?? String(error)}`);
+			}
+			await until(
+				() =>
+					document.querySelector(
+						`${leafSelector} .task[data-line="${CSS.escape(String(taskLine))}"] a.file[aria-label="${CSS.escape(taskPath)}"]`,
+					),
+				5_000,
+				`reveal: the row for ${id}`,
+			);
+			return { revealed: true };
+		}
+		case "controls": {
+			const { root } = viewElements();
+			return {
+				todayHeader: Boolean(root.querySelector(".todayHeader")),
+				todoCounter: Boolean(root.querySelector(".counter#todo")),
+				viewContent: Boolean(document.querySelector(contentSelector)),
+			};
+		}
+		case "focusToday":
+			return await clickView(".todayHeader", "todayFocus", "Focus on today");
+		case "counterFilter":
+			return await clickView(".counter#todo", "todoFilter", "the Todo filter");
+		case "viewRestore": {
+			const { root } = viewElements();
+			const content = document.querySelector(contentSelector);
+			if (!content) throw new Error("viewRestore: the timeline leaf has no .view-content to restore.");
+			const restored = [];
+			await settleView(async () => {
+				for (const [className, selector] of [
+					["todayFocus", ".todayHeader"],
+					["todoFilter", ".counter#todo"],
+				]) {
+					if (!root.classList.contains(className)) continue;
+					const control = root.querySelector(selector);
+					if (!control)
+						throw new Error(`viewRestore: ${className} is on but its control ${selector} is missing.`);
+					control.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+					await until(() => !root.classList.contains(className), 10_000, `${className} to turn off`);
+					restored.push(className);
+				}
+				content.scrollTop = 0;
+				restored.push("scrollTop");
+			});
+			return { restored };
+		}
+		case "scroll": {
+			const content = document.querySelector(contentSelector);
+			if (!content) throw new Error("scroll: the timeline leaf has no .view-content to scroll.");
+			const available = content.scrollHeight - content.clientHeight;
+			if (available < minScrollPx)
+				throw new Error(
+					`scroll: the timeline scrolls only ${available} px, the scenario needs ${minScrollPx} px.`,
+				);
+			try {
+				await settleView(() => {
+					content.scrollTop = 0;
+				});
+				const visibilityState = document.visibilityState;
+				const timestamps = [];
+				await new Promise((resolve) => {
+					let t0;
+					const frame = (ts) => {
+						t0 ??= ts;
+						const elapsed = ts - t0;
+						timestamps.push(elapsed);
+						content.scrollTop = Math.min(durationMs, elapsed) * pxPerMs;
+						if (elapsed >= durationMs) resolve();
+						else requestAnimationFrame(frame);
+					};
+					requestAnimationFrame(frame);
+				});
+				return { timestamps, visibilityState, scrolledPx: content.scrollTop };
+			} finally {
+				await settleView(() => {
+					content.scrollTop = 0;
+				});
+			}
+		}
 		case "save": {
 			const file = app.vault.getAbstractFileByPath(path);
 			if (!file) throw new Error(`the vault has no note ${path}`);
@@ -292,6 +436,13 @@ export async function measure({
 					await sleep(windowMs);
 				}
 				const { tasks, ...work } = recorder.stop(start);
+				if (todayCheck) {
+					const first = [...root.querySelectorAll(".task")].find((row) => row.textContent.includes(token));
+					if (!first?.closest(".details.today"))
+						throw new Error(
+							`save: the first row showing "${token}" is not in today's day (.details.today); the save marker must be a task on the pinned today.`,
+						);
+				}
 				const calls = reloadCalls();
 				return {
 					savedMs: saved - start,

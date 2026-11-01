@@ -11,6 +11,11 @@
  *   Generated notes have at most three tasks, so five same-day tasks are temporarily appended to a separate note.
  *   Only their five lines may change; the original note bytes and display options are restored even on failure.
  *   The idle overlay median's gate is 50 ms; the other timings are report-only. Missing baseline metrics are not judged.
+ * - Focus on today on/off and the Todo filter: click to the painted result, with one warm-up pair;
+ * - scroll: two seconds at 3 px/ms from the top, recording frame times and visibility; heap after load: used bytes
+ *   after garbage collection. Frame counts and heap bytes are report-only.
+ * Save-with-tasks uses Task 0228 b in Projects/Learning/Project 0228.md, scheduled on the pinned today. Before saves,
+ * idle toggles and view-control scenarios, revealTask brings the target row into view when the build supports it.
  * Besides the time until the timeline shows the change, it sums the long tasks (main-thread work over 50 ms, when
  * Obsidian does not respond to input) and records the longest one, which is what a user feels as a freeze. It also
  * counts the notes read (vault.cachedRead calls), and for option changes the timeline's reloads and how often Obsidian
@@ -47,7 +52,7 @@ import { randomInt } from "crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import os from "os";
 import path from "path";
-import { AB_RUNS, abArgs, abMergeBase, abOrder, checkAbBase, compareAb } from "./bench-ab.mjs";
+import { AB_RUNS, abMergeBase, abOrder, checkAbBase, compareAb, parseBenchArgs } from "./bench-ab.mjs";
 import { buildAt, localBuild } from "./bench-builds.mjs";
 import { otherBenchProcesses } from "./bench-host.mjs";
 import { measure } from "./bench-measure.mjs";
@@ -61,7 +66,8 @@ import {
 	splitLoad,
 	summary,
 } from "./bench-results.mjs";
-import { BENCH_TARGETS, benchVaultName, benchVaultNotes, scaleOf, withoutScale } from "./bench-notes.mjs";
+import { BENCH_TARGETS, SAVE_MARKER, benchVaultName, benchVaultNotes, withSaveToken } from "./bench-notes.mjs";
+import { SCROLL, VIEW_RUNS, heapAfterLoad, measureViewScenarios } from "./bench-scenarios.mjs";
 import {
 	buildInfo,
 	fixtureCli,
@@ -97,13 +103,6 @@ const NO_RELOAD_WINDOW_MS = 3_000;
  * counted apart from the first one.
  */
 const LOAD_WATCH_MS = 2_000;
-
-/** The note with tasks, with a token in the text of its first task, so the timeline has something new to show. */
-function withToken(original, token) {
-	const edited = original.replace(/^(- \[ \] Task \d{4} a)/m, `$1 ${token}`);
-	if (edited === original) throw new ScriptError(`${BENCH_TARGETS.withTasks} has no "Task NNNN a" task to edit.`);
-	return edited;
-}
 
 /**
  * The main thread's CPU time so far, in milliseconds: the renderer's task time counted in thread ticks, which needs
@@ -152,6 +151,7 @@ function measureToggle(evaluate, timed, notes, scale, label, cpuSummary, cpuText
 		const idle = [];
 		for (let run = 0; run < TOGGLE_RUNS[scale]; run++) {
 			reset();
+			evaluate({ action: "reveal", taskPath: path, taskLine: lines[0] });
 			const step = timed({ action: "toggle", path, toggleTasks, toggleMode: "idle" });
 			check(() => assertToggleChanges(prepared, step.content, lines.slice(0, 1)));
 			idle.push(step);
@@ -203,6 +203,7 @@ function measureToggle(evaluate, timed, notes, scale, label, cpuSummary, cpuText
 		[`restore ${path} after toggle`, () => restore(original)],
 		["restore toggle display options", () => evaluate({ action: "toggleOptions", ...settings })],
 		["settle after toggle", settle],
+		["restore the timeline view state", () => evaluate({ action: "viewRestore" })],
 		[
 			"verify restored toggle bytes",
 			() => check(() => assertToggleRestored(path, original, evaluate({ action: "readNote", path }))),
@@ -219,13 +220,14 @@ function measureAll(
 	cli,
 	notes,
 	scale,
-	{ runs = RUNS[scale], warmupLoads = 0, install = () => {}, cpu = false, label = "" } = {},
+	{ runs = RUNS[scale], warmupLoads = 0, install = () => {}, cpu = false, label = "", arm = "candidate" } = {},
 ) {
 	const args = {
 		viewType: TIMELINE_VIEW,
 		pluginId: manifest.id,
 		command: OPEN_COMMAND,
 		quietMs: QUIET_MS,
+		burstGapMs: BURST_GAP_MS,
 		slowness: scale,
 	};
 	// The CLI gives up on code run in Obsidian after 2 minutes, which the large vault's loads can come close to.
@@ -251,22 +253,32 @@ function measureAll(
 		if (run >= warmupLoads) loads.push(load);
 	}
 	evaluate({ action: "settle", settleMs: LOAD_WATCH_MS });
+	let heap;
+	try {
+		heap = heapAfterLoad(cli.cdp);
+	} catch (error) {
+		throw new ScriptError(error.message);
+	}
 
 	const withTasks = [];
 	const original = notes.get(BENCH_TARGETS.withTasks);
-	for (let run = 0; run < WARMUP_SAVES + runs.saves; run++) {
-		const token = `bench${run}x${Date.now().toString(36)}`;
-		const save = timed({
-			action: "save",
-			path: BENCH_TARGETS.withTasks,
-			content: withToken(original, token),
-			token,
-		});
-		if (run >= WARMUP_SAVES) withTasks.push(save);
-		console.log(
-			`bench: ${label}save with tasks ${run < WARMUP_SAVES ? "(warm-up)" : run - WARMUP_SAVES + 1}: rendered ${round(save.renderedMs)} ms, ${save.filesRead} notes read, longest task ${round(save.longestMs)} ms${cpuText(save)}`,
-		);
-	}
+	runAndUndo(() => {
+		evaluate({ action: "reveal", taskPath: SAVE_MARKER.path, taskLine: SAVE_MARKER.line });
+		for (let run = 0; run < WARMUP_SAVES + runs.saves; run++) {
+			const token = `bench${run}x${Date.now().toString(36)}`;
+			let content;
+			try {
+				content = withSaveToken(original, token);
+			} catch (error) {
+				throw new ScriptError(error.message);
+			}
+			const save = timed({ action: "save", path: BENCH_TARGETS.withTasks, content, token, todayCheck: true });
+			if (run >= WARMUP_SAVES) withTasks.push(save);
+			console.log(
+				`bench: ${label}save with tasks ${run < WARMUP_SAVES ? "(warm-up)" : run - WARMUP_SAVES + 1}: rendered ${round(save.renderedMs)} ms, ${save.filesRead} notes read, longest task ${round(save.longestMs)} ms${cpuText(save)}`,
+			);
+		}
+	}, [["restore the timeline view state", () => evaluate({ action: "viewRestore" })]]);
 
 	const withoutTasks = [];
 	const plain = notes.get(BENCH_TARGETS.withoutTasks);
@@ -300,6 +312,12 @@ function measureAll(
 		);
 	}
 	const toggle = measureToggle(evaluate, timed, notes, scale, label, cpuSummary, cpuText);
+	let viewScenarios;
+	try {
+		viewScenarios = measureViewScenarios({ evaluate, timed, scale, arm, cpu, label, log: console.log, runAndUndo });
+	} catch (error) {
+		throw new ScriptError(error.message);
+	}
 
 	return {
 		initialLoad: {
@@ -345,6 +363,8 @@ function measureAll(
 			...cpuSummary(optionChanges),
 		},
 		toggle,
+		...viewScenarios,
+		heapAfterLoad: heap,
 	};
 }
 
@@ -465,6 +485,7 @@ function runAb(ab, scale) {
 			order.forEach((arms, i) => {
 				for (const arm of arms) {
 					const results = measureAll(cli, notes, scale, {
+						arm,
 						runs: AB_RUNS[scale],
 						warmupLoads: 1,
 						cpu: true,
@@ -532,6 +553,8 @@ function runAb(ab, scale) {
 					warmupOptionChanges: WARMUP_OPTION_CHANGES,
 					toggleRuns: TOGGLE_RUNS[scale],
 					runs: AB_RUNS[scale],
+					viewRuns: VIEW_RUNS[scale],
+					scroll: SCROLL,
 				},
 				slots,
 				verdict,
@@ -554,20 +577,14 @@ await runScript("bench", async () => {
 	const args = process.argv.slice(2);
 	let scale;
 	let ab;
-	let rest;
+	let update;
+	let profile;
 	try {
-		scale = scaleOf(args);
-		({ ab, rest } = abArgs(withoutScale(args), scale));
+		({ scale, ab, update, profile } = parseBenchArgs(args));
 	} catch (error) {
 		throw new ScriptError(error.message);
 	}
-	const unknown = rest.filter((arg) => arg !== "--update");
-	if (unknown.length)
-		throw new ScriptError(
-			`unknown arguments ${JSON.stringify(unknown)}; the only ones are --update, --scale 10, and --ab <ref> with --candidate <ref>, --rounds <n>, --seed <n>, --report <file> and --any-base.`,
-		);
-	const update = args.includes("--update");
-	if (ab && update) throw new ScriptError("--ab compares two builds and records no baseline; leave out --update.");
+	if (profile) throw new ScriptError("--profile is not implemented yet.");
 	if (ab) return runAb(ab, scale);
 	const vaultName = benchVaultName(scale);
 	const scaleArg = scale === 1 ? "" : ` --scale ${scale}`;
@@ -624,6 +641,8 @@ await runScript("bench", async () => {
 			warmupOptionChanges: WARMUP_OPTION_CHANGES,
 			toggleRuns: TOGGLE_RUNS[scale],
 			runs: RUNS[scale],
+			viewRuns: VIEW_RUNS[scale],
+			scroll: SCROLL,
 		},
 		results,
 	};
@@ -654,6 +673,11 @@ await runScript("bench", async () => {
 				`bench: warning: the baseline was measured with ${key} ${JSON.stringify(baseline[key])}, this run has ${JSON.stringify(env[key])}; the numbers are not comparable.`,
 			);
 		}
+	}
+	if (baseline.vault?.withTasks !== BENCH_TARGETS.withTasks) {
+		console.warn(
+			`bench: warning: the baseline saved ${baseline.vault?.withTasks}, this run saves ${BENCH_TARGETS.withTasks}; saveWithTasks is not comparable with this baseline.`,
+		);
 	}
 	const { lines, warnings, slower } = compare(baseline, results, scale);
 	lines.forEach((line) => console.log(line));

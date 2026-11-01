@@ -7,8 +7,8 @@
  * (ICPE 2017) found back-to-back trials put two identical systems 38 % apart, and randomised interleaved ones did not.
  * Plain code, apart from the measuring, so tests/benchab.test.ts can test it.
  */
-import { random } from "./bench-notes.mjs";
-import { counts, notJudgedAt, round, SLOWER_MS, SLOWER_RATIO } from "./bench-results.mjs";
+import { random, scaleOf, withoutScale } from "./bench-notes.mjs";
+import { counts, notJudgedAt, REPORT_ONLY_COUNTS, round, SLOWER_MS, SLOWER_RATIO } from "./bench-results.mjs";
 import { hodgesLehmann, signedRank } from "./bench-stats.mjs";
 
 /**
@@ -29,7 +29,56 @@ const median = (values) => counts(values).median;
 
 /** Parses the plain benchmark, A/B comparison and standalone profile modes without starting a run. */
 export function parseBenchArgs(argv) {
-	throw new Error("not implemented");
+	const scale = scaleOf(argv);
+	const args = withoutScale(argv);
+	const checkUnknown = (rest) => {
+		const unknown = rest.filter((arg) => arg !== "--update");
+		if (unknown.length)
+			throw new Error(
+				`unknown arguments ${JSON.stringify(unknown)}; the only ones are --update, --scale 10, --profile with --report <file> and --ab <ref>, and --ab <ref> with --candidate <ref>, --rounds <n>, --seed <n>, --report <file> and --any-base.`,
+			);
+	};
+	if (!args.includes("--profile")) {
+		const { ab, rest } = abArgs(args, scale);
+		checkUnknown(rest);
+		const update = rest.includes("--update");
+		if (ab && update) throw new Error("--ab compares two builds and records no baseline; leave out --update.");
+		return { scale, update, ab, profile: null };
+	}
+	if (args.includes("--update")) throw new Error("--profile measures no baseline; leave out --update.");
+	if (args.some((arg) => ["--rounds", "--seed"].some((name) => arg === name || arg.startsWith(`${name}=`))))
+		throw new Error("--profile runs each scenario once per arm; leave out --rounds and --seed.");
+	const values = {};
+	let rest = args.filter((arg) => arg !== "--profile");
+	for (const name of ["--ab", "--candidate", "--report"]) {
+		const taken = takeOption(rest, name);
+		values[name] = taken.value;
+		rest = taken.rest;
+	}
+	if (values["--ab"] === null) throw new Error("--ab needs a git ref to measure against, such as --ab master.");
+	if (values["--candidate"] === null) throw new Error("--candidate needs a git ref to build the candidate from.");
+	if (values["--report"] === null) throw new Error("--report needs a file to write the report to.");
+	const allowOtherBase = rest.includes("--any-base");
+	rest = rest.filter((arg) => arg !== "--any-base");
+	if (values["--ab"] === undefined) {
+		const stray = [
+			...(values["--candidate"] !== undefined ? ["--candidate"] : []),
+			...(allowOtherBase ? ["--any-base"] : []),
+		];
+		if (stray.length) throw new Error(`${stray.join(", ")} only go with --ab <ref>.`);
+	}
+	checkUnknown(rest);
+	return {
+		scale,
+		update: false,
+		ab: null,
+		profile: {
+			base: values["--ab"] ?? null,
+			candidate: values["--candidate"] ?? null,
+			allowOtherBase,
+			report: values["--report"] ?? null,
+		},
+	};
 }
 
 /**
@@ -187,7 +236,8 @@ function countRow(name, base, candidate) {
 	};
 	const was = range(base);
 	const now = range(candidate);
-	return { name, base: was, candidate: now, changed: was.median !== now.median };
+	const reportOnly = REPORT_ONLY_COUNTS.has(name);
+	return { name, base: was, candidate: now, changed: !reportOnly && was.median !== now.median, reportOnly };
 }
 
 /** Measurements with no base value in any round are shown without a comparison. */
@@ -253,9 +303,10 @@ function tableLines(entries, rounds) {
 			continue;
 		}
 		if (entry.kind === "count") {
-			const { name, base, candidate, changed } = entry.row;
+			const { name, base, candidate, changed, reportOnly } = entry.row;
 			lines.push(
-				row(`${name} (count)`, base.median, candidate.median, "", "", "", "") + (changed ? "  changed" : ""),
+				row(`${name} (count)`, base.median, candidate.median, "", "", "", "") +
+					(reportOnly ? "  report only" : changed ? "  changed" : ""),
 			);
 			continue;
 		}
@@ -281,8 +332,8 @@ function tableLines(entries, rounds) {
  * candidate was slower across the rounds by the two-sided Wilcoxon signed-rank test on the paired log ratios (p below
  * SIGNIFICANCE), and the Hodges-Lehmann estimate of the change is over both SLOWER_RATIO and SLOWER_MS, as against the
  * baseline; a significant change under those is a "small" one and does not fail. The timings notJudgedAt(scale) leaves
- * out are shown, not judged. Counts are shown for both arms, and one that changed is a warning, as is another number
- * of task rows; a save without tasks that reloads the timeline is a failure.
+ * out are shown, not judged. Counts are shown for both arms, and one that changed is a warning unless it is report
+ * only. Another number of task rows is also a warning; a save without tasks that reloads the timeline is a failure.
  */
 export function compareAb(slots, scale) {
 	const rounds = pairedRounds(slots);
