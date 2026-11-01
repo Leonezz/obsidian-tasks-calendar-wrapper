@@ -12,6 +12,7 @@ import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { TasksTimelineView, timelineTaskIndex } from "../src/views";
 import type { SharedTaskIndex } from "../timeline/src/sharedindex";
 import { fakeVault, type FakeVault } from "./fakevault";
+import { unusedNotices, unusedWriter } from "./view-harness";
 import { ourLines } from "./indexed-vault";
 import { roots } from "./stubs/react-dom-client";
 
@@ -61,7 +62,7 @@ async function openTimeline(
 	{ resolved = true, options = {} }: { resolved?: boolean; options?: Partial<UserOption> } = {},
 ) {
 	const leaf = vault.app.workspace.addLeaf();
-	const view = new TasksTimelineView(leaf as never, sharedIndexOf(vault));
+	const view = new TasksTimelineView(leaf as never, sharedIndexOf(vault), unusedWriter, unusedNotices);
 	const loading = view.onUpdateOptions({ ...defaultUserOptions, ...options });
 	leaf.view = view;
 	await (view as unknown as Opening).open();
@@ -385,7 +386,7 @@ test("the first reload after the view opens reads every note again, as a change 
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const vault = fakeVault(notes());
 	const leaf = vault.app.workspace.addLeaf();
-	const view = new TasksTimelineView(leaf as never, sharedIndexOf(vault));
+	const view = new TasksTimelineView(leaf as never, sharedIndexOf(vault), unusedWriter, unusedNotices);
 	// The plugin's view factory hands the new view the options, which reads the notes, before Obsidian opens it.
 	await view.onUpdateOptions({ ...defaultUserOptions });
 	vault.write("Inbox.md", "- [ ] call the plumber, before the view listened");

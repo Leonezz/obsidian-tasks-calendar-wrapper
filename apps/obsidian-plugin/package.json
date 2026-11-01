@@ -8,9 +8,12 @@
 		"build": "tsc --noEmit && node esbuild.config.mjs production",
 		"typecheck": "tsc --noEmit",
 		"api-floor": "node scripts/api-floor.mjs",
+		"private-api": "node scripts/private-api.mjs",
 		"test": "node scripts/test.mjs",
 		"capture:golden": "node scripts/capture-golden.mjs",
+		"capture:tasks-toggle": "node scripts/capture-tasks-toggle.mjs",
 		"bench:vault": "node scripts/bench-vault.mjs",
+		"tasks-parity:vault": "node scripts/tasks-parity-vault.mjs",
 		"bench": "pnpm build && node scripts/bench.mjs",
 		"screenshots": "pnpm build && node scripts/screenshots.mjs"
 	},
@@ -30,6 +33,7 @@
 		"@types/react-dom": "18.3.7",
 		"backbone": "1.6.1",
 		"esbuild": "0.28.2",
+		"jsdom": "29.1.1",
 		"moment": "2.29.4",
 		"obsidian": "1.14.4",
 		"typescript": "6.0.3"

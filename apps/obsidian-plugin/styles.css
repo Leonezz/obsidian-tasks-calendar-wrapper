@@ -570,6 +570,26 @@
 	color: var(--text-muted);
 }
 
+/* Dim the content and controls without compositing the whole row. */
+.taskido .task[aria-busy="true"] {
+	color: var(--text-faint);
+}
+
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task[aria-busy="true"] .content,
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task[aria-busy="true"] .content a,
+.workspace-leaf-content[data-type="tasks_timeline_view"]
+	.taskido
+	.task[aria-busy="true"]
+	.info
+	> :is(.tag, .repeat, .priority, .relative, .file) {
+	color: inherit;
+}
+
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task[aria-busy="true"] .timeline .icon svg {
+	color: inherit;
+	stroke: currentColor;
+}
+
 /* Focus */
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.todayFocus .details:not(.today),
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.todayFocus .year {

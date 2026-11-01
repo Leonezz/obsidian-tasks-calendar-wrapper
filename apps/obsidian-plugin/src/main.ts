@@ -2,9 +2,14 @@ import { Notice, Plugin, requireApiVersion } from "obsidian";
 
 import { TasksTimelineView, TIMELINE_VIEW, timelineTaskIndex } from "./views";
 
-import { notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
+import { dayKey, notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
+import { createNoticePresenter } from "../timeline/src/notices";
+import { getTasksDialog, getTasksToggle } from "../timeline/src/tasksplugin";
+import { createTaskWriter } from "../timeline/src/taskwriter";
+import { moment } from "../utils/moment";
 import { RELEASE_NOTES, SUPPORT_LINKS } from "../utils/whatsnew";
 import { WhatsNewModal } from "./whatsnew-modal";
+import { ConfirmModal } from "./confirm-modal";
 import { TasksCalendarSettingTab, UserOption } from "./settings";
 import {
 	changedState,
@@ -20,6 +25,23 @@ export default class TasksCalendarWrapper extends Plugin {
 	private readonly settingsStore = createSettingsStore();
 	/** The notes the timelines read, shared, see SharedTaskIndex: made with the first timeline, gone after the last. */
 	private readonly taskIndex = timelineTaskIndex(this.app);
+	private readonly writerNotices = createNoticePresenter(this.app);
+	/** Every timeline hands its writes to this queue; its holds and timers belong to the plugin. */
+	private readonly writer = createTaskWriter({
+		app: this.app,
+		index: this.taskIndex,
+		tasks: () => getTasksToggle(this.app, moment),
+		tasksDialog: () => getTasksDialog(this.app),
+		confirm: (options) => new ConfirmModal(this.app, options).ask(),
+		notices: this.writerNotices,
+		moment,
+		today: () => dayKey(moment()),
+		now: () => Date.now(),
+		setTimeout: (run, delay) => window.setTimeout(run, delay),
+		clearTimeout: (timer) => window.clearTimeout(timer),
+		newDateStyle: () => this.userOptions.newDateStyle,
+		logger: console,
+	});
 	/** The settings tab, made in onload. */
 	private settingsTab: TasksCalendarSettingTab | null = null;
 	private readonly pushOptionsToViews = debounceOptionUpdates(() => {
@@ -39,9 +61,13 @@ export default class TasksCalendarWrapper extends Plugin {
 		this.register(() => this.pushOptionsToViews.cancel());
 		// Registered before the view type, so it runs after the timelines closed: whatever is left, nothing is watched.
 		this.register(() => this.taskIndex.dispose());
+		this.register(() => {
+			this.writer.dispose();
+			this.writerNotices.dispose();
+		});
 		await this.loadOptions();
 		this.registerView(TIMELINE_VIEW, (leaf) => {
-			const view = new TasksTimelineView(leaf, this.taskIndex);
+			const view = new TasksTimelineView(leaf, this.taskIndex, this.writer, this.writerNotices);
 			view.onUpdateOptions(this.userOptions);
 			return view;
 		});

@@ -4,8 +4,17 @@
  * filters. It follows the plugin's former parser chain (utils/tasklist.ts and utils/taskmapable.ts, removed in phase 1
  * step 9) and its note filters. It never changes the tasks it is given.
  */
-import { afterInstant, beforeDay, convert24HourPrefix, dayKey, parseDailyNoteName, sameDay } from "./dates";
-import type { DateEntries, DateValue, DayKey, MomentFactory } from "./dates";
+import {
+	afterInstant,
+	beforeDay,
+	convert24HourPrefix,
+	createDailyNoteDateCache,
+	dayKey,
+	parseDailyNoteName,
+	sameDay,
+} from "./dates";
+import type { DailyNoteDateCache, DateEntries, DateValue, DayKey, MomentFactory } from "./dates";
+import { copyJsonValue, deepFreeze } from "./options";
 import { matchesProperties, type PropertyRules } from "./properties";
 import { getSortComparator, type SortableTask } from "./sort";
 import { TaskStatus, TaskStatusMarkerMap } from "./status";
@@ -40,10 +49,61 @@ export interface ResolveSettings extends NoteFilterSettings {
 	readonly filterEmpty?: boolean;
 }
 
+const resolveSettingKeys = {
+	includePaths: true,
+	excludePaths: true,
+	fileIncludeTags: true,
+	fileExcludeTags: true,
+	excludeProperties: true,
+	dailyNoteFormat: true,
+	forward: true,
+	forwardPastStartAndScheduled: true,
+	forwardUndatedDone: true,
+	convert24HourTimePrefix: true,
+	taskStatusOrder: true,
+	sort: true,
+	hideSubTasks: true,
+	hideStatusTasks: true,
+	useIncludeTags: true,
+	taskIncludeTags: true,
+	useExcludeTags: true,
+	taskExcludeTags: true,
+	filterEmpty: true,
+} satisfies Record<keyof ResolveSettings, true>;
+
+const resolveKeys = Object.keys(resolveSettingKeys) as (keyof ResolveSettings)[];
+
+/** A frozen copy of exactly the settings resolveTasks reads, for remembering the conditions of a resolve. */
+export function pickResolveSettings(settings: ResolveSettings): ResolveSettings {
+	return deepFreeze(Object.fromEntries(resolveKeys.map((key) => [key, copyJsonValue(settings[key])])));
+}
+
+/** Resolve settings compare by value, including arrays and property rules, not by the options object's identity. */
+export function sameResolveSettings(a: ResolveSettings, b: ResolveSettings): boolean {
+	return resolveKeys.every((key) => sameSettingValue(a[key], b[key]));
+}
+
+function sameSettingValue(a: unknown, b: unknown): boolean {
+	if (a === b) return true;
+	if (a === null || b === null || typeof a !== "object" || typeof b !== "object") return false;
+	if (Array.isArray(a) !== Array.isArray(b)) return false;
+	if (Array.isArray(a) && Array.isArray(b) && a.length !== b.length) return false;
+	const left = a as Record<string, unknown>;
+	const right = b as Record<string, unknown>;
+	const keys = Object.keys(left);
+	return (
+		keys.length === Object.keys(right).length &&
+		keys.every((key) => Object.prototype.hasOwnProperty.call(right, key) && sameSettingValue(left[key], right[key]))
+	);
+}
+
 /** What the clock and the app give: the current time, and Obsidian's moment. */
 export interface QueryEnv {
 	readonly now: DateValue;
 	readonly moment: MomentFactory;
+	readonly dateCache?: DailyNoteDateCache;
+	/** Requires dateCache, whose identity stands for the parse environment. */
+	readonly taskCache?: ResolvedTaskCache;
 }
 
 /** Why a task is also listed on today, when the forward option is on. */
@@ -79,6 +139,49 @@ export interface Resolved {
 	readonly today: DayKey;
 	/** The tasks shown, in order. */
 	readonly shown: readonly ResolvedTask[];
+}
+
+/** Reuses a resolved task while its settings, day and parse environment stay the same. */
+export interface ResolvedTaskCache {
+	/** Cumulative number of resolveTask calls, exposed only to verify reuse in tests. */
+	readonly resolutionCount: number;
+}
+
+interface TaskCacheState {
+	tasks: WeakMap<Task, ResolvedTask>;
+	under?: { settings: ResolveSettings; day: DayKey; dateCache: DailyNoteDateCache };
+	resolutionCount: number;
+}
+
+const taskCaches = new WeakMap<ResolvedTaskCache, TaskCacheState>();
+
+export function createResolvedTaskCache(): ResolvedTaskCache {
+	const state: TaskCacheState = { tasks: new WeakMap(), resolutionCount: 0 };
+	const cache = Object.freeze({
+		get resolutionCount() {
+			return state.resolutionCount;
+		},
+	});
+	taskCaches.set(cache, state);
+	return cache;
+}
+
+function taskCacheFor(settings: ResolveSettings, day: DayKey, env: QueryEnv): TaskCacheState | undefined {
+	if (!env.taskCache) return undefined;
+	if (!env.dateCache) throw new Error("taskCache requires a dateCache");
+	const cache = taskCaches.get(env.taskCache);
+	if (!cache) throw new Error("taskCache must be created by createResolvedTaskCache");
+	const under = cache.under;
+	if (
+		!under ||
+		under.day !== day ||
+		under.dateCache !== env.dateCache ||
+		!sameResolveSettings(under.settings, settings)
+	) {
+		cache.tasks = new WeakMap();
+		cache.under = { settings: pickResolveSettings(settings), day, dateCache: env.dateCache };
+	}
+	return cache;
 }
 
 /** Whether `parent` names the folder or note at `path`. "Daily/" names nothing, and "/" names nothing either. */
@@ -199,17 +302,29 @@ const byPathThenLine = (a: Task, b: Task) => (a.path < b.path ? -1 : a.path > b.
 /** Resolves the tasks for the settings and now, and returns the ones shown, sorted. */
 export function resolveTasks(tasks: readonly Task[], settings: ResolveSettings, env: QueryEnv): Resolved {
 	const { now, moment } = env;
+	const today = dayKey(now);
+	const cache = taskCacheFor(settings, today, env);
+	const dateCache = env.dateCache ?? createDailyNoteDateCache();
 	const dailyNoteFormat = settings.dailyNoteFormat ?? innerDateFormat;
 	const noteDates = new Map<string, DateValue | undefined>();
 	const noteDate = (path: string) => {
-		if (!noteDates.has(path)) noteDates.set(path, parseDailyNoteName(moment, path, dailyNoteFormat));
+		if (!noteDates.has(path)) noteDates.set(path, parseDailyNoteName(moment, path, dailyNoteFormat, dateCache));
 		return noteDates.get(path);
 	};
 
 	const resolved = [...tasks]
 		.sort(byPathThenLine)
 		.filter((task) => noteVisible(task.note, settings))
-		.map((task) => resolveTask(task, noteDate(task.path), settings, env));
+		.map((task) => {
+			const previous = cache?.tasks.get(task);
+			if (previous) return previous;
+			const resolved = resolveTask(task, noteDate(task.path), settings, env);
+			if (cache) {
+				cache.tasks.set(task, resolved);
+				cache.resolutionCount++;
+			}
+			return resolved;
+		});
 
 	const comparator = getSortComparator(settings.sort ?? "");
 	const sortable = (r: ResolvedTask): SortableTask => ({
@@ -225,7 +340,7 @@ export function resolveTasks(tasks: readonly Task[], settings: ResolveSettings, 
 		.sort((a, b) => comparator(a.by, b.by))
 		.map(({ r }) => r);
 
-	return Object.freeze({ today: dayKey(now), shown: Object.freeze(sorted.filter(shownBy(settings))) });
+	return Object.freeze({ today, shown: Object.freeze(sorted.filter(shownBy(settings))) });
 }
 
 function resolveTask(

@@ -4,6 +4,8 @@ import "./setup";
 
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
+import type { ReactElement } from "react";
+import type { TFile } from "obsidian";
 
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { TasksTimelineView, TIMELINE_VIEW } from "../src/views";
@@ -11,6 +13,9 @@ import type { FakeVault } from "./fakevault";
 import { deeplyFrozen, nothingFrozen } from "./frozen";
 import { FIXTURE_NAMES, readFixture, snapshotsIn, startPlugin, type StartedPlugin } from "./settings-fixtures";
 import { FakeElement, Modal, Notice } from "./stubs/obsidian";
+import { roots } from "./stubs/react-dom-client";
+import { WriterClock } from "./writer-harness";
+import type { TaskWriter, WriteEvent } from "../timeline/src/taskwriter";
 
 // How the plugin loads, saves and hands on its options today, for the data.json shapes users have, see
 // settings-fixtures.ts. Later steps replace this code and must keep what these tests pin, or change them on purpose.
@@ -124,6 +129,34 @@ test("options of the wrong type are kept as they are", async (t) => {
 	assert.equal(options.lastSeenVersion, null);
 	// The sort is looked up by its text, which a list of one key also has.
 	assert.deepEqual(options.sort, ["due-asc"]);
+});
+
+test("an invalid saved Style for new dates warns with its value and loads as emoji", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const warnings = t.mock.method(console, "warn", () => {});
+	for (const value of ["yaml", "", null, 42, false, ["emoji"], { style: "emoji" }]) {
+		warnings.mock.resetCalls();
+		const dataJson = JSON.stringify({ newDateStyle: value });
+		const { plugin } = await startPlugin(dataJson);
+		t.after(() => plugin.unload());
+		assert.equal(plugin.userOptions.newDateStyle, "emoji");
+		assert.deepEqual(
+			warnings.mock.calls.map((call) => call.arguments),
+			[
+				[
+					`Tasks Calendar Wrapper: data.json holds ${JSON.stringify(value)} for "newDateStyle", which should be "emoji" or "dataview". It is read as "emoji".`,
+				],
+			],
+		);
+		assert.equal(plugin.dataJson, dataJson, "loading does not rewrite data.json");
+	}
+	for (const value of ["emoji", "dataview"]) {
+		warnings.mock.resetCalls();
+		const { plugin } = await startPlugin(JSON.stringify({ newDateStyle: value }));
+		t.after(() => plugin.unload());
+		assert.equal(plugin.userOptions.newDateStyle, value);
+		assert.equal(warnings.mock.callCount(), 0);
+	}
 });
 
 for (const fixture of FIXTURE_NAMES) {
@@ -633,7 +666,7 @@ async function wait(t: TestContext, ms: number): Promise<void> {
 const handlerCount = (events: object, name: string) =>
 	(events as { handlerCount(name: string): number }).handlerCount(name);
 
-/** The handlers of the note events: the shared task index's four, and each open timeline's three. */
+/** The note handlers: the writer's four, the shared task index's four, and each open timeline's three. */
 function noteHandlers(vault: FakeVault): number {
 	const { vault: files, metadataCache } = vault.app;
 	return (
@@ -647,12 +680,12 @@ function noteHandlers(vault: FakeVault): number {
 test("the plugin's timelines share one task index, which stops watching when the plugin unloads", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const { vault, plugin } = await startPlugin(readFixture("quiet.json"), { layoutReady: true });
-	assert.equal(noteHandlers(vault), 0, "no timeline, no index");
+	assert.equal(noteHandlers(vault), 4, "the writer watches before the first timeline opens an index");
 	await openTimeline(vault);
 	await openTimeline(vault);
 	vault.resolve();
 	await wait(t, 10 * OPTIONS_DELAY_MS);
-	assert.equal(noteHandlers(vault), 4 + 3 + 3);
+	assert.equal(noteHandlers(vault), 4 + 4 + 3 + 3);
 	const from = vault.reads.length;
 	vault.write("Inbox.md", "- [ ] call the plumber again");
 	await wait(t, 10 * OPTIONS_DELAY_MS);
@@ -667,6 +700,107 @@ test("the plugin's timelines share one task index, which stops watching when the
 	release();
 	await settle();
 	assert.equal(noteHandlers(vault), 0);
+});
+
+test("changing Style for new dates reaches the plugin's writer without a reload", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const clock = new WriterClock();
+	const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+	Object.defineProperty(globalThis, "window", {
+		configurable: true,
+		value: { setTimeout: clock.setTimeout, clearTimeout: clock.clearTimeout },
+	});
+	const { vault, plugin } = await startPlugin(readFixture("quiet.json"));
+	t.after(() => {
+		plugin.unload();
+		if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow);
+		else Reflect.deleteProperty(globalThis, "window");
+	});
+	Object.assign(vault.app.vault, {
+		getFileByPath: (path: string) => vault.app.vault.getAbstractFileByPath(path),
+		async process(file: TFile, edit: (text: string) => string): Promise<string> {
+			const text = edit(await vault.app.vault.cachedRead(file));
+			vault.write(file.path, text, { indexed: false });
+			return text;
+		},
+	});
+	await openTimeline(vault);
+	const writer = (roots[roots.length - 1].rendered[0] as ReactElement<{ writer: TaskWriter }>).props.writer;
+	assert.ok(writer);
+	for (const [newDateStyle, expected] of [
+		["dataview", "- [ ] Pay  [due:: 2026-10-26]"],
+		["emoji", "- [ ] Pay 📅 2026-10-26"],
+	] as const) {
+		const path = `${newDateStyle}.md`;
+		vault.write(path, "- [ ] Pay");
+		await plugin.writeOptions({ newDateStyle });
+		assert.equal(
+			(
+				await writer.write(() => ({ path, line: 0, sourceLine: "- [ ] Pay" }), {
+					kind: "date",
+					field: "due",
+					day: "2026-10-26",
+				})
+			).kind,
+			"written",
+		);
+		const file = vault.app.vault.getAbstractFileByPath(path) as TFile;
+		assert.equal(await vault.app.vault.cachedRead(file), expected);
+	}
+});
+
+test("the plugin creates one writer and releases its holds on unload", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const clock = new WriterClock();
+	const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+	Object.defineProperty(globalThis, "window", {
+		configurable: true,
+		value: { setTimeout: clock.setTimeout, clearTimeout: clock.clearTimeout },
+	});
+	t.after(() => {
+		if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow);
+		else Reflect.deleteProperty(globalThis, "window");
+	});
+	const { vault, plugin } = await startPlugin(readFixture("quiet.json"));
+	t.after(() => plugin.unload());
+	Object.assign(vault.app.vault, {
+		getFileByPath: (path: string) => vault.app.vault.getAbstractFileByPath(path),
+		async process(file: TFile, edit: (text: string) => string): Promise<string> {
+			const text = edit(await vault.app.vault.cachedRead(file));
+			vault.write(file.path, text, { indexed: false });
+			return text;
+		},
+	});
+	await openTimeline(vault);
+	const first = (roots[roots.length - 1].rendered[0] as ReactElement<{ writer: TaskWriter }>).props.writer;
+	await openTimeline(vault);
+	const second = (roots[roots.length - 1].rendered[0] as ReactElement<{ writer: TaskWriter }>).props.writer;
+	assert.ok(first, "the plugin passes its writer through the view to the bridge");
+	assert.equal(first, second, "both timelines use the same writer");
+	const released: WriteEvent[] = [];
+	first.onWrite((event) => {
+		if (event.kind === "released") released.push(event);
+	});
+	const file = vault.app.vault.getAbstractFileByPath("Inbox.md") as TFile;
+	for (const day of ["2026-02-01", "2026-02-02"]) {
+		const sourceLine = await vault.app.vault.cachedRead(file);
+		const result = await first.write(() => ({ path: file.path, line: 0, sourceLine }), {
+			kind: "date",
+			field: "due",
+			day,
+		});
+		assert.equal(result.kind, "written");
+	}
+	assert.equal(first.releaseSeq(), 0, "both writes wait for metadata with their holds");
+	assert.ok(clock.count() > 0, "the writer uses the main window's timers");
+	plugin.unload();
+	await settle();
+	assert.equal(first.releaseSeq(), 2);
+	assert.equal(new Set(released.map((event) => event.id)).size, 2);
+	assert.equal(clock.count(), 0);
+	assert.equal(noteHandlers(vault), 0);
+	first.dispose();
+	assert.equal(first.releaseSeq(), 2, "unload releases each hold only once");
 });
 
 // Declared last, so it runs after every test that produces a snapshot.

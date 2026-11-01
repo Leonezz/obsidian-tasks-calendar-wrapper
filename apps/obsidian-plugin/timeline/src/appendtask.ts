@@ -1,19 +1,21 @@
 import type { TAbstractFile, Vault } from "obsidian";
 import { insertTaskUnderSection, parentFolder } from "@tasks-calendar-wrapper/core";
+import type { TaskWriter } from "./taskwriter";
 
 /** The part of the vault that adding a task uses. */
 export type TaskNoteVault = Pick<
 	Vault,
-	"getFileByPath" | "getFolderByPath" | "getMarkdownFiles" | "getAllFolders" | "process" | "create" | "createFolder"
+	"getFileByPath" | "getFolderByPath" | "getMarkdownFiles" | "getAllFolders" | "create" | "createFolder"
 >;
 
 /**
- * Adds a task line under the section of a note. An existing note is changed with Vault.process, which reads
- * and writes it in one step, so an edit made in between is not lost. A missing note, and its folder, is only
- * created once confirmCreate resolves to true. Resolves to whether the task was added.
+ * Adds a task line under the section of a note, through the writer for existing notes. A missing note, and
+ * its folder, is only created once confirmCreate resolves to true. Resolves to true only when added; a declined
+ * creation or a refused or failed write returns false. Note-creation failures reject for the caller to report.
  */
 export async function appendTaskToNote(
 	vault: TaskNoteVault,
+	writer: Pick<TaskWriter, "insert">,
 	path: string,
 	section: string,
 	taskLine: string,
@@ -21,8 +23,8 @@ export async function appendTaskToNote(
 ): Promise<boolean> {
 	const file = vault.getFileByPath(path) ?? findIgnoringCase(vault.getMarkdownFiles(), path);
 	if (file) {
-		await vault.process(file, (content) => insertTaskUnderSection(content, section, taskLine));
-		return true;
+		const result = await writer.insert(file.path, (content) => insertTaskUnderSection(content, section, taskLine));
+		return result.kind === "written";
 	}
 	if (!(await confirmCreate(path))) return false;
 	await vault.create(await pathInExistingFolder(vault, path), insertTaskUnderSection("", section, taskLine));

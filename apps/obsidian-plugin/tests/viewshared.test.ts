@@ -14,6 +14,7 @@ import { TasksTimelineView, timelineTaskIndex } from "../src/views";
 import type { SharedTaskIndex } from "../timeline/src/sharedindex";
 import { readTasks } from "../timeline/src/taskadapter";
 import { fakeVault, type FakeVault } from "./fakevault";
+import { unusedNotices, unusedWriter } from "./view-harness";
 import { ALL, notes, ourLines } from "./indexed-vault";
 
 // Several timelines on one vault share the plugin's task index: each still reloads, and tells of what it read, as it
@@ -55,7 +56,7 @@ async function openTimeline(
 	{ resolved = true, options = {} }: { resolved?: boolean; options?: Partial<UserOption> } = {},
 ) {
 	const leaf = vault.app.workspace.addLeaf();
-	const view = new TasksTimelineView(leaf as never, shared);
+	const view = new TasksTimelineView(leaf as never, shared, unusedWriter, unusedNotices);
 	const loading = view.onUpdateOptions({ ...defaultUserOptions, ...options });
 	leaf.view = view;
 	await (view as unknown as Opening).open();
@@ -339,7 +340,7 @@ test("a timeline made before the plugin unloads and opened after it shows each c
 	// Obsidian's setViewState makes the view, then waits for the leaf's old view to close, as a note that saves; the
 	// plugin can unload meanwhile, and its sweep finds no leaf of the timeline's type yet.
 	const leaf = vault.app.workspace.addLeaf();
-	const view = new TasksTimelineView(leaf as never, shared);
+	const view = new TasksTimelineView(leaf as never, shared, unusedWriter, unusedNotices);
 	const loading = view.onUpdateOptions({ ...defaultUserOptions });
 	shared.dispose();
 	leaf.view = view;
@@ -365,7 +366,7 @@ test("the last timeline closed while its reload runs keeps the index for one ope
 	await a.close();
 	assert.equal(watchers(vault), 2, "the index watches while A's reload runs");
 	const leaf = vault.app.workspace.addLeaf();
-	const c = new TasksTimelineView(leaf as never, shared);
+	const c = new TasksTimelineView(leaf as never, shared, unusedWriter, unusedNotices);
 	const loading = c.onUpdateOptions({ ...defaultUserOptions });
 	release();
 	await loading;

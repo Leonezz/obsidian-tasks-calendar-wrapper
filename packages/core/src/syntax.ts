@@ -97,13 +97,14 @@ export class TaskRegularExpressions {
 		"u",
 	);
 
-	public static readonly createdDateRegex = /➕ *(\d{4}-\d{2}-\d{2})/u;
+	// U+FE0F (emoji presentation selector) may follow the emoji, as Tasks 8.6.0 allows.
+	public static readonly createdDateRegex = /➕\uFE0F? *(\d{4}-\d{2}-\d{2})/u;
 
-	public static readonly startDateRegex = /🛫 *(\d{4}-\d{2}-\d{2})/u;
-	public static readonly scheduledDateRegex = /[⏳⌛] *(\d{4}-\d{2}-\d{2})/u;
-	public static readonly dueDateRegex = /[📅📆🗓] *(\d{4}-\d{2}-\d{2})/u;
-	public static readonly doneDateRegex = /✅ *(\d{4}-\d{2}-\d{2})/u;
-	public static readonly recurrenceRegex = /🔁 ?([a-zA-Z0-9, !]+)/iu;
+	public static readonly startDateRegex = /🛫\uFE0F? *(\d{4}-\d{2}-\d{2})/u;
+	public static readonly scheduledDateRegex = /(?:⏳|⌛)\uFE0F? *(\d{4}-\d{2}-\d{2})/u;
+	public static readonly dueDateRegex = /(?:📅|📆|🗓)\uFE0F? *(\d{4}-\d{2}-\d{2})/u;
+	public static readonly doneDateRegex = /✅\uFE0F? *(\d{4}-\d{2}-\d{2})/u;
+	public static readonly recurrenceRegex = /🔁\uFE0F? ?([a-zA-Z0-9, !]+)/iu;
 
 	// [[a::b]] => a, b
 	public static readonly keyValueRegex = /\[+([^\]]+)::([^\]]+)\]/g;

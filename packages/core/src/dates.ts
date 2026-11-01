@@ -123,34 +123,76 @@ function dailyNoteName(path: string, dailyNoteFormat: string): string {
 	return path.replace(/\.md$/i, "").split("/").slice(-segments).join("/");
 }
 
-/** The date of the daily note at a path, or undefined if the path does not match the daily note format. */
-export function parseDailyNoteName(m: MomentFactory, path: string, dailyNoteFormat: string): Moment | undefined {
-	const name = dailyNoteName(path, dailyNoteFormat);
-	return parseStrictDate(m, name, dailyNoteFormat) ?? dailyNoteDateByLookup(m, name, dailyNoteFormat);
+/** Daily note dates for one parse environment. Returned dates are copies, safe for the caller to change. */
+export interface DailyNoteDateCache {
+	dateOf(m: MomentFactory, path: string, dailyNoteFormat: string): Moment | undefined;
 }
 
-/** Daily note names of one year, keyed by locale, format and year. */
-const dailyNoteNameIndex = new Map<string, Map<string, Moment>>();
+/** Daily note names by format, then year. They belong to the cache's parse environment. */
+type DailyNoteNameIndex = Map<string, Map<number, Map<string, Moment>>>;
+
+/** Make a new cache when the moment locale or time zone changes, including an update to the same locale. */
+export function createDailyNoteDateCache(): DailyNoteDateCache {
+	const dates = new Map<string, Map<string, Moment | undefined>>();
+	const indexes: DailyNoteNameIndex = new Map();
+	return Object.freeze({
+		dateOf(m: MomentFactory, path: string, dailyNoteFormat: string) {
+			let byPath = dates.get(dailyNoteFormat);
+			if (!byPath) {
+				byPath = new Map();
+				dates.set(dailyNoteFormat, byPath);
+			}
+			if (!byPath.has(path)) {
+				const name = dailyNoteName(path, dailyNoteFormat);
+				byPath.set(
+					path,
+					parseStrictDate(m, name, dailyNoteFormat) ??
+						dailyNoteDateByLookup(m, name, dailyNoteFormat, indexes),
+				);
+			}
+			return byPath.get(path)?.clone();
+		},
+	});
+}
+
+/** The date of the daily note at a path, or undefined if the path does not match the daily note format. */
+export function parseDailyNoteName(
+	m: MomentFactory,
+	path: string,
+	dailyNoteFormat: string,
+	cache: DailyNoteDateCache = createDailyNoteDateCache(),
+): Moment | undefined {
+	return cache.dateOf(m, path, dailyNoteFormat);
+}
 
 /**
  * Some formats, such as YYYY/MMM/Wo/ddd, can be written by moment but not read back, because a
  * week number and a weekday do not parse into a date. For those, the names of every day in the
  * years mentioned in the name are generated once and looked up.
  */
-function dailyNoteDateByLookup(m: MomentFactory, name: string, dailyNoteFormat: string): Moment | undefined {
+function dailyNoteDateByLookup(
+	m: MomentFactory,
+	name: string,
+	dailyNoteFormat: string,
+	indexes: DailyNoteNameIndex,
+): Moment | undefined {
+	let byYear = indexes.get(dailyNoteFormat);
+	if (!byYear) {
+		byYear = new Map();
+		indexes.set(dailyNoteFormat, byYear);
+	}
 	const years = new Set((name.match(/\d{4}/g) ?? []).map(Number).filter((year) => year >= 1900 && year <= 2200));
 	for (const year of years) {
-		const key = `${m.locale()}|${dailyNoteFormat}|${year}`;
-		let index = dailyNoteNameIndex.get(key);
+		let index = byYear.get(year);
 		if (!index) {
 			index = new Map();
 			for (const day = m({ year, month: 0, date: 1 }); day.year() === year; day.add(1, "day")) {
 				index.set(day.format(dailyNoteFormat), day.clone());
 			}
-			dailyNoteNameIndex.set(key, index);
+			byYear.set(year, index);
 		}
 		const date = index.get(name);
-		if (date) return date.clone();
+		if (date) return date;
 	}
 	return undefined;
 }

@@ -1,11 +1,21 @@
 import isEqual from "underscore/modules/isEqual.js";
-import { copyJsonValue, deepFreeze, type ResolvedTask, type Task } from "@tasks-calendar-wrapper/core";
+import {
+	copyJsonValue,
+	deepFreeze,
+	type DayKey,
+	type Resolved,
+	type ResolvedTask,
+	type ResolveSettings,
+	type Task,
+} from "@tasks-calendar-wrapper/core";
+import type { ParseKey } from "../../utils/parsekey";
 import { defaultUserOptions, type UserOption } from "../useroptions";
 
 /**
  * What the old view's list held of a task it showed. Backbone compared that list to decide whether the timeline had
- * changed, and replacing it cleared the quick filter. It kept a task's forwarded and other dates in a Map, which
- * Backbone's comparison does not look into, and it had neither the note's tags nor what comes before the list marker.
+ * changed. The old view dropped the quick filter then; it now stays. It kept a task's forwarded and other dates in a
+ * Map, which Backbone's comparison does not look into, and it had neither the note's tags nor what comes before the
+ * list marker.
  */
 export function heldOf(resolved: ResolvedTask) {
 	const { task } = resolved;
@@ -38,13 +48,26 @@ export type HeldTask = ReturnType<typeof heldOf>;
 
 /**
  * What a timeline view holds: its options, the tasks read last, and what the old view's list held of the ones shown
- * then, see heldOf. The bridge renders again when the options are replaced, and when the list shown is, which also
- * drops the quick filter, as it did with the old view's Backbone models.
+ * then, see heldOf. The bridge renders again when the options are replaced, and when the list shown is, keeping the
+ * quick filter.
  */
 export interface TimelineState {
 	readonly options: UserOption;
 	readonly tasks: readonly Task[];
 	readonly shown: readonly HeldTask[];
+	/** A writer recheck must hand over newly read source lines even when heldOf stays equal. */
+	readonly taskRevision?: number;
+	/** Identifies the reload whose tasks the bridge will commit. */
+	readonly reloadId?: number;
+	/** Resolved from this state's tasks, under these conditions; not necessarily the tasks the bridge still holds. */
+	readonly resolved?: {
+		readonly shown: Resolved;
+		readonly under: {
+			readonly settings: ResolveSettings;
+			readonly day: DayKey;
+			readonly parseKey: ParseKey;
+		};
+	};
 }
 
 /** A frozen copy of the default options, and nothing read yet. */
@@ -69,10 +92,22 @@ export function withOptions(state: TimelineState, options: Readonly<UserOption>)
  * it holds the same, compared as Backbone compared it, with underscore's isEqual. Task files that are not set become
  * none, as the old view set them after every reload.
  */
-export function withReload(state: TimelineState, tasks: readonly Task[], shown: readonly HeldTask[]): TimelineState {
+export function withReload(
+	state: TimelineState,
+	tasks: readonly Task[],
+	shown: readonly HeldTask[],
+	resolved?: TimelineState["resolved"],
+	refreshTasks = false,
+	reloadId?: number,
+): TimelineState {
 	return {
+		...(reloadId !== undefined ? { reloadId } : {}),
 		options: state.options.taskFiles ? state.options : deepFreeze({ ...state.options, taskFiles: [] }),
 		tasks: Object.freeze([...tasks]),
+		...(state.taskRevision !== undefined || refreshTasks
+			? { taskRevision: (state.taskRevision ?? 0) + (refreshTasks ? 1 : 0) }
+			: {}),
 		shown: isEqual(state.shown, shown) ? state.shown : shown,
+		...(resolved ? { resolved: Object.freeze({ ...resolved, under: Object.freeze({ ...resolved.under }) }) } : {}),
 	};
 }

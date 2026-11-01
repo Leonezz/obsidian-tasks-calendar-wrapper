@@ -8,9 +8,15 @@
  * model works out what it reads, and the second ends it, when the model stores what it read. So queued updates are
  * followed too, in the order they run.
  */
-import { hasTaskItems, noteVisible, type NoteFilterSettings, type Task } from "@tasks-calendar-wrapper/core";
+import {
+	hasTaskItems,
+	noteVisible,
+	type NoteFilterSettings,
+	type ParseWarning,
+	type Task,
+} from "@tasks-calendar-wrapper/core";
 import { createReadReporter, type ReadReporter } from "../timeline/src/readreporter";
-import type { IndexUpdate, TaskIndexReader, WarnedNote } from "../timeline/src/taskindex";
+import type { HoldToken, IndexUpdate, TaskIndexReader, WarnedNote } from "../timeline/src/taskindex";
 import { sameParseKey, type ParseKey } from "../utils/parsekey";
 import type { FakeVault } from "./fakevault";
 
@@ -95,6 +101,31 @@ export interface Plan {
 	readonly sharedKeep: boolean;
 	/** Null for an update of a closed reader, which has no index of its own to compare with. */
 	readonly own: OwnPlan | null;
+	/** Entries before the update, including stale ones that a hold may take. */
+	readonly entries: ReadonlyMap<string, ModelEntry>;
+}
+
+/** The objects a successful read produced, with the WarnedNote learned when its update settles. */
+export interface ModelEntry {
+	readonly tasks: readonly Task[];
+	readonly warnings: readonly ParseWarning[];
+	warned?: WarnedNote | null;
+}
+
+/** A write's snapshot of an entry and its visibility; no metadata object is kept. */
+export interface Pin {
+	readonly entry: ModelEntry;
+	readonly tags: readonly string[];
+	readonly frontmatter: Readonly<Record<string, unknown>> | undefined;
+	readonly hasTaskItems: boolean;
+}
+
+/** Counting claims on one path, including a hold that had no entry to pin. */
+export interface HeldPin {
+	count: number;
+	readonly pin: Pin | undefined;
+	/** A deleted or renamed path must not regain its retired pin on a later release. */
+	retire: boolean;
 }
 
 /** An update asked for, as the model follows it. */
@@ -115,6 +146,12 @@ export interface Asked {
 	readonly markedDuring: Set<string>;
 	/** The readers that asked for a full read while it ran: nothing it stores is fresh for them. */
 	readonly requestedDuring: Set<number>;
+	/** Pins used at the start or acquired before the reads settled, even if released meanwhile. */
+	readonly pins: Map<string, Pin>;
+	/** Each successful parse's objects, before the commit chooses whether to keep them. */
+	readonly parsedEntries: Map<string, ModelEntry>;
+	/** Visible paths at commit, after a pin acquired during reads applies its captured filters. */
+	given: readonly string[];
 }
 
 export interface World {
@@ -123,6 +160,14 @@ export interface World {
 	readonly readers: ReaderModel[];
 	/** For each stored note, the readers it is fresh for. */
 	stored: Map<string, Set<number>>;
+	/** The committed map still holds a marked entry until an update replaces it. */
+	committedPaths: Set<string>;
+	entries: Map<string, ModelEntry>;
+	readonly pins: Map<string, HeldPin>;
+	readonly retired: Map<string, Pin>;
+	readonly tokens: { readonly path: string; readonly token: HoldToken }[];
+	/** Last releases still waiting for a successful read and store. */
+	readonly released: Set<string>;
 	committedKey: ParseKey | null;
 	/** Asked for and not started, in order. */
 	readonly waiting: Asked[];
@@ -157,10 +202,17 @@ export const filterKey = (s: NoteFilterSettings) =>
  * The notes the filters keep now that may have tasks: a task item, or no metadata yet. Worked out without listing
  * through the vault; null when the filters throw.
  */
-export function visibleNow(vault: FakeVault, filters: NoteFilterSettings): string[] | null {
+export function visibleNow(
+	vault: FakeVault,
+	filters: NoteFilterSettings,
+	pins?: ReadonlyMap<string, HeldPin>,
+): string[] | null {
 	const notes = vault.filePaths().filter((path) => path.endsWith(".md"));
 	try {
 		return notes.filter((path) => {
+			const pin = pins?.get(path)?.pin;
+			if (pin)
+				return noteVisible({ path, tags: pin.tags, frontmatter: pin.frontmatter }, filters) && pin.hasTaskItems;
 			const cache = vault.app.metadataCache.getFileCache(vault.app.vault.getAbstractFileByPath(path));
 			const note = { path, tags: cache?.tags?.map((t) => t.tag) ?? [], frontmatter: cache?.frontmatter };
 			return noteVisible(note, filters) && (cache === null || hasTaskItems(cache));
@@ -222,12 +274,18 @@ export function fullReadAsked(world: World, reader: ReaderModel): void {
 /** The update starts, at its first probe of the key: what it reads, and what an index of its reader's own would. */
 export function started(world: World, asked: Asked, key: ParseKey): void {
 	const { reader } = asked;
-	const visible = world.brokenNext ? null : visibleNow(world.vault, asked.filters);
+	const visible = world.brokenNext ? null : visibleNow(world.vault, asked.filters, world.pins);
 	world.brokenNext = false;
 	const keyHeld = world.committedKey !== null && sameParseKey(world.committedKey, key);
 	const everything = !keyHeld || reader.committed !== filterKey(asked.filters);
 	const fresh = (path: string) => world.stored.get(path)?.has(reader.id) ?? false;
-	const due = (visible ?? []).filter((path) => everything || !reader.held.has(path) || !fresh(path));
+	for (const path of world.vault.filePaths().filter((path) => path.endsWith(".md"))) {
+		const pin = world.pins.get(path)?.pin;
+		if (pin) asked.pins.set(path, pin);
+	}
+	const due = (visible ?? []).filter(
+		(path) => !asked.pins.has(path) && (everything || !reader.held.has(path) || !fresh(path)),
+	);
 	const reading = new Set(due);
 	const byOther = (path: string) => (world.producer.get(path) ?? reader.id) !== reader.id;
 	asked.plan = {
@@ -238,7 +296,8 @@ export function started(world: World, asked: Asked, key: ParseKey): void {
 		keyHeld,
 		due,
 		sharedKeep: (visible ?? []).some((path) => !reading.has(path) && byOther(path)),
-		own: ownStarted(reader, asked.filters, visible, key, world.committedKey),
+		own: ownStarted(reader, asked.filters, visible, key, world.committedKey, asked.pins),
+		entries: new Map(world.entries),
 	};
 	// An update that rejects while it lists the notes reads nothing and does not probe the key again.
 	world.current = visible === null ? null : asked;
@@ -252,13 +311,18 @@ function ownStarted(
 	visible: readonly string[] | null,
 	key: ParseKey,
 	sharedKey: ParseKey | null,
+	pins: ReadonlyMap<string, Pin>,
 ): OwnPlan | null {
 	const { own } = reader;
 	if (!reader.open) return null;
 	const everything =
 		own.rereadAll || own.filters !== filterKey(filters) || own.key === null || !sameParseKey(own.key, key);
 	const plan = {
-		due: new Set((visible ?? []).filter((path) => everything || own.marks.has(path) || !own.stored.has(path))),
+		due: new Set(
+			(visible ?? []).filter(
+				(path) => !pins.has(path) && (everything || own.marks.has(path) || !own.stored.has(path)),
+			),
+		),
 		everything,
 		keyFlipped: !everything && (own.keyDropSeen || sharedKey === null || !sameParseKey(sharedKey, key)),
 		gone: own.goneSilently,
@@ -280,10 +344,14 @@ function ownEnded(asked: Asked, plan: Plan, endKey: ParseKey): void {
 	const { own } = asked.reader;
 	const ownPlan = plan.own;
 	if (ownPlan === null) return;
-	const visible = plan.visible ?? [];
-	const failedByOwn = (path: string) => asked.failed.has(path) && ownPlan.due.has(path);
-	const stored = new Set(visible.filter((path) => !failedByOwn(path) && !own.marks.has(path)));
-	own.failedUnread = new Set(visible.filter((path) => asked.failed.has(path) && !ownPlan.due.has(path)));
+	const visible = asked.given;
+	const failedByOwn = (path: string) => asked.failed.has(path) && !asked.pins.has(path) && ownPlan.due.has(path);
+	const stored = new Set(
+		visible.filter((path) => !asked.pins.has(path) && !failedByOwn(path) && !own.marks.has(path)),
+	);
+	own.failedUnread = new Set(
+		visible.filter((path) => asked.failed.has(path) && !asked.pins.has(path) && !ownPlan.due.has(path)),
+	);
 	own.stored = stored;
 	own.filters = filterKey(asked.filters);
 	own.key = sameParseKey(plan.key, endKey) ? plan.key : null;
@@ -295,12 +363,19 @@ function ownEnded(asked: Asked, plan: Plan, endKey: ParseKey): void {
 export function ended(world: World, asked: Asked, endKey: ParseKey): void {
 	const plan = asked.plan;
 	if (plan === null) throw new Error(`${asked.at}: an update ended that never started`);
+	const visibleAtCommit = new Set(plan.visible ?? []);
+	for (const [path, pin] of asked.pins) {
+		if (pin.hasTaskItems && noteVisible({ path, tags: pin.tags, frontmatter: pin.frontmatter }, asked.filters))
+			visibleAtCommit.add(path);
+		else visibleAtCommit.delete(path);
+	}
+	asked.given = [...visibleAtCommit].sort();
 	ownEnded(asked, plan, endKey);
 	if (!plan.keyHeld) for (const other of world.readers) if (other !== asked.reader) other.own.keyDropSeen = true;
 	asked.ended = true;
 	world.current = null;
 	const { reader } = asked;
-	const visible = new Set(plan.visible ?? []);
+	const visible = new Set(asked.given);
 	const due = new Set(plan.due);
 	const others = openReaders(world).filter((other) => other !== reader);
 	const heldByOthers = (path: string) => others.some((other) => other.held.has(path));
@@ -308,6 +383,7 @@ export function ended(world: World, asked: Asked, endKey: ParseKey): void {
 	const all = world.readers.map((other) => other.id).filter((id) => !asked.requestedDuring.has(id));
 	const next = new Map<string, Set<number>>();
 	for (const path of visible) {
+		if (asked.pins.has(path)) continue;
 		const old = world.stored.get(path);
 		if (!due.has(path)) {
 			if (old && keptFor(path)) next.set(path, old);
@@ -319,18 +395,32 @@ export function ended(world: World, asked: Asked, endKey: ParseKey): void {
 			world.count("failure kept for another reader");
 		}
 	}
-	// The notes it does not show that another open reader holds stay while they are listed, under the same key.
+	// Fresh entries another reader holds stay while listed, including an original entry replaced by a pin here.
 	if (plan.keyHeld)
 		for (const [path, fresh] of world.stored)
-			if (!visible.has(path) && heldByOthers(path)) {
+			if (!next.has(path) && heldByOthers(path)) {
 				if (plan.listed.has(path)) next.set(path, fresh);
 				else world.count("not listed, not kept");
 			}
 	for (const path of world.silentlyRemoved) if (!plan.listed.has(path)) world.silentlyRemoved.delete(path);
 	if (reader.open) {
-		reader.held = new Set([...visible].filter((path) => !asked.failed.has(path)));
+		reader.held = new Set([...visible].filter((path) => asked.pins.has(path) || !asked.failed.has(path)));
 		reader.committed = filterKey(asked.filters);
 	}
 	world.stored = next;
+	world.committedPaths = new Set(next.keys());
+	world.entries = new Map(
+		[...next.keys()].map((path) => [
+			path,
+			(asked.pins.has(path)
+				? plan.entries.get(path)
+				: (asked.parsedEntries.get(path) ?? plan.entries.get(path))) as ModelEntry,
+		]),
+	);
+	for (const path of next.keys())
+		if (due.has(path) && !asked.pins.has(path) && !asked.failed.has(path)) {
+			world.retired.delete(path);
+			if (world.released.delete(path)) world.count("released then read");
+		}
 	world.committedKey = sameParseKey(plan.key, endKey) ? plan.key : null;
 }

@@ -30,6 +30,35 @@ export function counts(samples) {
 	return { median: median(samples), min: Math.min(...samples), max: Math.max(...samples), samples };
 }
 
+/** Checks zero-based task lines; splitting only at LF also preserves trailing spaces, CR and the final newline. */
+export function assertToggleChanges(original, actual, lines) {
+	const before = original.split("\n");
+	const after = actual.split("\n");
+	const ticked = new Set(lines);
+	for (const line of ticked) {
+		if (!Number.isInteger(line) || line < 0 || line >= before.length)
+			throw new Error(`toggle: invalid task line ${line + 1}`);
+	}
+	for (let line = 0; line < Math.max(before.length, after.length); line++) {
+		if (ticked.has(line)) {
+			if (!/^\s*[-*+] \[ \] /.test(before[line]) || !/^\s*[-*+] \[x\] /.test(after[line] ?? ""))
+				throw new Error(`toggle: line ${line + 1} was not ticked from [ ] to [x]`);
+		} else if (before[line] !== after[line]) {
+			throw new Error(`toggle: line ${line + 1} changed although it was not ticked`);
+		}
+	}
+}
+
+/** Restoration must read back the original bytes, including the final newline; a missing note fails too. */
+export function assertToggleRestored(path, original, actual) {
+	if (actual !== original) throw new Error(`toggle: could not restore ${path} to its original bytes`);
+}
+
+/** A null overlay time records a click with no overlay within the 200 ms guard check. */
+export function countIgnoredClicks(log) {
+	return log.filter((click) => click.overlayMs === null).length;
+}
+
 /** The long tasks summed up: the time Obsidian did not respond, and the longest freeze. */
 export function sumTasks(tasks) {
 	return {
@@ -76,6 +105,7 @@ export function splitLoad(raw, burstGapMs) {
 /**
  * The timings shown but not judged in the vault at a scale:
  * - indexedMs: how long Obsidian takes to read a saved note, which is not up to the plugin;
+ * - overlayPaintedMs: the toggle overlay's first painted frame, recorded only for reporting;
  * - laterBlockedMs in the 40,000-task vault: the work after a load's first render. The plugin pushes its options to
  *   the view 200 ms after it loads; whether that lands before the first render is painted or after it is a race, and
  *   after it the timeline reloads and renders again. With the noise of a busy machine on top, this moved between
@@ -84,7 +114,9 @@ export function splitLoad(raw, burstGapMs) {
  *   4,000-task vault laterBlockedMs stayed within 230-245 ms over 20 loads, and is judged.
  */
 export function notJudgedAt(scale) {
-	return new Set(scale === 1 ? ["indexedMs"] : ["indexedMs", "laterBlockedMs"]);
+	return new Set(
+		scale === 1 ? ["indexedMs", "overlayPaintedMs"] : ["indexedMs", "overlayPaintedMs", "laterBlockedMs"],
+	);
 }
 
 const isTiming = (value) => typeof value === "object" && value !== null && "minMs" in value;

@@ -1,14 +1,15 @@
 import * as React from "react";
 import * as Icons from "./asserts/icons";
+import type { PendingWrite } from "../pendingwrites";
 
 const defaultStripWithIconProps = {
 	status: "task",
 	marker: " ",
 	useBuiltinStyle: true,
-	onToggle: () => {},
+	onToggle: (evt: React.MouseEvent) => {},
 };
 
-type StripWithIconProps = Readonly<typeof defaultStripWithIconProps>;
+type StripWithIconProps = Readonly<typeof defaultStripWithIconProps> & { readonly predicted?: PendingWrite };
 
 /**
  * The checkbox is controlled by the task's marker. With only an initial value, a checkbox that was
@@ -18,25 +19,29 @@ type StripWithIconProps = Readonly<typeof defaultStripWithIconProps>;
  */
 export class StripWithIcon extends React.Component<StripWithIconProps> {
 	render(): React.ReactNode {
+		const marker = this.props.predicted?.marker ?? this.props.marker;
+		const status = this.props.predicted?.status ?? this.props.status;
 		return (
 			<div className="timeline">
 				<input
 					type="checkbox"
 					className={this.props.useBuiltinStyle ? "icon" : ""}
-					data-task={this.props.marker}
-					checked={this.props.marker !== " "}
-					onChange={() => {
-						if (!this.props.useBuiltinStyle) this.props.onToggle();
+					data-task={marker}
+					checked={marker !== " "}
+					onChange={() => {}}
+					onClick={(evt) => {
+						evt.stopPropagation();
+						if (!this.props.useBuiltinStyle) this.props.onToggle(evt);
 					}}
 				></input>
 				{this.props.useBuiltinStyle && (
 					<label
 						className="icon"
-						onClick={() => {
-							if (this.props.useBuiltinStyle) this.props.onToggle();
+						onClick={(evt) => {
+							if (this.props.useBuiltinStyle) this.props.onToggle(evt);
 						}}
 					>
-						{Icons.getTaskStatusIcon(this.props.status)}
+						{Icons.getTaskStatusIcon(status)}
 					</label>
 				)}
 			</div>

@@ -1,4 +1,4 @@
-import type { PropertyRules } from "@tasks-calendar-wrapper/core";
+import type { NewDateStyle, PropertyRules } from "@tasks-calendar-wrapper/core";
 import { defaultSortKey } from "@tasks-calendar-wrapper/core";
 
 /*
@@ -176,6 +176,14 @@ export const defaultUserOptions = {
 	 * Display the badge that opens the task in the Tasks plugin dialog or not.
 	 */
 	useModifyBadge: true as boolean,
+	/**
+	 * Open the note at the task instead of changing it from the timeline.
+	 */
+	openNoteInsteadOfInPlace: false as boolean,
+	/**
+	 * The style used when adding a date to a task with no task fields yet.
+	 */
+	newDateStyle: "emoji" as NewDateStyle,
 	/**
 	 * USE INFO END
 	 */

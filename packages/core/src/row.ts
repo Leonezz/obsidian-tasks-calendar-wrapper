@@ -43,6 +43,7 @@ export interface RowTag {
 export interface TaskRowModel {
 	readonly display: string;
 	readonly path: string;
+	readonly sourceLine: string;
 	readonly position: TextRange;
 	readonly line: number;
 	readonly col: number;
@@ -57,6 +58,41 @@ export interface TaskRowModel {
 	readonly useBuiltinStyle: boolean;
 	readonly badges: readonly Badge[];
 	readonly tags: readonly RowTag[];
+}
+
+/** A re-read note can give an equal row with new objects for its position, badges and tags. */
+export function sameRowModel(left: TaskRowModel, right: TaskRowModel): boolean {
+	return (
+		left === right ||
+		(left.display === right.display &&
+			left.path === right.path &&
+			left.sourceLine === right.sourceLine &&
+			left.line === right.line &&
+			left.col === right.col &&
+			left.link === right.link &&
+			left.isDailyNote === right.isDailyNote &&
+			left.color === right.color &&
+			left.fileTitle === right.fileTitle &&
+			left.subPath === right.subPath &&
+			left.statusMarker === right.statusMarker &&
+			left.status === right.status &&
+			left.useBuiltinStyle === right.useBuiltinStyle &&
+			left.position.start.line === right.position.start.line &&
+			left.position.start.col === right.position.start.col &&
+			left.position.start.offset === right.position.start.offset &&
+			left.position.end.line === right.position.end.line &&
+			left.position.end.col === right.position.end.col &&
+			left.position.end.offset === right.position.end.offset &&
+			left.badges.length === right.badges.length &&
+			left.badges.every(
+				(badge, i) =>
+					badge.kind === right.badges[i].kind &&
+					badge.ariaLabel === right.badges[i].ariaLabel &&
+					badge.label === right.badges[i].label,
+			) &&
+			left.tags.length === right.tags.length &&
+			left.tags.every((tag, i) => tag.tag === right.tags[i].tag && tag.color === right.tags[i].color))
+	);
 }
 
 export function taskRowModel(resolved: ResolvedTask, options: RowOptions, env: RowEnv): TaskRowModel {
@@ -103,6 +139,7 @@ export function taskRowModel(resolved: ResolvedTask, options: RowOptions, env: R
 	return Object.freeze({
 		display: resolved.visual || task.text,
 		path: task.path,
+		sourceLine: task.sourceLine,
 		position: task.position,
 		line: task.line,
 		col: task.position.end.col,

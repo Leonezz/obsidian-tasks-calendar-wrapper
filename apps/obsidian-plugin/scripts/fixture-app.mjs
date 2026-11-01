@@ -10,6 +10,7 @@ import {
 	mkdirSync,
 	readdirSync,
 	readFileSync,
+	realpathSync,
 	rmSync,
 	statSync,
 	writeFileSync,
@@ -135,6 +136,20 @@ export function markdownFiles(dir, prefix = "") {
 			if (statSync(full).isDirectory()) return markdownFiles(full, relative);
 			return name.endsWith(".md") ? [relative] : [];
 		});
+}
+
+/**
+ * The vaults a folder is in or is: the folder and each folder above it, up to the root, that has a .obsidian folder.
+ * Symbolic links are resolved, from the nearest folder that exists.
+ */
+export function vaultsAround(dir) {
+	let existing = dir;
+	while (!existsSync(existing)) existing = path.dirname(existing);
+	const vaults = [];
+	for (let current = realpathSync(existing); ; current = path.dirname(current)) {
+		if (existsSync(path.join(current, ".obsidian"))) vaults.push(current);
+		if (path.dirname(current) === current) return vaults;
+	}
 }
 
 /**

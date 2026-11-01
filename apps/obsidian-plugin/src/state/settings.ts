@@ -7,6 +7,7 @@ import {
 	migrated,
 	migrateSortOption,
 	type Migration,
+	type NewDateStyle,
 	settingIssues,
 	type SettingType,
 	type Store,
@@ -53,7 +54,8 @@ export const MIGRATIONS: readonly Migration<UserOption>[] = Object.freeze([
 
 /**
  * The options read from data.json: the saved ones over the defaults, in the defaults' order and then the ones this
- * version does not know, in the file's order, after the migrations. settingsVersion is not an option and is left out.
+ * version does not know, in the file's order, after normalization and migrations. Unsupported newDateStyle values
+ * use the default; settingWarnings reports them. settingsVersion is not an option and is left out.
  * Nothing is frozen but the copy: neither the defaults nor what was read.
  */
 export function loadedSettings(saved: Partial<UserOption> | null | undefined): Settings {
@@ -61,7 +63,11 @@ export function loadedSettings(saved: Partial<UserOption> | null | undefined): S
 	const options = Object.fromEntries(
 		Object.entries(merged).filter(([key]) => key !== "settingsVersion"),
 	) as UserOption;
-	return deepFreeze(migrated(options, MIGRATIONS));
+	const normalized = {
+		...options,
+		newDateStyle: isNewDateStyle(options.newDateStyle) ? options.newDateStyle : defaultUserOptions.newDateStyle,
+	};
+	return deepFreeze(migrated(normalized, MIGRATIONS));
 }
 
 /** The version data.json holds: its settingsVersion when that is a finite number, else 0. */
@@ -71,6 +77,8 @@ export function storedVersionOf(saved: unknown): number {
 }
 
 const isVersion = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+
+const isNewDateStyle = (value: unknown): value is NewDateStyle => value === "emoji" || value === "dataview";
 
 /** The state read from data.json, frozen. */
 export function loadedState(saved: Partial<UserOption> | null | undefined): SettingsState {
@@ -112,7 +120,8 @@ const EXPECTED: Readonly<Record<SettingType, string>> = {
 
 /**
  * One warning for each option of the wrong type in the loaded options, in the schema's order, and for a settingsVersion
- * that is not a finite number. The values are used as they are; the warnings only say so in the developer console.
+ * that is not a finite number. Other than newDateStyle, whose unsupported values use the default, options of the
+ * wrong type are used as they are; the warnings say so in the developer console.
  */
 export function settingWarnings(saved: unknown, settings: Settings): readonly string[] {
 	const version = isRecord(saved) && "settingsVersion" in saved ? saved.settingsVersion : undefined;
@@ -128,7 +137,13 @@ export function settingWarnings(saved: unknown, settings: Settings): readonly st
 		({ key, expected, found }) =>
 			`Tasks Calendar Wrapper: data.json holds ${found} for "${key}", which should be ${EXPECTED[expected]}. It is used as it is.`,
 	);
-	return Object.freeze([...versionWarnings, ...optionWarnings]);
+	const styleWarnings =
+		isRecord(saved) && "newDateStyle" in saved && !isNewDateStyle(saved.newDateStyle)
+			? [
+					`Tasks Calendar Wrapper: data.json holds ${typeof saved.newDateStyle === "number" ? String(saved.newDateStyle) : (JSON.stringify(saved.newDateStyle) ?? String(saved.newDateStyle))} for "newDateStyle", which should be "emoji" or "dataview". It is read as "emoji".`,
+				]
+			: [];
+	return Object.freeze([...versionWarnings, ...optionWarnings, ...styleWarnings]);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

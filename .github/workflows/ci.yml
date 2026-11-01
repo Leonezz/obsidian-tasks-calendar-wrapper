@@ -41,6 +41,11 @@ jobs:
       - name: API floor
         run: pnpm run api-floor
 
+      # Keep private App APIs in tasksplugin.ts with no exceptions and at most one @ts-expect-error comment,
+      # see apps/obsidian-plugin/scripts/private-api-check.mjs.
+      - name: Private API
+        run: pnpm run private-api
+
       - name: Test
         run: pnpm test
 

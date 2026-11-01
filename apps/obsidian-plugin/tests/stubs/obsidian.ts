@@ -6,6 +6,69 @@ import moment from "moment";
 
 export { moment };
 
+/** Tests can change the current Obsidian device flags and restore them afterwards. */
+export const Platform = { isMobile: false, isDesktop: true, isPhone: false, isTablet: false };
+
+/** A public menu item, with its labels and click handler available to tests. */
+export class MenuItem {
+	title = "";
+	section = "";
+	icon = "";
+	private clickHandler?: (evt: MouseEvent | KeyboardEvent) => unknown;
+
+	setTitle(title: string): this {
+		this.title = title;
+		return this;
+	}
+
+	setSection(section: string): this {
+		this.section = section;
+		return this;
+	}
+
+	setIcon(icon: string): this {
+		this.icon = icon;
+		return this;
+	}
+
+	onClick(handler: (evt: MouseEvent | KeyboardEvent) => unknown): this {
+		this.clickHandler = handler;
+		return this;
+	}
+
+	/** Not in Obsidian: selects the item and returns its handler's result. */
+	click(evt = {} as MouseEvent): unknown {
+		return this.clickHandler?.(evt);
+	}
+}
+
+/** Records the public menu items and the event that chooses the window and position. */
+export class Menu {
+	static instances: Menu[] = [];
+	readonly items: MenuItem[] = [];
+	event?: MouseEvent;
+	hidden = false;
+
+	constructor() {
+		Menu.instances.push(this);
+	}
+
+	addItem(callback: (item: MenuItem) => unknown): this {
+		const item = new MenuItem();
+		callback(item);
+		this.items.push(item);
+		return this;
+	}
+
+	showAtMouseEvent(evt: MouseEvent): void {
+		this.event = evt;
+	}
+
+	hide(): void {
+		this.hidden = true;
+	}
+}
+
 /** As in Obsidian: with resetTimer, every call starts the wait again, so only the last call of a burst runs. */
 export function debounce<T extends unknown[]>(cb: (...args: T) => unknown, timeout = 0, resetTimer = false) {
 	let timer: ReturnType<typeof setTimeout> | undefined;
@@ -46,13 +109,65 @@ export function requireApiVersion(version: string): boolean {
 /** Obsidian shows a toast. The stub keeps each message, so a test can check what the user was told. */
 export class Notice {
 	static shown: string[] = [];
+	static instances: Notice[] = [];
+	readonly setMessages: (string | FakeElement)[] = [];
+	readonly noticeEl = new FakeElement();
+	hidden = false;
 
 	constructor(
-		public message: string,
+		public message: string | FakeElement,
 		public duration?: number,
 	) {
-		Notice.shown.push(message);
+		Notice.shown.push(typeof message === "string" ? message : message.textContent);
+		Notice.instances.push(this);
 	}
+
+	setMessage(message: string | FakeElement): this {
+		this.message = message;
+		this.setMessages.push(message);
+		return this;
+	}
+
+	hide(): void {
+		this.hidden = true;
+		this.noticeEl.isConnected = false;
+	}
+}
+
+/** As in Obsidian: modifier keys and the middle button choose a new tab, split or window. */
+export class Keymap {
+	static isModEvent(
+		evt?: { metaKey?: boolean; ctrlKey?: boolean; altKey?: boolean; shiftKey?: boolean; button?: number } | null,
+	): "tab" | "split" | "window" | boolean {
+		if (!evt) return false;
+		if (evt.metaKey || evt.ctrlKey) {
+			if (evt.altKey) return evt.shiftKey ? "window" : "split";
+			return "tab";
+		}
+		return evt.button === 1 ? "tab" : false;
+	}
+}
+
+/** As in Obsidian: a markdown view has an editor. */
+export class MarkdownView {
+	file: { path: string } | null = null;
+	editor!: {
+		setCursor(position: { line: number; ch: number }): void;
+		getLine?(line: number): string;
+		getValue?(): string;
+		lineCount?(): number;
+		transaction?(transaction: { changes?: unknown }, origin?: string): void;
+	};
+
+	getMode(): "source" | "preview" {
+		return "preview";
+	}
+
+	getViewData(): string {
+		return "";
+	}
+
+	async save(): Promise<void> {}
 }
 
 /** What Obsidian's createEl and createDiv take: a class, or the class, the text and the attributes. */
@@ -65,10 +180,14 @@ export type FakeElementInfo =
  */
 export class FakeElement {
 	text = "";
+	value = "";
+	readOnly = false;
+	isConnected = true;
 	cls: string;
 	children: (FakeElement | ButtonComponent)[] = [];
 	focused = false;
 	readonly attr: Readonly<Record<string, string | number | boolean | null>>;
+	private readonly listeners = new Map<string, ((event: Event) => unknown)[]>();
 
 	constructor(
 		readonly tag = "div",
@@ -82,6 +201,30 @@ export class FakeElement {
 
 	get firstChild(): FakeElement | ButtonComponent | null {
 		return this.children[0] ?? null;
+	}
+
+	get textContent(): string {
+		return (
+			this.text +
+			this.children.map((child) => (child instanceof FakeElement ? child.textContent : child.buttonText)).join("")
+		);
+	}
+
+	set textContent(text: string) {
+		this.setText(text);
+	}
+
+	addEventListener(name: string, listener: (event: Event) => unknown): void {
+		this.listeners.set(name, [...(this.listeners.get(name) ?? []), listener]);
+	}
+
+	dispatchEvent(event: Event): boolean {
+		for (const listener of this.listeners.get(event.type) ?? []) listener(event);
+		return !event.defaultPrevented;
+	}
+
+	click(): void {
+		this.dispatchEvent(new Event("click"));
 	}
 
 	focus(): void {
@@ -126,6 +269,8 @@ export class ButtonComponent {
 	buttonText = "";
 	icon = "";
 	tooltip = "";
+	cta = false;
+	disabled = false;
 	private clickHandler?: () => unknown;
 
 	constructor(containerEl: FakeElement) {
@@ -138,6 +283,12 @@ export class ButtonComponent {
 	}
 
 	setCta(): this {
+		this.cta = true;
+		return this;
+	}
+
+	setDisabled(disabled: boolean): this {
+		this.disabled = disabled;
 		return this;
 	}
 
@@ -158,7 +309,7 @@ export class ButtonComponent {
 
 	/** Not in Obsidian: presses the button. Returns what the handler returns. */
 	click(): unknown {
-		return this.clickHandler?.();
+		return this.disabled ? undefined : this.clickHandler?.();
 	}
 }
 

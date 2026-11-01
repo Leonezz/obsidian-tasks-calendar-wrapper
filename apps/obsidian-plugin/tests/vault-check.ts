@@ -17,10 +17,16 @@ import assert from "node:assert/strict";
 import moment from "moment";
 import { Notice } from "obsidian";
 
-import { parseNote, resolveTasks, type Task } from "@tasks-calendar-wrapper/core";
+import { copyJsonValue, hasTaskItems, parseNote, resolveTasks, type Task } from "@tasks-calendar-wrapper/core";
 import { readTasks, reportNoteReads, warningLine } from "../timeline/src/taskadapter";
 import { contentIdOf } from "../utils/contentid";
-import { createTaskIndex, watchNotes, type IndexUpdate, type TaskIndex } from "../timeline/src/taskindex";
+import {
+	createTaskIndex,
+	watchNotes,
+	type IndexUpdate,
+	type TaskIndex,
+	type NoteSource,
+} from "../timeline/src/taskindex";
 import { parseKeyOf } from "../utils/parsekey";
 import { fakeVault } from "./fakevault";
 import {
@@ -36,6 +42,7 @@ import {
 	type Plan,
 	type ReaderModel,
 	type World,
+	type Pin,
 } from "./vault-model";
 import {
 	applyVaultAction,
@@ -65,7 +72,7 @@ interface Setup {
 	readonly world: World;
 	readonly index: TaskIndex;
 	/** The vault's app without the hooks, so readTasks's reads and parses are not taken for the index's. */
-	readonly reference: unknown;
+	readonly reference: NoteSource;
 	readonly stage: Stage;
 	readonly run: Run;
 }
@@ -121,6 +128,9 @@ function ask(s: Setup, reader: ReaderModel, at: string): Pending {
 		failed: new Set(),
 		markedDuring: new Set(),
 		requestedDuring: new Set(),
+		pins: new Map(),
+		parsedEntries: new Map(),
+		given: [],
 	};
 	world.waiting.push(asked);
 	const promise = reader.reader.update(reader.filters);
@@ -179,7 +189,18 @@ function checkAgainstOwn(asked: Asked, plan: Plan, run: Run): void {
 async function checkAtRest(s: Setup, asked: Asked, indexed: Captured<IndexUpdate>): Promise<void> {
 	const { at, reader } = asked;
 	const { run } = s;
-	const reference = await captured(run.lines, () => readTasks(s.reference as never, asked.filters, moment));
+	// The reference reads the unpinned notes normally; the model supplies the frozen entries of every pin.
+	const referenceApp = {
+		...s.reference,
+		vault: {
+			...s.reference.vault,
+			getMarkdownFiles: () =>
+				s.reference.vault
+					.getMarkdownFiles()
+					.filter((file) => indexed.error !== undefined || !asked.pins.has(file.path)),
+		},
+	};
+	const reference = await captured(run.lines, () => readTasks(referenceApp as never, asked.filters, moment));
 	if (reference.error !== undefined) {
 		assert.ok(indexed.error !== undefined, `${at}: readTasks threw ${reference.error}, the index did not`);
 		assert.equal(String(indexed.error), String(reference.error), `${at}: the same error`);
@@ -188,10 +209,20 @@ async function checkAtRest(s: Setup, asked: Asked, indexed: Captured<IndexUpdate
 	}
 	assert.equal(indexed.error, undefined, `${at}: the index threw ${indexed.error}, readTasks did not`);
 	const result = indexed.value as IndexUpdate;
-	assert.deepStrictEqual([...result.tasks], reference.value, `${at}: the tasks of reader ${reader.id}`);
-	const told = await captured(run.lines, () => reportNoteReads(result.warnings, result.failures));
+	const pinnedTasks = asked.given.flatMap((path) => asked.pins.get(path)?.entry.tasks ?? []);
+	const expected = [...(reference.value ?? []), ...pinnedTasks].sort((a, b) =>
+		a.path < b.path ? -1 : a.path > b.path ? 1 : 0,
+	);
+	assert.deepStrictEqual(result.tasks, expected, `${at}: the tasks of reader ${reader.id}, including its pins`);
+	const told = await captured(run.lines, () =>
+		reportNoteReads(
+			result.warnings.filter((warning) => !asked.pins.has(warning.path)),
+			result.failures,
+		),
+	);
 	assert.deepStrictEqual(told.told, reference.told, `${at}: what the user is told`);
 	for (const note of result.warned) {
+		if (asked.pins.has(note.path)) continue;
 		const text = s.world.vault.contentOf(note.path);
 		assert.equal(note.content, contentIdOf(text ?? ""), `${at}: the content id of ${note.path} is its text's`);
 		run.count?.("content ids at rest");
@@ -207,7 +238,15 @@ async function checkAtRest(s: Setup, asked: Asked, indexed: Captured<IndexUpdate
 function checkResult(s: Setup, asked: Asked, plan: Plan, update: IndexUpdate): void {
 	const { world, run } = s;
 	const { at, reader } = asked;
-	const arrays = [update, update.tasks, update.warnings, update.warned, ...update.warned, update.failures];
+	const arrays = [
+		update,
+		update.tasks,
+		update.warnings,
+		update.warned,
+		...update.warned,
+		update.failures,
+		update.pinned,
+	];
 	assert.ok(
 		arrays.every((value) => Object.isFrozen(value)),
 		`${at}: the result is frozen`,
@@ -215,11 +254,40 @@ function checkResult(s: Setup, asked: Asked, plan: Plan, update: IndexUpdate): v
 	const last = world.lastResult;
 	if (last)
 		assert.ok(
-			update.tasks !== last.tasks && update.warnings !== last.warnings && update.failures !== last.failures,
+			update.tasks !== last.tasks &&
+				update.warnings !== last.warnings &&
+				update.failures !== last.failures &&
+				update.pinned !== last.pinned,
 			`${at}: new arrays`,
 		);
 	world.lastResult = update;
-	const failed = (plan.visible ?? []).filter((path) => asked.failed.has(path));
+	const pinned = asked.given.filter((path) => asked.pins.has(path));
+	assert.deepEqual(update.pinned, pinned, `${at}: the pinned paths, in order`);
+	const actualTasks = tasksByPath(update.tasks);
+	for (const [path, pin] of asked.pins) {
+		const visible = pinned.includes(path);
+		const tasks = actualTasks.get(path) ?? [];
+		assert.equal(tasks.length, visible ? pin.entry.tasks.length : 0, `${at}: ${path}'s pinned task count`);
+		tasks.forEach((task, i) => assert.equal(task, pin.entry.tasks[i], `${at}: ${path}'s pinned task ${i}`));
+		assert.equal(
+			update.warned.find((note) => note.path === path) ?? null,
+			visible ? (pin.entry.warned ?? null) : null,
+			`${at}: ${path}'s pinned WarnedNote`,
+		);
+		assert.deepEqual(
+			update.warnings.filter((warning) => warning.path === path),
+			visible ? pin.entry.warnings : [],
+			`${at}: ${path}'s pinned warnings`,
+		);
+	}
+	if (pinned.length > 0) {
+		run.count?.("held update");
+		if (plan.own?.everything) run.count?.("held full read");
+		if (pinned.some((path) => !world.vault.hasMetadata(path))) run.count?.("held hidden by metadata");
+		if (pinned.some((path) => world.producer.has(path) && world.producer.get(path) !== reader.id))
+			run.count?.("held for another reader");
+	}
+	const failed = asked.given.filter((path) => asked.failed.has(path) && !asked.pins.has(path));
 	assert.deepEqual(
 		update.failures.map((failure) => failure.path),
 		failed,
@@ -228,6 +296,7 @@ function checkResult(s: Setup, asked: Asked, plan: Plan, update: IndexUpdate): v
 	const readAndParsed = asked.reads.filter((path) => !asked.unread.has(path));
 	assert.deepEqual(sorted(asked.parsed), sorted(readAndParsed), `${at}: one parse per note read`);
 	for (const [path, tasks] of tasksByPath(update.tasks)) {
+		if (asked.pins.has(path)) continue;
 		if (asked.reads.includes(path)) {
 			world.objects.set(path, tasks);
 			world.producer.set(path, reader.id);
@@ -249,8 +318,12 @@ function checkResult(s: Setup, asked: Asked, plan: Plan, update: IndexUpdate): v
 		`${at}: each warned note once, in path order`,
 	);
 	for (const note of update.warned) {
-		if (asked.reads.includes(note.path)) world.warnedObjects.set(note.path, note);
-		else
+		if (asked.pins.has(note.path)) continue;
+		if (asked.reads.includes(note.path)) {
+			world.warnedObjects.set(note.path, note);
+			const entry = asked.parsedEntries.get(note.path);
+			if (entry) entry.warned = note;
+		} else
 			assert.equal(
 				note,
 				world.warnedObjects.get(note.path),
@@ -310,14 +383,81 @@ function rereadAll(world: World, reader: ReaderModel): void {
 function open(s: Setup, filters: number): void {
 	const { world } = s;
 	if (openReaders(world).length >= MOST_READERS) return;
-	world.readers.push(newReader(world.readers.length, s.index.openReader(), FILTERS[filters]));
+	const reader = newReader(world.readers.length, s.index.openReader(), FILTERS[filters]);
+	world.readers.push(reader);
+	// No full read has been asked for yet: every fresh entry predates no cutoff for this new reader. Its new
+	// filters and empty held set still force the first read, unless a pin supplies that first update instead.
+	for (const fresh of world.stored.values()) fresh.add(reader.id);
 	s.run.count?.("open");
 }
 
 function close(s: Setup, reader: ReaderModel): void {
+	if (s.world.pins.size > 0) s.run.count?.("held at close");
 	reader.reader.close();
 	reader.open = false;
 	s.run.count?.("close");
+}
+
+/** A hold takes the committed entry, even when stale, or the whole retired pin when no entry remains. */
+function hold(world: World, index: TaskIndex, pick: number): string | null {
+	const notes = world.vault.filePaths().filter((path) => path.endsWith(".md"));
+	if (notes.length === 0) return null;
+	const held = [...world.pins.keys()].filter((path) => notes.includes(path));
+	const retired = [...world.retired.keys()].filter((path) => notes.includes(path) && !world.committedPaths.has(path));
+	const reading = world.current?.reads.filter((path) => notes.includes(path) && world.committedPaths.has(path)) ?? [];
+	const choices =
+		reading.length > 0
+			? reading
+			: held.length > 0 && pick % 3 === 0
+				? held
+				: retired.length > 0 && pick % 3 === 1
+					? retired
+					: notes;
+	const path = choices[pick % choices.length];
+	const previous = world.pins.get(path);
+	if (previous) {
+		previous.count += 1;
+		world.count("overlapping holds");
+	} else {
+		const entry = world.committedPaths.has(path) ? world.entries.get(path) : undefined;
+		const cache = world.vault.app.metadataCache.getFileCache(world.vault.app.vault.getAbstractFileByPath(path));
+		const pin: Pin | undefined = entry
+			? {
+					entry,
+					tags: cache?.tags?.map((tag) => tag.tag) ?? [],
+					frontmatter: cache?.frontmatter === undefined ? undefined : copyJsonValue(cache.frontmatter),
+					hasTaskItems: hasTaskItems(cache),
+				}
+			: world.retired.get(path);
+		world.pins.set(path, { count: 1, pin, retire: true });
+		if (!pin) world.count("hold without pin");
+		if (!entry && pin) world.count("hold acquired after a held commit, before a re-read");
+	}
+	const pin = world.pins.get(path)?.pin;
+	if (pin && world.current?.plan?.listed.has(path)) {
+		world.current.pins.set(path, pin);
+		if (world.current.reads.includes(path)) world.count("held during reads");
+	}
+	world.tokens.push({ path, token: index.hold(path) });
+	return path;
+}
+
+/** Every live token is released at most once in the model; the real second release must be a no-op. */
+function release(world: World, pick: number, all: boolean, markDirty: boolean): void {
+	if (world.tokens.length === 0) return;
+	const released = all ? world.tokens.splice(0) : world.tokens.splice(pick % world.tokens.length, 1);
+	for (const { path, token } of released) {
+		const held = world.pins.get(path) ?? assert.fail(`no hold for ${path}`);
+		if (markDirty) marked(world, [path]);
+		held.count -= 1;
+		if (held.count === 0) {
+			world.pins.delete(path);
+			if (held.pin && held.retire) world.retired.set(path, held.pin);
+			world.released.add(path);
+		}
+		token.release({ markDirty });
+		token.release();
+	}
 }
 
 /** A vault action, which the model follows: an update it comes during is not at rest, unless it changes no note. */
@@ -333,7 +473,7 @@ function vaultStep(s: Setup, action: VaultAction): void {
 		if (path.endsWith(".md")) world.silentlyRemoved.add(path);
 	}
 	// A note failing with no event is heard of again once it is written, healed, removed or renamed.
-	else if (action.op !== "missedEvent") world.silent.delete(path);
+	else if (action.op !== "missedEvent" && action.op !== "hold") world.silent.delete(path);
 }
 
 /** An update, with the actions applied while it reads: with 0 ticks right after update() returned, more later. */
@@ -414,6 +554,12 @@ function newWorld(run: Run): World {
 		vault: fakeVault({}, { jsonFrontmatter: true, staggerReads: true }),
 		readers: [],
 		stored: new Map(),
+		committedPaths: new Set(),
+		entries: new Map(),
+		pins: new Map(),
+		retired: new Map(),
+		tokens: [],
+		released: new Set(),
 		committedKey: null,
 		waiting: [],
 		current: null,
@@ -437,6 +583,7 @@ function hookedIndex(world: World): TaskIndex {
 		// Taken as the read starts, as the index takes it: a rename while it reads changes the path of the same TFile.
 		const path = file.path;
 		const current = world.current ?? assert.fail(`a read of ${path} with no update running`);
+		assert.ok(!world.pins.get(path)?.pin, `${current.at}: ${path} is never read while pinned`);
 		current.reads.push(path);
 		return cachedRead(file).catch((error: unknown) => {
 			current.unread.add(path);
@@ -463,7 +610,9 @@ function hookedIndex(world: World): TaskIndex {
 			const current = world.current ?? assert.fail(`a parse of ${snapshot.path} with no update running`);
 			current.parsed.push(snapshot.path);
 			try {
-				return parseNote(snapshot, m);
+				const note = parseNote(snapshot, m);
+				current.parsedEntries.set(snapshot.path, { tasks: note.tasks, warnings: note.warnings });
+				return note;
 			} catch (error) {
 				current.failed.add(snapshot.path);
 				throw error;
@@ -475,6 +624,14 @@ function hookedIndex(world: World): TaskIndex {
 		markDirty: (paths) => {
 			marked(world, paths);
 			index.markDirty(paths);
+		},
+		forget: (paths) => {
+			for (const path of paths) {
+				world.retired.delete(path);
+				const held = world.pins.get(path);
+				if (held) held.retire = false;
+			}
+			index.forget(paths);
 		},
 	});
 	return index;
@@ -494,6 +651,9 @@ export async function runSequence(actions: readonly Action[], run: Run): Promise
 	world.readers.push(newReader(0, index.openReader(), {}));
 	const stage: Stage = {
 		vault: world.vault,
+		heldPaths: () => [...world.pins.keys()],
+		hold: (pick) => hold(world, index, pick),
+		release: (pick, all, markDirty) => release(world, pick, all, markDirty),
 		filters: (pick, filters) => {
 			const reader = pickOpen(world, pick);
 			if (reader !== null) reader.filters = filters;
