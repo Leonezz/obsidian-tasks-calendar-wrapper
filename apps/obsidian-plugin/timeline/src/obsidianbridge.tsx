@@ -51,6 +51,8 @@ type ObsidianBridgeProps = Readonly<typeof defaultObsidianBridgeProps> & {
 	readonly ledger?: ShiftLedger;
 	readonly pendingWrites?: PendingWrites;
 	readonly onWriteResult?: (target: LineTarget, result: WriteResult) => void;
+	/** Receives a quick entry's written path and the promise that resolves when it is indexed. */
+	readonly onQuickEntryWritten?: (path: string, indexed: Promise<void>) => void;
 	readonly resolveEnv?: ReturnType<typeof createResolveEnv>;
 	readonly askDate?: (field: DateField, sourceLine: string) => Promise<DateAnswer>;
 };
@@ -161,6 +163,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 					insert: async (path, edit) => {
 						const result = await this.props.writer.insert(path, edit);
 						this.props.onWriteResult?.({ path, line: 0, sourceLine: "" }, result);
+						if (result.kind === "written") this.props.onQuickEntryWritten?.(path, result.indexed);
 						return result;
 					},
 				},

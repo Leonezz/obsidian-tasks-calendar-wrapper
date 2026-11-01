@@ -12,6 +12,7 @@ import { dayKey, parseTaskLine, resolveTasks, type ResolvedTask, type Task } fro
 import { createResolveEnv } from "../src/state/resolveenv";
 import { initialTimelineState, withReload } from "../src/state/timeline";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
+import { ConfirmModal } from "../src/confirm-modal";
 import { heldOf, TasksTimelineView, timelineTaskIndex } from "../src/views";
 import { ObsidianBridge, quickFilterOf } from "../timeline/src/obsidianbridge";
 import { readTasks } from "../timeline/src/taskadapter";
@@ -24,9 +25,10 @@ import { notesApp, openView, unusedNotices, unusedWriter } from "./view-harness"
 import { writerHarness, deferred, flush } from "./writer-harness";
 import { createNoticePresenter } from "../timeline/src/notices";
 import { FakeElement, Notice as TestNotice } from "./stubs/obsidian";
-import type { Store, TaskRowModel } from "@tasks-calendar-wrapper/core";
+import type { LineTarget, Store, TaskRowModel } from "@tasks-calendar-wrapper/core";
 import type { TimelineState } from "../src/state/timeline";
-import type { WriteEvent, TaskWriter } from "../timeline/src/taskwriter";
+import type { WriteEvent, WriteResult, TaskWriter } from "../timeline/src/taskwriter";
+import type { TaskIndexReader } from "../timeline/src/taskindex";
 
 // The timeline's view reads the notes through its task index, which gives what readTasks gives, and hands the bridge
 // the tasks, and the list the old view held of the tasks it shows, in its state. The bridge renders again when the
@@ -610,7 +612,11 @@ test("the list shown does not change with what the old list did not hold or Back
 });
 
 /** Real writer events, shared pins and two independent view debounces, on one controllable clock. */
-async function writingViews(t: TestContext, text = "- [ ] Pay", toggle?: (line: string) => string) {
+async function writingViews(
+	t: TestContext,
+	text: string | Uint8Array = "- [ ] Pay",
+	toggle?: (line: string) => string,
+) {
 	const h = writerHarness({ "Note.md": text });
 	t.mock.method(globalThis, "setTimeout", h.clock.setTimeout as never);
 	t.mock.method(globalThis, "clearTimeout", h.clock.clearTimeout as never);
@@ -660,6 +666,7 @@ async function writingViews(t: TestContext, text = "- [ ] Pay", toggle?: (line: 
 			ledger: view.ledger,
 			pendingWrites: view.pendingWrites,
 			onWriteResult: view.onWriteResult,
+			onQuickEntryWritten: view.reloadWhenIndexed,
 		});
 		let renders = 0;
 		bridge.setState = ((update: object | ((state: object, props: object) => object)) => {
@@ -1083,4 +1090,260 @@ test("a pending write released and rendered by rename cannot restore a cleared s
 	gate.resolve();
 	assert.equal((await writing).kind, "written");
 	assert.equal(f.opened[0].view.ledger.shift("Moved.md", 2), 2);
+});
+
+const reloadCounts = (f: Awaited<ReturnType<typeof writingViews>>) => f.opened.map((o, i) => o.reloads() - f.counts[i]);
+
+test("quick entry reloads once on its own indexed, without waiting for the debounce", async (t) => {
+	const f = await writingViews(t, "## Tasks\n- [ ] a");
+	f.h.setDelivery("delivered");
+	assert.equal(await f.opened[0].bridge.handleCreateNewTask("Note.md", "new"), true);
+	assert.deepEqual(reloadCounts(f), [0, 0]);
+	await f.h.clock.advance(0);
+	assert.deepEqual(reloadCounts(f), [1, 0]);
+	assert.ok(f.opened[0].bridge.state.tasks.some((task) => task.visual === "new"));
+	await f.h.clock.advance(600);
+	assert.deepEqual(reloadCounts(f), [1, 1]);
+});
+
+test("a changed before indexed does not cause a second reload", async (t) => {
+	const f = await writingViews(t, "## Tasks\n- [ ] a");
+	f.h.setDelivery("delivered");
+	const scheduled = t.mock.method(globalThis, "setTimeout");
+	assert.equal(await f.opened[0].bridge.handleCreateNewTask("Note.md", "new"), true);
+	await f.h.clock.advance(0);
+	assert.equal(scheduled.mock.calls.filter((call) => call.arguments[1] === 500).length, 2);
+	assert.deepEqual(reloadCounts(f), [1, 0]);
+	await f.h.clock.advance(2000);
+	assert.deepEqual(reloadCounts(f), [1, 1]);
+});
+
+test("other timelines keep the 500 ms debounce", async (t) => {
+	const f = await writingViews(t, "## Tasks\n- [ ] a");
+	f.h.setDelivery("delivered");
+	assert.equal(await f.opened[0].bridge.handleCreateNewTask("Note.md", "new"), true);
+	await f.h.clock.advance(0);
+	assert.deepEqual(reloadCounts(f), [1, 0]);
+	await f.h.clock.advance(499);
+	assert.deepEqual(reloadCounts(f), [1, 0]);
+	await f.h.clock.advance(1);
+	assert.deepEqual(reloadCounts(f), [1, 1]);
+	assert.ok(f.opened[1].bridge.state.tasks.some((task) => task.visual === "new"));
+});
+
+test("refused quick entry does not reload", async (t) => {
+	await t.test("not-utf8", async (t) => {
+		const bytes = new Uint8Array([...new TextEncoder().encode("## Tasks\n- [ ] "), 0xd6, 0xd0]);
+		const f = await writingViews(t, bytes);
+		assert.equal(await f.opened[0].bridge.handleCreateNewTask("Note.md", "new"), false);
+		assert.equal(f.h.refusals.at(-1)?.reason, "not-utf8");
+		assert.deepEqual(f.h.bytes.get("Note.md"), bytes);
+		await f.h.clock.advance(2000);
+		assert.deepEqual(reloadCounts(f), [0, 0]);
+	});
+	await t.test("declined creation", async (t) => {
+		const f = await writingViews(t);
+		const ask = t.mock.method(ConfirmModal.prototype, "ask", async () => false);
+		assert.equal(await f.opened[0].bridge.handleCreateNewTask("Missing.md", "new"), false);
+		assert.equal(ask.mock.callCount(), 1);
+		assert.equal(f.h.app.vault.getFileByPath("Missing.md"), null);
+		await f.h.clock.advance(2000);
+		assert.deepEqual(reloadCounts(f), [0, 0]);
+	});
+});
+
+test("failed quick entry does not reload early", async (t) => {
+	const f = await writingViews(t, "## Tasks\n- [ ] a");
+	f.h.onProcess(() => {
+		throw new Error("disk full");
+	});
+	assert.equal(await f.opened[0].bridge.handleCreateNewTask("Note.md", "new"), false);
+	assert.ok(f.h.events.some((event) => event.kind === "failed"));
+	assert.deepEqual(f.h.notices, ["Could not write to Note: disk full"]);
+	assert.deepEqual(reloadCounts(f), [0, 0]);
+	await f.h.clock.advance(2000);
+	assert.deepEqual(reloadCounts(f), [0, 0]);
+});
+
+test("indexed before the result reaches the bridge still reloads once", async (t) => {
+	const f = await writingViews(t, "## Tasks\n- [ ] a");
+	f.h.afterProcess(() => {
+		assert.equal(f.h.events.at(-1)?.kind, "pending");
+		f.h.changed("Note.md");
+		assert.equal(f.h.events.filter((event) => event.kind === "indexed").length, 0);
+	});
+	const props = f.opened[0].bridge.props as { onWriteResult: TasksTimelineView["onWriteResult"] };
+	const handled = t.mock.method(props, "onWriteResult", (target: LineTarget, result: WriteResult) => {
+		assert.equal(f.h.events.filter((event) => event.kind === "indexed").length, 1);
+		f.opened[0].view.onWriteResult(target, result);
+	});
+	assert.equal(await f.opened[0].bridge.handleCreateNewTask("Note.md", "new"), true);
+	assert.equal(handled.mock.callCount(), 1);
+	await flush();
+	assert.deepEqual(reloadCounts(f), [1, 0]);
+	assert.ok(f.opened[0].bridge.state.tasks.some((task) => task.visual === "new"));
+	assert.equal(f.opened[0].view.ledger.shift("Note.md", 2), 2);
+	await f.h.clock.advance(499);
+	assert.deepEqual(reloadCounts(f), [1, 0]);
+	await f.h.clock.advance(1);
+	assert.deepEqual(reloadCounts(f), [1, 1]);
+	await f.h.clock.advance(600);
+	assert.deepEqual(reloadCounts(f), [1, 1]);
+});
+
+test("indexed that never comes: no early reload, the 120 s path reloads once through the debounce", async (t) => {
+	const f = await writingViews(t, "## Tasks\n- [ ] a");
+	f.h.setDelivery("dropped");
+	assert.equal(await f.opened[0].bridge.handleCreateNewTask("Note.md", "new"), true);
+	const before = f.opened.map((o) => o.bridge.state.tasks);
+	await f.h.clock.advance(9999);
+	assert.deepEqual(reloadCounts(f), [0, 0]);
+	assert.deepEqual(f.h.notices, []);
+	await f.h.clock.advance(1);
+	assert.deepEqual(f.h.notices, [
+		"Saved in Note. The timeline will show the change once Obsidian has re-read the note.",
+	]);
+	assert.deepEqual(reloadCounts(f), [0, 0]);
+	await f.h.clock.advance(110000);
+	assert.equal(f.h.warnings.length, 1);
+	assert.ok(f.h.dirty.includes("Note.md"));
+	assert.equal(f.h.events.filter((event) => event.kind === "indexed").length, 0);
+	assert.deepEqual(reloadCounts(f), [0, 0]);
+	await f.h.clock.advance(499);
+	assert.deepEqual(reloadCounts(f), [0, 0]);
+	await f.h.clock.advance(1);
+	assert.deepEqual(reloadCounts(f), [1, 1]);
+	for (const [i, { bridge, store }] of f.opened.entries()) {
+		assert.notEqual(bridge.state.tasks, before[i]);
+		assert.equal(bridge.state.tasks, store.getSnapshot().tasks);
+	}
+	await f.h.clock.advance(600);
+	assert.deepEqual(reloadCounts(f), [1, 1]);
+});
+
+test("two quick entries indexed together reload once", async (t) => {
+	const f = await writingViews(t, "## Tasks\n- [ ] a");
+	for (const text of ["first", "second"])
+		assert.equal(await f.opened[0].bridge.handleCreateNewTask("Note.md", text), true);
+	assert.deepEqual(reloadCounts(f), [0, 0]);
+	f.h.changed("Note.md", f.h.text("Note.md"));
+	await flush();
+	assert.equal(f.h.events.filter((event) => event.kind === "indexed").length, 2);
+	assert.deepEqual(reloadCounts(f), [1, 0]);
+	for (const text of ["first", "second"])
+		assert.ok(f.opened[0].bridge.state.tasks.some((task) => task.visual === text));
+	await f.h.clock.advance(600);
+	assert.deepEqual(reloadCounts(f), [1, 1]);
+});
+
+test("two quick entries indexed one after the other reload once each", async (t) => {
+	const f = await writingViews(t, "## Tasks\n- [ ] a");
+	assert.equal(await f.opened[0].bridge.handleCreateNewTask("Note.md", "first"), true);
+	await f.h.deliver();
+	assert.deepEqual(reloadCounts(f), [1, 0]);
+	assert.equal(await f.opened[0].bridge.handleCreateNewTask("Note.md", "second"), true);
+	await f.h.deliver();
+	assert.deepEqual(reloadCounts(f), [2, 0]);
+	assert.ok(f.opened[0].bridge.state.tasks.some((task) => task.visual === "second"));
+	await f.h.clock.advance(600);
+	assert.deepEqual(reloadCounts(f), [2, 1]);
+});
+
+test("a quick entry into a note held by another write waits for the last release", async (t) => {
+	const f = await writingViews(t, "## Tasks\n- [ ] a");
+	const debounce = (f.opened[0].view as unknown as { requestReload: { cancel(): void } }).requestReload;
+	const cancel = t.mock.method(debounce, "cancel");
+	assert.equal(await f.opened[0].bridge.handleCreateNewTask("Note.md", "new"), true);
+	assert.equal((await f.click(0, 1)).kind, "written");
+	const quickEntry = f.h.pending.shift();
+	assert.ok(quickEntry);
+	f.h.changed(quickEntry.path, quickEntry.text);
+	await flush();
+	assert.equal(f.h.events.filter((event) => event.kind === "indexed").length, 1);
+	assert.equal(f.h.holds.get("Note.md"), 1);
+	assert.deepEqual(reloadCounts(f), [0, 0]);
+	assert.equal(cancel.mock.callCount(), 0);
+	await f.h.clock.advance(600);
+	assert.deepEqual(reloadCounts(f), [0, 0]);
+	await f.h.deliver();
+	assert.equal(f.h.holds.get("Note.md"), 0);
+	assert.equal(cancel.mock.callCount(), 0);
+	await f.h.clock.advance(499);
+	assert.deepEqual(reloadCounts(f), [0, 0]);
+	await f.h.clock.advance(1);
+	assert.deepEqual(reloadCounts(f), [1, 1]);
+	for (const { bridge } of f.opened) assert.ok(bridge.state.tasks.some((task) => task.visual === "new"));
+	await f.h.clock.advance(600);
+	assert.deepEqual(reloadCounts(f), [1, 1]);
+});
+
+test("an early reload while a reload is running runs once more after it", async (t) => {
+	const f = await writingViews(t, "## Tasks\n- [ ] a");
+	const first = f.opened[0];
+	assert.equal(await first.bridge.handleCreateNewTask("Note.md", "new"), true);
+	const owner = first.view as unknown as { reader: TaskIndexReader };
+	const reader = owner.reader;
+	const gate = deferred();
+	let waiting = true;
+	const reads = t.mock.fn(async (options: Parameters<TaskIndexReader["update"]>[0]) => {
+		const result = await reader.update(options);
+		if (waiting) {
+			waiting = false;
+			await gate.promise;
+		}
+		return result;
+	});
+	owner.reader = Object.freeze({ ...reader, update: reads });
+	const running = first.view.onReloadTasks();
+	try {
+		await flush();
+		assert.equal(waiting, false);
+		await f.h.deliver();
+		assert.equal(reads.mock.callCount(), 1);
+		assert.deepEqual(reloadCounts(f), [2, 0]);
+	} finally {
+		gate.resolve();
+		await running;
+	}
+	assert.equal(reads.mock.callCount(), 2);
+	// The counter includes the request that only sets reloadAgain; only two calls read the index.
+	assert.deepEqual(reloadCounts(f), [3, 0]);
+	assert.ok(first.bridge.state.tasks.some((task) => task.visual === "new"));
+	await f.h.clock.advance(600);
+	assert.equal(reads.mock.callCount(), 2);
+	assert.deepEqual(reloadCounts(f), [3, 1]);
+});
+
+test("closing the view before indexed: no reload", async (t) => {
+	const f = await writingViews(t, "## Tasks\n- [ ] a");
+	const first = f.opened[0];
+	assert.equal(await first.bridge.handleCreateNewTask("Note.md", "new"), true);
+	// The harness calls onOpen directly; load/unload removes its event listeners as a real close would.
+	first.view.load();
+	first.view.unload();
+	first.bridge.componentWillUnmount();
+	await first.view.onClose();
+	await f.h.deliver();
+	assert.equal(f.h.events.filter((event) => event.kind === "indexed").length, 1);
+	assert.deepEqual(reloadCounts(f), [0, 0]);
+	await f.h.clock.advance(2000);
+	assert.deepEqual(reloadCounts(f), [0, 1]);
+	assert.deepEqual(f.h.errors, []);
+});
+
+test("quick entry still clears the quick filter, and the reload keeps it cleared", async (t) => {
+	const f = await writingViews(t, "## Tasks\n- [ ] a");
+	const first = f.opened[0];
+	first.bridge.handleFilterEnable("2026-01-19", "2026-01-21", []);
+	assert.ok(first.bridge.state.quickFilter);
+	assert.equal(await first.bridge.handleCreateNewTask("Note.md", "new"), true);
+	assert.equal(first.bridge.state.quickFilter, undefined);
+	assert.deepEqual(reloadCounts(f), [0, 0]);
+	await f.h.deliver();
+	assert.deepEqual(reloadCounts(f), [1, 0]);
+	assert.equal(first.bridge.state.quickFilter, undefined);
+	assert.ok(first.bridge.state.tasks.some((task) => task.visual === "new"));
+	await f.h.clock.advance(600);
+	assert.deepEqual(reloadCounts(f), [1, 1]);
+	assert.equal(first.bridge.state.quickFilter, undefined);
 });
