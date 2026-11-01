@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import type { TFile, TFolder } from "obsidian";
 
 import { appendTaskToNote } from "../timeline/src/appendtask";
-import { createStore } from "@tasks-calendar-wrapper/core";
+import { createStore, type LineTarget } from "@tasks-calendar-wrapper/core";
 import { ConfirmModal } from "../src/confirm-modal";
 import { initialTimelineState } from "../src/state/timeline";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
-import type { TaskWriter } from "../timeline/src/taskwriter";
+import type { TaskWriter, WriteResult } from "../timeline/src/taskwriter";
 import { ButtonComponent, FakeElement } from "./stubs/obsidian";
 import { deferred, flush, writerHarness } from "./writer-harness";
 
@@ -214,3 +214,88 @@ test("quick entry failure shows Could not write to {note}: {reason}", async (t) 
 	assert.deepEqual(harness.notices, ["Could not write to Inbox: disk full"]);
 	assert.deepEqual(harness.writes, []);
 });
+
+test("written quick entry notifies indexed reload once, after its write result", async (t) => {
+	const harness = writerHarness({ "Inbox.md": "## Tasks\n" });
+	const writer = harness.create();
+	t.after(() => writer.dispose());
+	const insert = t.mock.fn(writer.insert);
+	const order: string[] = [];
+	const onWriteResult = t.mock.fn((_target: LineTarget, _result: WriteResult) => {
+		order.push("result");
+	});
+	const onQuickEntryWritten = t.mock.fn((_path: string, _indexed: Promise<void>) => {
+		order.push("quick entry");
+	});
+	const bridge = new ObsidianBridge({
+		plugin: { app: { vault: { ...fakeVault({}).vault, ...harness.app.vault } } } as never,
+		store: createStore(initialTimelineState()),
+		writer: { ...writer, insert },
+		onWriteResult,
+		onQuickEntryWritten,
+	});
+	bridge.onUpdateTasks = () => {};
+	assert.equal(await bridge.handleCreateNewTask("inbox.md", "new"), true);
+	assert.equal(insert.mock.callCount(), 1);
+	assert.equal(insert.mock.calls[0].arguments[0], "Inbox.md");
+	const result = await insert.mock.calls[0].result;
+	assert.ok(result?.kind === "written");
+	assert.equal(onWriteResult.mock.callCount(), 1);
+	assert.equal(onQuickEntryWritten.mock.callCount(), 1);
+	assert.equal(onQuickEntryWritten.mock.calls[0].arguments[0], "Inbox.md");
+	assert.equal(onQuickEntryWritten.mock.calls[0].arguments[1], result.indexed);
+	assert.deepEqual(order, ["result", "quick entry"]);
+});
+
+for (const result of [
+	{ kind: "refused", reason: "not-utf8", message: "not UTF-8" },
+	{ kind: "failed", unknownOutcome: false, error: new Error("disk full") },
+	{ kind: "unchanged" },
+] satisfies readonly WriteResult[]) {
+	test(`${result.kind} quick entry does not notify indexed reload`, async (t) => {
+		const harness = writerHarness({ "Inbox.md": "## Tasks\n" });
+		const writer = harness.create();
+		t.after(() => writer.dispose());
+		const insert = t.mock.fn(async () => result);
+		const onQuickEntryWritten = t.mock.fn();
+		const onWriteResult = t.mock.fn((_target: LineTarget, _result: WriteResult) => {});
+		const bridge = new ObsidianBridge({
+			plugin: { app: { vault: { ...fakeVault({}).vault, ...harness.app.vault } } } as never,
+			store: createStore(initialTimelineState()),
+			writer: { ...writer, insert },
+			onWriteResult,
+			onQuickEntryWritten,
+		});
+		assert.equal(await bridge.handleCreateNewTask("Inbox.md", "new"), false);
+		assert.equal(onWriteResult.mock.callCount(), 1);
+		assert.equal(onWriteResult.mock.calls[0].arguments[1], result);
+		assert.equal(onQuickEntryWritten.mock.callCount(), 0);
+	});
+}
+
+for (const accepted of [false, true]) {
+	test(`${accepted ? "created note" : "declined creation"} does not notify indexed reload`, async (t) => {
+		const { vault, writes } = fakeVault({});
+		const harness = writerHarness({});
+		const writer = harness.create();
+		t.after(() => writer.dispose());
+		const insert = t.mock.fn(writer.insert);
+		const ask = t.mock.method(ConfirmModal.prototype, "ask", async () => accepted);
+		const onQuickEntryWritten = t.mock.fn();
+		const onWriteResult = t.mock.fn((_target: LineTarget, _result: WriteResult) => {});
+		const bridge = new ObsidianBridge({
+			plugin: { app: { vault } } as never,
+			store: createStore(initialTimelineState()),
+			writer: { ...writer, insert },
+			onWriteResult,
+			onQuickEntryWritten,
+		});
+		bridge.onUpdateTasks = () => {};
+		assert.equal(await bridge.handleCreateNewTask("Inbox.md", "new"), accepted);
+		assert.equal(ask.mock.callCount(), 1);
+		assert.equal(insert.mock.callCount(), 0);
+		assert.equal(onWriteResult.mock.callCount(), 0);
+		assert.equal(onQuickEntryWritten.mock.callCount(), 0);
+		assert.deepEqual(writes, accepted ? ["create Inbox.md"] : []);
+	});
+}

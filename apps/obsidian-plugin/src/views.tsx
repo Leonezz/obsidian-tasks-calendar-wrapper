@@ -65,6 +65,8 @@ export class TasksTimelineView extends ItemView {
 	private isReloading = false;
 	/** A reload was asked for while one was running, so the list is loaded again when it is done. */
 	private reloadAgain = false;
+	/** Quick entries indexed in the same tick reload once, see reloadWhenIndexed. */
+	private earlyReloadScheduled = false;
 	/** The files that had tasks at the last reload. */
 	private filesWithTasks: ReadonlySet<string> = new Set();
 	private readonly requestReload = debounce(() => this.onReloadTasks(), RELOAD_DELAY_MS, true);
@@ -122,6 +124,7 @@ export class TasksTimelineView extends ItemView {
 				ledger={this.ledger}
 				pendingWrites={this.pendingWrites}
 				onWriteResult={this.onWriteResult}
+				onQuickEntryWritten={this.reloadWhenIndexed}
 			/>,
 		);
 	}
@@ -159,6 +162,22 @@ export class TasksTimelineView extends ItemView {
 		if (result.kind !== "written") return;
 		if (!this.closed) this.recordShift(result);
 		this.undoNotices.show(result);
+	};
+
+	/** Reloads after this view's quick entry is indexed, unless another write still holds the note. */
+	readonly reloadWhenIndexed = (path: string, indexed: Promise<void>): void => {
+		void indexed.then(() => {
+			if (this.closed || this.heldWrites.has(path) || this.earlyReloadScheduled) return;
+			this.earlyReloadScheduled = true;
+			queueMicrotask(() => {
+				this.earlyReloadScheduled = false;
+				if (this.closed) return;
+				// Cancelling drops other notes' armed requests too; this reload reads every dirty note
+				// and consumes refreshTasks, so none of their changes are lost.
+				this.requestReload.cancel();
+				void this.onReloadTasks();
+			});
+		});
 	};
 
 	private recordShift(result: Extract<WriteResult, { kind: "written" }>): void {
