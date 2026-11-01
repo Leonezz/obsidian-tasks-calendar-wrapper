@@ -424,6 +424,17 @@
     "redrawn": false
   },
   {
+    "row": "Forward Undated Done Tasks",
+    "type": "toggle",
+    "input": false,
+    "writes": [
+      {
+        "forwardUndatedDone": false
+      }
+    ],
+    "redrawn": false
+  },
+  {
     "row": "Hide Subtasks",
     "type": "toggle",
     "input": true,

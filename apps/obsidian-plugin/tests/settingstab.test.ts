@@ -124,11 +124,11 @@ for (const fixture of FIXTURE_NAMES) {
 	});
 }
 
-test("the tab with the defaults has 42 rows, three of them headings", async (t) => {
+test("the tab with the defaults has 43 rows, three of them headings", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const { tab, container } = await drawnTab(t, null);
 	const rows = rowsOf(container);
-	assert.equal(rows.length, 42);
+	assert.equal(rows.length, 43);
 	assert.deepEqual(
 		rows.filter((row) => row.heading).map((row) => row.name),
 		["Interface", "Task items", "Formats and filters"],
@@ -302,9 +302,9 @@ test("options the tab cannot draw stop it where they are, as today", async (t) =
 		assert.throws(() => tab.display(), message);
 		return rowsOf(tab.containerEl as unknown as FakeElement).length;
 	};
-	assert.equal(await throwsAt({ tagColorPalette: null }, /Cannot convert undefined or null to object/), 26);
-	assert.equal(await throwsAt({ excludeProperties: null }, /Cannot convert undefined or null to object/), 40);
-	assert.equal(await throwsAt({ excludePaths: "Archive" }, /join is not a function/), 39);
+	assert.equal(await throwsAt({ tagColorPalette: null }, /Cannot convert undefined or null to object/), 27);
+	assert.equal(await throwsAt({ excludeProperties: null }, /Cannot convert undefined or null to object/), 41);
+	assert.equal(await throwsAt({ excludePaths: "Archive" }, /join is not a function/), 40);
 });
 
 /** The controls of the top rows that hold a value, with their row's name, as drawn now. */

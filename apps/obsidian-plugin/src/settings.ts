@@ -237,6 +237,16 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
+			.setName("Forward Undated Done Tasks")
+			.setDesc(
+				"Show done tasks that have no date at all on the today panel. Turn it off to keep them out of the timeline.",
+			)
+			.addToggle((tg) => {
+				tg.setValue(this.plugin.userOptions.forwardUndatedDone);
+				tg.onChange(async (v) => await this.onOptionUpdate({ forwardUndatedDone: v }));
+			});
+
+		new Setting(containerEl)
 			.setName("Hide Subtasks")
 			.setDesc("Hide task items that are nested under another list item.")
 			.addToggle((tg) => {
