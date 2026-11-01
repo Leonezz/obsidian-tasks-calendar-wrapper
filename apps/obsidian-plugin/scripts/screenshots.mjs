@@ -14,6 +14,10 @@
  * differs. `pnpm screenshots --update` writes to fixtures/screenshots instead what no longer matches it, and keeps the
  * rest, so re-recording changes no file that only differs by rendering noise or colour drift, see screenshotVerdict in png.mjs. `--only=<text>` takes only the states whose
  * name contains the text, e.g. `--only=dark-today`, and cannot be combined with --update.
+ * `--styles` compares computed-style fingerprints only; `--styles --update` records them in styles/<theme>/<state>.json.
+ * `--ab <ref>` compares visible text, PNGs and styles of that build and this checkout in one session; --candidate <ref>
+ * builds another candidate, --report <file> saves the Markdown report, and --any-base allows a different merge base.
+ * Both modes also fingerprint a dimmed row in each theme, without taking its visible text or PNG.
  *
  * Pixels and colours depend on the machine, the Obsidian version, the golden vault's appearance settings (accent colour,
  * font size and fonts, community theme, CSS snippets, ribbon, zoom), the font the timeline ends up with, and the display
@@ -25,9 +29,24 @@
  * community plugins on, pins today to 2026-01-15, sizes the window's page through the DevTools protocol, switches the
  * theme and the layout, and puts all of that back at the end.
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { execFileSync } from "child_process";
+import { createHash } from "crypto";
+import {
+	copyFileSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from "fs";
 import os from "os";
 import path from "path";
+import { abMergeBase, checkAbBase } from "./bench-ab.mjs";
+import { buildAt, localBuild } from "./bench-builds.mjs";
+import { otherBenchProcesses } from "./bench-host.mjs";
 import {
 	buildInfo,
 	fixtureCli,
@@ -45,11 +64,22 @@ import {
 	TIMELINE_VIEW,
 } from "./fixture-app.mjs";
 import { comparePngs, decodePng, encodePng, screenshotVerdict } from "./png.mjs";
-import { firstDifference } from "./screenshots-ab.mjs";
+import { abExitCode, abReport, compareArms, firstDifference, parseScreenshotArgs } from "./screenshots-ab.mjs";
+import {
+	collectStyles,
+	ROOT_CUSTOM_PROPERTIES,
+	serializeStyles,
+	STYLE_PROBES,
+	STYLE_PROPERTIES,
+	stylesBaselineProblems,
+	stylesFile,
+} from "./screenshots-styles.mjs";
 
 const VAULT_NAME = "golden-vault";
 const baselineDir = path.join(repoRoot, "fixtures", "screenshots");
 const manifestFile = path.join(baselineDir, "screenshots.json");
+const stylesDir = path.join(baselineDir, "styles");
+const stylesManifestFile = path.join(stylesDir, "styles.json");
 const VISIBLE = "visible";
 /** The page size the screenshots are taken at; the height grows to fit the whole timeline. */
 const VIEWPORT_WIDTH = 600;
@@ -89,8 +119,9 @@ const takesPng = () => true;
 const takesVisible = ({ theme }) => theme === "light";
 
 /** The screenshots whose name contains `only`, grouped by the settings that need the plugin loaded again. */
-function plan(only) {
+function plan(only, mode = "screenshots") {
 	const groups = [];
+	const wanted = (shot) => (shot.png || shot.visible || shot.styles) && shot.name.includes(only);
 	for (const position of POSITIONS) {
 		for (const behavior of ["Filter", "Focus"]) {
 			// Without an active counter the behaviour changes nothing, so that state is taken once.
@@ -113,13 +144,36 @@ function plan(only) {
 							counter,
 							behavior: counter === "none" ? null : behavior,
 						};
-						shots.push({ ...state, png: takesPng(state), visible: takesVisible(state) });
+						shots.push({
+							...state,
+							png: mode !== "styles" && takesPng(state),
+							visible: mode !== "styles" && takesVisible(state),
+							styles: mode !== "screenshots",
+						});
 					}
 				}
 			}
-			const wanted = shots.filter((shot) => (shot.png || shot.visible) && shot.name.includes(only));
-			if (wanted.length > 0)
-				groups.push({ settings: { entryPosition: position, counterBehavior: behavior }, shots: wanted });
+			const selected = shots.filter(wanted);
+			if (selected.length > 0)
+				groups.push({ settings: { entryPosition: position, counterBehavior: behavior }, shots: selected });
+		}
+	}
+	if (mode !== "screenshots") {
+		for (const theme of Object.keys(THEMES)) {
+			const shot = {
+				name: `${theme}-row-dimmed`,
+				theme,
+				position: "today",
+				todayFocus: false,
+				counter: "none",
+				behavior: null,
+				dimmed: true,
+				png: false,
+				visible: false,
+				styles: true,
+			};
+			if (wanted(shot))
+				groups.push({ settings: { entryPosition: "today", counterBehavior: "Filter" }, shots: [shot] });
 		}
 	}
 	return groups;
@@ -224,6 +278,56 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 			await new Promise((resolve) => setTimeout(resolve, 300));
 			await quiet(300);
 			return measure();
+		}
+		case "dim": {
+			const view = app.workspace.getLeavesOfType(viewType)[0]?.view;
+			if (typeof view?.onWrite !== "function")
+				throw new Error(
+					"this build's timeline view has no onWrite(event), which the row-dimmed states call to dim a row; update the hook in scripts/screenshots.mjs",
+				);
+			const file = app.vault.getAbstractFileByPath("Inbox.md");
+			if (!file) throw new Error("the vault has no Inbox.md for the row-dimmed state");
+			// Task line numbers are zero-based, as in pendingMarkupEvent.
+			const sourceLine = (await app.vault.cachedRead(file)).split(/\r?\n/)[3];
+			if (!sourceLine?.includes("[ ]"))
+				throw new Error('Inbox.md line 3 (zero-based) does not contain "[ ]" for the row-dimmed state');
+			view.onWrite({
+				id: 1,
+				kind: "pending",
+				action: "toggle",
+				path: "Inbox.md",
+				line: 3,
+				sourceLine,
+				lines: [sourceLine.replace("[ ]", "[x]")],
+			});
+			const start = performance.now();
+			while (!content()?.querySelector('.task[aria-busy="true"]')) {
+				if (performance.now() - start >= 2_000)
+					throw new Error('the timeline has no .task[aria-busy="true"] within 2 s of onWrite(event)');
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			}
+			await quiet(300);
+			return true;
+		}
+		case "settle": {
+			document.activeElement?.blur();
+			await quiet(300);
+			const start = performance.now();
+			for (;;) {
+				const animations = document.getAnimations().filter((animation) => {
+					const target = animation.effect?.target;
+					return target && content().contains(target);
+				});
+				if (!animations.length) return true;
+				if (performance.now() - start >= 5_000) {
+					const names = animations.map(
+						(animation) =>
+							`${animation.animationName || animation.transitionProperty || animation.constructor.name} on ${animation.effect.target.getAttribute("class") ?? "(no class)"}`,
+					);
+					throw new Error(`the timeline still has animations after 5 s: ${names.join(", ")}`);
+				}
+				await new Promise((resolve) => setTimeout(resolve, 50));
+			}
 		}
 		case "measure":
 			await quiet(300);
@@ -344,10 +448,10 @@ function capture(cli) {
 }
 
 /** Takes every state's records into `outDir` and returns what the manifest records about them. */
-function takeScreenshots(cli, plugin, outDir, only) {
+function takeScreenshots(cli, plugin, outDir, only, mode = "screenshots", buildLabel = "this checkout") {
 	const shots = {};
-	mkdirSync(path.join(outDir, VISIBLE), { recursive: true });
-	for (const group of plan(only)) {
+	if (mode !== "styles") mkdirSync(path.join(outDir, VISIBLE), { recursive: true });
+	for (const group of plan(only, mode)) {
 		plugin.writeSettings(quietSettings(group.settings));
 		cli.cdp("Emulation.setDeviceMetricsOverride", {
 			width: VIEWPORT_WIDTH,
@@ -367,6 +471,13 @@ function takeScreenshots(cli, plugin, outDir, only) {
 				cli.evaluate(timeline, { action: "theme", viewType: TIMELINE_VIEW, theme: THEMES[shot.theme] });
 				state.theme = shot.theme;
 			}
+			if (shot.styles && shot.dimmed) {
+				try {
+					cli.evaluate(timeline, { action: "dim", viewType: TIMELINE_VIEW });
+				} catch (error) {
+					throw new ScriptError(`${buildLabel}: ${error.message}`);
+				}
+			}
 			if (state.todayFocus !== shot.todayFocus) {
 				cli.evaluate(timeline, { action: "click", viewType: TIMELINE_VIEW, label: TODAY_FOCUS });
 				state.todayFocus = shot.todayFocus;
@@ -378,12 +489,27 @@ function takeScreenshots(cli, plugin, outDir, only) {
 				state.counter = shot.counter;
 			}
 			unhover(cli);
-			const { name, png: takePng, visible: takeVisible, ...states } = shot;
+			const { name, png: takePng, visible: takeVisible, styles: takeStyles, ...states } = shot;
 			const record = { ...states, png: null, visibleLines: null };
+			if (mode !== "screenshots") record.styles = takeStyles;
 			if (takeVisible) {
 				const lines = cli.evaluate(timeline, { action: "visible", viewType: TIMELINE_VIEW });
 				writeFileSync(path.join(outDir, VISIBLE, `${name}.txt`), lines.join("\n") + "\n");
 				record.visibleLines = lines.length;
+			}
+			if (takeStyles) {
+				setViewport(cli, MIN_HEIGHT);
+				unhover(cli);
+				cli.evaluate(timeline, { action: "settle", viewType: TIMELINE_VIEW });
+				const fingerprint = cli.evaluate(collectStyles, {
+					container: `.workspace-leaf-content[data-type="${TIMELINE_VIEW}"] > .view-content`,
+					probes: STYLE_PROBES,
+					properties: STYLE_PROPERTIES,
+					rootCustomProperties: ROOT_CUSTOM_PROPERTIES,
+				});
+				const dir = path.join(outDir, "styles", shot.theme);
+				mkdirSync(dir, { recursive: true });
+				writeFileSync(path.join(dir, `${name}.json`), serializeStyles(fingerprint));
 			}
 			if (takePng) {
 				const png = capture(cli);
@@ -393,7 +519,7 @@ function takeScreenshots(cli, plugin, outDir, only) {
 			}
 			shots[name] = record;
 			console.log(
-				`screenshots: ${name} (${[record.png && `${record.png.width}×${record.png.height}`, record.visibleLines !== null && `${record.visibleLines} visible`].filter(Boolean).join(", ")})`,
+				`screenshots: ${name} (${[record.png && `${record.png.width}×${record.png.height}`, record.visibleLines !== null && `${record.visibleLines} visible`, takeStyles && "styles"].filter(Boolean).join(", ")})`,
 			);
 		}
 	}
@@ -430,11 +556,11 @@ function comparePng(outDir, name) {
 }
 
 /** Warns about each thing that decides the pixels and differs between the baselines and this run. */
-function warnAboutSetup(baseline, env) {
+function warnAboutSetup(baseline, env, label = "the baselines") {
 	for (const key of ["obsidianVersion", "electron", "machine", "viewportWidth", "today"]) {
 		if (JSON.stringify(baseline[key]) !== JSON.stringify(env[key])) {
 			console.warn(
-				`screenshots: warning: the baselines were taken with ${key} ${JSON.stringify(baseline[key])}, this run has ${JSON.stringify(env[key])}; pixels may differ for that reason alone.`,
+				`screenshots: warning: ${label} were taken with ${key} ${JSON.stringify(baseline[key])}, this run has ${JSON.stringify(env[key])}; pixels may differ for that reason alone.`,
 			);
 		}
 	}
@@ -443,8 +569,8 @@ function warnAboutSetup(baseline, env) {
 		if (JSON.stringify(before) !== JSON.stringify(env.appearance[key])) {
 			const was =
 				before === undefined
-					? `the baselines do not record the ${setting} (${key})`
-					: `the baselines were taken with the ${setting} (${key}) ${JSON.stringify(before)}`;
+					? `${label} do not record the ${setting} (${key})`
+					: `${label} were taken with the ${setting} (${key}) ${JSON.stringify(before)}`;
 			console.warn(
 				`screenshots: warning: ${was}, this run has ${JSON.stringify(env.appearance[key])}; pixels may differ for that reason alone.`,
 			);
@@ -474,6 +600,215 @@ function compare(outDir, shots, only) {
 	return { baseline, results };
 }
 
+/** Only theme folders hold fingerprints; styles.json is the setup record, never a state to remove. */
+function styleBaselines() {
+	const baselines = new Map();
+	for (const theme of Object.keys(THEMES)) {
+		const dir = path.join(stylesDir, theme);
+		if (!existsSync(dir)) continue;
+		for (const file of readdirSync(dir).filter((file) => file.endsWith(".json") && file !== "styles.json"))
+			baselines.set(`${theme}/${file.slice(0, -".json".length)}`, readFileSync(path.join(dir, file), "utf8"));
+	}
+	return baselines;
+}
+
+/** Compare or update the fingerprints after the window and plugin have been restored. */
+function finishStyles(outDir, shots, env, build, only, update) {
+	if (existsSync(stylesManifestFile))
+		warnAboutSetup(JSON.parse(readFileSync(stylesManifestFile, "utf8")), env, "the styles.json baselines");
+	const baselines = styleBaselines();
+	const taken = new Map(
+		Object.entries(shots)
+			.filter(([, shot]) => shot.styles)
+			.map(([name, shot]) => {
+				const state = `${shot.theme}/${name}`;
+				return [state, readFileSync(path.join(outDir, "styles", `${state}.json`), "utf8")];
+			}),
+	);
+	if (update) {
+		const changed = [];
+		for (const [state, actual] of taken) {
+			if (baselines.get(state) === actual) continue;
+			const file = path.join(stylesDir, `${state}.json`);
+			mkdirSync(path.dirname(file), { recursive: true });
+			writeFileSync(file, actual);
+			changed.push(`${state}.json`);
+		}
+		const removed = [];
+		for (const state of baselines.keys()) {
+			if (taken.has(state)) continue;
+			rmSync(path.join(stylesDir, `${state}.json`));
+			removed.push(`${state}.json`);
+		}
+		const record = {
+			note: "Taken by apps/obsidian-plugin/scripts/screenshots.mjs (`pnpm screenshots --styles --update`). Do not edit by hand.",
+			...env,
+			takenAt: new Date().toISOString().slice(0, 10),
+			plugin: build,
+			states: Object.keys(shots).sort(),
+			probes: STYLE_PROBES,
+			properties: STYLE_PROPERTIES,
+			rootCustomProperties: ROOT_CUSTOM_PROPERTIES,
+		};
+		writeFileSync(stylesManifestFile, JSON.stringify(record, null, "\t") + "\n");
+		for (const file of changed) console.log(`screenshots: changed styles/${file}`);
+		for (const file of removed) console.log(`screenshots: removed styles/${file}, a state no longer taken`);
+		console.log(
+			`screenshots: took ${taken.size} style fingerprints; ${changed.length} baseline files changed and ${removed.length} were removed in ${path.relative(repoRoot, stylesDir)}, the others still match and were kept.`,
+		);
+		return 0;
+	}
+	const problems = stylesBaselineProblems(taken, baselines);
+	const differing = new Set([...taken.keys()].filter((state) => taken.get(state) !== baselines.get(state)));
+	for (const state of baselines.keys()) {
+		if (!state.split("/")[1].includes(only) || taken.has(state)) continue;
+		problems.push(`${state}: is no longer taken`);
+		differing.add(state);
+	}
+	for (const problem of problems) console.log(`screenshots: ${problem}`);
+	console.log(
+		problems.length === 0
+			? `screenshots: all ${taken.size} style fingerprints match fixtures/screenshots/styles.`
+			: `screenshots: ${differing.size} of ${taken.size} style fingerprints differ. What this run took is in ${path.join(outDir, "styles")}.`,
+	);
+	return problems.length ? 1 : 0;
+}
+
+/** Read only the records an arm took, with null for record kinds absent from that state. */
+function armStates(outDir, shots) {
+	return new Map(
+		Object.entries(shots).map(([name, shot]) => [
+			name,
+			{
+				visible:
+					shot.visibleLines === null ? null : readFileSync(path.join(outDir, VISIBLE, `${name}.txt`), "utf8"),
+				png: shot.png ? readFileSync(path.join(outDir, `${name}.png`)) : null,
+				styles: shot.styles
+					? readFileSync(path.join(outDir, "styles", shot.theme, `${name}.json`), "utf8")
+					: null,
+			},
+		]),
+	);
+}
+
+/** Build both arms first, then take them in one fixture session without consulting stored baselines. */
+function runAb(ab, only) {
+	try {
+		const git = (args) =>
+			execFileSync("git", args, {
+				cwd: repoRoot,
+				encoding: "utf8",
+				...(args[0] === "rev-parse" && args[1] === "--abbrev-ref"
+					? { stdio: ["ignore", "pipe", "ignore"] }
+					: {}),
+			}).trim();
+		const { baseCommit, mergeBase } = abMergeBase({ base: ab.base, candidate: ab.candidate, git });
+		const warning = checkAbBase({ ref: ab.base, baseCommit, mergeBase, allowOtherBase: ab.allowOtherBase });
+		if (warning) console.warn(warning);
+	} catch (error) {
+		throw new ScriptError(error.message);
+	}
+	let others;
+	try {
+		others = otherBenchProcesses(
+			execFileSync("ps", ["-A", "-o", "pid=,ppid=,command="], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }),
+			process.pid,
+		);
+	} catch (error) {
+		throw new ScriptError(`could not check for other scripts driving Obsidian: ${error.message}`);
+	}
+	if (others.length)
+		throw new ScriptError(
+			`another script is driving Obsidian, whose work would land in the screenshots; wait for it to finish: ${others.map((other) => `${other.pid} ${other.command}`).join("; ")}`,
+		);
+	if (ab.report) {
+		const dir = path.dirname(path.resolve(ab.report));
+		if (!existsSync(dir) || !statSync(dir).isDirectory())
+			throw new ScriptError(`the folder of the report ${ab.report} does not exist.`);
+	}
+
+	const workDir = path.join(os.tmpdir(), "tcw-screenshots-ab");
+	rmSync(workDir, { recursive: true, force: true });
+	mkdirSync(workDir, { recursive: true });
+	const buildDir = mkdtempSync(path.join(os.tmpdir(), "tcw-screenshots-ab-"));
+	try {
+		const builds = {
+			base: buildAt(ab.base, path.join(buildDir, "base"), "screenshots"),
+			candidate: ab.candidate
+				? buildAt(ab.candidate, path.join(buildDir, "candidate"), "screenshots")
+				: localBuild(path.join(buildDir, "candidate")),
+		};
+		const describe = (build) =>
+			`${build.ref} (${build.commit.slice(0, 7)}${build.uncommittedChanges ? " with uncommitted changes" : ""})`;
+		const identical =
+			builds.base.mainJsSha256 === builds.candidate.mainJsSha256 &&
+			builds.base.stylesCssSha256 === builds.candidate.stylesCssSha256;
+		console.log(
+			`screenshots: A/B in ${VAULT_NAME}: the base is ${describe(builds.base)}, the candidate ${describe(builds.candidate)}${identical ? "; the two builds are identical, so this shows the noise" : ""}.`,
+		);
+		const cli = fixtureCli(VAULT_NAME);
+		const vaultDir = path.join(repoRoot, "fixtures", VAULT_NAME);
+		const vaultPath = fixtureVaultPath(
+			cli,
+			VAULT_NAME,
+			notesOf(vaultDir),
+			`Open ${vaultDir}, or a copy of it in a folder named ${VAULT_NAME}, with "Open folder as vault", then run this again.`,
+		);
+		const plugin = installPlugin(vaultPath, quietSettings(), builds.base);
+		const fixture = fixtureWindow(cli, VAULT_NAME, plugin);
+		const { shots, env } = runAndUndo(() => {
+			const prepared = fixture.prepare();
+			const env = environment(cli, prepared);
+			const shots = {};
+			for (const arm of ["base", "candidate"]) {
+				plugin.copyBuild(builds[arm]);
+				for (const [file, hash] of [
+					["main.js", "mainJsSha256"],
+					["styles.css", "stylesCssSha256"],
+				]) {
+					const installed = path.join(vaultPath, ".obsidian", "plugins", manifest.id, file);
+					if (
+						!existsSync(installed) ||
+						createHash("sha256").update(readFileSync(installed)).digest("hex") !== builds[arm][hash]
+					)
+						throw new ScriptError(
+							`${arm} ${describe(builds[arm])}: the installed ${file} does not match the build's sha256.`,
+						);
+				}
+				shots[arm] = takeScreenshots(
+					cli,
+					plugin,
+					path.join(workDir, arm),
+					only,
+					"ab",
+					`${arm} ${describe(builds[arm])}`,
+				);
+			}
+			env.appearance = cli.evaluate(timeline, { action: "appearance", viewType: TIMELINE_VIEW });
+			return { shots, env };
+		}, [
+			["clear the page size", () => cli.cdp("Emulation.clearDeviceMetricsOverride")],
+			["remove the style that hides the status bar", () => cli.evaluate(timeline, { action: "cleanup" })],
+			...fixture.undoSteps,
+		]);
+		const comparison = compareArms(
+			armStates(path.join(workDir, "base"), shots.base),
+			armStates(path.join(workDir, "candidate"), shots.candidate),
+		);
+		for (const { state, diff } of comparison.png.changed)
+			if (diff) writeFileSync(path.join(workDir, "candidate", `${state}.diff.png`), diff);
+		const report = abReport({ builds, env, workDir, comparison });
+		console.log(report);
+		if (ab.report) {
+			writeFileSync(ab.report, report);
+			console.log(`screenshots: wrote the report to ${ab.report}`);
+		}
+		return abExitCode(comparison);
+	} finally {
+		rmSync(buildDir, { recursive: true, force: true });
+	}
+}
+
 /** What makes pixels comparable: the same machine, Obsidian and window size. */
 function environment(cli, prepared) {
 	return {
@@ -487,19 +822,32 @@ function environment(cli, prepared) {
 }
 
 await runScript("screenshots", async () => {
-	const unknown = process.argv.slice(2).filter((arg) => arg !== "--update" && !arg.startsWith("--only="));
-	if (unknown.length)
-		throw new ScriptError(`unknown arguments ${JSON.stringify(unknown)}; use --update or --only=<text>.`);
-	const update = process.argv.includes("--update");
-	const only = process.argv.find((arg) => arg.startsWith("--only="))?.slice("--only=".length) ?? "";
-	if (update && only)
-		throw new ScriptError("--only cannot be combined with --update, which replaces all screenshots.");
-	if (plan(only).length === 0) throw new ScriptError(`no screenshot name contains "${only}".`);
+	let args;
+	try {
+		args = parseScreenshotArgs(process.argv.slice(2));
+	} catch (error) {
+		throw new ScriptError(error.message);
+	}
+	const { mode, update, only, ab } = args;
+	const groups = plan(only, mode);
+	if (groups.length === 0) throw new ScriptError(`no screenshot name contains "${only}".`);
+	if (ab) return runAb(ab, only);
 	// Checked before the run, which takes minutes, rather than after it.
-	if (!update && !existsSync(manifestFile))
+	if (mode === "screenshots" && !update && !existsSync(manifestFile))
 		throw new ScriptError(
 			`there are no baselines in ${path.relative(repoRoot, baselineDir)}. Take them with \`pnpm screenshots --update\`.`,
 		);
+	if (mode === "styles" && !update) {
+		const missing = groups.flatMap(({ shots }) =>
+			shots
+				.map(({ theme, name }) => stylesFile(theme, name))
+				.filter((file) => !existsSync(path.join(repoRoot, file))),
+		);
+		if (missing.length)
+			throw new ScriptError(
+				`missing style baselines: ${JSON.stringify(missing.slice(0, 5))}${missing.length > 5 ? ` and ${missing.length - 5} more` : ""}; run \`pnpm screenshots --styles --update\` to record them.`,
+			);
+	}
 	const build = buildInfo();
 	const cli = fixtureCli(VAULT_NAME);
 	const vaultDir = path.join(repoRoot, "fixtures", VAULT_NAME);
@@ -520,7 +868,7 @@ await runScript("screenshots", async () => {
 	const { shots, env } = runAndUndo(() => {
 		const prepared = fixture.prepare();
 		const env = environment(cli, prepared);
-		const shots = takeScreenshots(cli, plugin, outDir, only);
+		const shots = takeScreenshots(cli, plugin, outDir, only, mode);
 		// The last timeline is still open.
 		env.appearance = cli.evaluate(timeline, { action: "appearance", viewType: TIMELINE_VIEW });
 		return { env, shots };
@@ -529,6 +877,8 @@ await runScript("screenshots", async () => {
 		["remove the style that hides the status bar", () => cli.evaluate(timeline, { action: "cleanup" })],
 		...fixture.undoSteps,
 	]);
+
+	if (mode === "styles") return finishStyles(outDir, shots, env, build, only, update);
 
 	if (update) {
 		if (existsSync(manifestFile)) warnAboutSetup(JSON.parse(readFileSync(manifestFile, "utf8")), env);
