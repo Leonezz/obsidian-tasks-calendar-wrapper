@@ -148,7 +148,27 @@ export type TracingStopped =
 	| { readonly method: "webContents.debugger"; readonly events: number }
 	| { readonly method: "contentTracing"; readonly path: string };
 
-/** Starts page-side recording through webContents.debugger or the contentTracing fallback. */
+/** One debugger recording operation evaluated in the page. */
+export interface DebuggerTracingOptions {
+	readonly step: "start" | "stop" | "chunk" | "abort";
+	readonly categories?: readonly string[];
+	readonly from?: number;
+	readonly count?: number;
+}
+
+/** Cleanup actions performed by the debugger recorder. */
+export interface TracingAborted {
+	readonly ended: boolean;
+	readonly listenerRemoved: boolean;
+	readonly detached: boolean;
+}
+
+/** Controls debugger recording in a self-contained page function. */
+export function debuggerTracing(
+	options: DebuggerTracingOptions,
+): Promise<{ readonly method: "webContents.debugger" } | TracingStopped | TraceEvent[] | TracingAborted>;
+
+/** Starts the page-side contentTracing fallback. */
 export function tracingStart(options: TracingStartOptions): Promise<{ method: TraceMethod }>;
 /** Stops page-side recording and returns the location or size of the collected trace. */
 export function tracingStop(): Promise<TracingStopped>;
@@ -164,7 +184,7 @@ export interface TraceCli {
 
 /** Recording control plus cleanup steps for the caller's runAndUndo. */
 export interface TraceRecorder {
-	readonly method: TraceMethod;
+	method(): TraceMethod | null;
 	start(): void;
 	stop(): TraceEvent[];
 	readonly undoSteps: readonly (readonly [description: string, undo: () => unknown])[];

@@ -41,21 +41,23 @@
  * Both arms get this checkout's manifest.json, so a different version does not make one of them save its options while
  * it loads. scripts/bench-nightly.mjs runs this for labelled PRs at night.
  *
+ * `pnpm bench --profile [--ab <ref>]` records each scenario once per arm, outside timed rounds. Chrome timeline,
+ * V8 CPU-profiler/GC and toplevel events split long tasks into core, react-dom, MarkdownRenderer, other script,
+ * style, layout, paint and GC, with unattributed time shown separately. It judges nothing; `--report <file>` writes
+ * only the summaries and recording method, never raw traces.
+ *
  * Needs Obsidian running with the vault named bench-vault (bench-vault-x10) open: generate it with
  * `pnpm bench:vault <folder> [--scale 10]`, open the folder in Obsidian once, and keep its window open. The script only talks to that vault, after checking its notes are
  * exactly the generated ones. It installs the build into the vault, turns community plugins on, pins today to
  * 2026-01-15, stops throttling the window while it is hidden, sizes its page through the DevTools protocol, and puts all
  * of that and the edited notes back at the end.
  */
-import { execFileSync } from "child_process";
-import { randomInt } from "crypto";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "fs";
 import os from "os";
 import path from "path";
-import { AB_RUNS, abMergeBase, abOrder, checkAbBase, compareAb, parseBenchArgs } from "./bench-ab.mjs";
-import { buildAt, localBuild } from "./bench-builds.mjs";
-import { otherBenchProcesses } from "./bench-host.mjs";
+import { AB_RUNS, compareAb, parseBenchArgs } from "./bench-ab.mjs";
 import { measure } from "./bench-measure.mjs";
+import { prepareBenchBuilds, runProfile } from "./bench-profile-run.mjs";
 import {
 	assertToggleChanges,
 	assertToggleRestored,
@@ -115,12 +117,8 @@ function mainThreadMs(cli) {
 	return task.value * 1000;
 }
 
-/** The writer-only scenario, after the shared measurements, with setup and restoration outside the timed clicks. */
-function measureToggle(evaluate, timed, notes, scale, label, cpuSummary, cpuText) {
-	if (!evaluate({ action: "toggleSupport" })) {
-		console.log(`bench: ${label}toggle: skipped (the loaded plugin has no in-place checkbox support); not judged.`);
-		return { skipped: "the loaded plugin has no in-place checkbox support" };
-	}
+/** The writer scenario's shared note, display options, reset and byte-checked restoration. */
+function toggleSetup(evaluate, notes) {
 	const path = BENCH_TARGETS.toggle;
 	const original = notes.get(path);
 	const toggleTasks = Array.from({ length: 5 }, (_, i) => `Bench toggle task ${i + 1}`);
@@ -143,11 +141,43 @@ function measureToggle(evaluate, timed, notes, scale, label, cpuSummary, cpuText
 		restore(prepared);
 		evaluate({ action: "settle", settleMs: LOAD_WATCH_MS, path, toggleTasks, toggleReady: true });
 	};
+	return {
+		path,
+		toggleTasks,
+		lines,
+		prepared,
+		check,
+		reset,
+		prepare() {
+			evaluate({
+				action: "toggleOptions",
+				options: { hideStatusTasks: [], useBuiltinStyle: true, openNoteInsteadOfInPlace: false },
+			});
+		},
+		undoSteps: [
+			["wait for toggle writes", settle],
+			[`restore ${path} after toggle`, () => restore(original)],
+			["restore toggle display options", () => evaluate({ action: "toggleOptions", ...settings })],
+			["settle after toggle", settle],
+			["restore the timeline view state", () => evaluate({ action: "viewRestore" })],
+			[
+				"verify restored toggle bytes",
+				() => check(() => assertToggleRestored(path, original, evaluate({ action: "readNote", path }))),
+			],
+		],
+	};
+}
+
+/** The writer-only scenario, after the shared measurements, with setup and restoration outside the timed clicks. */
+function measureToggle(evaluate, timed, notes, scale, label, cpuSummary, cpuText) {
+	if (!evaluate({ action: "toggleSupport" })) {
+		console.log(`bench: ${label}toggle: skipped (the loaded plugin has no in-place checkbox support); not judged.`);
+		return { skipped: "the loaded plugin has no in-place checkbox support" };
+	}
+	const setup = toggleSetup(evaluate, notes);
+	const { path, toggleTasks, lines, prepared, check, reset } = setup;
 	return runAndUndo(() => {
-		evaluate({
-			action: "toggleOptions",
-			options: { hideStatusTasks: [], useBuiltinStyle: true, openNoteInsteadOfInPlace: false },
-		});
+		setup.prepare();
 		const idle = [];
 		for (let run = 0; run < TOGGLE_RUNS[scale]; run++) {
 			reset();
@@ -198,17 +228,7 @@ function measureToggle(evaluate, timed, notes, scale, label, cpuSummary, cpuText
 			burstIgnoredClicks: counts([burstIgnored]),
 			clickLog: { idle: idle.map((step) => step.clicks), burst: burst.clicks, sequence: sequence.clicks },
 		};
-	}, [
-		["wait for toggle writes", settle],
-		[`restore ${path} after toggle`, () => restore(original)],
-		["restore toggle display options", () => evaluate({ action: "toggleOptions", ...settings })],
-		["settle after toggle", settle],
-		["restore the timeline view state", () => evaluate({ action: "viewRestore" })],
-		[
-			"verify restored toggle bytes",
-			() => check(() => assertToggleRestored(path, original, evaluate({ action: "readNote", path }))),
-		],
-	]);
+	}, setup.undoSteps);
 }
 
 /**
@@ -414,59 +434,9 @@ const restoreSteps = (cli, notes) =>
  * exit code: 1 when something got slower.
  */
 function runAb(ab, scale) {
-	let mergeBase;
+	const { mergeBase, seed, order, vaultName, cli, notes, vaultPath, workDir, builds, identicalBuilds } =
+		prepareBenchBuilds(ab, scale);
 	try {
-		// Only the optional upstream lookup is quiet; resolution failures keep git's existing stderr output.
-		const git = (args) =>
-			execFileSync("git", args, {
-				cwd: repoRoot,
-				encoding: "utf8",
-				...(args[0] === "rev-parse" && args[1] === "--abbrev-ref"
-					? { stdio: ["ignore", "pipe", "ignore"] }
-					: {}),
-			}).trim();
-		const resolved = abMergeBase({ base: ab.base, candidate: ab.candidate, git });
-		const { baseCommit } = resolved;
-		mergeBase = resolved.mergeBase;
-		const warning = checkAbBase({ ref: ab.base, baseCommit, mergeBase, allowOtherBase: ab.allowOtherBase });
-		if (warning) console.warn(warning);
-	} catch (error) {
-		throw new ScriptError(error.message);
-	}
-	const others = otherBenchProcesses(
-		execFileSync("ps", ["-A", "-o", "pid=,ppid=,command="], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }),
-		process.pid,
-	);
-	if (others.length)
-		throw new ScriptError(
-			`another script is driving Obsidian, whose work would land in the measurements; wait for it to finish: ${others.map((other) => `${other.pid} ${other.command}`).join("; ")}`,
-		);
-	// Checked before the run, which takes a quarter of an hour or more, rather than after it.
-	if (ab.report && !existsSync(path.dirname(path.resolve(ab.report))))
-		throw new ScriptError(`the folder of the report ${ab.report} does not exist.`);
-	const seed = ab.seed ?? randomInt(2 ** 32);
-	const order = abOrder(ab.rounds, seed);
-	const vaultName = benchVaultName(scale);
-	const scaleArg = scale === 1 ? "" : ` --scale ${scale}`;
-	const cli = fixtureCli(vaultName);
-	const notes = benchVaultNotes(scale);
-	const vaultPath = fixtureVaultPath(
-		cli,
-		vaultName,
-		notes,
-		`Generate it with \`pnpm bench:vault <folder named ${vaultName}>${scaleArg}\`, open the folder with "Open folder as vault", then run this again.`,
-	);
-	const workDir = mkdtempSync(path.join(os.tmpdir(), "tcw-bench-ab-"));
-	try {
-		const builds = {
-			base: buildAt(ab.base, path.join(workDir, "base")),
-			candidate: ab.candidate
-				? buildAt(ab.candidate, path.join(workDir, "candidate"))
-				: localBuild(path.join(workDir, "candidate")),
-		};
-		const identicalBuilds =
-			builds.base.mainJsSha256 === builds.candidate.mainJsSha256 &&
-			builds.base.stylesCssSha256 === builds.candidate.stylesCssSha256;
 		const describe = (build) =>
 			`${build.ref} (${build.commit}${build.uncommittedChanges ? " with uncommitted changes" : ""})`;
 		console.log(
@@ -584,7 +554,23 @@ await runScript("bench", async () => {
 	} catch (error) {
 		throw new ScriptError(error.message);
 	}
-	if (profile) throw new ScriptError("--profile is not implemented yet.");
+	if (profile)
+		return runProfile(profile, scale, {
+			toggleSetup,
+			environment,
+			restoreSteps,
+			loadAverageSince,
+			viewport: VIEWPORT,
+			loadWatchMs: LOAD_WATCH_MS,
+			args: {
+				viewType: TIMELINE_VIEW,
+				pluginId: manifest.id,
+				command: OPEN_COMMAND,
+				quietMs: QUIET_MS,
+				burstGapMs: BURST_GAP_MS,
+				slowness: scale,
+			},
+		});
 	if (ab) return runAb(ab, scale);
 	const vaultName = benchVaultName(scale);
 	const scaleArg = scale === 1 ? "" : ` --scale ${scale}`;

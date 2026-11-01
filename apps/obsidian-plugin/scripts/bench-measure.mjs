@@ -10,6 +10,7 @@
  */
 export async function measure({
 	action,
+	marker,
 	viewType,
 	pluginId,
 	command,
@@ -239,6 +240,10 @@ export async function measure({
 	}
 
 	switch (action) {
+		case "timeStamp": {
+			console.timeStamp(marker);
+			return true;
+		}
 		case "unload": {
 			app.workspace.detachLeavesOfType(viewType);
 			if (app.plugins.plugins[pluginId]) await app.plugins.disablePlugin(pluginId);

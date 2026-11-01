@@ -312,3 +312,11 @@ test("the table prints base and candidate side by side", () => {
 		assert.deepEqual(cells(single, name), [String(candidateValues[name])]);
 	}
 });
+
+test("CPU-profile chunks from V8's sampler thread count for the main thread's profile", () => {
+	const trace = traceOf().map((event) => (event.name === "ProfileChunk" ? { ...event, tid: 9 } : event));
+	assert.deepEqual(bucketTrace(trace, options).categories, bucketTrace(traceOf(), options).categories);
+	// A profile started on another thread of the process, such as a worker, is not the main thread's.
+	const worker = traceOf().map((event) => (event.name === "Profile" ? { ...event, tid: 9 } : event));
+	assert.throws(() => bucketTrace(worker, options), /no CPU-profile samples/);
+});
