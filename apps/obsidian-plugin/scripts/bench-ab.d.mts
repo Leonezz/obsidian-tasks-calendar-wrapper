@@ -17,6 +17,22 @@ export interface AbOptions {
 	readonly allowOtherBase: boolean;
 }
 
+/** One traced pass per scenario, either for this checkout or for two specified builds. */
+export interface ProfileOptions {
+	readonly base: string | null;
+	readonly candidate: string | null;
+	readonly allowOtherBase: boolean;
+	readonly report: string | null;
+}
+
+/** Parses the plain benchmark, A/B comparison and standalone profile modes without starting a run. */
+export function parseBenchArgs(argv: readonly string[]): {
+	scale: number;
+	update: boolean;
+	ab: AbOptions | null;
+	profile: ProfileOptions | null;
+};
+
 /** What one arm measured in one round: bench.mjs's results, the same shape as a baseline's. */
 export interface Slot {
 	readonly round: number;
@@ -51,6 +67,7 @@ export interface CountRow {
 	readonly base: Pick<Counts, "min" | "median" | "max">;
 	readonly candidate: Pick<Counts, "min" | "median" | "max">;
 	readonly changed: boolean;
+	readonly reportOnly: boolean;
 }
 
 export interface UnpairedRow {

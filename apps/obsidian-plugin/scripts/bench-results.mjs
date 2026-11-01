@@ -7,6 +7,34 @@
 export const SLOWER_RATIO = 1.25;
 export const SLOWER_MS = 50;
 
+/** Full scenario.metric names of counts reported without change warnings or verdicts. */
+export const REPORT_ONLY_COUNTS = Object.freeze(new Set());
+
+/** Summarises a view control's measured clicks, with CPU timings only when requested. */
+export function clickResults(steps, cpu) {
+	throw new Error("not implemented");
+}
+
+/** Summarises the on and off clicks separately under the flat Focus on today scenario names. */
+export function focusTodayResults(pairs, cpu) {
+	throw new Error("not implemented");
+}
+
+/** Computes nearest-rank p95 and counts from consecutive animation-frame timestamps. */
+export function frameStats(timestamps) {
+	throw new Error("not implemented");
+}
+
+/** Summarises scroll frame timings and counts, retaining the observed visibility states. */
+export function scrollResults(runs) {
+	throw new Error("not implemented");
+}
+
+/** Summarises used heap bytes collected after garbage collection. */
+export function heapResults(usedSizes) {
+	throw new Error("not implemented");
+}
+
 const median = (values) => {
 	const sorted = [...values].sort((a, b) => a - b);
 	const middle = Math.floor(sorted.length / 2);

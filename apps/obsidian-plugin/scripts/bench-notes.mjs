@@ -45,6 +45,14 @@ export const BENCH_TARGETS = {
 	toggle: "Reference/Note 0002.md",
 };
 
+/** The task line edited by saveWithTasks, identified by its vault path and zero-based line. */
+export const SAVE_MARKER = Object.freeze({ path: BENCH_TARGETS.withTasks, line: -1, text: "" });
+
+/** Inserts a save token after the marker's task text while preserving every other byte of the note. */
+export function withSaveToken(original, token) {
+	throw new Error("not implemented");
+}
+
 /** mulberry32: a small seeded generator, so the vault is the same on every machine. */
 export function random(seed) {
 	let state = seed >>> 0;

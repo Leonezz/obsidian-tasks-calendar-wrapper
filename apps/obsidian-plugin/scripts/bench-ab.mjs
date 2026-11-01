@@ -27,6 +27,11 @@ const AB_ONLY = ["--candidate", "--rounds", "--seed", "--report", "--any-base"];
 
 const median = (values) => counts(values).median;
 
+/** Parses the plain benchmark, A/B comparison and standalone profile modes without starting a run. */
+export function parseBenchArgs(argv) {
+	throw new Error("not implemented");
+}
+
 /**
  * The value of `--name value` or `--name=value` and the arguments without them: undefined without the option, null when
  * it has no value.

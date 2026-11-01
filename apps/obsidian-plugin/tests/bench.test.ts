@@ -2,16 +2,25 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
+import { abArgs, compareAb, parseBenchArgs, type Slot } from "../scripts/bench-ab.mjs";
+import { benchVaultNotes, SAVE_MARKER, withSaveToken } from "../scripts/bench-notes.mjs";
+import { heapAfterLoad, measureViewScenarios } from "../scripts/bench-scenarios.mjs";
+import { viewPage, viewScenarioDeps } from "./bench-view-page";
 
 import {
 	assertToggleChanges,
 	assertToggleRestored,
+	clickResults,
 	compare,
 	countIgnoredClicks,
 	counts,
+	focusTodayResults,
+	frameStats,
 	paintedAfter,
+	scrollResults,
 	splitLoad,
 	summary,
+	type ClickStep,
 } from "../scripts/bench-results.mjs";
 
 // scripts/bench.mjs measures in a real Obsidian; what it makes of the raw times, and how it judges them against the
@@ -557,4 +566,233 @@ test("toggle: the page detects writer support and returns restore read-back byte
 	});
 	assert.equal(typeof unchanged, "string");
 	assert.throws(() => assertToggleRestored("Note.md", original, unchanged as string), /could not restore/);
+});
+
+test("focusToday reports on and off paintedMs and blockedMs", async () => {
+	const page = viewPage({ longTasks: [{ offset: 1, duration: 60 }] });
+	const on = await page.run<ClickStep>({ action: "focusToday", direction: "on", quietMs: 100, burstGapMs: 40 });
+	assert.equal(page.classList.contains("todayFocus"), true);
+	const off = await page.run<ClickStep>({ action: "focusToday", direction: "off", quietMs: 100, burstGapMs: 40 });
+	assert.equal(page.classList.contains("todayFocus"), false);
+	for (const step of [on, off]) {
+		assert.equal(step.paintedMs, 26);
+		assert.equal(step.blockedMs, 60);
+	}
+	const pairs = [
+		{ on, off },
+		{ on: { ...on, paintedMs: 46 }, off: { ...off, blockedMs: 80 } },
+	];
+	const results = focusTodayResults(pairs, false);
+	assert.deepEqual(Object.keys(results), ["focusToday.on", "focusToday.off"]);
+	for (const [key, steps] of [
+		["focusToday.on", pairs.map((pair) => pair.on)],
+		["focusToday.off", pairs.map((pair) => pair.off)],
+	] as const) {
+		assert.equal(results[key].runs, 2);
+		assert.deepEqual(results[key].paintedMs, summary(steps.map((step) => step.paintedMs)));
+		assert.deepEqual(results[key].blockedMs, summary(steps.map((step) => step.blockedMs)));
+		assert.equal("cpuMs" in results[key], false);
+		assert.deepEqual(
+			focusTodayResults([{ on: { ...on, cpuMs: 30 }, off: { ...off, cpuMs: 40 } }], true)[key].cpuMs,
+			summary([key.endsWith("on") ? 30 : 40]),
+		);
+	}
+});
+
+test("counterFilter reports paintedMs and blockedMs for the click on Todo", async () => {
+	const page = viewPage({ clickDelay: 20, longTasks: [{ offset: 2, duration: 70 }] });
+	const step = await page.run<ClickStep>({ action: "counterFilter", direction: "on", quietMs: 100 });
+	assert.equal(page.classList.contains("todoFilter"), true);
+	assert.equal(step.paintedMs, 36);
+	assert.equal(step.blockedMs, 70);
+	const result = clickResults([step, { paintedMs: 50, blockedMs: 90, longestMs: 80 }], false);
+	assert.equal(result.runs, 2);
+	assert.deepEqual(result.paintedMs, summary([36, 50]));
+	assert.deepEqual(result.blockedMs, summary([70, 90]));
+	assert.deepEqual(result.longestTaskMs, summary([70, 80]));
+});
+
+test("scroll reports p95FrameMs", async () => {
+	const durations = [...Array.from({ length: 17 }, (_, index) => index + 1), 50, 51, 90];
+	const timestamps = durations.reduce((times, duration) => [...times, times[times.length - 1] + duration], [0]);
+	assert.deepEqual(frameStats(timestamps), { p95FrameMs: 51, framesOver50Ms: 2, frames: 20 });
+	const page = viewPage();
+	const run = await page.run<{ timestamps: number[]; visibilityState: string; scrolledPx: number }>({
+		action: "scroll",
+		durationMs: 2000,
+		pxPerMs: 3,
+		minScrollPx: 6000,
+	});
+	assert.equal(run.timestamps[0], 0);
+	assert.ok(run.timestamps.at(-1)! >= 2000);
+	assert.equal(run.visibilityState, "hidden");
+	assert.equal(run.scrolledPx, 6000);
+	const frames = page.scrolls.slice(1, -1);
+	assert.equal(frames.length, run.timestamps.length);
+	for (const [i, frame] of frames.entries()) {
+		assert.equal(frame.at - frames[0].at, run.timestamps[i]);
+		assert.equal(frame.value, 3 * Math.min(2000, run.timestamps[i]));
+	}
+	assert.equal(page.scrolls[0].value, 0);
+	assert.equal(page.scrolls.at(-1)?.value, 0);
+	assert.equal(page.content.scrollTop, 0);
+	assert.deepEqual(scrollResults([{ timestamps, visibilityState: "hidden" }]), {
+		runs: 1,
+		p95FrameMs: summary([51]),
+		framesOver50Ms: counts([2]),
+		frames: counts([20]),
+		visibilityState: "hidden",
+	});
+});
+
+test("reveal is skipped on a build without revealTask", async () => {
+	const page = viewPage({ view: {}, rowPresent: false });
+	assert.deepEqual(await page.run({ action: "reveal", taskPath: page.taskPath, taskLine: page.taskLine }), {
+		revealed: false,
+	});
+	assert.deepEqual(page.scrolls, []);
+});
+
+test("reveal waits for revealTask and for the row it reveals", async () => {
+	const page = viewPage({ rowPresent: false });
+	let called = "";
+	let resolvedAt = 0;
+	page.view.revealTask = async (id) => {
+		called = id;
+		await page.delay(80);
+		resolvedAt = page.now;
+		page.showRow();
+	};
+	assert.deepEqual(await page.run({ action: "reveal", taskPath: page.taskPath, taskLine: page.taskLine }), {
+		revealed: true,
+	});
+	assert.equal(called, `${page.taskPath}:${page.taskLine}`);
+	assert.equal(resolvedAt, 1080);
+	assert.ok(page.now >= resolvedAt);
+	assert.deepEqual(page.scrolls, []);
+	// A row already in the DOM must not let an unawaited reveal promise pass the row check.
+	const started = page.now;
+	await page.run({ action: "reveal", taskPath: page.taskPath, taskLine: page.taskLine });
+	assert.equal(resolvedAt, started + 80);
+	assert.ok(page.now >= resolvedAt);
+});
+
+test("a reveal whose row never appears is an error", async () => {
+	const page = viewPage({ rowPresent: false, view: { revealTask: async () => {} } });
+	await assert.rejects(
+		page.run({ action: "reveal", taskPath: page.taskPath, taskLine: page.taskLine }),
+		(error: Error) => error.message.includes(`${page.taskPath}:${page.taskLine}`),
+	);
+});
+
+test("a candidate without the Focus on today control is an error; a base without it is skipped and not judged", () => {
+	const lines: string[] = [];
+	const deps = viewScenarioDeps({ todayHeader: false, todoCounter: true, viewContent: true }, (line) =>
+		lines.push(line),
+	);
+	assert.throws(() => measureViewScenarios(deps), /\.todayHeader/);
+	const base = measureViewScenarios({ ...deps, arm: "base" });
+	for (const key of ["focusToday.on", "focusToday.off"] as const)
+		assert.deepEqual(base[key], { skipped: "the loaded build has no Focus on today control" });
+	assert.ok(lines.some((line) => line.includes("focusToday: skipped")));
+	const slots: Slot[] = Array.from({ length: 8 }, (_, round) => [
+		{
+			round,
+			arm: "base" as const,
+			results: { "focusToday.on": { ...base["focusToday.on"] }, saveWithoutTasks: { runs: 1, reloads: 0 } },
+		},
+		{
+			round,
+			arm: "candidate" as const,
+			results: { "focusToday.on": { paintedMs: timing(1000) }, saveWithoutTasks: { runs: 1, reloads: 0 } },
+		},
+	]).flat();
+	const verdict = compareAb(slots, 1);
+	assert.equal(verdict.unpaired.find((row) => row.name === "focusToday.on.paintedMs")?.verdict, "not judged");
+	assert.equal(verdict.slower, 0);
+});
+
+test("scroll fails when the timeline cannot scroll 6,000 px", async () => {
+	const page = viewPage({ scrollHeight: 6999, clientHeight: 1000 });
+	await assert.rejects(page.run({ action: "scroll", durationMs: 2000, pxPerMs: 3, minScrollPx: 6000 }), /6000/);
+});
+
+test("heapAfterLoad collects garbage before it reads the heap", () => {
+	const methods: string[] = [];
+	assert.deepEqual(
+		heapAfterLoad((method) => {
+			methods.push(method);
+			return { usedSize: 4096 };
+		}),
+		{ usedBytes: counts([4096]) },
+	);
+	assert.deepEqual(methods, ["HeapProfiler.collectGarbage", "Runtime.getHeapUsage"]);
+	for (const answer of [{}, { usedSize: 0 }])
+		assert.throws(() => heapAfterLoad(() => answer), /no positive usedSize/);
+	assert.throws(
+		() =>
+			heapAfterLoad(() => {
+				throw new Error("CDP unavailable");
+			}),
+		/HeapProfiler\.collectGarbage.*CDP unavailable/,
+	);
+});
+
+test("the save token goes after Task 0228 b only", () => {
+	const original = benchVaultNotes(1).get(SAVE_MARKER.path)!;
+	const changed = withSaveToken(original, "tok").split("\n");
+	const lines = original.split("\n");
+	assert.equal(changed.length, lines.length);
+	assert.equal(changed[12], "- [ ] Task 0228 b tok 🔽 ➕ 2026-01-06 ⏳ 2026-01-15");
+	for (let line = 0; line < lines.length; line++) if (line !== 12) assert.equal(changed[line], lines[line]);
+	assert.equal(
+		changed.find((line) => line.includes("Task 0228 a")),
+		lines.find((line) => line.includes("Task 0228 a")),
+	);
+	assert.throws(() => withSaveToken("# No task\n", "tok"), {
+		message: `${SAVE_MARKER.path} has no "- [ ] Task 0228 b" task to edit.`,
+	});
+});
+
+test("--profile with --update is an error", () => {
+	assert.throws(() => parseBenchArgs(["--profile", "--update"]), {
+		message: "--profile measures no baseline; leave out --update.",
+	});
+	for (const args of [
+		["--rounds", "8"],
+		["--seed", "1"],
+	])
+		assert.throws(() => parseBenchArgs(["--profile", ...args]), {
+			message: "--profile runs each scenario once per arm; leave out --rounds and --seed.",
+		});
+	assert.throws(() => parseBenchArgs(["--ab", "master", "--update"]), {
+		message: "--ab compares two builds and records no baseline; leave out --update.",
+	});
+});
+
+test("--profile takes --report without --ab; --report alone is still an error", () => {
+	assert.deepEqual(parseBenchArgs(["--profile", "--report", "x.json"]), {
+		scale: 1,
+		update: false,
+		ab: null,
+		profile: { base: null, candidate: null, allowOtherBase: false, report: "x.json" },
+	});
+	assert.deepEqual(parseBenchArgs(["--profile", "--ab", "master", "--scale", "10", "--report", "p.json"]), {
+		scale: 10,
+		update: false,
+		ab: null,
+		profile: { base: "master", candidate: null, allowOtherBase: false, report: "p.json" },
+	});
+	assert.throws(() => parseBenchArgs(["--report", "x.json"]), { message: "--report only go with --ab <ref>." });
+	assert.throws(() => parseBenchArgs(["--profile", "--candidate", "x"]), {
+		message: "--candidate only go with --ab <ref>.",
+	});
+	assert.throws(() => parseBenchArgs(["--unknown"]), {
+		message:
+			'unknown arguments ["--unknown"]; the only ones are --update, --scale 10, --profile with --report <file> and --ab <ref>, and --ab <ref> with --candidate <ref>, --rounds <n>, --seed <n>, --report <file> and --any-base.',
+	});
+	assert.deepEqual(parseBenchArgs([]), { scale: 1, update: false, ab: null, profile: null });
+	assert.deepEqual(parseBenchArgs(["--update"]), { scale: 1, update: true, ab: null, profile: null });
+	const ab = abArgs(["--ab", "master"], 1).ab;
+	assert.deepEqual(parseBenchArgs(["--ab", "master"]), { scale: 1, update: false, ab, profile: null });
 });
