@@ -660,16 +660,18 @@ function finishStyles(outDir, shots, env, build, only, update) {
 	}
 	const problems = stylesBaselineProblems(taken, baselines);
 	const differing = new Set([...taken.keys()].filter((state) => taken.get(state) !== baselines.get(state)));
+	let gone = 0;
 	for (const state of baselines.keys()) {
 		if (!state.split("/")[1].includes(only) || taken.has(state)) continue;
 		problems.push(`${state}: is no longer taken`);
 		differing.add(state);
+		gone += 1;
 	}
 	for (const problem of problems) console.log(`screenshots: ${problem}`);
 	console.log(
 		problems.length === 0
 			? `screenshots: all ${taken.size} style fingerprints match fixtures/screenshots/styles.`
-			: `screenshots: ${differing.size} of ${taken.size} style fingerprints differ. What this run took is in ${path.join(outDir, "styles")}.`,
+			: `screenshots: ${differing.size} of ${taken.size + gone} style fingerprints differ. What this run took is in ${path.join(outDir, "styles")}.`,
 	);
 	return problems.length ? 1 : 0;
 }
