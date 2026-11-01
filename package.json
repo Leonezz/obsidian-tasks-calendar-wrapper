@@ -16,6 +16,7 @@
 		"tasks-parity:vault": "pnpm --filter @tasks-calendar-wrapper/obsidian-plugin tasks-parity:vault",
 		"bench": "pnpm --filter @tasks-calendar-wrapper/obsidian-plugin bench",
 		"screenshots": "pnpm --filter @tasks-calendar-wrapper/obsidian-plugin screenshots",
+		"markup:obsidian": "pnpm --filter @tasks-calendar-wrapper/obsidian-plugin markup:obsidian",
 		"preversion": "node version-bump.mjs check",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"eslint": "eslint \"apps/**/*.{ts,tsx}\" \"packages/**/*.{ts,tsx}\"",
