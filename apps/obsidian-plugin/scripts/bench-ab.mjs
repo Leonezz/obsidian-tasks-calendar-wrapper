@@ -337,3 +337,13 @@ export function compareAb(slots, scale) {
 	}
 	return { rows, counts: countRows, unpaired, reloads, warnings, lines, slower };
 }
+
+/** The upstream of a local branch, or the ref itself when the injected git runner cannot resolve an upstream. */
+export function upstreamOf(ref, git) {
+	throw new Error("not implemented");
+}
+
+/** Resolves the base commit and its upstream's merge base with the candidate, or HEAD for the local build. */
+export function abMergeBase({ base, candidate, git }) {
+	throw new Error("not implemented");
+}

@@ -366,3 +366,38 @@ test("the table's columns line up", () => {
 	assert.equal(table.length, 5);
 	assert.equal(new Set(table.map((line) => line.length)).size, 1, table.join("\n"));
 });
+
+test("the A/B base is measured against the upstream of a local branch", () => {
+	const calls: string[][] = [];
+	const baseCommit = "b94bd30" + "0".repeat(33);
+	const mergeBase = "f72cf4b" + "0".repeat(33);
+	const git = (args: readonly string[]) => {
+		calls.push([...args]);
+		if (args[0] === "rev-parse" && args[1] === "--abbrev-ref") return "origin/master\n";
+		if (args[0] === "rev-parse") return `${baseCommit}\n`;
+		if (args[0] === "merge-base") return `${mergeBase}\n`;
+		throw new Error(`unexpected git arguments ${JSON.stringify(args)}`);
+	};
+	assert.equal(benchAb.upstreamOf("master", git), "origin/master");
+	assert.deepEqual(calls, [["rev-parse", "--abbrev-ref", "master@{upstream}"]]);
+	const noUpstream = (args: readonly string[]) => {
+		assert.deepEqual(args, ["rev-parse", "--abbrev-ref", "master@{upstream}"]);
+		throw new Error("no upstream");
+	};
+	assert.equal(benchAb.upstreamOf("master", noUpstream), "master");
+
+	calls.length = 0;
+	assert.deepEqual(benchAb.abMergeBase({ base: "master", candidate: null, git }), { baseCommit, mergeBase });
+	assert.deepEqual(calls, [
+		["rev-parse", "--verify", "--end-of-options", "master^{commit}"],
+		["rev-parse", "--abbrev-ref", "master@{upstream}"],
+		["merge-base", "--", "origin/master", "HEAD"],
+	]);
+	calls.length = 0;
+	assert.deepEqual(benchAb.abMergeBase({ base: "master", candidate: "feature", git }), { baseCommit, mergeBase });
+	assert.deepEqual(calls, [
+		["rev-parse", "--verify", "--end-of-options", "master^{commit}"],
+		["rev-parse", "--abbrev-ref", "master@{upstream}"],
+		["merge-base", "--", "origin/master", "feature"],
+	]);
+});

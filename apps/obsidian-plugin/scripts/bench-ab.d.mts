@@ -120,3 +120,22 @@ export function compareAb(slots: readonly Slot[], scale: number): AbVerdict;
 
 /** A ratio as a change in percent, "+6.2 %" or "-3 %". */
 export function percentChange(ratio: number): string;
+
+/** Runs git synchronously with these arguments and returns stdout; the caller owns cwd and execution options. */
+export type GitRunner = (args: readonly string[]) => string;
+
+/**
+ * Returns trimmed `git rev-parse --abbrev-ref <ref>@{upstream}` stdout, or ref unchanged when that lookup throws.
+ * The injected runner keeps this helper independent of a checkout or a child process implementation.
+ */
+export function upstreamOf(ref: string, git: GitRunner): string;
+
+/**
+ * Returns trimmed commits from `git rev-parse --verify --end-of-options <base>^{commit}` and
+ * `git merge-base -- <upstreamOf(base)> <candidate ?? HEAD>`. Base and merge-base errors propagate unchanged.
+ */
+export function abMergeBase(options: {
+	readonly base: string;
+	readonly candidate: string | null;
+	readonly git: GitRunner;
+}): { baseCommit: string; mergeBase: string };
