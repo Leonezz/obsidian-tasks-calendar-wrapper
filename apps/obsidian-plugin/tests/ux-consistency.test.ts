@@ -130,7 +130,17 @@ describe("Visual", () => {
 	// Phase 4 step 23: remove repeated specificity prefixes.
 	it.todo("selectors have no repeated specificity prefixes");
 	// Phase 4 step 0b: compare the default theme screenshots and computed styles against the base.
-	it.todo("default theme screenshots are compared against the base");
+	it("default theme screenshots are compared against the base", () => {
+		coveredBy(
+			"tests/screenshotsab.test.ts",
+			"identical visible text, PNGs and styles report no differences and exit 0",
+		);
+		coveredBy("tests/screenshotsab.test.ts", "a style difference fails the A/B");
+		coveredBy(
+			"tests/screenshotstyles.test.ts",
+			"the fingerprint is serialized with sorted keys, whatever the collection order",
+		);
+	});
 	// Phase 4 step 0c: add the Blue Topaz theme to the same comparison.
 	it.todo("Blue Topaz screenshots are compared against the base");
 });

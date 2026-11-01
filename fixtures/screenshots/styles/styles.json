@@ -1,0 +1,409 @@
+{
+	"note": "Taken by apps/obsidian-plugin/scripts/screenshots.mjs (`pnpm screenshots --styles --update`). Do not edit by hand.",
+	"obsidianVersion": "1.14.5 (installer 1.13.7)",
+	"electron": "43.3.0",
+	"chrome": "150.0.7871.212",
+	"machine": {
+		"cpu": "Apple M4 Pro",
+		"cores": 14,
+		"memoryGB": 48,
+		"os": "macOS 27.0.1 (Darwin 27.0.0)",
+		"arch": "arm64"
+	},
+	"viewportWidth": 600,
+	"today": "2026-01-15 Thursday",
+	"appearance": {
+		"accentColor": "",
+		"baseFontSize": null,
+		"interfaceFontFamily": "",
+		"textFontFamily": "",
+		"monospaceFontFamily": "",
+		"cssTheme": "",
+		"enabledCssSnippets": [],
+		"showRibbon": true,
+		"zoom": 1,
+		"timelineFont": "\"??\", \"??\", \"??\", ui-sans-serif, -apple-system, \"system-ui\", system-ui, \"Segoe UI\", \"Google Sans Flex\", Roboto, \"Inter Variable\", Inter, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", sans-serif",
+		"display": {
+			"name": "内建视网膜显示器",
+			"internal": true,
+			"colorSpace": "{primaries:P3, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
+			"scaleFactor": 2
+		}
+	},
+	"takenAt": "2026-11-01",
+	"plugin": {
+		"version": "0.3.7",
+		"commit": "2f4febb",
+		"uncommittedChanges": false
+	},
+	"states": [
+		"dark-bottom-all-days-no-counter",
+		"dark-bottom-all-days-overdue-filter",
+		"dark-bottom-all-days-overdue-focus",
+		"dark-bottom-all-days-todo-filter",
+		"dark-bottom-all-days-todo-focus",
+		"dark-bottom-all-days-unplanned-filter",
+		"dark-bottom-all-days-unplanned-focus",
+		"dark-bottom-today-focus-no-counter",
+		"dark-bottom-today-focus-overdue-filter",
+		"dark-bottom-today-focus-overdue-focus",
+		"dark-bottom-today-focus-todo-filter",
+		"dark-bottom-today-focus-todo-focus",
+		"dark-bottom-today-focus-unplanned-filter",
+		"dark-bottom-today-focus-unplanned-focus",
+		"dark-row-dimmed",
+		"dark-today-all-days-no-counter",
+		"dark-today-all-days-overdue-filter",
+		"dark-today-all-days-overdue-focus",
+		"dark-today-all-days-todo-filter",
+		"dark-today-all-days-todo-focus",
+		"dark-today-all-days-unplanned-filter",
+		"dark-today-all-days-unplanned-focus",
+		"dark-today-today-focus-no-counter",
+		"dark-today-today-focus-overdue-filter",
+		"dark-today-today-focus-overdue-focus",
+		"dark-today-today-focus-todo-filter",
+		"dark-today-today-focus-todo-focus",
+		"dark-today-today-focus-unplanned-filter",
+		"dark-today-today-focus-unplanned-focus",
+		"dark-top-all-days-no-counter",
+		"dark-top-all-days-overdue-filter",
+		"dark-top-all-days-overdue-focus",
+		"dark-top-all-days-todo-filter",
+		"dark-top-all-days-todo-focus",
+		"dark-top-all-days-unplanned-filter",
+		"dark-top-all-days-unplanned-focus",
+		"dark-top-today-focus-no-counter",
+		"dark-top-today-focus-overdue-filter",
+		"dark-top-today-focus-overdue-focus",
+		"dark-top-today-focus-todo-filter",
+		"dark-top-today-focus-todo-focus",
+		"dark-top-today-focus-unplanned-filter",
+		"dark-top-today-focus-unplanned-focus",
+		"light-bottom-all-days-no-counter",
+		"light-bottom-all-days-overdue-filter",
+		"light-bottom-all-days-overdue-focus",
+		"light-bottom-all-days-todo-filter",
+		"light-bottom-all-days-todo-focus",
+		"light-bottom-all-days-unplanned-filter",
+		"light-bottom-all-days-unplanned-focus",
+		"light-bottom-today-focus-no-counter",
+		"light-bottom-today-focus-overdue-filter",
+		"light-bottom-today-focus-overdue-focus",
+		"light-bottom-today-focus-todo-filter",
+		"light-bottom-today-focus-todo-focus",
+		"light-bottom-today-focus-unplanned-filter",
+		"light-bottom-today-focus-unplanned-focus",
+		"light-row-dimmed",
+		"light-today-all-days-no-counter",
+		"light-today-all-days-overdue-filter",
+		"light-today-all-days-overdue-focus",
+		"light-today-all-days-todo-filter",
+		"light-today-all-days-todo-focus",
+		"light-today-all-days-unplanned-filter",
+		"light-today-all-days-unplanned-focus",
+		"light-today-today-focus-no-counter",
+		"light-today-today-focus-overdue-filter",
+		"light-today-today-focus-overdue-focus",
+		"light-today-today-focus-todo-filter",
+		"light-today-today-focus-todo-focus",
+		"light-today-today-focus-unplanned-filter",
+		"light-today-today-focus-unplanned-focus",
+		"light-top-all-days-no-counter",
+		"light-top-all-days-overdue-filter",
+		"light-top-all-days-overdue-focus",
+		"light-top-all-days-todo-filter",
+		"light-top-all-days-todo-focus",
+		"light-top-all-days-unplanned-filter",
+		"light-top-all-days-unplanned-focus",
+		"light-top-today-focus-no-counter",
+		"light-top-today-focus-overdue-filter",
+		"light-top-today-focus-overdue-focus",
+		"light-top-today-focus-todo-filter",
+		"light-top-today-focus-todo-focus",
+		"light-top-today-focus-unplanned-filter",
+		"light-top-today-focus-unplanned-focus"
+	],
+	"probes": [
+		{
+			"name": ".taskido",
+			"selector": ".taskido"
+		},
+		{
+			"name": ".year",
+			"selector": ".year"
+		},
+		{
+			"name": ".year.current",
+			"selector": ".year.current"
+		},
+		{
+			"name": ".details:not(.today)",
+			"selector": ".details:not(.today)"
+		},
+		{
+			"name": ".details.today",
+			"selector": ".details.today"
+		},
+		{
+			"name": ".dateLine",
+			"selector": ".dateLine"
+		},
+		{
+			"name": ".date",
+			"selector": ".date"
+		},
+		{
+			"name": ".weekday",
+			"selector": ".weekday"
+		},
+		{
+			"name": ".todayHeader",
+			"selector": ".todayHeader"
+		},
+		{
+			"name": ".counters",
+			"selector": ".counters"
+		},
+		{
+			"name": ".counter#todo",
+			"selector": ".counter#todo"
+		},
+		{
+			"name": ".counter#overdue",
+			"selector": ".counter#overdue"
+		},
+		{
+			"name": ".counter#unplanned",
+			"selector": ".counter#unplanned"
+		},
+		{
+			"name": ".counter#todo .count",
+			"selector": ".counter#todo .count"
+		},
+		{
+			"name": ".counter#todo .label",
+			"selector": ".counter#todo .label"
+		},
+		{
+			"name": ".task.due",
+			"selector": ".task.due"
+		},
+		{
+			"name": ".task.overdue",
+			"selector": ".task.overdue"
+		},
+		{
+			"name": ".task.process",
+			"selector": ".task.process"
+		},
+		{
+			"name": ".task.scheduled",
+			"selector": ".task.scheduled"
+		},
+		{
+			"name": ".task.start",
+			"selector": ".task.start"
+		},
+		{
+			"name": ".task.unplanned",
+			"selector": ".task.unplanned"
+		},
+		{
+			"name": ".task[data-task=\">\"]",
+			"selector": ".task[data-task=\">\"]"
+		},
+		{
+			"name": ".task[data-task=\"<\"]",
+			"selector": ".task[data-task=\"<\"]"
+		},
+		{
+			"name": ".task[data-task=\"/\"]",
+			"selector": ".task[data-task=\"/\"]"
+		},
+		{
+			"name": ".task .lines",
+			"selector": ".task .lines"
+		},
+		{
+			"name": ".task .content",
+			"selector": ".task .content"
+		},
+		{
+			"name": ".task .info",
+			"selector": ".task .info"
+		},
+		{
+			"name": ".task .header",
+			"selector": ".task .header"
+		},
+		{
+			"name": ".task .timeline",
+			"selector": ".task .timeline"
+		},
+		{
+			"name": ".task .timeline .icon",
+			"selector": ".task .timeline .icon"
+		},
+		{
+			"name": ".task .timeline label.icon svg",
+			"selector": ".task .timeline label.icon svg"
+		},
+		{
+			"name": ".task.overdue .timeline .icon svg",
+			"selector": ".task.overdue .timeline .icon svg"
+		},
+		{
+			"name": ".task.process .timeline .icon svg",
+			"selector": ".task.process .timeline .icon svg"
+		},
+		{
+			"name": ".task.unplanned .timeline::after",
+			"selector": ".task.unplanned .timeline",
+			"pseudo": "::after"
+		},
+		{
+			"name": ".task.scheduled .timeline::after",
+			"selector": ".task.scheduled .timeline",
+			"pseudo": "::after"
+		},
+		{
+			"name": ".task.overdue .timeline::after",
+			"selector": ".task.overdue .timeline",
+			"pseudo": "::after"
+		},
+		{
+			"name": ".task.process .timeline::after",
+			"selector": ".task.process .timeline",
+			"pseudo": "::after"
+		},
+		{
+			"name": ".task[data-task=\">\"] .timeline::after",
+			"selector": ".task[data-task=\">\"] .timeline",
+			"pseudo": "::after"
+		},
+		{
+			"name": ".task .info .relative",
+			"selector": ".task .info .relative"
+		},
+		{
+			"name": ".task.overdue .info .relative",
+			"selector": ".task.overdue .info .relative"
+		},
+		{
+			"name": ".task .info .repeat",
+			"selector": ".task .info .repeat"
+		},
+		{
+			"name": ".task .info .priority",
+			"selector": ".task .info .priority"
+		},
+		{
+			"name": ".task .info .file",
+			"selector": ".task .info .file"
+		},
+		{
+			"name": ".task .info .tag",
+			"selector": ".task .info .tag"
+		},
+		{
+			"name": ".task .modify",
+			"selector": ".task .modify"
+		},
+		{
+			"name": ".quickEntryPanel",
+			"selector": ".quickEntryPanel"
+		},
+		{
+			"name": ".quickEntryPanel .left",
+			"selector": ".quickEntryPanel .left"
+		},
+		{
+			"name": ".quickEntryPanel .actionSelect",
+			"selector": ".quickEntryPanel .actionSelect"
+		},
+		{
+			"name": ".quickEntryPanel .actionName",
+			"selector": ".quickEntryPanel .actionName"
+		},
+		{
+			"name": ".quickEntryPanel .fileSelect",
+			"selector": ".quickEntryPanel .fileSelect"
+		},
+		{
+			"name": ".quickEntryPanel .newTask",
+			"selector": ".quickEntryPanel .newTask"
+		},
+		{
+			"name": ".quickEntryPanel .ok",
+			"selector": ".quickEntryPanel .ok"
+		},
+		{
+			"name": ".quickEntryPanel .right",
+			"selector": ".quickEntryPanel .right"
+		},
+		{
+			"name": ".quickEntryPanel svg",
+			"selector": ".quickEntryPanel svg"
+		},
+		{
+			"name": ".task[aria-busy=\"true\"]",
+			"selector": ".task[aria-busy=\"true\"]"
+		},
+		{
+			"name": ".task[aria-busy=\"true\"] .content",
+			"selector": ".task[aria-busy=\"true\"] .content"
+		},
+		{
+			"name": ".task[aria-busy=\"true\"] .info .file",
+			"selector": ".task[aria-busy=\"true\"] .info .file"
+		},
+		{
+			"name": ".task[aria-busy=\"true\"] .timeline .icon svg",
+			"selector": ".task[aria-busy=\"true\"] .timeline .icon svg"
+		}
+	],
+	"properties": [
+		"color",
+		"background-color",
+		"background-image",
+		"display",
+		"visibility",
+		"position",
+		"padding",
+		"margin",
+		"font-family",
+		"font-size",
+		"font-weight",
+		"font-style",
+		"line-height",
+		"text-decoration-line",
+		"text-align",
+		"white-space",
+		"border",
+		"border-radius",
+		"box-shadow",
+		"outline",
+		"width",
+		"height",
+		"opacity",
+		"z-index",
+		"cursor",
+		"overflow",
+		"flex-direction",
+		"flex-wrap",
+		"align-items",
+		"justify-content",
+		"stroke",
+		"stroke-width",
+		"content"
+	],
+	"rootCustomProperties": [
+		"--taskido-color-warning",
+		"--taskido-color-focus",
+		"--taskido-color-focus-hsl",
+		"--taskido-color-overdue",
+		"--taskido-color-done",
+		"--taskido-color-process"
+	]
+}
