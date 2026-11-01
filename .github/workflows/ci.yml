@@ -5,6 +5,7 @@ on:
     branches:
       - master
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   contents: read
@@ -15,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - uses: pnpm/action-setup@v4
 
@@ -45,6 +48,14 @@ jobs:
       # see apps/obsidian-plugin/scripts/private-api-check.mjs.
       - name: Private API
         run: pnpm run private-api
+
+      # Pure refactors may change only imports in the frozen write-path tests; the merge commit's first parent is
+      # the base tip. See apps/obsidian-plugin/scripts/frozen-tests.mjs.
+      - name: Frozen tests
+        if: github.event_name == 'pull_request'
+        env:
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: node apps/obsidian-plugin/scripts/frozen-tests.mjs --base HEAD^1
 
       - name: Test
         run: pnpm test
