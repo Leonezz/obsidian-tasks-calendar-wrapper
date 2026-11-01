@@ -340,10 +340,17 @@ export function compareAb(slots, scale) {
 
 /** The upstream of a local branch, or the ref itself when the injected git runner cannot resolve an upstream. */
 export function upstreamOf(ref, git) {
-	throw new Error("not implemented");
+	try {
+		return git(["rev-parse", "--abbrev-ref", `${ref}@{upstream}`]).trim();
+	} catch {
+		return ref; // not a local branch with an upstream (a tag, a commit, origin/master itself)
+	}
 }
 
 /** Resolves the base commit and its upstream's merge base with the candidate, or HEAD for the local build. */
 export function abMergeBase({ base, candidate, git }) {
-	throw new Error("not implemented");
+	const baseCommit = git(["rev-parse", "--verify", "--end-of-options", `${base}^{commit}`]).trim();
+	// A stale local branch is an ancestor of the candidate, so compare against its upstream to catch that too.
+	const mergeBase = git(["merge-base", "--", upstreamOf(base, git), candidate ?? "HEAD"]).trim();
+	return { baseCommit, mergeBase };
 }

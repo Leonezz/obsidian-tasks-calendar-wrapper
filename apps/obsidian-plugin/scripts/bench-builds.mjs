@@ -40,8 +40,9 @@ function run(command, args, cwd, what) {
 /**
  * Builds the plugin at a git ref and keeps main.js and styles.css in `into`: checks the ref out in a temporary
  * worktree, installs its dependencies from its own lockfile, runs its `pnpm build`, and removes the worktree again.
+ * The progress line uses `label` as its prefix, defaulting to "bench".
  */
-export function buildAt(ref, into) {
+export function buildAt(ref, into, label = "bench") {
 	const commit = run(
 		"git",
 		["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`],
@@ -58,7 +59,7 @@ export function buildAt(ref, into) {
 		throw error;
 	}
 	return runAndUndo(() => {
-		console.log(`bench: building ${ref} (${commit.slice(0, 7)}) in a temporary worktree`);
+		console.log(`${label}: building ${ref} (${commit.slice(0, 7)}) in a temporary worktree`);
 		run(
 			"pnpm",
 			["install", "--frozen-lockfile", "--prefer-offline"],

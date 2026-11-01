@@ -45,6 +45,7 @@ import {
 	TIMELINE_VIEW,
 } from "./fixture-app.mjs";
 import { comparePngs, decodePng, encodePng, screenshotVerdict } from "./png.mjs";
+import { firstDifference } from "./screenshots-ab.mjs";
 
 const VAULT_NAME = "golden-vault";
 const baselineDir = path.join(repoRoot, "fixtures", "screenshots");
@@ -397,15 +398,6 @@ function takeScreenshots(cli, plugin, outDir, only) {
 		}
 	}
 	return shots;
-}
-
-/** The first line where two texts differ, for the report. */
-function firstDifference(expected, actual) {
-	const a = expected.split("\n");
-	const b = actual.split("\n");
-	const line = a.findIndex((text, i) => text !== b[i]);
-	const at = line === -1 ? a.length : line;
-	return `line ${at + 1}: ${JSON.stringify(a[at] ?? "(end)")} became ${JSON.stringify(b[at] ?? "(end)")}`;
 }
 
 function compareVisible(outDir, name) {

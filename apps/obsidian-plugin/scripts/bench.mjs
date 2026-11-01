@@ -47,7 +47,7 @@ import { randomInt } from "crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import os from "os";
 import path from "path";
-import { AB_RUNS, abArgs, abOrder, checkAbBase, compareAb } from "./bench-ab.mjs";
+import { AB_RUNS, abArgs, abMergeBase, abOrder, checkAbBase, compareAb } from "./bench-ab.mjs";
 import { buildAt, localBuild } from "./bench-builds.mjs";
 import { otherBenchProcesses } from "./bench-host.mjs";
 import { measure } from "./bench-measure.mjs";
@@ -388,19 +388,6 @@ const restoreSteps = (cli, notes) =>
 		},
 	]);
 
-/** The upstream of a local branch (`master` → `origin/master`), or the ref itself when it has none. */
-function upstreamOf(ref) {
-	try {
-		return execFileSync("git", ["rev-parse", "--abbrev-ref", `${ref}@{upstream}`], {
-			cwd: repoRoot,
-			encoding: "utf8",
-			stdio: ["ignore", "pipe", "ignore"],
-		}).trim();
-	} catch {
-		return ref; // not a local branch with an upstream (a tag, a commit, origin/master itself)
-	}
-}
-
 /**
  * `pnpm bench --ab <ref>`: builds the base at the ref and the candidate at `--candidate <ref>` or from this checkout,
  * then measures them in turn, round by round, and judges the candidate against the base (bench-ab.mjs). Returns the
@@ -409,16 +396,18 @@ function upstreamOf(ref) {
 function runAb(ab, scale) {
 	let mergeBase;
 	try {
-		const baseCommit = execFileSync("git", ["rev-parse", "--verify", "--end-of-options", `${ab.base}^{commit}`], {
-			cwd: repoRoot,
-			encoding: "utf8",
-		}).trim();
-		// A stale local branch is an ancestor of the candidate, so its merge base with the candidate is itself; measure
-		// the expected base against the branch's upstream when it has one, so a base that is behind it is caught too.
-		mergeBase = execFileSync("git", ["merge-base", "--", upstreamOf(ab.base), ab.candidate ?? "HEAD"], {
-			cwd: repoRoot,
-			encoding: "utf8",
-		}).trim();
+		// Only the optional upstream lookup is quiet; resolution failures keep git's existing stderr output.
+		const git = (args) =>
+			execFileSync("git", args, {
+				cwd: repoRoot,
+				encoding: "utf8",
+				...(args[0] === "rev-parse" && args[1] === "--abbrev-ref"
+					? { stdio: ["ignore", "pipe", "ignore"] }
+					: {}),
+			}).trim();
+		const resolved = abMergeBase({ base: ab.base, candidate: ab.candidate, git });
+		const { baseCommit } = resolved;
+		mergeBase = resolved.mergeBase;
 		const warning = checkAbBase({ ref: ab.base, baseCommit, mergeBase, allowOtherBase: ab.allowOtherBase });
 		if (warning) console.warn(warning);
 	} catch (error) {
