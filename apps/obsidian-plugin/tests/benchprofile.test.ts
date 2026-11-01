@@ -127,6 +127,56 @@ test("buckets a recorded trace into the categories", () => {
 	assert.equal(Object.values(result.categories).reduce((sum, value) => sum + value, 0) + result.unattributedMs, 200);
 });
 
+test("a RunTask nested in ThreadControllerImpl::RunTask counts as one long task", () => {
+	const expected = bucketTrace(traceOf(), options);
+	const wrapper = { ...complete("ThreadControllerImpl::RunTask", 0, 200), cat: "toplevel" };
+	for (const trace of [
+		[wrapper, ...traceOf()],
+		[...traceOf(), wrapper],
+	]) {
+		const result = bucketTrace(trace, options);
+		assert.deepEqual(result, expected);
+		assert.equal(result.longTasks, 1);
+		assert.equal(result.totalMs, 200);
+		assert.equal(result.unattributedMs, 30);
+	}
+	const nested = traceOf().map((event) =>
+		event.name === "RunTask" && event.tid === tid && event.ts === 0 ? complete("RunTask", 10, 180) : event,
+	);
+	assert.deepEqual(bucketTrace([wrapper, ...nested], options), expected);
+});
+
+test("top-level task containment is checked before filtering by the scenario window", () => {
+	const result = bucketTrace(
+		[...traceOf(), complete("ThreadControllerImpl::RunTask", -10, 260), complete("RunTask", 250, 50)],
+		options,
+	);
+	assert.equal(result.longTasks, 1);
+	assert.equal(result.totalMs, 50);
+	assert.equal(result.unattributedMs, 50);
+	assert.equal(
+		Object.values(result.categories).reduce((sum, value) => sum + value, 0),
+		0,
+	);
+});
+
+test("renderer thread selection uses de-duplicated top-level task time", () => {
+	const result = bucketTrace(
+		[
+			...traceOf(),
+			complete("ThreadControllerImpl::RunTask", 0, 200),
+			{ ph: "M", name: "thread_name", pid, tid: 9, args: { name: "CrRendererMain" } },
+			complete("RunTask", 0, 250, 9),
+			complete("Paint", 0, 250, 9),
+		],
+		options,
+	);
+	assert.deepEqual(result.thread, { pid, tid: 9 });
+	assert.equal(result.longTasks, 1);
+	assert.equal(result.totalMs, 250);
+	assert.equal(result.categories.paint, 250);
+});
+
 test("a frame in the plugin bundle is bucketed by the module its esbuild path comment names", () => {
 	assert.deepEqual(moduleMap(mainJs), [
 		{ line: 1, path: "src/main.ts" },
@@ -237,10 +287,10 @@ test("an initial load trace without renderMarkdown frames is an error", () => {
 	assert.throws(() => bucketTrace(trace, { ...options, requireMarkdown: true }), /renderMarkdown/);
 });
 
-test("a plugin frame outside every module comment is an error", () => {
+test("a plugin frame outside main.js is an error", () => {
 	for (const invalid of [
-		node(8, "outsideModule", pluginUrl, lineOffset, 1),
 		node(8, "outsideRange", pluginUrl, mainJs.split("\n").length + lineOffset, 1),
+		node(8, "negativeLine", pluginUrl, 0, 1),
 	]) {
 		const trace = traceOf({
 			events: [complete("RunTask", 0, 100), complete("FunctionCall", 0, 100)],
@@ -248,8 +298,44 @@ test("a plugin frame outside every module comment is an error", () => {
 			times: [25, 75],
 			profileNodes: [...nodes, invalid],
 		});
-		assert.throws(() => bucketTrace(trace, options), /module comment/);
+		assert.equal(pluginLineOffset([nodes[2].callFrame, invalid.callFrame], mainJs), lineOffset);
+		assert.throws(() => bucketTrace(trace, options), {
+			message: `profile initialLoad: a plugin frame at line ${invalid.callFrame.lineNumber} (${invalid.callFrame.functionName}) maps to no module comment in main.js; the line offset or the script url is wrong.`,
+		});
 	}
+});
+
+test("a plugin frame in the bundle prelude before the first module comment counts as other script", () => {
+	const result = bucketTrace(
+		traceOf({
+			events: [complete("RunTask", 0, 100), complete("FunctionCall", 0, 100)],
+			samples: [3, 8],
+			times: [25, 75],
+			profileNodes: [...nodes, node(8, "outsideModule", pluginUrl, lineOffset, 1)],
+		}),
+		options,
+	);
+	assert.equal(result.lineOffset, lineOffset);
+	assert.equal(result.longTasks, 1);
+	assert.equal(result.totalMs, 100);
+	assert.equal(result.unattributedMs, 0);
+	assert.deepEqual(result.categories, {
+		core: 50,
+		"react-dom": 0,
+		MarkdownRenderer: 0,
+		"other script": 50,
+		style: 0,
+		layout: 0,
+		paint: 0,
+		GC: 0,
+	});
+});
+
+test("a plugin bundle without module comments is an error", () => {
+	assert.throws(
+		() => bucketTrace(traceOf(), { ...options, mainJs: mainJs.replace(/^\/\/ .*$/gm, "") }),
+		/module comment/,
+	);
 });
 
 function summary(categories: ProfileSummary["categories"], unattributedMs: number, longTasks: number): ProfileSummary {

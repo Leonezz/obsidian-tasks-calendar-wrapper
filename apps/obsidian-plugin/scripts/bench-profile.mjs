@@ -265,7 +265,14 @@ export function bucketTrace(trace, { scenario, mainJs, pluginId, requireMarkdown
 		.filter((event) => event.ph === "M" && event.name === "thread_name" && event.args?.name === "CrRendererMain")
 		.map(({ pid, tid }) => {
 			const complete = completeEvents(events, { pid, tid });
-			const tasks = complete.filter((event) => TOP_LEVEL_EVENTS.includes(event.name) && inWindow(event));
+			let outerEnd = -Infinity;
+			const tasks = complete.filter((event) => {
+				if (!TOP_LEVEL_EVENTS.includes(event.name)) return false;
+				const end = event.ts + event.dur;
+				if (end <= outerEnd) return false;
+				outerEnd = end;
+				return inWindow(event);
+			});
 			return { thread: { pid, tid }, complete, tasks, time: tasks.reduce((sum, event) => sum + event.dur, 0) };
 		})
 		.sort((a, b) => b.time - a.time);
@@ -289,6 +296,8 @@ export function bucketTrace(trace, { scenario, mainJs, pluginId, requireMarkdown
 			sample.category = "other script";
 			if (isPluginScript(frame.url, pluginId)) {
 				const line = frame.lineNumber - lineOffset;
+				// Esbuild's runtime helpers precede the first module comment and count as other script.
+				if (line >= 0 && line < modules[0]?.line) continue;
 				const module = modules.findLast((module) => module.line <= line);
 				if (!module || line >= lineCount || line < 0)
 					throw new Error(
