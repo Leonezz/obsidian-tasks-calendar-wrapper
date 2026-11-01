@@ -1,0 +1,436 @@
+[
+  {
+    "operation": "mount",
+    "startState": "light-today-all-days-no-counter",
+    "renders": {
+      "ObsidianBridge": 1,
+      "TimelineView": 1,
+      "YearView": 4,
+      "YearHeader": 4,
+      "DateHeader": 19,
+      "NormalDateContent": 19,
+      "QuickEntry": 1,
+      "MultiSelect": 0,
+      "TodayFocus": 1,
+      "Counters": 1,
+      "CounterItem": 3,
+      "TaskRow": 174,
+      "StripWithIcon": 174,
+      "Content": 174,
+      "TagBadge": 83,
+      "FileBadge": 174,
+      "DateStatusBadge": 124,
+      "ModifyBadge": 174,
+      "TaskItemView": 174,
+      "DateView": 23
+    },
+    "providers": {
+      "QuickEntryHandlerContext": "new",
+      "TodayFocusEventHandlersContext": "new",
+      "UserOptionContext": "new"
+    }
+  },
+  {
+    "operation": "counter click",
+    "startState": "light-today-all-days-no-counter",
+    "renders": {
+      "ObsidianBridge": 0,
+      "TimelineView": 1,
+      "YearView": 4,
+      "YearHeader": 2,
+      "DateHeader": 1,
+      "NormalDateContent": 1,
+      "QuickEntry": 1,
+      "MultiSelect": 0,
+      "TodayFocus": 1,
+      "Counters": 1,
+      "CounterItem": 3,
+      "TaskRow": 0,
+      "StripWithIcon": 0,
+      "Content": 0,
+      "TagBadge": 0,
+      "FileBadge": 0,
+      "DateStatusBadge": 0,
+      "ModifyBadge": 0,
+      "TaskItemView": 0,
+      "DateView": 1
+    },
+    "providers": {
+      "QuickEntryHandlerContext": "same",
+      "TodayFocusEventHandlersContext": "same",
+      "UserOptionContext": "same"
+    }
+  },
+  {
+    "operation": "Focus on today click",
+    "startState": "light-today-all-days-no-counter",
+    "renders": {
+      "ObsidianBridge": 0,
+      "TimelineView": 1,
+      "YearView": 4,
+      "YearHeader": 4,
+      "DateHeader": 0,
+      "NormalDateContent": 0,
+      "QuickEntry": 0,
+      "MultiSelect": 0,
+      "TodayFocus": 0,
+      "Counters": 0,
+      "CounterItem": 0,
+      "TaskRow": 0,
+      "StripWithIcon": 0,
+      "Content": 0,
+      "TagBadge": 0,
+      "FileBadge": 0,
+      "DateStatusBadge": 0,
+      "ModifyBadge": 0,
+      "TaskItemView": 0,
+      "DateView": 0
+    },
+    "providers": {
+      "QuickEntryHandlerContext": "same",
+      "TodayFocusEventHandlersContext": "same",
+      "UserOptionContext": "same"
+    }
+  },
+  {
+    "operation": "settings push with equal options",
+    "startState": "light-today-all-days-no-counter",
+    "renders": {
+      "ObsidianBridge": 1,
+      "TimelineView": 1,
+      "YearView": 4,
+      "YearHeader": 4,
+      "DateHeader": 0,
+      "NormalDateContent": 0,
+      "QuickEntry": 0,
+      "MultiSelect": 0,
+      "TodayFocus": 0,
+      "Counters": 0,
+      "CounterItem": 0,
+      "TaskRow": 0,
+      "StripWithIcon": 0,
+      "Content": 0,
+      "TagBadge": 0,
+      "FileBadge": 0,
+      "DateStatusBadge": 0,
+      "ModifyBadge": 0,
+      "TaskItemView": 0,
+      "DateView": 0
+    },
+    "providers": {
+      "QuickEntryHandlerContext": "same",
+      "TodayFocusEventHandlersContext": "same",
+      "UserOptionContext": "same"
+    }
+  },
+  {
+    "operation": "settings push with different options",
+    "startState": "light-today-all-days-no-counter",
+    "renders": {
+      "ObsidianBridge": 1,
+      "TimelineView": 1,
+      "YearView": 4,
+      "YearHeader": 4,
+      "DateHeader": 19,
+      "NormalDateContent": 19,
+      "QuickEntry": 1,
+      "MultiSelect": 0,
+      "TodayFocus": 1,
+      "Counters": 1,
+      "CounterItem": 3,
+      "TaskRow": 82,
+      "StripWithIcon": 82,
+      "Content": 0,
+      "TagBadge": 29,
+      "FileBadge": 82,
+      "DateStatusBadge": 113,
+      "ModifyBadge": 82,
+      "TaskItemView": 174,
+      "DateView": 23
+    },
+    "providers": {
+      "QuickEntryHandlerContext": "same",
+      "TodayFocusEventHandlersContext": "same",
+      "UserOptionContext": "new"
+    }
+  },
+  {
+    "operation": "reload with the list unchanged",
+    "startState": "light-today-all-days-no-counter",
+    "renders": {
+      "ObsidianBridge": 0,
+      "TimelineView": 0,
+      "YearView": 0,
+      "YearHeader": 0,
+      "DateHeader": 0,
+      "NormalDateContent": 0,
+      "QuickEntry": 0,
+      "MultiSelect": 0,
+      "TodayFocus": 0,
+      "Counters": 0,
+      "CounterItem": 0,
+      "TaskRow": 0,
+      "StripWithIcon": 0,
+      "Content": 0,
+      "TagBadge": 0,
+      "FileBadge": 0,
+      "DateStatusBadge": 0,
+      "ModifyBadge": 0,
+      "TaskItemView": 0,
+      "DateView": 0
+    },
+    "providers": {
+      "QuickEntryHandlerContext": "same",
+      "TodayFocusEventHandlersContext": "same",
+      "UserOptionContext": "same"
+    }
+  },
+  {
+    "operation": "reload with one row changed",
+    "startState": "light-today-all-days-no-counter",
+    "renders": {
+      "ObsidianBridge": 1,
+      "TimelineView": 1,
+      "YearView": 4,
+      "YearHeader": 4,
+      "DateHeader": 19,
+      "NormalDateContent": 19,
+      "QuickEntry": 1,
+      "MultiSelect": 0,
+      "TodayFocus": 1,
+      "Counters": 1,
+      "CounterItem": 3,
+      "TaskRow": 1,
+      "StripWithIcon": 1,
+      "Content": 1,
+      "TagBadge": 1,
+      "FileBadge": 1,
+      "DateStatusBadge": 0,
+      "ModifyBadge": 1,
+      "TaskItemView": 174,
+      "DateView": 19
+    },
+    "providers": {
+      "QuickEntryHandlerContext": "same",
+      "TodayFocusEventHandlersContext": "same",
+      "UserOptionContext": "same"
+    }
+  },
+  {
+    "operation": "checkbox overlay",
+    "startState": "light-today-all-days-no-counter",
+    "renders": {
+      "ObsidianBridge": 0,
+      "TimelineView": 0,
+      "YearView": 0,
+      "YearHeader": 0,
+      "DateHeader": 0,
+      "NormalDateContent": 0,
+      "QuickEntry": 0,
+      "MultiSelect": 0,
+      "TodayFocus": 0,
+      "Counters": 0,
+      "CounterItem": 0,
+      "TaskRow": 1,
+      "StripWithIcon": 1,
+      "Content": 0,
+      "TagBadge": 1,
+      "FileBadge": 1,
+      "DateStatusBadge": 0,
+      "ModifyBadge": 1,
+      "TaskItemView": 0,
+      "DateView": 0
+    },
+    "providers": {
+      "QuickEntryHandlerContext": "same",
+      "TodayFocusEventHandlersContext": "same",
+      "UserOptionContext": "same"
+    }
+  },
+  {
+    "operation": "overlay cleared",
+    "startState": "light-today-all-days-no-counter with one pending overlay",
+    "renders": {
+      "ObsidianBridge": 0,
+      "TimelineView": 0,
+      "YearView": 0,
+      "YearHeader": 0,
+      "DateHeader": 0,
+      "NormalDateContent": 0,
+      "QuickEntry": 0,
+      "MultiSelect": 0,
+      "TodayFocus": 0,
+      "Counters": 0,
+      "CounterItem": 0,
+      "TaskRow": 2,
+      "StripWithIcon": 2,
+      "Content": 0,
+      "TagBadge": 2,
+      "FileBadge": 2,
+      "DateStatusBadge": 0,
+      "ModifyBadge": 2,
+      "TaskItemView": 0,
+      "DateView": 0
+    },
+    "providers": {
+      "QuickEntryHandlerContext": "same",
+      "TodayFocusEventHandlersContext": "same",
+      "UserOptionContext": "same"
+    }
+  },
+  {
+    "operation": "quick filter applied",
+    "startState": "light-today-all-days-no-counter",
+    "renders": {
+      "ObsidianBridge": 1,
+      "TimelineView": 1,
+      "YearView": 4,
+      "YearHeader": 4,
+      "DateHeader": 3,
+      "NormalDateContent": 3,
+      "QuickEntry": 6,
+      "MultiSelect": 10,
+      "TodayFocus": 1,
+      "Counters": 1,
+      "CounterItem": 3,
+      "TaskRow": 0,
+      "StripWithIcon": 0,
+      "Content": 0,
+      "TagBadge": 0,
+      "FileBadge": 0,
+      "DateStatusBadge": 0,
+      "ModifyBadge": 0,
+      "TaskItemView": 0,
+      "DateView": 5
+    },
+    "providers": {
+      "QuickEntryHandlerContext": "new",
+      "TodayFocusEventHandlersContext": "same",
+      "UserOptionContext": "same"
+    }
+  },
+  {
+    "operation": "reload with one row's display changed",
+    "startState": "light-today-all-days-no-counter",
+    "renders": {
+      "ObsidianBridge": 1,
+      "TimelineView": 1,
+      "YearView": 4,
+      "YearHeader": 4,
+      "DateHeader": 19,
+      "NormalDateContent": 19,
+      "QuickEntry": 1,
+      "MultiSelect": 0,
+      "TodayFocus": 1,
+      "Counters": 1,
+      "CounterItem": 3,
+      "TaskRow": 1,
+      "StripWithIcon": 1,
+      "Content": 1,
+      "TagBadge": 0,
+      "FileBadge": 1,
+      "DateStatusBadge": 2,
+      "ModifyBadge": 1,
+      "TaskItemView": 174,
+      "DateView": 19
+    },
+    "providers": {
+      "QuickEntryHandlerContext": "same",
+      "TodayFocusEventHandlersContext": "same",
+      "UserOptionContext": "same"
+    }
+  },
+  {
+    "operation": "reload with one row's statusMarker changed",
+    "startState": "light-today-all-days-no-counter",
+    "renders": {
+      "ObsidianBridge": 1,
+      "TimelineView": 1,
+      "YearView": 4,
+      "YearHeader": 4,
+      "DateHeader": 19,
+      "NormalDateContent": 19,
+      "QuickEntry": 1,
+      "MultiSelect": 0,
+      "TodayFocus": 1,
+      "Counters": 1,
+      "CounterItem": 3,
+      "TaskRow": 1,
+      "StripWithIcon": 1,
+      "Content": 0,
+      "TagBadge": 0,
+      "FileBadge": 1,
+      "DateStatusBadge": 2,
+      "ModifyBadge": 1,
+      "TaskItemView": 174,
+      "DateView": 19
+    },
+    "providers": {
+      "QuickEntryHandlerContext": "same",
+      "TodayFocusEventHandlersContext": "same",
+      "UserOptionContext": "same"
+    }
+  },
+  {
+    "operation": "reload with one row's color changed",
+    "startState": "light-today-all-days-no-counter",
+    "renders": {
+      "ObsidianBridge": 1,
+      "TimelineView": 1,
+      "YearView": 4,
+      "YearHeader": 4,
+      "DateHeader": 19,
+      "NormalDateContent": 19,
+      "QuickEntry": 1,
+      "MultiSelect": 0,
+      "TodayFocus": 1,
+      "Counters": 1,
+      "CounterItem": 3,
+      "TaskRow": 1,
+      "StripWithIcon": 1,
+      "Content": 0,
+      "TagBadge": 0,
+      "FileBadge": 1,
+      "DateStatusBadge": 2,
+      "ModifyBadge": 1,
+      "TaskItemView": 174,
+      "DateView": 19
+    },
+    "providers": {
+      "QuickEntryHandlerContext": "same",
+      "TodayFocusEventHandlersContext": "same",
+      "UserOptionContext": "same"
+    }
+  },
+  {
+    "operation": "reload with one row's badge ariaLabel changed",
+    "startState": "light-today-all-days-no-counter",
+    "renders": {
+      "ObsidianBridge": 1,
+      "TimelineView": 1,
+      "YearView": 4,
+      "YearHeader": 4,
+      "DateHeader": 19,
+      "NormalDateContent": 19,
+      "QuickEntry": 1,
+      "MultiSelect": 0,
+      "TodayFocus": 1,
+      "Counters": 1,
+      "CounterItem": 3,
+      "TaskRow": 1,
+      "StripWithIcon": 1,
+      "Content": 0,
+      "TagBadge": 0,
+      "FileBadge": 1,
+      "DateStatusBadge": 2,
+      "ModifyBadge": 1,
+      "TaskItemView": 174,
+      "DateView": 19
+    },
+    "providers": {
+      "QuickEntryHandlerContext": "same",
+      "TodayFocusEventHandlersContext": "same",
+      "UserOptionContext": "same"
+    }
+  }
+]

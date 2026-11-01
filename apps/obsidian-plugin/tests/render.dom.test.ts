@@ -5,7 +5,7 @@ import "./setup";
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { act, createElement, createRef, Fragment, Profiler, Suspense } from "react";
+import { act, createElement, Fragment, Profiler, Suspense } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -17,12 +17,10 @@ import { TasksTimelineView, timelineTaskIndex } from "../src/views";
 import type { TimelineState } from "../src/state/timeline";
 import { providerValues } from "../timeline/src/components/renderprobe";
 import { TaskItemEventHandlersContext } from "../timeline/src/components/context";
-import { TimelineView } from "../timeline/src/components/timelineview";
-import { StripWithIcon } from "../timeline/src/components/statusmarker";
 import { getTaskStatusIcon } from "../timeline/src/components/asserts/icons";
 import { createPendingWrites } from "../timeline/src/pendingwrites";
 import { clickTime, clickIsGuarded } from "../timeline/src/components/clickguard";
-import { ObsidianBridge } from "../timeline/src/obsidianbridge";
+import { mountBridge, timelineElement, onTimelineRender, onStripRender } from "./component-harness";
 import { undoNoticeText } from "../timeline/src/notices";
 import { getTasksDialog } from "../timeline/src/tasksplugin";
 import { moment } from "../utils/moment";
@@ -82,9 +80,7 @@ async function mountWritingTimeline(
 	await view.onUpdateOptions({ ...defaultUserOptions, hideStatusTasks: [] });
 	const container = document.body.appendChild(document.createElement("div"));
 	const root = createRoot(container);
-	const bridge = createRef<ObsidianBridge>();
-	const element = createElement(ObsidianBridge, {
-		ref: bridge,
+	const { bridge, element } = mountBridge({
 		plugin: view,
 		store,
 		writer: view.viewWriter,
@@ -361,13 +357,12 @@ async function mountPendingRow(t: TestContext, sourceLine: string, lines: readon
 			);
 		},
 	};
-	const timeline = createRef<TimelineView>();
 	const render = () =>
 		root.render(
 			createElement(
 				TaskItemEventHandlersContext.Provider,
 				{ value: callbacks },
-				createElement(TimelineView, { ref: timeline, tasks, userOptions: options, pendingWrites: pending }),
+				timelineElement({ tasks, userOptions: options, pendingWrites: pending }),
 			),
 		);
 	await act(render);
@@ -383,7 +378,6 @@ async function mountPendingRow(t: TestContext, sourceLine: string, lines: readon
 	return {
 		container,
 		pending,
-		timeline,
 		task,
 		click,
 		menuEvents,
@@ -675,11 +669,9 @@ test("a pending write renders only its subscribed row and keeps provider values"
 	const untouched = fixture.container.querySelector('.task[data-line="1"]');
 	assert.ok(untouched);
 	const html = untouched.outerHTML;
-	const render = StripWithIcon.prototype.render;
 	let icons = 0;
-	t.mock.method(StripWithIcon.prototype, "render", function (this: StripWithIcon) {
+	onStripRender(t, () => {
 		icons++;
-		return render.call(this);
 	});
 	await fixture.click(0);
 	assert.equal(icons, 1, "only the affected row renders its icon");
@@ -880,22 +872,17 @@ test("the list commit moves the click clock once", async (t) => {
 	const suspended = deferred();
 	let block = true;
 	let discarded = 0;
-	const mounted: { timeline?: TimelineView } = {};
-	const render = TimelineView.prototype.render;
 	const Pause = () => {
 		discarded++;
 		throw suspended.promise;
 	};
-	t.mock.method(TimelineView.prototype, "render", function (this: TimelineView) {
-		mounted.timeline = this;
-		const result = render.call(this);
-		return block && this.props.tasks.length > 1
+	const mounted = onTimelineRender(t, (timelineProps, result) => {
+		return block && timelineProps.tasks.length > 1
 			? createElement(Fragment, null, result, createElement(Pause))
 			: result;
 	});
 	const fixture = await mountWritingTimeline(t, "- [ ] a", undefined, { suspend: true });
-	const clock = (mounted.timeline as unknown as { rowWrites: { clock: { lastListChangeAt: number } } }).rowWrites
-		.clock;
+	const clock = mounted.clock();
 	let value = clock.lastListChangeAt;
 	const changes: number[] = [];
 	Object.defineProperty(clock, "lastListChangeAt", {

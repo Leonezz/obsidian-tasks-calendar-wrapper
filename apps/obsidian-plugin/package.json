@@ -15,7 +15,8 @@
 		"bench:vault": "node scripts/bench-vault.mjs",
 		"tasks-parity:vault": "node scripts/tasks-parity-vault.mjs",
 		"bench": "pnpm build && node scripts/bench.mjs",
-		"screenshots": "pnpm build && node scripts/screenshots.mjs"
+		"screenshots": "pnpm build && node scripts/screenshots.mjs",
+		"markup:obsidian": "pnpm build && node scripts/markup-obsidian.mjs"
 	},
 	"license": "MIT",
 	"dependencies": {

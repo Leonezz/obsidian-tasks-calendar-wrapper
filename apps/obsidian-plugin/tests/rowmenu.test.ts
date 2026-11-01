@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { createStore, parseTaskLine, resolveTasks, taskRowModel, type LineTarget } from "@tasks-calendar-wrapper/core";
 import { initialTimelineState } from "../src/state/timeline";
 import { defaultUserOptions } from "../src/useroptions";
-import { ObsidianBridge } from "../timeline/src/obsidianbridge";
+import { bridgeActions, type BridgeProps } from "./component-harness";
 import { rowMenuItems } from "../timeline/src/rowmenu";
 import { changesInPlace } from "../timeline/src/taskactions";
 import { createShiftLedger, type WriteResult } from "../timeline/src/taskwriter";
@@ -28,8 +28,8 @@ function modelOf(sourceLine = source, path = "Note.md") {
 	return taskRowModel(resolveTasks([task], {}, env).shown[0], { ...defaultUserOptions, tagPalette: {} }, env);
 }
 
-function bridgeOf(props: Partial<ConstructorParameters<typeof ObsidianBridge>[0]> = {}) {
-	return new ObsidianBridge({
+function bridgeOf(props: Partial<BridgeProps> = {}) {
+	const bridgeProps = {
 		plugin: { app: {} } as never,
 		store: createStore(initialTimelineState()),
 		writer: {
@@ -45,7 +45,8 @@ function bridgeOf(props: Partial<ConstructorParameters<typeof ObsidianBridge>[0]
 			refuseIfNotReread: () => undefined,
 		},
 		...props,
-	});
+	} satisfies BridgeProps;
+	return bridgeActions(bridgeProps, { mount: false });
 }
 
 test("menu offers Remove only for own dates", () => {

@@ -4,12 +4,12 @@ import "./setup";
 
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
-import { act, createElement, createRef, type ContextType } from "react";
+import { act, type ContextType } from "react";
 import { createRoot } from "react-dom/client";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { providerValues, renderedDays, rendersOf, resetRenderCounts } from "../timeline/src/components/renderprobe";
 import { QuickEntryHandlerContext } from "../timeline/src/components/context";
-import { ObsidianBridge } from "../timeline/src/obsidianbridge";
+import { mountBridge } from "./component-harness";
 import { moment } from "../utils/moment";
 import { notesApp, openView } from "./view-harness";
 import type { TaskWriter, WriteResult } from "../timeline/src/taskwriter";
@@ -30,16 +30,13 @@ async function mountTimeline(t: TestContext, notes: Record<string, string>, writ
 			container.remove();
 		}
 	});
-	const bridge = createRef<ObsidianBridge>();
+	const { bridge, element } = mountBridge({
+		plugin: { app } as never,
+		store: opened.store,
+		writer: { ...opened.writer, ...writer },
+	});
 	await act(() => {
-		root.render(
-			createElement(ObsidianBridge, {
-				plugin: { app } as never,
-				store: opened.store,
-				writer: { ...opened.writer, ...writer },
-				ref: bridge,
-			}),
-		);
+		root.render(element);
 	});
 	return { opened, container, bridge };
 }
