@@ -332,7 +332,10 @@ async function mountInteractions(t: TestContext, options: Partial<UserOption> = 
 	);
 	const notes: Record<string, string> = { "Note.md": sourceLine, "Other.md": "- [ ] unplanned", "Done.md": doneLine };
 	const fixture = await mountView(t, {
-		app: notesApp(notes),
+		app: {
+			...notesApp(notes),
+			plugins: { plugins: { "obsidian-tasks-plugin": { apiV1: { editTaskLineModal: async () => "" } } } },
+		},
 		options: {
 			...structuredClone(defaultUserOptions),
 			defaultFilters: "",

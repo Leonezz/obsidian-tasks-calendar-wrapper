@@ -98,11 +98,30 @@ test("markup: serialization preserves text nodes, attributes and namespaces with
 	assert.equal(restored.childNodes.length, root.childNodes.length);
 	assert.equal(restored.textContent, root.textContent);
 	assert.deepEqual(
-		[...restored.attributes].map((attribute) => [attribute.name, attribute.value]),
-		[...root.attributes].map((attribute) => [attribute.name, attribute.value]),
+		Object.fromEntries([...restored.attributes].map((attribute) => [attribute.name, attribute.value])),
+		Object.fromEntries([...root.attributes].map((attribute) => [attribute.name, attribute.value])),
 	);
 	assert.equal(restored.querySelector("linearGradient")?.namespaceURI, svg.namespaceURI);
 	assert.throws(() => deserializeMarkup("<div>\n</span>\n", document), /Mismatched/);
+});
+
+test("markup: serialization sorts every element's attributes by code-unit order and round-trips", () => {
+	const root = document.createElement("div");
+	root.setAttribute("style", "color: red");
+	root.setAttribute("selected", "");
+	root.setAttribute("aria-label", "Task");
+	const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+	svg.setAttribute("viewBox", "0 0 1 1");
+	svg.setAttribute("data-a", "lower");
+	svg.setAttribute("data-Z", "upper");
+	root.append(svg);
+	const serialized = serializeMarkup(root);
+	assert.equal(
+		serialized,
+		'<div aria-label="Task" selected="" style="color: red">\n' +
+			'  <svg data-Z="upper" data-a="lower" viewBox="0 0 1 1">\n  </svg>\n</div>\n',
+	);
+	assert.equal(serializeMarkup(deserializeMarkup(serialized, document)), serialized);
 });
 
 test("markup: Obsidian comparison normalizes only row markdown and reports every other difference", () => {

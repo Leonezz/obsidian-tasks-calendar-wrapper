@@ -14,7 +14,7 @@ const unescape = (value) =>
 			: { amp: "&", lt: "<", gt: ">", quot: '"' }[entity],
 	);
 
-/** One node per line; entities retain text newlines, empty nodes and attribute order without layout whitespace. */
+/** One node per line; entities retain text newlines and empty nodes, with sorted attributes and no layout whitespace. */
 export function serializeMarkup(element) {
 	const lines = [];
 	const visit = (node, depth) => {
@@ -24,6 +24,7 @@ export function serializeMarkup(element) {
 		else if (node.nodeType === 1) {
 			const tag = node.namespaceURI === HTML ? node.localName : node.tagName;
 			const attributes = [...node.attributes]
+				.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
 				.map((attribute) => ` ${attribute.name}="${escape(attribute.value)}"`)
 				.join("");
 			lines.push(`${indent}<${tag}${attributes}>`);

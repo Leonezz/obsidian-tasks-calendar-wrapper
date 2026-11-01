@@ -82,7 +82,9 @@ test("render counts: every operation matches fixtures/markup/render-counts.json"
 	] as const;
 	const actual = [];
 	for (const operation of operations) {
-		const app: App = goldenApp(loadVault());
+		const app: App = Object.assign(goldenApp(loadVault()), {
+			plugins: { plugins: { "obsidian-tasks-plugin": { apiV1: { editTaskLineModal: async () => "" } } } },
+		});
 		const originalRead = app.vault.cachedRead.bind(app.vault);
 		const contents = new Map<string, string>();
 		app.vault.cachedRead = async (note) => contents.get(note.path) ?? originalRead(note);

@@ -194,6 +194,7 @@ export async function mountView(
 	{ app: supplied, options, parse, mode = "view" }: MountViewOptions = {},
 ) {
 	const app = (supplied ?? goldenApp(loadVault())) as App;
+	if (!("plugins" in app)) Object.assign(app, { plugins: { plugins: {} } });
 	withEvents(app.vault);
 	withEvents(app.metadataCache);
 	app.workspace ??= {} as App["workspace"];
