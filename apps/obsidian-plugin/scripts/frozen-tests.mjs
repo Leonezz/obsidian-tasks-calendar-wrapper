@@ -1,6 +1,7 @@
 /**
  * Checks the write-path tests against `--base <rev>` when PR_LABELS contains "pure-refactor". Only top-level
  * imports and their leading trivia lines may change; assertions and the rest of each file stay byte-identical.
+ * The checker, its tests and the CI workflow must also stay byte-identical under that label.
  * `--report` lists the non-import changes without enforcing the label, for the one-time harness move in step 0a.
  * The comparison and label parsing are plain functions so tests/frozentests.test.ts can exercise them in memory.
  */
@@ -17,6 +18,12 @@ export const FROZEN_FILES = Object.freeze([
 	"apps/obsidian-plugin/tests/rowmenu.test.ts",
 	"apps/obsidian-plugin/tests/datemodal.test.ts",
 	"apps/obsidian-plugin/tests/notices*.test.ts",
+]);
+
+const GUARD_FILES = Object.freeze([
+	"apps/obsidian-plugin/scripts/frozen-tests.mjs",
+	"apps/obsidian-plugin/tests/frozentests.test.ts",
+	".github/workflows/ci.yml",
 ]);
 
 const patterns = FROZEN_FILES.map(
@@ -112,6 +119,16 @@ export function compareFrozenFiles(base, current) {
 	return differences;
 }
 
+/** Guard the check itself without allowing even import-only changes. */
+export function compareGuardFiles(base, current) {
+	return GUARD_FILES.filter((file) => {
+		const before = base[file];
+		const after = current[file];
+		if (before === undefined || after === undefined) return before !== after;
+		return !Buffer.from(before).equals(Buffer.from(after));
+	}).map((file) => ({ path: file, deleted: current[file] === undefined }));
+}
+
 export function formatChanges(differences) {
 	return differences
 		.map(({ path: file, deleted, changes }) =>
@@ -169,7 +186,8 @@ function run(args) {
 		return 0;
 	}
 	const root = git("rev-parse", "--show-toplevel").trim();
-	const oldFiles = git("ls-tree", "-r", "--name-only", "-z", commit).split("\0").filter(isFrozen);
+	const trackedFiles = git("ls-tree", "-r", "--name-only", "-z", commit).split("\0");
+	const oldFiles = trackedFiles.filter(isFrozen);
 	const newFiles = [];
 	for (const directory of new Set(FROZEN_FILES.map((file) => path.posix.dirname(file)))) {
 		try {
@@ -185,7 +203,27 @@ function run(args) {
 	const after = Object.fromEntries(newFiles.map((file) => [file, readFileSync(path.join(root, file), "utf8")]));
 	const differences = compareFrozenFiles(before, after);
 	console.log(differences.length ? formatChanges(differences) : "Frozen tests have no non-import changes");
-	return report || differences.length === 0 ? 0 : 1;
+	if (report) return 0;
+	const guardBefore = Object.fromEntries(
+		GUARD_FILES.filter((file) => trackedFiles.includes(file)).map((file) => [
+			file,
+			execFileSync("git", ["show", `${commit}:${file}`], { stdio: ["ignore", "pipe", "pipe"] }),
+		]),
+	);
+	const guardAfter = Object.fromEntries(
+		GUARD_FILES.flatMap((file) => {
+			try {
+				return [[file, readFileSync(path.join(root, file))]];
+			} catch (error) {
+				if (error.code !== "ENOENT") throw error;
+				return [];
+			}
+		}),
+	);
+	const guardDifferences = compareGuardFiles(guardBefore, guardAfter);
+	for (const { path: file, deleted } of guardDifferences)
+		console.error(`Frozen test guard changed: ${file}${deleted ? " (deleted or renamed)" : ""}`);
+	return differences.length === 0 && guardDifferences.length === 0 ? 0 : 1;
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {

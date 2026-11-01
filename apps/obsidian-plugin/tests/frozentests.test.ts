@@ -107,6 +107,44 @@ test("a multi-line import change passes", async () => {
 	);
 });
 
+test("unchanged frozen test guards pass", async () => {
+	const { compareGuardFiles } = await library();
+	const files = {
+		"apps/obsidian-plugin/scripts/frozen-tests.mjs": SOURCE,
+		"apps/obsidian-plugin/tests/frozentests.test.ts": SOURCE,
+		".github/workflows/ci.yml": "name: CI\n",
+	};
+	assert.deepEqual(compareGuardFiles(files, { ...files }), []);
+	assert.deepEqual(compareGuardFiles({}, {}), []);
+});
+
+test("changed frozen test guards fail and name every file", async () => {
+	const { compareGuardFiles } = await library();
+	for (const file of [
+		"apps/obsidian-plugin/scripts/frozen-tests.mjs",
+		"apps/obsidian-plugin/tests/frozentests.test.ts",
+		".github/workflows/ci.yml",
+	]) {
+		const changed = SOURCE.replace('"node:test"', '"./harness"');
+		assert.deepEqual(compareGuardFiles({ [file]: SOURCE }, { [file]: changed }), [{ path: file, deleted: false }]);
+		assert.deepEqual(compareGuardFiles({ [file]: Buffer.from([0xff]) }, { [file]: Buffer.from([0xfe]) }), [
+			{ path: file, deleted: false },
+		]);
+	}
+	const outside = "apps/obsidian-plugin/tests/interactions.dom.test.ts";
+	assert.deepEqual(compareGuardFiles({ [outside]: SOURCE }, { [outside]: "changed" }), []);
+});
+
+test("deleted frozen test guards fail", async () => {
+	const { compareGuardFiles } = await library();
+	for (const file of [
+		"apps/obsidian-plugin/scripts/frozen-tests.mjs",
+		"apps/obsidian-plugin/tests/frozentests.test.ts",
+		".github/workflows/ci.yml",
+	])
+		assert.deepEqual(compareGuardFiles({ [file]: SOURCE }, {}), [{ path: file, deleted: true }]);
+});
+
 test("a changed assertion fails and names the line", async (t) => {
 	const { compareFrozenFiles, formatChanges } = await library();
 	const changed = SOURCE.replace("assert.equal(1, 1)", "assert.equal(1, 2)");

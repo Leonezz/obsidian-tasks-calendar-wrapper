@@ -18,5 +18,9 @@ export function compareFrozenFiles(
 	base: Readonly<Record<string, string>>,
 	current: Readonly<Record<string, string>>,
 ): FrozenDifference[];
+export function compareGuardFiles(
+	base: Readonly<Record<string, string | Uint8Array>>,
+	current: Readonly<Record<string, string | Uint8Array>>,
+): { readonly path: string; readonly deleted: boolean }[];
 export function formatChanges(differences: readonly FrozenDifference[]): string;
 export function parseLabels(raw: string | undefined, eventName?: string): string[];
