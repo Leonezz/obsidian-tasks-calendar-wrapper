@@ -57,6 +57,8 @@ export interface TimelineState {
 	readonly shown: readonly HeldTask[];
 	/** A writer recheck must hand over newly read source lines even when heldOf stays equal. */
 	readonly taskRevision?: number;
+	/** Identifies the reload whose tasks the bridge will commit. */
+	readonly reloadId?: number;
 	/** Resolved from this state's tasks, under these conditions; not necessarily the tasks the bridge still holds. */
 	readonly resolved?: {
 		readonly shown: Resolved;
@@ -96,8 +98,10 @@ export function withReload(
 	shown: readonly HeldTask[],
 	resolved?: TimelineState["resolved"],
 	refreshTasks = false,
+	reloadId?: number,
 ): TimelineState {
 	return {
+		...(reloadId !== undefined ? { reloadId } : {}),
 		options: state.options.taskFiles ? state.options : deepFreeze({ ...state.options, taskFiles: [] }),
 		tasks: Object.freeze([...tasks]),
 		...(state.taskRevision !== undefined || refreshTasks

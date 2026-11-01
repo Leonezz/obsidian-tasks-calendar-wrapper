@@ -33,6 +33,25 @@ export class TasksTimelineView extends ItemView {
 	private root?: Root;
 	/** The options, the tasks read last and the list shown, see TimelineState, which the bridge renders. */
 	private readonly store = createStore<TimelineState>(initialTimelineState());
+	/** Tasks belonging to the committed list, which can lag behind the store during a transition. */
+	private shownTasks = this.store.getSnapshot().tasks;
+	/** A concurrent mount can commit an older snapshot after pre-mount reloads already cleared. */
+	private readonly mountingTasks = new Map<number, TimelineState["tasks"]>([[0, this.shownTasks]]);
+	/** Reload clears wait in order until their list has committed. */
+	private readonly uncommittedClears: {
+		readonly reloadId: number;
+		readonly releaseSeq: number;
+		readonly kept: ReadonlySet<string>;
+		readonly tasks: TimelineState["tasks"];
+	}[] = [];
+	/** Zero is the bridge's mount before any reload; real reload ids start at one. */
+	private reloadId = 0;
+	/** The latest reload reported by the bridge's commit. */
+	private committedReloadId = 0;
+	/** The latest reload that changed the list or handed over refreshed source lines. */
+	private lastListReloadId = 0;
+	/** Until the bridge mounts, there is no displayed list whose overlays must wait. */
+	private bridgeCommitted = false;
 	private readonly resolveEnv = createResolveEnv();
 	readonly pendingWrites = createPendingWrites();
 	readonly ledger = createShiftLedger();
@@ -125,6 +144,7 @@ export class TasksTimelineView extends ItemView {
 				pendingWrites={this.pendingWrites}
 				onWriteResult={this.onWriteResult}
 				onQuickEntryWritten={this.reloadWhenIndexed}
+				onListCommitted={this.onListCommitted}
 			/>,
 		);
 	}
@@ -138,6 +158,8 @@ export class TasksTimelineView extends ItemView {
 		this.heldWrites.clear();
 		this.changedWhileHeld.clear();
 		this.renderedPending.clear();
+		this.uncommittedClears.length = 0;
+		this.mountingTasks.clear();
 		// A reload that runs or waits goes on, and so does the one asked for while it ran; the last of them closes the
 		// reader, so the notes this view shows stay for them, and they read the changes the index marks until then.
 		// The last reader closed drops the shared index.
@@ -201,8 +223,8 @@ export class TasksTimelineView extends ItemView {
 				if (this.changedWhileHeld.delete(event.path)) this.requestReload();
 			}
 		}
-		const { tasks, options } = this.store.getSnapshot();
-		this.pendingWrites.apply(event, tasks, options, this.resolveEnv(moment()).env);
+		const { options } = this.store.getSnapshot();
+		this.pendingWrites.apply(event, this.shownTasks, options, this.resolveEnv(moment()).env);
 		const alreadyRendered = event.kind === "written" && this.renderedPending.delete(event.id);
 		if (
 			!alreadyRendered &&
@@ -243,6 +265,42 @@ export class TasksTimelineView extends ItemView {
 		return this.onReloadTasks();
 	}
 
+	/** Clears releases in the layout phase of the commit that shows their reload's tasks. */
+	readonly onListCommitted = (reloadId: number): void => {
+		if (this.closed) return;
+		this.bridgeCommitted = true;
+		this.clearReloadsThrough(reloadId);
+		const mounted = this.mountingTasks.get(reloadId);
+		if (mounted) this.shownTasks = mounted;
+		for (const id of this.mountingTasks.keys()) if (id <= reloadId) this.mountingTasks.delete(id);
+		// A synchronous subscriber can commit before onReloadTasks has appended its clear.
+		const snapshot = this.store.getSnapshot();
+		if (snapshot.reloadId === reloadId) this.shownTasks = snapshot.tasks;
+		this.committedReloadId = reloadId;
+		if (reloadId >= this.lastListReloadId) {
+			this.clearReloadsThrough(Infinity);
+			this.shownTasks = snapshot.tasks;
+			this.mountingTasks.clear();
+		}
+	};
+
+	private clearReloadsThrough(reloadId: number): void {
+		while (this.uncommittedClears.length && this.uncommittedClears[0].reloadId <= reloadId) {
+			const { releaseSeq, kept, tasks } = this.uncommittedClears.shift()!;
+			this.shownTasks = tasks;
+			this.pendingWrites.clearThrough(releaseSeq, kept);
+			this.ledger.clearThrough(releaseSeq, kept);
+			for (const [id, event] of this.writes) {
+				const seq = this.releases.get(id);
+				if (seq !== undefined && seq <= releaseSeq && !kept.has(event.path)) {
+					if (event.kind === "pending") this.renderedPending.add(id);
+					this.writes.delete(id);
+					this.releases.delete(id);
+				}
+			}
+		}
+	}
+
 	/**
 	 * Reads the tasks of the notes that may have changed, see TaskIndex, and tells of the notes that warn or cannot be
 	 * read what it has not told yet, see ReadReporter. Returns once this reload, and one asked for while it ran, are
@@ -266,31 +324,29 @@ export class TasksTimelineView extends ItemView {
 				const { env, parseKey } = this.resolveEnv(moment());
 				const resolved = resolveTasks(tasks, options, env);
 				const kept = new Set(pinned);
-				// The model and overlay reach React in one commit, so an old marker cannot flash between them.
-				flushSync(() => {
-					this.store.setState((state) =>
-						withReload(
-							state,
-							tasks,
-							resolved.shown.map(heldOf),
-							{
-								shown: resolved,
-								under: { settings: pickResolveSettings(options), day: dayKey(env.now), parseKey },
-							},
-							refreshTasks,
-						),
-					);
-					this.pendingWrites.clearThrough(releaseSeq, kept);
-					this.ledger.clearThrough(releaseSeq, kept);
-				});
-				for (const [id, event] of this.writes) {
-					const seq = this.releases.get(id);
-					if (seq !== undefined && seq <= releaseSeq && !kept.has(event.path)) {
-						if (event.kind === "pending") this.renderedPending.add(id);
-						this.writes.delete(id);
-						this.releases.delete(id);
-					}
-				}
+				const before = this.store.getSnapshot();
+				const reloadId = ++this.reloadId;
+				this.store.setState((state) =>
+					withReload(
+						state,
+						tasks,
+						resolved.shown.map(heldOf),
+						{
+							shown: resolved,
+							under: { settings: pickResolveSettings(options), day: dayKey(env.now), parseKey },
+						},
+						refreshTasks,
+						reloadId,
+					),
+				);
+				if (this.closed) return;
+				const after = this.store.getSnapshot();
+				if (after.shown !== before.shown || after.taskRevision !== before.taskRevision)
+					this.lastListReloadId = reloadId;
+				if (!this.bridgeCommitted) this.mountingTasks.set(reloadId, after.tasks);
+				this.uncommittedClears.push({ reloadId, releaseSeq, kept, tasks: after.tasks });
+				if (!this.bridgeCommitted || this.committedReloadId >= this.lastListReloadId)
+					flushSync(() => this.clearReloadsThrough(reloadId));
 			})
 			.catch((reason) => {
 				this.refreshTasks ||= refreshTasks;
