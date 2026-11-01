@@ -717,6 +717,76 @@ function rowFrame(container: HTMLElement, line = 0) {
 	};
 }
 
+async function assertMountedRowBeforePaint(t: TestContext, source: string, written: string, marker: string) {
+	let now = 1000;
+	t.mock.method(performance, "now", () => now);
+	t.mock.method(window.performance, "now", () => now);
+	let recording = false;
+	let frame:
+		| (ReturnType<typeof rowFrame> & { row: Element | null; disabled: boolean | undefined; cleared: boolean })
+		| undefined;
+	const fixture = await mountWritingTimeline(t, source, () => written, {
+		onCommit: (container) => {
+			if (!recording || fixture.bridge.current!.state.reloadId === previousReload) return;
+			recording = false;
+			// Exhaust the scheduler slice so passive effects wait for a later task even on a small list.
+			now += 10;
+			// Capture after layout updates finish, before a later scheduler task can flush passive effects.
+			queueMicrotask(() => {
+				const row = container.querySelector('.task[data-line="0"]');
+				frame = {
+					...rowFrame(container),
+					row,
+					disabled: row?.hasAttribute("aria-disabled"),
+					cleared: fixture.view.pendingWrites.getSnapshot("Note.md:0") === undefined,
+				};
+			});
+		},
+	});
+	const oldRow = fixture.container.querySelector('.task[data-line="0"]');
+	assert.ok(oldRow);
+	await fixture.click(0);
+	assertIcon(fixture.container, "done", "x");
+	assert.equal(fixture.h.text("Note.md"), written);
+	const previousReload = fixture.bridge.current!.state.reloadId;
+	const scope = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
+	const actEnvironment = scope.IS_REACT_ACT_ENVIRONMENT;
+	scope.IS_REACT_ACT_ENVIRONMENT = false;
+	try {
+		recording = true;
+		await fixture.h.deliver();
+		await fixture.view.onReloadTasks();
+		for (let attempt = 0; frame === undefined && attempt < 100; attempt++)
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		assert.ok(frame, "the reload committed and its microtask captured the row");
+		assert.equal(fixture.bridge.current!.state.reloadId, fixture.store.getSnapshot().reloadId);
+		assert.ok(frame.row);
+		assert.notStrictEqual(frame.row, oldRow, "the changed date group mounted a new row");
+		assert.equal(oldRow.isConnected, false);
+		assert.equal(frame.cleared, true, "the list commit cleared the store overlay");
+		assert.deepEqual(
+			{ busy: frame.busy, disabled: frame.disabled, marker: frame.marker },
+			{ busy: false, disabled: false, marker },
+			"the freshly mounted row has no cleared overlay before the next scheduler task",
+		);
+	} finally {
+		scope.IS_REACT_ACT_ENVIRONMENT = actEnvironment;
+	}
+}
+
+test("a row mounted by the transition commit drops a cleared overlay before paint", async (t) => {
+	await assertMountedRowBeforePaint(
+		t,
+		"- [ ] a 🔁 every day 📅 2026-01-15",
+		"- [ ] a 🔁 every day 📅 2026-01-16\n- [x] a 🔁 every day 📅 2026-01-15 ✅ 2026-01-15",
+		" ",
+	);
+});
+
+test("a written row that changes date group in the transition commit is not left dimmed", async (t) => {
+	await assertMountedRowBeforePaint(t, "- [ ] a 📅 2026-11-01", "- [x] a ✅ 2026-10-31", "x");
+});
+
 test("overlay is not cleared before the transition commits the written text", async (t) => {
 	const commits: ReturnType<typeof rowFrame>[] = [];
 	const frames: ReturnType<typeof rowFrame>[] = [];
