@@ -15,6 +15,27 @@ export interface SupportLink {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
 	{
+		version: "0.4.0-beta.3",
+		items: [
+			'The timeline now writes to your notes. Clicking a task\'s checkbox completes it, or marks it not done, right in the note without opening it, and every open timeline shows the change at once. Each change shows a notice with "Undo", which puts the note back exactly as it was, and "Open note". To get the old behaviour back, turn on "Open the note instead of changing tasks in place".',
+			"Clicking ✏️ opens Tasks' edit dialog over the timeline and saves your edit in the note, with Undo. This needs Tasks 7.21.0 or later; with an older Tasks, ✏️ opens the note at the task and says so.",
+			'Change a task\'s due, scheduled or start date from the timeline: right-click a task (on phones and tablets, tap ⋯) for "Due today", "Due tomorrow", a date picker or removing a date, or click a date badge to pick a new date. Only the date in the line changes.',
+			'New option "Style for new dates" chooses how a date is written on a task line that has no Tasks fields yet: emoji (📅 2026-10-25) or Dataview fields ([due:: 2026-10-25]). If the Tasks plugin is set to the Dataview format, choose Dataview fields.',
+			"When the Tasks plugin is enabled, completing a task from the timeline goes through Tasks, so a recurring task gets its next occurrence. This needs Tasks 7.2.0 or later; with an older Tasks, the checkbox opens the note at the task instead. Without Tasks, the checkbox still works, except on recurring tasks.",
+			"When the timeline cannot change a task safely, for example because the line changed meanwhile or the note is not saved as UTF-8, it writes nothing and tells you why. If another save, a sync or an edit in the note changes a task back within a few seconds, the timeline tells you and offers to redo the change.",
+			"The timeline is faster in large vaults: after a save, it reads only the notes that changed and redraws only the rows that changed, and in a vault with 40,000 tasks, showing a saved change takes about a quarter less time. The plugin file is about two thirds smaller, and clicks and scrolling stay responsive while a big timeline redraws.",
+			"A task added with quick entry shows up in the timeline you typed it into almost at once, instead of after about half a second. If the add fails, the text stays in the input.",
+			"Changed settings take effect at once instead of after 5 seconds.",
+			'New option "Forward Undated Done Tasks", on by default: turn it off to keep done tasks that have no date at all out of the timeline. Like the other forward options, it only matters while "Forward Tasks From Past" is on.',
+			"Clicking a task opens its note once, at the task's line, and keeps the view mode of a note that is already open. Cmd/Ctrl-click opens it in a new tab.",
+			"The quick filter now stays applied when notes are saved or settings change, and its inputs show the filter in use.",
+			'The "file(s) could not be read" notice is shown when the set of unreadable notes changes instead of on every reload, warnings about a task line in the developer console are logged once, and a note without tasks that cannot be read no longer causes that notice.',
+			"A date written after an emoji such as 🗓️ is now read, as Tasks reads it.",
+			"When the week start or time zone changes, tasks in daily notes named by week move to the right day at once, instead of staying a day off until Obsidian restarts.",
+			"This version needs Obsidian 1.11.4 or later.",
+		],
+	},
+	{
 		version: "0.4.0-beta.2",
 		items: [
 			"The timeline is no longer empty when Obsidian is set to a language that writes numbers in its own digits, such as Arabic or Persian.",
