@@ -252,6 +252,7 @@ test("counts are shown for both arms, and a count that changed is a warning, not
 		base: { min: 2000, median: 2000, max: 2000 },
 		candidate: { min: 1, median: 1, max: 1 },
 		changed: true,
+		reportOnly: false,
 	});
 	assert.deepEqual(verdict.warnings, [
 		"bench: warning: saveWithTasks.filesRead changed: median 2000 with the base, 1 with the candidate.",
@@ -400,4 +401,76 @@ test("the A/B base is measured against the upstream of a local branch", () => {
 		["rev-parse", "--abbrev-ref", "master@{upstream}"],
 		["merge-base", "--", "origin/master", "feature"],
 	]);
+});
+
+test("scenario keys with a dot name their metrics as focusToday.on.paintedMs", () => {
+	const results = BASE.map((ms) => ({ "focusToday.on": { paintedMs: timing(ms), blockedMs: timing(ms / 2) } }));
+	const verdict = compareAb(slotsOf(results, results), 1);
+	assert.equal(rowOf(verdict, "focusToday.on.paintedMs").judged, true);
+	assert.ok(verdict.lines.some((line) => line.includes("focusToday.on.paintedMs")));
+});
+
+test("report-only counts are shown for both arms without a warning", () => {
+	const of = (factor: number) => ({
+		heapAfterLoad: { usedBytes: counts([1000 * factor]) },
+		scroll: { framesOver50Ms: counts([2 * factor]), frames: counts([120 * factor]) },
+		saveWithTasks: { filesRead: counts([4 * factor]) },
+	});
+	const verdict = compareAb(
+		slotsOf(
+			BASE.map(() => of(1)),
+			BASE.map(() => of(2)),
+		),
+		1,
+	);
+	for (const [name, base] of [
+		["heapAfterLoad.usedBytes", 1000],
+		["scroll.framesOver50Ms", 2],
+		["scroll.frames", 120],
+	] as const) {
+		const row = verdict.counts.find((entry) => entry.name === name);
+		assert.ok(row, `no count ${name}`);
+		assert.equal(row.reportOnly, true);
+		assert.equal(row.changed, false);
+		assert.equal(row.base.median, base);
+		assert.equal(row.candidate.median, base * 2);
+		const line = verdict.lines.find((entry) => entry.includes(`${name} (count)`));
+		assert.ok(line, `no table line ${name}`);
+		assert.ok(line.endsWith("  report only"), line);
+		assert.ok(line.includes(String(base)) && line.includes(String(base * 2)), line);
+		assert.ok(!verdict.warnings.some((warning) => warning.includes(name)));
+	}
+	const ordinary = verdict.counts.find((entry) => entry.name === "saveWithTasks.filesRead");
+	assert.ok(ordinary);
+	assert.equal(ordinary.reportOnly, false);
+	assert.equal(ordinary.changed, true);
+	assert.deepEqual(verdict.warnings, [
+		"bench: warning: saveWithTasks.filesRead changed: median 4 with the base, 8 with the candidate.",
+	]);
+	assert.ok(verdict.lines.some((line) => line.includes("saveWithTasks.filesRead") && line.endsWith("  changed")));
+	assert.equal(verdict.slower, 0);
+	assert.deepEqual(verdict.rows, []);
+});
+
+test("a base that skipped a scenario leaves its metrics candidate-only and not judged", () => {
+	const verdict = compareAb(
+		slotsOf(
+			BASE.map(() => ({ counterFilter: { skipped: "the loaded build has no Todo counter" } })),
+			BASE.map((ms) => ({
+				counterFilter: { paintedMs: timing(ms), blockedMs: timing(ms / 2), longestTaskMs: timing(ms / 4) },
+			})),
+		),
+		1,
+	);
+	assert.deepEqual(
+		verdict.unpaired.map((row) => row.name),
+		["counterFilter.paintedMs", "counterFilter.blockedMs", "counterFilter.longestTaskMs"],
+	);
+	for (const row of verdict.unpaired) {
+		assert.equal(row.verdict, "not judged");
+		assert.equal(row.judged, false);
+		assert.equal(row.base, null);
+		assert.ok(verdict.lines.some((line) => line.includes(row.name) && line.endsWith("  not judged")));
+	}
+	assert.equal(verdict.slower, 0);
 });
