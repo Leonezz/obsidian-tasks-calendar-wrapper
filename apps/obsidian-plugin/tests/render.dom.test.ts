@@ -5,7 +5,8 @@ import "./setup";
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { act, createElement, createRef } from "react";
+import { act, createElement, createRef, Fragment, Profiler, Suspense } from "react";
+import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { parseTaskLine, type DateField, type Store, type Task, type TaskRowModel } from "@tasks-calendar-wrapper/core";
@@ -26,7 +27,7 @@ import { undoNoticeText } from "../timeline/src/notices";
 import { getTasksDialog } from "../timeline/src/tasksplugin";
 import { moment } from "../utils/moment";
 import type { WriteEvent } from "../timeline/src/taskwriter";
-import { flush, writerHarness } from "./writer-harness";
+import { deferred, flush, writerHarness } from "./writer-harness";
 
 test("the dimmed row uses no layer-creating property", () => {
 	const css = readFileSync("styles.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
@@ -43,7 +44,12 @@ test("the dimmed row uses no layer-creating property", () => {
 	}
 });
 
-async function mountWritingTimeline(t: TestContext, text: string, toggle?: (line: string) => string) {
+async function mountWritingTimeline(
+	t: TestContext,
+	text: string,
+	toggle?: (line: string) => string,
+	probe?: { onCommit?: (container: HTMLElement) => void; suspend?: boolean },
+) {
 	const h = writerHarness({ "Note.md": text });
 	Object.assign(h.app, { plugins: { plugins: {} } });
 	const index = timelineTaskIndex(h.app as never);
@@ -76,18 +82,21 @@ async function mountWritingTimeline(t: TestContext, text: string, toggle?: (line
 	await view.onUpdateOptions({ ...defaultUserOptions, hideStatusTasks: [] });
 	const container = document.body.appendChild(document.createElement("div"));
 	const root = createRoot(container);
-	await act(() =>
-		root.render(
-			createElement(ObsidianBridge, {
-				plugin: view,
-				store,
-				writer: view.viewWriter,
-				ledger: view.ledger,
-				pendingWrites: view.pendingWrites,
-				onWriteResult: view.onWriteResult,
-			}),
-		),
-	);
+	const bridge = createRef<ObsidianBridge>();
+	const element = createElement(ObsidianBridge, {
+		ref: bridge,
+		plugin: view,
+		store,
+		writer: view.viewWriter,
+		ledger: view.ledger,
+		pendingWrites: view.pendingWrites,
+		onWriteResult: view.onWriteResult,
+		onListCommitted: view.onListCommitted,
+	});
+	const observed = probe
+		? createElement(Profiler, { id: "timeline", onRender: () => probe.onCommit?.(container) }, element)
+		: element;
+	await act(() => root.render(probe?.suspend ? createElement(Suspense, { fallback: null }, observed) : observed));
 	t.after(async () => {
 		await act(() => root.unmount());
 		await view.onClose();
@@ -103,7 +112,7 @@ async function mountWritingTimeline(t: TestContext, text: string, toggle?: (line
 			await flush();
 		});
 	};
-	return { h, view, store, writer, write, editInTasksDialog, undo, undoNotices, container, click };
+	return { h, view, store, writer, write, editInTasksDialog, undo, undoNotices, container, click, bridge };
 }
 
 async function mountNoteActions(
@@ -697,6 +706,308 @@ test("overlay cleared only in the commit that shows the written text", async (t)
 	assert.ok(frames.length > 0);
 	assert.deepEqual([...new Set(frames)], ["x"]);
 	assert.equal(row.container.querySelector(".task")?.hasAttribute("aria-disabled"), false);
+});
+
+/** A commit probe sees intermediate sync commits that MutationObserver batches together. */
+function rowFrame(container: HTMLElement, line = 0) {
+	const row = container.querySelector(`.task[data-line="${line}"]`);
+	return {
+		marker: row?.querySelector("input[data-task]")?.getAttribute("data-task"),
+		busy: row?.getAttribute("aria-busy") === "true",
+	};
+}
+
+async function assertMountedRowBeforePaint(t: TestContext, source: string, written: string, marker: string) {
+	let now = 1000;
+	t.mock.method(performance, "now", () => now);
+	t.mock.method(window.performance, "now", () => now);
+	let recording = false;
+	let frame:
+		| (ReturnType<typeof rowFrame> & { row: Element | null; disabled: boolean | undefined; cleared: boolean })
+		| undefined;
+	const fixture = await mountWritingTimeline(t, source, () => written, {
+		onCommit: (container) => {
+			if (!recording || fixture.bridge.current!.state.reloadId === previousReload) return;
+			recording = false;
+			// Exhaust the scheduler slice so passive effects wait for a later task even on a small list.
+			now += 10;
+			// Capture after layout updates finish, before a later scheduler task can flush passive effects.
+			queueMicrotask(() => {
+				const row = container.querySelector('.task[data-line="0"]');
+				frame = {
+					...rowFrame(container),
+					row,
+					disabled: row?.hasAttribute("aria-disabled"),
+					cleared: fixture.view.pendingWrites.getSnapshot("Note.md:0") === undefined,
+				};
+			});
+		},
+	});
+	const oldRow = fixture.container.querySelector('.task[data-line="0"]');
+	assert.ok(oldRow);
+	await fixture.click(0);
+	assertIcon(fixture.container, "done", "x");
+	assert.equal(fixture.h.text("Note.md"), written);
+	const previousReload = fixture.bridge.current!.state.reloadId;
+	const scope = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
+	const actEnvironment = scope.IS_REACT_ACT_ENVIRONMENT;
+	scope.IS_REACT_ACT_ENVIRONMENT = false;
+	try {
+		recording = true;
+		await fixture.h.deliver();
+		await fixture.view.onReloadTasks();
+		for (let attempt = 0; frame === undefined && attempt < 100; attempt++)
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		assert.ok(frame, "the reload committed and its microtask captured the row");
+		assert.equal(fixture.bridge.current!.state.reloadId, fixture.store.getSnapshot().reloadId);
+		assert.ok(frame.row);
+		assert.notStrictEqual(frame.row, oldRow, "the changed date group mounted a new row");
+		assert.equal(oldRow.isConnected, false);
+		assert.equal(frame.cleared, true, "the list commit cleared the store overlay");
+		assert.deepEqual(
+			{ busy: frame.busy, disabled: frame.disabled, marker: frame.marker },
+			{ busy: false, disabled: false, marker },
+			"the freshly mounted row has no cleared overlay before the next scheduler task",
+		);
+	} finally {
+		scope.IS_REACT_ACT_ENVIRONMENT = actEnvironment;
+	}
+}
+
+test("a row mounted by the transition commit drops a cleared overlay before paint", async (t) => {
+	await assertMountedRowBeforePaint(
+		t,
+		"- [ ] a 🔁 every day 📅 2026-01-15",
+		"- [ ] a 🔁 every day 📅 2026-01-16\n- [x] a 🔁 every day 📅 2026-01-15 ✅ 2026-01-15",
+		" ",
+	);
+});
+
+test("a written row that changes date group in the transition commit is not left dimmed", async (t) => {
+	await assertMountedRowBeforePaint(t, "- [ ] a 📅 2026-11-01", "- [x] a ✅ 2026-10-31", "x");
+});
+
+test("overlay is not cleared before the transition commits the written text", async (t) => {
+	const commits: ReturnType<typeof rowFrame>[] = [];
+	const frames: ReturnType<typeof rowFrame>[] = [];
+	let recording = false;
+	const fixture = await mountWritingTimeline(t, "- [ ] a", undefined, {
+		onCommit: (container) => {
+			if (recording) commits.push(rowFrame(container));
+		},
+	});
+	await fixture.click(0);
+	recording = true;
+	const observer = new window.MutationObserver(() => frames.push(rowFrame(fixture.container)));
+	observer.observe(fixture.container, { subtree: true, attributes: true, childList: true });
+	t.after(() => observer.disconnect());
+	await act(async () => {
+		await fixture.h.deliver();
+		await fixture.view.onReloadTasks();
+		const counter = fixture.container.querySelector<HTMLElement>("#unplanned");
+		assert.ok(counter);
+		flushSync(() => counter.click());
+		assert.equal(fixture.bridge.current!.state.tasks[0].statusMarker, " ", "the old model is still shown");
+		assert.deepEqual(rowFrame(fixture.container), { marker: "x", busy: true });
+		assert.ok(fixture.view.pendingWrites.getSnapshot("Note.md:0"));
+		flushSync(() => counter.click());
+	});
+	assert.deepEqual(rowFrame(fixture.container), { marker: "x", busy: false });
+	assert.ok(commits.length > 0);
+	assert.ok(frames.length > 0);
+	for (const frame of [...commits, ...frames])
+		assert.ok(frame.busy || frame.marker !== " ", "no commit or mutation frame exposes the pre-write marker");
+});
+
+test("an urgent update while the list is pending keeps the old list and its line shifts", async (t) => {
+	let now = 1000;
+	t.mock.method(performance, "now", () => now);
+	t.mock.method(window.performance, "now", () => now);
+	const original = "- [ ] a 🔁 every day 📅 2026-01-15";
+	const fixture = await mountWritingTimeline(t, original + "\n- [ ] b", (line) =>
+		line === original
+			? "- [ ] a 🔁 every day 📅 2026-01-16\n- [x] a 🔁 every day 📅 2026-01-15 ✅ 2026-01-15"
+			: line.replace(/\[( |x)\]/, (_, marker) => (marker === " " ? "[x]" : "[ ]")),
+	);
+	await fixture.click(0);
+	await act(async () => {
+		await fixture.h.deliver();
+		await fixture.view.onReloadTasks();
+		assert.equal(fixture.view.ledger.shift("Note.md", 1), 2, "the old row still needs the first write's shift");
+		flushSync(() => fixture.container.querySelector<HTMLElement>('.task[data-line="1"] label.icon')!.click());
+		await flush();
+		assert.equal(fixture.h.events.filter((event) => event.kind === "written").at(-1)?.line, 2);
+		assert.equal(fixture.h.text("Note.md").split("\n")[2], "- [x] b");
+	});
+	await act(async () => {
+		await fixture.h.deliver();
+		await fixture.view.onReloadTasks();
+	});
+	now += 1000;
+	assert.equal(fixture.view.ledger.shift("Note.md", 2), 2, "the committed line receives no second shift");
+	await fixture.click(2);
+	assert.equal(fixture.h.events.filter((event) => event.kind === "written").at(-1)?.line, 2);
+	assert.equal(fixture.h.text("Note.md").split("\n")[2], "- [ ] b");
+	assert.deepEqual(fixture.h.refusals, []);
+});
+
+test("a write started during a pending list transition dims the row on screen", async (t) => {
+	const original = "- [ ] a 🔁 every day 📅 2026-01-15";
+	const fixture = await mountWritingTimeline(t, original + "\n- [ ] b\n- [ ] c", (line) =>
+		line === original
+			? "- [ ] a 🔁 every day 📅 2026-01-16\n- [x] a 🔁 every day 📅 2026-01-15 ✅ 2026-01-15"
+			: line.replace("[ ]", "[x]"),
+	);
+	await fixture.click(0);
+	await act(async () => {
+		await fixture.h.deliver();
+		await fixture.view.onReloadTasks();
+		assert.equal(fixture.store.getSnapshot().tasks.find((task) => task.sourceLine === "- [ ] b")?.line, 2);
+		flushSync(() => fixture.container.querySelector<HTMLElement>('.task[data-line="1"] label.icon')!.click());
+		await flush();
+		flushSync(() => {});
+		assert.deepEqual(rowFrame(fixture.container, 1), { marker: "x", busy: true });
+		assert.deepEqual(rowFrame(fixture.container, 2), { marker: " ", busy: false });
+		assert.equal(fixture.view.pendingWrites.getSnapshot("Note.md:1")?.id, 2);
+		assert.equal(fixture.view.pendingWrites.getSnapshot("Note.md:2"), undefined);
+	});
+});
+
+test("the list commit moves the click clock once", async (t) => {
+	let now = 1000;
+	t.mock.method(performance, "now", () => now);
+	t.mock.method(window.performance, "now", () => now);
+	const suspended = deferred();
+	let block = true;
+	let discarded = 0;
+	const mounted: { timeline?: TimelineView } = {};
+	const render = TimelineView.prototype.render;
+	const Pause = () => {
+		discarded++;
+		throw suspended.promise;
+	};
+	t.mock.method(TimelineView.prototype, "render", function (this: TimelineView) {
+		mounted.timeline = this;
+		const result = render.call(this);
+		return block && this.props.tasks.length > 1
+			? createElement(Fragment, null, result, createElement(Pause))
+			: result;
+	});
+	const fixture = await mountWritingTimeline(t, "- [ ] a", undefined, { suspend: true });
+	const clock = (mounted.timeline as unknown as { rowWrites: { clock: { lastListChangeAt: number } } }).rowWrites
+		.clock;
+	let value = clock.lastListChangeAt;
+	const changes: number[] = [];
+	Object.defineProperty(clock, "lastListChangeAt", {
+		get: () => value,
+		set: (next: number) => {
+			value = next;
+			changes.push(next);
+		},
+	});
+	await act(async () => {
+		fixture.h.put("Note.md", "- [ ] a\n- [ ] b");
+		await fixture.h.deliver();
+		await fixture.view.onReloadTasks();
+	});
+	assert.ok(discarded > 0, "the pending render reached TimelineView and then suspended");
+	assert.deepEqual(changes, [], "the discarded list has not changed the click clock");
+	await act(() => flushSync(() => fixture.container.querySelector<HTMLElement>("#unplanned")!.click()));
+	assert.ok(fixture.container.querySelector(".taskido.unplannedFilter"));
+	assert.equal(fixture.container.querySelectorAll(".task").length, 1);
+	assert.deepEqual(changes, [], "the urgent old-list commit does not move the click clock");
+	now = 2000;
+	block = false;
+	await act(() => suspended.resolve());
+	assert.equal(fixture.container.querySelectorAll(".task").length, 2);
+	assert.deepEqual(changes, [2000]);
+	const event = new MouseEvent("click", { bubbles: true, view: window });
+	Object.defineProperty(event, "timeStamp", { value: 1990 });
+	await act(() => fixture.container.querySelector<HTMLElement>(".task label.icon")!.dispatchEvent(event));
+	assert.equal(fixture.write.mock.callCount(), 0, "a click stamped before the list commit is ignored");
+	assert.deepEqual(changes, [2000]);
+});
+
+test("a row that moves to another day in the transition commit loses its overlay", async (t) => {
+	const commits: (ReturnType<typeof rowFrame> & { moved: boolean })[] = [];
+	const frames: ReturnType<typeof rowFrame>[] = [];
+	let recording = false;
+	let oldRow: Element | null = null;
+	const fixture = await mountWritingTimeline(t, "- [ ] a 📅 2026-11-01", () => "- [x] a ✅ 2026-10-31", {
+		onCommit: (container) => {
+			if (recording)
+				commits.push({
+					...rowFrame(container),
+					moved:
+						container.querySelector(".task") !== oldRow &&
+						fixture.bridge.current!.state.tasks[0].statusMarker === "x",
+				});
+		},
+	});
+	oldRow = fixture.container.querySelector(".task");
+	await fixture.click(0);
+	recording = true;
+	const observer = new window.MutationObserver(() => frames.push(rowFrame(fixture.container)));
+	observer.observe(fixture.container, { subtree: true, attributes: true, childList: true });
+	t.after(() => observer.disconnect());
+	await act(async () => {
+		await fixture.h.deliver();
+		await fixture.view.onReloadTasks();
+	});
+	assert.notStrictEqual(fixture.container.querySelector(".task"), oldRow, "moving to the done day mounts a new row");
+	assert.deepEqual(rowFrame(fixture.container), { marker: "x", busy: false });
+	assert.ok(commits.some((frame) => frame.moved));
+	for (const frame of [...commits, ...frames])
+		assert.ok(frame.busy || frame.marker !== " ", "the moved row never exposes the pre-write marker");
+	t.diagnostic(
+		`Moved-row commits with written text and aria-busy: ${commits.filter((frame) => frame.moved && frame.marker === "x" && frame.busy).length}; jsdom does not measure painted frames.`,
+	);
+});
+
+test("options change renders urgently, the reload's list follows in a transition", async (t) => {
+	const commits: ReturnType<typeof rowFrame>[] = [];
+	let recording = false;
+	const fixture = await mountWritingTimeline(t, "- [ ] a 📅 2026-01-15", undefined, {
+		onCommit: (container) => {
+			if (recording) commits.push(rowFrame(container));
+		},
+	});
+	await fixture.click(0);
+	recording = true;
+	await act(async () => {
+		await fixture.h.deliver();
+		let updated!: Promise<void>;
+		flushSync(() => {
+			updated = fixture.view.onUpdateOptions({ ...fixture.store.getSnapshot().options, useRelative: false });
+		});
+		assert.ok(fixture.container.querySelector(".taskido.noRelative"), "the option is already visible");
+		await updated;
+		assert.equal(fixture.bridge.current!.state.tasks[0].statusMarker, " ", "the reload list is still pending");
+		assert.deepEqual(rowFrame(fixture.container), { marker: "x", busy: true });
+	});
+	assert.equal(fixture.bridge.current!.state.tasks[0].statusMarker, "x");
+	assert.deepEqual(rowFrame(fixture.container), { marker: "x", busy: false });
+	assert.ok(commits.length > 0);
+	for (const frame of commits) assert.ok(frame.busy || frame.marker !== " ", "the options commit keeps the overlay");
+});
+
+test("quick filter and counters stay urgent during a pending list transition", async (t) => {
+	const fixture = await mountWritingTimeline(t, "- [ ] a 📅 2026-01-15\n- [ ] b 📅 2026-01-16");
+	await act(async () => {
+		fixture.h.put("Note.md", "- [ ] a 📅 2026-01-15\n- [ ] b 📅 2026-01-16\n- [ ] c 📅 2026-01-15");
+		await fixture.h.deliver();
+		await fixture.view.onReloadTasks();
+		flushSync(() => fixture.bridge.current!.handleFilterEnable("2026-01-14", "2026-01-16", []));
+		assert.equal(fixture.container.querySelectorAll(".task").length, 1, "the quick filter applies to the old list");
+		assert.equal(fixture.bridge.current!.state.tasks.length, 2);
+		flushSync(() => fixture.container.querySelector<HTMLElement>("#todo")!.click());
+		assert.ok(fixture.container.querySelector(".taskido.todoFilter"));
+		assert.equal(fixture.bridge.current!.state.tasks.length, 2);
+	});
+	assert.equal(fixture.bridge.current!.state.tasks.length, 3);
+	assert.equal(fixture.container.querySelectorAll(".task").length, 2);
+	assert.ok(fixture.container.querySelector(".taskido.todoFilter"));
+	assert.equal(fixture.bridge.current!.state.quickFilter?.from, "2026-01-14");
 });
 
 test("click clock in a popout", (t) => {

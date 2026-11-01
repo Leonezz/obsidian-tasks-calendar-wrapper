@@ -45,14 +45,17 @@ function bridgeOf(opened: ReturnType<typeof openView>, app: unknown, resolveEnv?
 		plugin: { app } as never,
 		store: opened.store,
 		writer: opened.writer,
+		onListCommitted: opened.view.onListCommitted,
 		resolveEnv,
 	});
 	const mounted = bridge as unknown as { state: object; props: object };
 	bridge.setState = ((update: object | ((state: object, props: object) => object)) => {
+		const before = bridge.state;
 		mounted.state = {
 			...mounted.state,
 			...(typeof update === "function" ? update(mounted.state, mounted.props) : update),
 		};
+		bridge.componentDidUpdate(bridge.props, before);
 	}) as never;
 	bridge.componentDidMount();
 	return { bridge, rows: () => rowsOf(renderToStaticMarkup(bridge.render() as ReactElement)) };
@@ -62,25 +65,65 @@ function bridgeOf(opened: ReturnType<typeof openView>, app: unknown, resolveEnv?
  * The bridge as React updates it: setState queues the update, and flush applies the queued ones in order, as React
  * does when it renders, a moment after the change.
  */
-function deferredBridgeOf(opened: ReturnType<typeof openView>, app: unknown) {
-	const bridge = new ObsidianBridge({ plugin: { app } as never, store: opened.store, writer: opened.writer });
+function deferredBridgeOf(opened: ReturnType<typeof openView>, app: unknown, mount = true) {
+	const bridge = new ObsidianBridge({
+		plugin: { app } as never,
+		store: opened.store,
+		writer: opened.writer,
+		onListCommitted: opened.view.onListCommitted,
+	});
 	const mounted = bridge as unknown as { state: object; props: object };
-	let queued: (object | ((state: object, props: object) => object))[] = [];
-	bridge.setState = ((update: object | ((state: object, props: object) => object)) => {
+	type Update = object | ((state: object, props: object) => object);
+	let queued: Update[] = [];
+	let commits: (typeof bridge.state)[] = [];
+	bridge.setState = ((update: Update) => {
 		queued = [...queued, update];
 	}) as never;
+	const apply = (update: Update) => {
+		commits.push(bridge.state);
+		mounted.state = {
+			...mounted.state,
+			...(typeof update === "function" ? update(mounted.state, mounted.props) : update),
+		};
+	};
+	const commit = () => {
+		const before = commits;
+		commits = [];
+		for (const state of before) bridge.componentDidUpdate(bridge.props, state);
+	};
+	// Applying without committing models a transition that read the store before yielding.
+	const renderPending = () => {
+		const updates = queued;
+		queued = [];
+		for (const update of updates) apply(update);
+	};
 	const flush = () => {
 		const updates = queued;
 		queued = [];
-		for (const update of updates)
-			mounted.state = {
-				...mounted.state,
-				...(typeof update === "function" ? update(mounted.state, mounted.props) : update),
-			};
+		for (const update of updates) {
+			apply(update);
+			commit();
+		}
 	};
-	bridge.componentDidMount();
-	flush();
-	return { bridge, flush, rows: () => rowsOf(renderToStaticMarkup(bridge.render() as ReactElement)) };
+	// Quick entry can commit its urgent update ahead of the queued transition.
+	const flushLatest = () => {
+		const update = queued.pop();
+		assert.ok(update);
+		apply(update);
+		commit();
+	};
+	if (mount) {
+		bridge.componentDidMount();
+		flush();
+	}
+	return {
+		bridge,
+		flush,
+		renderPending,
+		commit,
+		flushLatest,
+		rows: () => rowsOf(renderToStaticMarkup(bridge.render() as ReactElement)),
+	};
 }
 
 const ids = (tasks: readonly { id: string }[]) => tasks.map((task) => task.id);
@@ -483,12 +526,19 @@ test("the bridge takes in what changed between drawing it and mounting it, and n
 	const notes = { "Inbox.md": "- [ ] beta 📅 2026-01-20" };
 	const app = notesApp(notes);
 	const opened = openView(app);
-	const bridge = new ObsidianBridge({ plugin: { app } as never, store: opened.store, writer: opened.writer });
+	const bridge = new ObsidianBridge({
+		plugin: { app } as never,
+		store: opened.store,
+		writer: opened.writer,
+		onListCommitted: opened.view.onListCommitted,
+	});
 	let updates = 0;
 	const mounted = bridge as unknown as { state: object };
 	bridge.setState = ((update: object | ((state: object) => object)) => {
+		const before = bridge.state;
 		updates += 1;
 		mounted.state = { ...mounted.state, ...(typeof update === "function" ? update(mounted.state) : update) };
+		bridge.componentDidUpdate(bridge.props, before);
 	}) as never;
 	await opened.view.onUpdateOptions({ ...defaultUserOptions, dateFormat: "DD.MM.YYYY" });
 	bridge.componentDidMount();
@@ -667,14 +717,17 @@ async function writingViews(
 			pendingWrites: view.pendingWrites,
 			onWriteResult: view.onWriteResult,
 			onQuickEntryWritten: view.reloadWhenIndexed,
+			onListCommitted: view.onListCommitted,
 		});
 		let renders = 0;
 		bridge.setState = ((update: object | ((state: object, props: object) => object)) => {
+			const before = bridge.state;
 			renders++;
 			(bridge as unknown as { state: object }).state = {
 				...bridge.state,
 				...(typeof update === "function" ? update(bridge.state, bridge.props) : update),
 			};
+			bridge.componentDidUpdate(bridge.props, before);
 		}) as never;
 		bridge.componentDidMount();
 		let reloads = 0;
@@ -1346,4 +1399,228 @@ test("quick entry still clears the quick filter, and the reload keeps it cleared
 	await f.h.clock.advance(600);
 	assert.deepEqual(reloadCounts(f), [1, 1]);
 	assert.equal(first.bridge.state.quickFilter, undefined);
+});
+
+/** A writer feed whose releases and reader pins can be placed between a render and its commit. */
+async function transitionWrites(t: TestContext) {
+	const h = writerHarness({ "Note.md": "- [ ] first\n- [ ] second", "Other.md": "- [ ] other" });
+	const listeners = new Set<(event: WriteEvent) => void>();
+	let seq = 0;
+	const writer: TaskWriter = {
+		...unusedWriter,
+		onWrite(listener) {
+			listeners.add(listener);
+			return () => {
+				listeners.delete(listener);
+			};
+		},
+		releaseSeq: () => seq,
+	};
+	const opened = openView(h.app, writer);
+	await opened.view.onUpdateOptions({ ...defaultUserOptions, hideStatusTasks: [] });
+	const sources = opened.store.getSnapshot().tasks;
+	const owner = opened.view as unknown as { reader: TaskIndexReader };
+	const reader = owner.reader;
+	let pinned: readonly string[] = [];
+	owner.reader = { ...reader, update: async (options) => ({ ...(await reader.update(options)), pinned }) };
+	t.after(() => opened.view.onClose());
+	return {
+		...opened,
+		h,
+		pin: (paths: readonly string[]) => (pinned = paths),
+		edit(path: string, text: string) {
+			h.put(path, text);
+			h.changed(path, text);
+			opened.edited(path);
+		},
+		pending(id: number, path = "Note.md", line = 0) {
+			const task = sources.find((task) => task.path === path && task.line === line);
+			assert.ok(task);
+			const event: WriteEvent = {
+				id,
+				kind: "pending",
+				path,
+				line,
+				sourceLine: task.sourceLine,
+				lines: [task.sourceLine.replace("[ ]", "[x]")],
+			};
+			for (const listener of listeners) listener(event);
+			return {
+				release() {
+					for (const listener of listeners) listener({ ...event, kind: "released", releaseSeq: ++seq });
+				},
+			};
+		},
+	};
+}
+
+test("a reload with an unchanged list clears at once when nothing is pending", async (t) => {
+	const f = await transitionWrites(t);
+	const { bridge } = bridgeOf(f, f.h.app);
+	t.after(() => bridge.componentWillUnmount());
+	const render = t.mock.method(bridge, "setState");
+	const write = f.pending(1);
+	f.view.ledger.recordWrite(1, "Note.md", 0, 1);
+	write.release();
+	const before = f.store.getSnapshot().shown;
+	await f.view.onReloadTasks();
+	assert.equal(f.store.getSnapshot().shown, before);
+	assert.equal(f.view.pendingWrites.getSnapshot("Note.md:0"), undefined);
+	assert.equal(f.view.ledger.shift("Note.md", 1), 1);
+	assert.equal(render.mock.callCount(), 0);
+});
+
+test("a reload with an unchanged list during a pending list transition clears when that transition commits", async (t) => {
+	const f = await transitionWrites(t);
+	const b = deferredBridgeOf(f, f.h.app);
+	t.after(() => b.bridge.componentWillUnmount());
+	const first = f.pending(1);
+	const second = f.pending(2, "Other.md");
+	first.release();
+	f.edit("Note.md", "- [x] first\n- [ ] second");
+	await f.view.onReloadTasks();
+	const shown = f.store.getSnapshot().shown;
+	second.release();
+	await f.view.onReloadTasks();
+	assert.equal(f.store.getSnapshot().shown, shown);
+	assert.ok(f.view.pendingWrites.getSnapshot("Note.md:0"));
+	assert.ok(f.view.pendingWrites.getSnapshot("Other.md:0"));
+	assert.equal(b.bridge.state.tasks[0].sourceLine, "- [ ] first");
+	b.flush();
+	assert.equal(f.view.pendingWrites.getSnapshot("Note.md:0"), undefined);
+	assert.equal(f.view.pendingWrites.getSnapshot("Other.md:0"), undefined);
+	assert.equal(b.bridge.state.tasks, f.store.getSnapshot().tasks);
+});
+
+test("an unchanged-list reload that ends after the pending render read the store still clears at that commit", async (t) => {
+	const f = await transitionWrites(t);
+	const b = deferredBridgeOf(f, f.h.app);
+	t.after(() => b.bridge.componentWillUnmount());
+	const first = f.pending(1);
+	const second = f.pending(2, "Other.md");
+	f.view.ledger.recordWrite(2, "Other.md", 0, 1);
+	first.release();
+	f.edit("Note.md", "- [x] first\n- [ ] second");
+	await f.view.onReloadTasks();
+	b.renderPending();
+	const rendered = b.bridge.state;
+	const shown = f.store.getSnapshot().shown;
+	second.release();
+	await f.view.onReloadTasks();
+	assert.equal(f.store.getSnapshot().shown, shown);
+	assert.notEqual(rendered.tasks, f.store.getSnapshot().tasks, "the yielded render already took R1's tasks");
+	assert.ok(f.view.pendingWrites.getSnapshot("Other.md:0"));
+	assert.equal(f.view.ledger.shift("Other.md", 1), 2);
+	b.commit();
+	assert.equal(b.bridge.state, rendered, "the R1 commit has not read the newer snapshot");
+	assert.equal(f.view.pendingWrites.getSnapshot("Note.md:0"), undefined);
+	assert.equal(f.view.pendingWrites.getSnapshot("Other.md:0"), undefined);
+	assert.equal(f.view.ledger.shift("Other.md", 1), 1);
+});
+
+test("without a committed bridge a reload clears at once", async (t) => {
+	const f = await transitionWrites(t);
+	const write = f.pending(1);
+	f.view.ledger.recordWrite(1, "Note.md", 0, 1);
+	write.release();
+	f.edit("Note.md", "- [x] first\n- [ ] second");
+	await f.view.onReloadTasks();
+	assert.equal(f.view.pendingWrites.getSnapshot("Note.md:0"), undefined);
+	assert.equal(f.view.ledger.shift("Note.md", 1), 1);
+});
+
+test("queued clears apply in order", async (t) => {
+	const f = await transitionWrites(t);
+	const b = deferredBridgeOf(f, f.h.app);
+	t.after(() => b.bridge.componentWillUnmount());
+	const first = f.pending(1);
+	const second = f.pending(2, "Note.md", 1);
+	f.view.ledger.recordWrite(1, "Note.md", 0, 1);
+	f.view.ledger.recordWrite(2, "Note.md", 1, 1);
+	first.release();
+	f.edit("Note.md", "- [x] first\n- [ ] second");
+	await f.view.onReloadTasks();
+	second.release();
+	f.pin(["Note.md"]);
+	await f.view.onReloadTasks();
+	assert.ok(f.view.pendingWrites.getSnapshot("Note.md:0"));
+	assert.ok(f.view.pendingWrites.getSnapshot("Note.md:1"));
+	assert.equal(f.view.ledger.shift("Note.md", 3), 5);
+	b.flush();
+	assert.equal(f.view.pendingWrites.getSnapshot("Note.md:0"), undefined, "R2's pin cannot undo R1's clear");
+	assert.equal(f.view.pendingWrites.getSnapshot("Note.md:1")?.id, 2, "R2 keeps its pinned release");
+	assert.equal(f.view.ledger.shift("Note.md", 3), 4, "only the second write's shift remains");
+});
+
+test("quick entry while a list transition is pending clears what its list shows", async (t) => {
+	const f = await transitionWrites(t);
+	const b = deferredBridgeOf(f, f.h.app);
+	t.after(() => b.bridge.componentWillUnmount());
+	b.bridge.handleFilterEnable("2026-01-19", "2026-01-21", []);
+	b.flush();
+	const write = f.pending(1);
+	f.view.ledger.recordWrite(1, "Note.md", 0, 1);
+	write.release();
+	f.edit("Note.md", "- [x] first\n- [ ] second");
+	await f.view.onReloadTasks();
+	assert.ok(f.view.pendingWrites.getSnapshot("Note.md:0"));
+	assert.equal(f.view.ledger.shift("Note.md", 1), 2);
+	b.bridge.onUpdateTasks();
+	b.flushLatest();
+	assert.equal(b.bridge.state.tasks, f.store.getSnapshot().tasks);
+	assert.equal(b.bridge.state.quickFilter, undefined);
+	assert.equal(f.view.pendingWrites.getSnapshot("Note.md:0"), undefined);
+	assert.equal(f.view.ledger.shift("Note.md", 1), 1);
+	b.flush();
+	assert.equal(b.bridge.state.quickFilter, undefined, "the transition cannot restore the quick filter");
+});
+
+test("closing the view while a list transition is pending clears nothing afterwards and renders nothing", async (t) => {
+	const f = await transitionWrites(t);
+	const b = deferredBridgeOf(f, f.h.app);
+	const write = f.pending(1);
+	write.release();
+	f.edit("Note.md", "- [x] first\n- [ ] second");
+	await f.view.onReloadTasks();
+	assert.ok(f.view.pendingWrites.getSnapshot("Note.md:0"));
+	const owner = f.view as unknown as { reader: TaskIndexReader };
+	const reader = owner.reader;
+	const gate = deferred();
+	owner.reader = {
+		...reader,
+		update: async (options) => {
+			const result = await reader.update(options);
+			await gate.promise;
+			return result;
+		},
+	};
+	const reloading = f.view.onReloadTasks();
+	b.bridge.componentWillUnmount();
+	await f.view.onClose();
+	const render = t.mock.method(b.bridge, "setState");
+	let clears = 0;
+	const unsubscribe = f.view.pendingWrites.subscribe("Note.md:0", () => clears++);
+	t.after(unsubscribe);
+	gate.resolve();
+	await assert.doesNotReject(reloading);
+	// A commit callback already queued when the root closed must be harmless too.
+	f.view.onListCommitted(f.store.getSnapshot().reloadId ?? 1);
+	assert.equal(render.mock.callCount(), 0);
+	assert.equal(clears, 0);
+	assert.ok(f.view.pendingWrites.getSnapshot("Note.md:0"));
+});
+
+test("a bridge mounting an older snapshot matches writes against the list it committed", async (t) => {
+	const f = await transitionWrites(t);
+	const b = deferredBridgeOf(f, f.h.app, false);
+	t.after(() => b.bridge.componentWillUnmount());
+	const mountedTasks = b.bridge.state.tasks;
+	f.edit("Note.md", "paragraph\n- [ ] first\n- [ ] second");
+	await f.view.onReloadTasks();
+	assert.notEqual(f.store.getSnapshot().tasks, mountedTasks);
+	b.bridge.componentDidMount();
+	assert.equal(b.bridge.state.tasks, mountedTasks, "the catch-up transition has not committed");
+	f.pending(1, "Note.md", 1);
+	assert.equal(f.view.pendingWrites.getSnapshot("Note.md:1")?.id, 1, "the old second row is on screen");
+	assert.equal(f.view.pendingWrites.getSnapshot("Note.md:2"), undefined, "the new row id is not on screen yet");
 });

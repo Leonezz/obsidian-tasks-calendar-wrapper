@@ -50,6 +50,9 @@ type TaskRowProps = {
 	clock: ListChangeClock;
 };
 
+/** The static markup tests render rows without a DOM, where React warns about layout effects. */
+const useClientLayoutEffect = typeof document === "undefined" ? React.useEffect : React.useLayoutEffect;
+
 function SubscribedTaskRow(props: Pick<TaskRowProps, "model" | "callbacks">) {
 	const { pendingWrites, clock } = React.useContext(RowWriteContext);
 	const id = `${props.model.path}:${props.model.line}`;
@@ -59,6 +62,17 @@ function SubscribedTaskRow(props: Pick<TaskRowProps, "model" | "callbacks">) {
 	);
 	const snapshot = React.useCallback(() => pendingWrites.getSnapshot(id), [pendingWrites, id]);
 	const overlay = React.useSyncExternalStore(subscribe, snapshot, snapshot);
+	const [, forceRender] = React.useReducer((value: number) => value + 1, 0);
+	// Subscribe in layout so a row mounted by a transition hears the clear in that commit's layout phase.
+	useClientLayoutEffect(() => {
+		if (overlay === undefined) return;
+		const check = () => {
+			if (pendingWrites.getSnapshot(id) !== overlay) forceRender();
+		};
+		const unsubscribe = pendingWrites.subscribe(id, check);
+		check();
+		return unsubscribe;
+	}, [pendingWrites, id, overlay]);
 	return <TaskRow {...props} overlay={overlay} clock={clock} />;
 }
 

@@ -53,12 +53,16 @@ type ObsidianBridgeProps = Readonly<typeof defaultObsidianBridgeProps> & {
 	readonly onWriteResult?: (target: LineTarget, result: WriteResult) => void;
 	/** Receives a quick entry's written path and the promise that resolves when it is indexed. */
 	readonly onQuickEntryWritten?: (path: string, indexed: Promise<void>) => void;
+	/** Reports the committed reload; zero marks a mount before the first reload. */
+	readonly onListCommitted?: (reloadId: number) => void;
 	readonly resolveEnv?: ReturnType<typeof createResolveEnv>;
 	readonly askDate?: (field: DateField, sourceLine: string) => Promise<DateAnswer>;
 };
 interface ObsidianBridgeState {
 	readonly tasks: readonly Task[];
 	readonly userOptions: UserOption;
+	/** The reload whose tasks this bridge is showing. */
+	readonly reloadId?: number;
 	/** The quick entry panel's filter, kept until the user clears it or adds a task through the quick entry. */
 	readonly quickFilter?: QuickFilter;
 }
@@ -109,13 +113,19 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		this.handleFilterEnable = this.handleFilterEnable.bind(this);
 
 		this.seen = this.props.store.getSnapshot();
-		this.state = { userOptions: this.seen.options, tasks: this.seen.tasks };
+		this.state = { userOptions: this.seen.options, tasks: this.seen.tasks, reloadId: this.seen.reloadId };
 	}
 
 	componentDidMount(): void {
 		this.unsubscribe = this.props.store.subscribe(this.onStateChanged);
 		// A change between reading the state and subscribing would not be heard of otherwise.
 		this.onStateChanged();
+		this.props.onListCommitted?.(this.state.reloadId ?? 0);
+	}
+
+	componentDidUpdate(prevProps: ObsidianBridgeProps, prevState: ObsidianBridgeState): void {
+		const id = this.state.reloadId;
+		if (id !== undefined && id !== prevState.reloadId) this.props.onListCommitted?.(id);
 	}
 
 	componentWillUnmount(): void {
@@ -135,12 +145,20 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		// The tasks are read when React applies the change, as the old view's model was, so a reload that ends before
 		// then with the same list shown brings its tasks along.
 		if (next.shown !== before.shown || next.taskRevision !== before.taskRevision)
-			this.setState((state) => withNewList(state, this.props.store.getSnapshot().tasks));
+			React.startTransition(() =>
+				this.setState((state) => {
+					const snap = this.props.store.getSnapshot();
+					return { ...withNewList(state, snap.tasks), reloadId: snap.reloadId };
+				}),
+			);
 	}
 
 	/** Shows the tasks read last, without the quick filter, as adding a task through the quick entry always did. */
 	onUpdateTasks() {
-		this.setState(() => ({ tasks: this.props.store.getSnapshot().tasks, quickFilter: undefined }));
+		this.setState(() => {
+			const snap = this.props.store.getSnapshot();
+			return { tasks: snap.tasks, reloadId: snap.reloadId, quickFilter: undefined };
+		});
 	}
 
 	/** The quick entry panel's filter, which core applies, see QuickFilter. */
