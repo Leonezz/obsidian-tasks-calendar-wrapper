@@ -98,6 +98,7 @@ export interface BucketOptions {
 	readonly scenario: string;
 	readonly mainJs: string;
 	readonly pluginId: string;
+	readonly pid?: number;
 	readonly requireMarkdown?: boolean;
 	readonly requireReactDom?: boolean;
 }
@@ -143,7 +144,7 @@ export function profileTable(columns: {
 /** The Electron recording transport selected for this pass. */
 export type TraceMethod = "webContents.debugger" | "contentTracing";
 
-/** The recording categories and fallback output path supplied to the page. */
+/** The recording categories and output path supplied to the page. */
 export interface TracingStartOptions {
 	readonly categories: readonly string[];
 	readonly path: string;
@@ -172,10 +173,12 @@ export interface TracingAborted {
 /** Controls debugger recording in a self-contained page function. */
 export function debuggerTracing(
 	options: DebuggerTracingOptions,
-): Promise<{ readonly method: "webContents.debugger" } | TracingStopped | TraceEvent[] | TracingAborted>;
+): Promise<
+	{ readonly method: "webContents.debugger"; readonly pid: number } | TracingStopped | TraceEvent[] | TracingAborted
+>;
 
-/** Starts the page-side contentTracing fallback. */
-export function tracingStart(options: TracingStartOptions): Promise<{ method: TraceMethod }>;
+/** Starts page-side contentTracing and returns this window's renderer pid. */
+export function tracingStart(options: TracingStartOptions): Promise<{ method: "contentTracing"; pid: number }>;
 /** Stops page-side recording and returns the location or size of the collected trace. */
 export function tracingStop(): Promise<TracingStopped>;
 /** Reads a bounded chunk of debugger trace events collected in the page. */
@@ -191,6 +194,7 @@ export interface TraceCli {
 /** Recording control plus cleanup steps for the caller's runAndUndo. */
 export interface TraceRecorder {
 	method(): TraceMethod | null;
+	pid(): number | null;
 	start(): void;
 	stop(): TraceEvent[];
 	readonly undoSteps: readonly (readonly [description: string, undo: () => unknown])[];

@@ -178,6 +178,30 @@ test("renderer thread selection uses de-duplicated top-level task time", () => {
 	assert.equal(result.categories.paint, 250);
 });
 
+test("bucketTrace with a pid ignores other windows' renderer main threads", () => {
+	const otherPid = pid + 1;
+	const trace = [
+		...traceOf(),
+		{ ph: "M", name: "thread_name", pid: otherPid, tid, args: { name: "CrRendererMain" } },
+		{ ...complete("RunTask", 0, 250), pid: otherPid },
+		{ ...complete("Paint", 0, 250), pid: otherPid },
+	];
+	assert.deepEqual(bucketTrace(trace, options).thread, { pid: otherPid, tid });
+	assert.deepEqual(bucketTrace(trace, { ...options, pid }), bucketTrace(traceOf(), options));
+});
+
+test("bucketTrace with a pid that has no renderer main thread is an error", () => {
+	const missingPid = pid + 1;
+	const trace = [
+		...traceOf(),
+		{ ph: "M", name: "thread_name", pid: missingPid, tid, args: { name: "Compositor" } },
+		{ ...complete("RunTask", 0, 250), pid: missingPid },
+	];
+	assert.throws(() => bucketTrace(trace, { ...options, pid: missingPid }), {
+		message: /profile initialLoad: the trace has no main thread for this window's renderer \(pid 101\);/,
+	});
+});
+
 test("a frame in the plugin bundle is bucketed by the module its esbuild path comment names", () => {
 	assert.deepEqual(moduleMap(mainJs), [
 		{ line: 1, path: "src/main.ts" },

@@ -101,6 +101,7 @@ function profileArm({ evaluate, recorder, build, notes, arm, toggleSetup, loadWa
 			scenario,
 			mainJs,
 			pluginId: manifest.id,
+			pid: recorder.pid(),
 			requireMarkdown: scenario === "initialLoad",
 			requireReactDom: scenario === "initialLoad",
 		});

@@ -4,7 +4,7 @@
  * as source and use no imports.
  */
 
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 import { round } from "./bench-results.mjs";
 
@@ -267,7 +267,10 @@ function lowerSample(samples, time) {
 }
 
 /** Attributes renderer long-task self time and sampled script stacks inside one marked scenario window. */
-export function bucketTrace(trace, { scenario, mainJs, pluginId, requireMarkdown = false, requireReactDom = false }) {
+export function bucketTrace(
+	trace,
+	{ scenario, mainJs, pluginId, pid, requireMarkdown = false, requireReactDom = false },
+) {
 	const events = Array.isArray(trace) ? trace : trace.traceEvents;
 	const window = ["start", "end"].map((edge) => {
 		const marker = profileMarker(scenario, edge);
@@ -279,7 +282,13 @@ export function bucketTrace(trace, { scenario, mainJs, pluginId, requireMarkdown
 	if (window[1] < window[0]) throw new Error(`profile ${scenario}: the end marker precedes the start marker.`);
 	const inWindow = (event) => event.ts >= window[0] && event.ts < window[1];
 	const threads = events
-		.filter((event) => event.ph === "M" && event.name === "thread_name" && event.args?.name === "CrRendererMain")
+		.filter(
+			(event) =>
+				event.ph === "M" &&
+				event.name === "thread_name" &&
+				event.args?.name === "CrRendererMain" &&
+				(pid === undefined || event.pid === pid),
+		)
 		.map(({ pid, tid }) => {
 			const complete = completeEvents(events, { pid, tid });
 			let outerEnd = -Infinity;
@@ -294,6 +303,10 @@ export function bucketTrace(trace, { scenario, mainJs, pluginId, requireMarkdown
 		})
 		.sort((a, b) => b.time - a.time);
 	const selected = threads[0];
+	if (!selected && pid !== undefined)
+		throw new Error(
+			`profile ${scenario}: the trace has no main thread for this window's renderer (pid ${pid}); check the renderer pid and trace categories (toplevel, devtools.timeline).`,
+		);
 	if (!selected?.tasks.length)
 		throw new Error(
 			`profile ${scenario}: the trace has no renderer main-thread tasks (CrRendererMain with RunTask events); check the trace categories (toplevel, devtools.timeline).`,
@@ -493,7 +506,7 @@ export async function debuggerTracing({ step, categories, from = 0, count = 20_0
 			traceConfig: { includedCategories: categories, excludedCategories: ["*"] },
 			transferMode: "ReportEvents",
 		});
-		return { method: state.method };
+		return { method: state.method, pid: process.pid };
 	}
 	const state = window.__tcwTrace;
 	if (step === "abort")
@@ -505,7 +518,7 @@ export async function debuggerTracing({ step, categories, from = 0, count = 20_0
 	throw new Error(`profile: unknown debugger recording step ${step}.`);
 }
 
-/** Starts the page-side contentTracing fallback; this function is sent as source and imports nothing. */
+/** Starts page-side contentTracing; this function is sent as source and imports nothing. */
 export async function tracingStart({ categories, path }) {
 	if (window.__tcwTrace)
 		throw new Error(
@@ -531,7 +544,7 @@ export async function tracingStart({ categories, path }) {
 		}
 	};
 	await tracing.startRecording({ included_categories: categories, excluded_categories: ["*"] });
-	return { method: state.method };
+	return { method: state.method, pid: process.pid };
 }
 
 /** Stops page-side recording and returns the location or size of the collected trace. */
@@ -555,14 +568,21 @@ export async function tracingAbort() {
 /** Controls page recording through an injected CLI, returning cleanup steps for the enclosing run. */
 export function traceRecorder(cli, { tmpDir, log }) {
 	let method = null;
+	let pid = null;
 	const tracePath = path.join(tmpDir, "trace.json");
 	const abort = () => cli.evaluate(tracingAbort, null, 70_000);
-	const start = (selected) =>
-		selected === "webContents.debugger"
-			? cli.evaluate(debuggerTracing, { step: "start", categories: TRACE_CATEGORIES }, 70_000)
-			: cli.evaluate(tracingStart, { categories: TRACE_CATEGORIES, path: tracePath }, 70_000);
+	const start = (selected) => {
+		const result =
+			selected === "contentTracing"
+				? cli.evaluate(tracingStart, { categories: TRACE_CATEGORIES, path: tracePath }, 70_000)
+				: cli.evaluate(debuggerTracing, { step: "start", categories: TRACE_CATEGORIES }, 70_000);
+		if (!Number.isInteger(result?.pid))
+			throw new Error(`profile: ${selected} did not report this window's renderer pid.`);
+		pid = result.pid;
+	};
 	return {
 		method: () => method,
+		pid: () => pid,
 		start() {
 			mkdirSync(tmpDir, { recursive: true });
 			if (method) {
@@ -570,21 +590,21 @@ export function traceRecorder(cli, { tmpDir, log }) {
 				return;
 			}
 			try {
-				start("webContents.debugger");
-				method = "webContents.debugger";
+				start("contentTracing");
+				method = "contentTracing";
 			} catch (first) {
-				log(`bench: profile: webContents.debugger failed: ${first.message ?? first}; trying contentTracing.`);
+				log(`bench: profile: contentTracing failed: ${first.message ?? first}; trying webContents.debugger.`);
 				try {
 					abort();
 				} catch (error) {
-					log(`bench: profile: debugger cleanup failed: ${error.message ?? error}`);
+					log(`bench: profile: contentTracing cleanup failed: ${error.message ?? error}`);
 				}
 				try {
-					start("contentTracing");
-					method = "contentTracing";
+					start("webContents.debugger");
+					method = "webContents.debugger";
 				} catch (second) {
 					throw new Error(
-						`profile: could not record a trace: webContents.debugger: ${first.message ?? first}; contentTracing: ${second.message ?? second}.`,
+						`profile: could not record a trace: contentTracing: ${first.message ?? first}; webContents.debugger: ${second.message ?? second}.`,
 					);
 				}
 			}
@@ -607,6 +627,7 @@ export function traceRecorder(cli, { tmpDir, log }) {
 					return events;
 				}
 				const result = cli.evaluate(tracingStop, null, 70_000);
+				log(`bench: profile: trace ${(statSync(result.path).size / 1e6).toFixed(1)} MB.`);
 				const trace = JSON.parse(readFileSync(result.path, "utf8"));
 				const events = Array.isArray(trace) ? trace : trace.traceEvents;
 				if (!Array.isArray(events))
