@@ -134,6 +134,9 @@ function profileArm({ evaluate, recorder, build, notes, arm, toggleSetup, loadWa
 		if (arm === "candidate") throw new Error("toggle: the candidate's plugin has no in-place checkbox support.");
 		skip("toggle", "the loaded plugin has no in-place checkbox support");
 	} else {
+		// As in the measured pass: data.json is saved as Obsidian writes it first, so restoring the options gives its bytes.
+		evaluate({ action: "saveOptions" });
+		evaluate({ action: "settle", settleMs: loadWatchMs });
 		const setup = toggleSetup(evaluate, notes);
 		runAndUndo(() => {
 			setup.prepare();

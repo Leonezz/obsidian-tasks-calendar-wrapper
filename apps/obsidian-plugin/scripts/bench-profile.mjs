@@ -87,6 +87,11 @@ export const SCRIPT_EVENTS = Object.freeze([
 /** The public MarkdownRenderer frame name used to recognise its entire sampled stack. */
 export const MARKDOWN_FUNCTION = "renderMarkdown";
 
+/** V8 names a method frame after the object it was assigned on, so Obsidian's frame reads t.renderMarkdown. */
+function isMarkdownFrame({ functionName }) {
+	return functionName === MARKDOWN_FUNCTION || functionName.endsWith(`.${MARKDOWN_FUNCTION}`);
+}
+
 /** The console.timeStamp message delimiting a scenario's trace window. */
 export function profileMarker(scenario, edge) {
 	return `tcw-profile:${scenario}:${edge}`;
@@ -106,9 +111,9 @@ export function moduleCategory(path) {
 	return /(?:^|\/)node_modules\/(?:react-dom|react|scheduler)(?:\/|$)/.test(path) ? "react-dom" : "other script";
 }
 
-/** Recognises the plugin's evaluated bundle URL in a sampled frame. */
+/** Recognises the plugin's evaluated bundle URL in a sampled frame; V8's own frames, such as (root), have no url. */
 export function isPluginScript(url, pluginId) {
-	return url.includes(`plugin:${pluginId}`);
+	return url !== undefined && url.includes(`plugin:${pluginId}`);
 }
 
 /** Finds the unique wrapper-line offset that aligns sampled function names with the bundle source. */
@@ -167,6 +172,7 @@ function profileSamples(events, thread, scenario) {
 			profiles.set(event.id, { time: event.args.data.startTime, nodes: new Map(), samples: [] });
 	}
 	// V8 may emit a profile's chunks from its own sampler thread; the Profile event's id ties them to the main thread.
+	// As in DevTools, a chunk's nodes and samples append to its profile, and a sample may name a node from any chunk.
 	for (const event of sameProcess.filter((event) => event.name === "ProfileChunk").sort((a, b) => a.ts - b.ts)) {
 		const profile = profiles.get(event.id);
 		if (!profile) continue;
@@ -174,23 +180,34 @@ function profileSamples(events, thread, scenario) {
 		for (const node of data?.cpuProfile?.nodes ?? []) profile.nodes.set(node.id, node);
 		const ids = data?.cpuProfile?.samples ?? [];
 		const deltas = data?.timeDeltas ?? [];
-		if (ids.length !== deltas.length || deltas.some((delta) => !Number.isFinite(delta) || delta < 0))
-			throw new Error(`profile ${scenario}: a CPU-profile chunk has invalid samples or timeDeltas.`);
+		const chunk = `profile ${scenario}: the ProfileChunk of profile ${event.id} at ts ${event.ts}`;
+		if (ids.length !== deltas.length)
+			throw new Error(`${chunk} has ${ids.length} samples but ${deltas.length} timeDeltas.`);
+		const bad = deltas.findIndex((delta) => !Number.isFinite(delta));
+		if (bad >= 0) throw new Error(`${chunk} has timeDelta ${bad} = ${deltas[bad]}, not a finite number.`);
+		// A delta may be negative: V8 emits some samples after later ones. The time sort below orders them, as DevTools does.
 		ids.forEach((id, index) => {
 			profile.time += deltas[index];
 			profile.samples.push({ time: profile.time, id });
 		});
 	}
-	return [...profiles.values()]
-		.flatMap(({ nodes, samples }) =>
+	return [...profiles.entries()]
+		.flatMap(([profileId, { nodes, samples }]) =>
 			samples.map(({ time, id }) => {
 				const frames = [];
 				const visited = new Set();
-				for (let node = nodes.get(id); node; node = nodes.get(node.parent)) {
+				for (let node = nodes.get(id); node;) {
 					if (visited.has(node.id))
 						throw new Error(`profile ${scenario}: a CPU-profile stack has a parent cycle.`);
 					visited.add(node.id);
 					frames.push(node.callFrame);
+					if (node.parent === undefined) break;
+					const parent = nodes.get(node.parent);
+					if (!parent)
+						throw new Error(
+							`profile ${scenario}: CPU-profile node ${node.id} names parent ${node.parent}, which no chunk of profile ${profileId} defines.`,
+						);
+					node = parent;
 				}
 				if (!frames.length) throw new Error(`profile ${scenario}: CPU-profile sample ${id} has no stack node.`);
 				return { time, frames };
@@ -289,8 +306,7 @@ export function bucketTrace(trace, { scenario, mainJs, pluginId, requireMarkdown
 	const modules = moduleMap(mainJs);
 	const lineCount = mainJs.split(/\r?\n/).length;
 	for (const sample of samples) {
-		if (sample.frames.some((frame) => frame.functionName === MARKDOWN_FUNCTION))
-			sample.category = "MarkdownRenderer";
+		if (sample.frames.some(isMarkdownFrame)) sample.category = "MarkdownRenderer";
 		else {
 			const frame = sample.frames[0];
 			sample.category = "other script";
