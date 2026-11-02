@@ -1,13 +1,13 @@
 {
 	"note": "Taken by apps/obsidian-plugin/scripts/screenshots.mjs (`pnpm screenshots --update`). Do not edit by hand.",
-	"obsidianVersion": "1.14.4 (installer 1.13.7)",
+	"obsidianVersion": "1.14.5 (installer 1.13.7)",
 	"electron": "43.3.0",
 	"chrome": "150.0.7871.212",
 	"machine": {
 		"cpu": "Apple M4 Pro",
 		"cores": 14,
 		"memoryGB": 48,
-		"os": "macOS 26.4 (Darwin 25.4.0)",
+		"os": "macOS 27.0.1 (Darwin 27.0.0)",
 		"arch": "arm64"
 	},
 	"viewportWidth": 600,
@@ -30,10 +30,30 @@
 			"scaleFactor": 2
 		}
 	},
-	"takenAt": "2026-10-17",
+	"blueTopazAppearance": {
+		"accentColor": "",
+		"baseFontSize": null,
+		"interfaceFontFamily": "",
+		"textFontFamily": "",
+		"monospaceFontFamily": "",
+		"cssTheme": "Blue Topaz",
+		"enabledCssSnippets": [],
+		"showRibbon": true,
+		"zoom": 1,
+		"timelineFont": "\"??\", \"??\", \"??\", ui-sans-serif, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Inter, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Microsoft YaHei Light\", sans-serif",
+		"display": {
+			"name": "内建视网膜显示器",
+			"internal": true,
+			"colorSpace": "{primaries:P3, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
+			"scaleFactor": 2
+		},
+		"themeVersion": "2026110201",
+		"themeCssSha256": "fe7500d7203793ab4dafccb067816d916a7d18fe7718b06cd7b51c7c704ac1ff"
+	},
+	"takenAt": "2026-11-02",
 	"plugin": {
 		"version": "0.3.7",
-		"commit": "fa6c961",
+		"commit": "2f4febb",
 		"uncommittedChanges": false
 	},
 	"shots": {
@@ -229,6 +249,198 @@
 			},
 			"visibleLines": null
 		},
+		"blue-topaz-light-top-all-days-no-counter": {
+			"theme": "blue-topaz-light",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-top-all-days-todo-filter": {
+			"theme": "blue-topaz-light",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4279
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-top-all-days-overdue-filter": {
+			"theme": "blue-topaz-light",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1449
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-top-all-days-unplanned-filter": {
+			"theme": "blue-topaz-light",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4081
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-top-today-focus-no-counter": {
+			"theme": "blue-topaz-light",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-top-today-focus-todo-filter": {
+			"theme": "blue-topaz-light",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 797
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-top-today-focus-overdue-filter": {
+			"theme": "blue-topaz-light",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1203
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-top-today-focus-unplanned-filter": {
+			"theme": "blue-topaz-light",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4022
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-top-all-days-no-counter": {
+			"theme": "blue-topaz-dark",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-top-all-days-todo-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4279
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-top-all-days-overdue-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1449
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-top-all-days-unplanned-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4081
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-top-today-focus-no-counter": {
+			"theme": "blue-topaz-dark",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-top-today-focus-todo-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 797
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-top-today-focus-overdue-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1203
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-top-today-focus-unplanned-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4022
+			},
+			"visibleLines": null
+		},
 		"light-top-all-days-todo-focus": {
 			"theme": "light",
 			"position": "top",
@@ -363,6 +575,150 @@
 		},
 		"dark-top-today-focus-unplanned-focus": {
 			"theme": "dark",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-top-all-days-todo-focus": {
+			"theme": "blue-topaz-light",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-top-all-days-overdue-focus": {
+			"theme": "blue-topaz-light",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-top-all-days-unplanned-focus": {
+			"theme": "blue-topaz-light",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-top-today-focus-todo-focus": {
+			"theme": "blue-topaz-light",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-top-today-focus-overdue-focus": {
+			"theme": "blue-topaz-light",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-top-today-focus-unplanned-focus": {
+			"theme": "blue-topaz-light",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-top-all-days-todo-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-top-all-days-overdue-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-top-all-days-unplanned-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "top",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8888
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-top-today-focus-todo-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-top-today-focus-overdue-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "top",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-top-today-focus-unplanned-focus": {
+			"theme": "blue-topaz-dark",
 			"position": "top",
 			"todayFocus": true,
 			"counter": "unplanned",
@@ -565,6 +921,198 @@
 			},
 			"visibleLines": null
 		},
+		"blue-topaz-light-today-all-days-no-counter": {
+			"theme": "blue-topaz-light",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-today-all-days-todo-filter": {
+			"theme": "blue-topaz-light",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4289
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-today-all-days-overdue-filter": {
+			"theme": "blue-topaz-light",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1449
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-today-all-days-unplanned-filter": {
+			"theme": "blue-topaz-light",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4091
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-today-today-focus-no-counter": {
+			"theme": "blue-topaz-light",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-today-today-focus-todo-filter": {
+			"theme": "blue-topaz-light",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 797
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-today-today-focus-overdue-filter": {
+			"theme": "blue-topaz-light",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1203
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-today-today-focus-unplanned-filter": {
+			"theme": "blue-topaz-light",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4022
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-today-all-days-no-counter": {
+			"theme": "blue-topaz-dark",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-today-all-days-todo-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4289
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-today-all-days-overdue-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1449
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-today-all-days-unplanned-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4091
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-today-today-focus-no-counter": {
+			"theme": "blue-topaz-dark",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-today-today-focus-todo-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 797
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-today-today-focus-overdue-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1203
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-today-today-focus-unplanned-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4022
+			},
+			"visibleLines": null
+		},
 		"light-today-all-days-todo-focus": {
 			"theme": "light",
 			"position": "today",
@@ -699,6 +1247,150 @@
 		},
 		"dark-today-today-focus-unplanned-focus": {
 			"theme": "dark",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-today-all-days-todo-focus": {
+			"theme": "blue-topaz-light",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-today-all-days-overdue-focus": {
+			"theme": "blue-topaz-light",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-today-all-days-unplanned-focus": {
+			"theme": "blue-topaz-light",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-today-today-focus-todo-focus": {
+			"theme": "blue-topaz-light",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-today-today-focus-overdue-focus": {
+			"theme": "blue-topaz-light",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-today-today-focus-unplanned-focus": {
+			"theme": "blue-topaz-light",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-today-all-days-todo-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-today-all-days-overdue-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-today-all-days-unplanned-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "today",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-today-today-focus-todo-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-today-today-focus-overdue-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "today",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5288
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-today-today-focus-unplanned-focus": {
+			"theme": "blue-topaz-dark",
 			"position": "today",
 			"todayFocus": true,
 			"counter": "unplanned",
@@ -901,6 +1593,198 @@
 			},
 			"visibleLines": null
 		},
+		"blue-topaz-light-bottom-all-days-no-counter": {
+			"theme": "blue-topaz-light",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-bottom-all-days-todo-filter": {
+			"theme": "blue-topaz-light",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4289
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-bottom-all-days-overdue-filter": {
+			"theme": "blue-topaz-light",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1439
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-bottom-all-days-unplanned-filter": {
+			"theme": "blue-topaz-light",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4081
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-bottom-today-focus-no-counter": {
+			"theme": "blue-topaz-light",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-bottom-today-focus-todo-filter": {
+			"theme": "blue-topaz-light",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 777
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-bottom-today-focus-overdue-filter": {
+			"theme": "blue-topaz-light",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1183
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-bottom-today-focus-unplanned-filter": {
+			"theme": "blue-topaz-light",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4002
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-bottom-all-days-no-counter": {
+			"theme": "blue-topaz-dark",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-bottom-all-days-todo-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4289
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-bottom-all-days-overdue-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1439
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-bottom-all-days-unplanned-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4081
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-bottom-today-focus-no-counter": {
+			"theme": "blue-topaz-dark",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "none",
+			"behavior": null,
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-bottom-today-focus-todo-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 777
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-bottom-today-focus-overdue-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 1183
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-bottom-today-focus-unplanned-filter": {
+			"theme": "blue-topaz-dark",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Filter",
+			"png": {
+				"width": 556,
+				"height": 4002
+			},
+			"visibleLines": null
+		},
 		"light-bottom-all-days-todo-focus": {
 			"theme": "light",
 			"position": "bottom",
@@ -1035,6 +1919,150 @@
 		},
 		"dark-bottom-today-focus-unplanned-focus": {
 			"theme": "dark",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-bottom-all-days-todo-focus": {
+			"theme": "blue-topaz-light",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-bottom-all-days-overdue-focus": {
+			"theme": "blue-topaz-light",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-bottom-all-days-unplanned-focus": {
+			"theme": "blue-topaz-light",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-bottom-today-focus-todo-focus": {
+			"theme": "blue-topaz-light",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-bottom-today-focus-overdue-focus": {
+			"theme": "blue-topaz-light",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-light-bottom-today-focus-unplanned-focus": {
+			"theme": "blue-topaz-light",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-bottom-all-days-todo-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-bottom-all-days-overdue-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-bottom-all-days-unplanned-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "bottom",
+			"todayFocus": false,
+			"counter": "unplanned",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 8898
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-bottom-today-focus-todo-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "todo",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-bottom-today-focus-overdue-focus": {
+			"theme": "blue-topaz-dark",
+			"position": "bottom",
+			"todayFocus": true,
+			"counter": "overdue",
+			"behavior": "Focus",
+			"png": {
+				"width": 556,
+				"height": 5268
+			},
+			"visibleLines": null
+		},
+		"blue-topaz-dark-bottom-today-focus-unplanned-focus": {
+			"theme": "blue-topaz-dark",
 			"position": "bottom",
 			"todayFocus": true,
 			"counter": "unplanned",
