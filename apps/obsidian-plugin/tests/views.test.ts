@@ -114,6 +114,33 @@ test("a reload of the same notes changes nothing, and so does a setting that cha
 	assert.equal(changes(), 2);
 });
 
+test("an equal push on a new day reloads", async (t) => {
+	t.after(() => {
+		moment.now = () => GOLDEN_NOW;
+	});
+	const { view, store } = openView(notesApp({ "A.md": "- [ ] alpha 📅 2026-03-20" }));
+	await view.onUpdateOptions({ ...defaultUserOptions });
+	const reload = t.mock.method(view, "onReloadTasks");
+	moment.now = () => GOLDEN_NOW + DAY;
+	await view.onUpdateOptions(structuredClone(store.getSnapshot().options));
+	assert.equal(reload.mock.callCount(), 1);
+	await view.onUpdateOptions(structuredClone(store.getSnapshot().options));
+	assert.equal(reload.mock.callCount(), 1);
+});
+
+test("a reload on the new day counts for the next equal push", async (t) => {
+	t.after(() => {
+		moment.now = () => GOLDEN_NOW;
+	});
+	const { view, store } = openView(notesApp({ "A.md": "- [ ] alpha 📅 2026-03-20" }));
+	await view.onUpdateOptions({ ...defaultUserOptions });
+	moment.now = () => GOLDEN_NOW + DAY;
+	await view.onReloadTasks();
+	const reload = t.mock.method(view, "onReloadTasks");
+	await view.onUpdateOptions(structuredClone(store.getSnapshot().options));
+	assert.equal(reload.mock.callCount(), 0);
+});
+
 test("every reload hands the bridge new frozen tasks, also when nothing changed, and the options frozen", async () => {
 	// The timeline remembers what it worked out by the tasks array. Status changes only with the day; each reload
 	// still hands over a new array, as it always has.
@@ -156,6 +183,17 @@ test("a reload asked for while one runs runs once more when it is done", async (
 	assert.equal(lists, 1, "the second reload waits for the first");
 	await first;
 	assert.equal(lists, 2);
+});
+
+test("an equal push while the first reload runs starts no second reload", async (t) => {
+	const app = notesApp({ "A.md": "- [ ] alpha 📅 2026-03-20" });
+	const listed = t.mock.method(app.vault, "getMarkdownFiles");
+	const { view } = openView(app);
+	const first = view.onUpdateOptions({ ...defaultUserOptions });
+	const second = view.onUpdateOptions({ ...defaultUserOptions });
+	assert.equal(listed.mock.callCount(), 1);
+	await Promise.all([first, second]);
+	assert.equal(listed.mock.callCount(), 1);
 });
 
 test("a reload uses the options it started with, and options changed meanwhile reload again", async () => {
@@ -219,7 +257,7 @@ test("options pushed during a running reload never render the old list under new
 	}
 });
 
-test("equal-valued options reuse the reload's list", async () => {
+test("options that resolve the same reuse the reload's list", async () => {
 	const app = notesApp({ "Inbox.md": "- [ ] a 📅 2026-01-20" });
 	const opened = openView(app);
 	await opened.view.onUpdateOptions({ ...defaultUserOptions });
@@ -231,9 +269,9 @@ test("equal-valued options reuse the reload's list", async () => {
 	assert.equal(taskCache.resolutionCount, 0);
 	assert.deepEqual(rows(), ["Inbox.md:0"]);
 	assert.equal(taskCache.resolutionCount, 0, "the first render uses the reload's list");
-	const reloading = opened.view.onUpdateOptions({ ...opened.store.getSnapshot().options });
+	const reloading = opened.view.onUpdateOptions({ ...opened.store.getSnapshot().options, dateFormat: "DD.MM.YYYY" });
 	assert.deepEqual(rows(), ["Inbox.md:0"]);
-	assert.equal(taskCache.resolutionCount, 0, "equal-valued options reuse it before the new reload finishes");
+	assert.equal(taskCache.resolutionCount, 0, "options that resolve the same reuse it before the new reload finishes");
 	await reloading;
 	assert.notEqual((bridge.state as { tasks: unknown }).tasks, opened.store.getSnapshot().tasks);
 	assert.deepEqual(rows(), ["Inbox.md:0"]);
@@ -328,6 +366,24 @@ test("a reload that fails says so, and the next reload runs", async () => {
 	assert.deepEqual(store.getSnapshot().tasks, []);
 	await view.onReloadTasks();
 	assert.ok(store.getSnapshot().tasks.length > 100);
+});
+
+test("an equal push after a failed reload reloads", async (t) => {
+	const app = notesApp({ "A.md": "- [ ] alpha 📅 2026-03-20" });
+	const listed = app.vault.getMarkdownFiles;
+	let fail = true;
+	app.vault.getMarkdownFiles = () => {
+		if (!fail) return listed();
+		fail = false;
+		throw new Error("the vault is not ready");
+	};
+	const { view, store } = openView(app);
+	await view.onUpdateOptions({ ...defaultUserOptions });
+	assert.deepEqual(store.getSnapshot().tasks, []);
+	const reload = t.mock.method(view, "onReloadTasks");
+	await view.onUpdateOptions(structuredClone(store.getSnapshot().options));
+	assert.equal(reload.mock.callCount(), 1);
+	assert.deepEqual(ids(store.getSnapshot().tasks), ["A.md:0"]);
 });
 
 // The quick filter, as the bridge keeps it
