@@ -40,6 +40,8 @@ export const TRACE_CATEGORIES = Object.freeze([
 ]);
 /** Top-level tasks at least this long are included, in milliseconds. */
 export const LONG_TASK_MS = 50;
+/** Allowed CPU-sample drift outside its profile start and trace end, in microseconds. */
+export const PROFILE_SAMPLE_SLACK_US = 1_000_000;
 /** Chrome names for renderer task boundaries. */
 export const TOP_LEVEL_EVENTS = Object.freeze(["RunTask", "ThreadControllerImpl::RunTask"]);
 /** Chrome names for style computation. */
@@ -160,8 +162,14 @@ function eventCategory(name) {
 }
 
 function profileSamples(events, thread, scenario) {
+	const traceEnd = events.reduce(
+		(end, event) =>
+			Number.isFinite(event.ts) ? Math.max(end, event.ts + (Number.isFinite(event.dur) ? event.dur : 0)) : end,
+		-Infinity,
+	);
 	const sameProcess = events.filter((event) => event.pid === thread.pid);
 	const profiles = new Map();
+	// Profiles without a usable startTime remain ignored, since their sample times cannot be accumulated.
 	for (const event of sameProcess) {
 		if (
 			event.ph === "P" &&
@@ -169,7 +177,12 @@ function profileSamples(events, thread, scenario) {
 			(event.tid === undefined || event.tid === thread.tid) &&
 			Number.isFinite(event.args?.data?.startTime)
 		)
-			profiles.set(event.id, { time: event.args.data.startTime, nodes: new Map(), samples: [] });
+			profiles.set(event.id, {
+				startTime: event.args.data.startTime,
+				time: event.args.data.startTime,
+				nodes: new Map(),
+				samples: [],
+			});
 	}
 	// V8 may emit a profile's chunks from its own sampler thread; the Profile event's id ties them to the main thread.
 	// As in DevTools, a chunk's nodes and samples append to its profile, and a sample may name a node from any chunk.
@@ -192,8 +205,12 @@ function profileSamples(events, thread, scenario) {
 		});
 	}
 	return [...profiles.entries()]
-		.flatMap(([profileId, { nodes, samples }]) =>
+		.flatMap(([profileId, { startTime, nodes, samples }]) =>
 			samples.map(({ time, id }) => {
+				if (time < startTime - PROFILE_SAMPLE_SLACK_US || time > traceEnd + PROFILE_SAMPLE_SLACK_US)
+					throw new Error(
+						`profile ${scenario}: a CPU-profile sample is at ${time}, outside the trace (${startTime} to ${traceEnd}); the timeDeltas are corrupt.`,
+					);
 				const frames = [];
 				const visited = new Set();
 				for (let node = nodes.get(id); node;) {
@@ -560,9 +577,20 @@ export function tracingReadChunk({ offset, limit }) {
 	return window.__tcwTrace.events.slice(offset, offset + limit);
 }
 
-/** Aborts page-side recording and removes recording listeners and owned debugger attachments. */
-export async function tracingAbort() {
-	if (window.__tcwTrace) await window.__tcwTrace.abort();
+/** Aborts page-side recording, or a main-process recording left behind when the page state was lost. */
+export async function tracingAbort({ path }) {
+	if (window.__tcwTrace) {
+		await window.__tcwTrace.abort();
+		return { stoppedLeftover: false };
+	}
+	const remoteModule = "@electron/remote";
+	try {
+		await require(remoteModule).contentTracing.stopRecording(path);
+	} catch (error) {
+		if (typeof error?.message !== "string" || !error.message.includes("no trace in progress")) throw error;
+		return { stoppedLeftover: false };
+	}
+	return { stoppedLeftover: true };
 }
 
 /** Controls page recording through an injected CLI, returning cleanup steps for the enclosing run. */
@@ -570,7 +598,12 @@ export function traceRecorder(cli, { tmpDir, log }) {
 	let method = null;
 	let pid = null;
 	const tracePath = path.join(tmpDir, "trace.json");
-	const abort = () => cli.evaluate(tracingAbort, null, 70_000);
+	const abort = () => {
+		const result = cli.evaluate(tracingAbort, { path: tracePath }, 70_000);
+		if (result.stoppedLeftover)
+			log("bench: profile: stopped a recording left behind by a crashed or reloaded window.");
+		return result;
+	};
 	const start = (selected) => {
 		const result =
 			selected === "contentTracing"

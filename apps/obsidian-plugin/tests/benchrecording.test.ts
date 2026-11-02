@@ -160,13 +160,59 @@ test("the contentTracing page recorder uses the requested categories and stops i
 		method: "contentTracing",
 		path: output,
 	});
-	await evaluate(tracingAbort, undefined);
+	assert.deepEqual(JSON.parse(JSON.stringify(await evaluate(tracingAbort, { path: output }))), {
+		stoppedLeftover: false,
+	});
 	assert.equal(window.__tcwTrace, undefined);
 	assert.deepEqual(stops, [output]);
 	await evaluate(tracingStart, { categories: TRACE_CATEGORIES, path: output });
-	await evaluate(tracingAbort, undefined);
+	assert.deepEqual(JSON.parse(JSON.stringify(await evaluate(tracingAbort, { path: output }))), {
+		stoppedLeftover: false,
+	});
 	assert.deepEqual(stops, [output, output]);
 	assert.equal(window.__tcwTrace, undefined);
+});
+
+function abortWithoutPageState(stopRecording: (output: string) => Promise<string>) {
+	return runInNewContext(`(${tracingAbort.toString()})(argument)`, {
+		argument: { path: "/tmp/profile-abort-test.json" },
+		window: {},
+		require(name: string) {
+			assert.equal(name, "@electron/remote");
+			return { contentTracing: { stopRecording } };
+		},
+	}) as Promise<{ stoppedLeftover: boolean }>;
+}
+
+test("tracingAbort stops a recording whose page state is gone", async () => {
+	const stops: string[] = [];
+	const result = await abortWithoutPageState(async (output) => {
+		stops.push(output);
+		return output;
+	});
+	assert.deepEqual(stops, ["/tmp/profile-abort-test.json"]);
+	assert.deepEqual(JSON.parse(JSON.stringify(result)), { stoppedLeftover: true });
+});
+
+test("tracingAbort tolerates no trace in progress", async () => {
+	const stops: string[] = [];
+	const result = await abortWithoutPageState(async (output) => {
+		stops.push(output);
+		throw new Error("Failed to stop tracing - no trace in progress");
+	});
+	assert.deepEqual(stops, ["/tmp/profile-abort-test.json"]);
+	assert.deepEqual(JSON.parse(JSON.stringify(result)), { stoppedLeftover: false });
+});
+
+test("tracingAbort propagates any other stopRecording failure", async () => {
+	for (const failure of [new Error("trace output is not writable"), "stop failed", undefined]) {
+		await assert.rejects(
+			abortWithoutPageState(async () => {
+				throw failure;
+			}),
+			(error: unknown) => error === failure,
+		);
+	}
 });
 
 function recordingCli({
@@ -175,12 +221,14 @@ function recordingCli({
 	contentError,
 	pid = 1234,
 	arrayFile = false,
+	stoppedLeftover = false,
 }: {
 	events: TraceEvent[];
 	debuggerError?: string;
 	contentError?: string;
 	pid?: number;
 	arrayFile?: boolean;
+	stoppedLeftover?: boolean;
 }) {
 	const calls: string[] = [];
 	const chunks: { from: number; count: number }[] = [];
@@ -214,8 +262,8 @@ function recordingCli({
 			}
 			if (pageFunction === tracingStart) {
 				calls.push("content:start");
-				if (contentError) throw new Error(contentError);
 				outputPath = String(input?.path);
+				if (contentError) throw new Error(contentError);
 				running = true;
 				return { method: "contentTracing", pid } as Result;
 			}
@@ -227,8 +275,9 @@ function recordingCli({
 			}
 			if (pageFunction === tracingAbort) {
 				calls.push("abort");
+				assert.equal(input?.path, outputPath);
 				running = false;
-				return undefined as Result;
+				return { stoppedLeftover } as Result;
 			}
 			throw new Error("unexpected page function");
 		},
@@ -244,6 +293,24 @@ function recordingCli({
 		},
 	};
 }
+
+test("the recorder's undo logs when it stops a leftover recording", () => {
+	const directory = mkdtempSync(path.join(tmpdir(), "bench-recording-test-"));
+	const page = recordingCli({ events: [], stoppedLeftover: true });
+	const logs: string[] = [];
+	const recorder = traceRecorder(page.cli, { tmpDir: directory, log: (line) => logs.push(line) });
+	try {
+		recorder.start();
+		recorder.undoSteps[0][1]();
+		assert.equal(page.running(), false);
+		assert.deepEqual(logs, [
+			"bench: profile: recording with contentTracing.",
+			"bench: profile: stopped a recording left behind by a crashed or reloaded window.",
+		]);
+	} finally {
+		rmSync(directory, { recursive: true, force: true });
+	}
+});
 
 test("the recorder reads debugger events in bounded chunks and logs its transport only once", () => {
 	const directory = mkdtempSync(path.join(tmpdir(), "bench-recording-test-"));

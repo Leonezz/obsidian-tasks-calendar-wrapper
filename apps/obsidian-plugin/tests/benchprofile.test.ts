@@ -534,6 +534,52 @@ test("a timeDelta that is not a finite number is an error naming its index", () 
 	assert.throws(() => bucketTrace(broken, options), /ProfileChunk of profile 0x1 at ts 200000 has timeDelta 3 = NaN/);
 });
 
+test("a timeDelta that moves samples before the profile start is an error", () => {
+	for (const overflow of [0, 1]) {
+		const trace = withChunkData((data) => ({
+			...data,
+			cpuProfile: { ...data.cpuProfile, samples: [3, 3, 3] },
+			timeDeltas: [5000, -1_005_000 - overflow, 1_005_000 + overflow],
+		})).map((event) => ({
+			...event,
+			ts: event.ts === undefined ? undefined : event.ts + 500_000,
+			...(event.name === "Profile" ? { args: { data: { startTime: 500_000 } } } : {}),
+		}));
+		if (overflow === 0) assert.doesNotThrow(() => bucketTrace(trace, options));
+		else
+			assert.throws(() => bucketTrace(trace, options), {
+				message:
+					"profile initialLoad: a CPU-profile sample is at -500001, outside the trace (500000 to 1500000); the timeDeltas are corrupt.",
+			});
+	}
+});
+
+test("a timeDelta that moves samples past the end of the trace is an error", () => {
+	for (const overflow of [0, 1]) {
+		const trace = withChunkData((data) => ({
+			...data,
+			cpuProfile: { ...data.cpuProfile, samples: [3, 3, 3] },
+			timeDeltas: [5000, 2_995_000 + overflow, -2_995_000 - overflow],
+		}));
+		// A different process's event duration still extends the trace beyond this renderer's last timestamp.
+		trace.push({ ...complete("Paint", 1500, 500), pid: pid + 1 });
+		if (overflow === 0) assert.doesNotThrow(() => bucketTrace(trace, options));
+		else
+			assert.throws(() => bucketTrace(trace, options), {
+				message:
+					"profile initialLoad: a CPU-profile sample is at 3000001, outside the trace (0 to 2000000); the timeDeltas are corrupt.",
+			});
+	}
+});
+
+test("small negative timeDeltas are still accepted", () => {
+	const trace = traceOf({
+		samples: [3, 3, 3, 3, 4, 3, 4, 6, 6, 2, 7],
+		times: [-1, 5, 15, 25, 35, 45, 55, 65, 75, 85, 95],
+	});
+	assert.deepEqual(bucketTrace(trace, options), { ...bucketTrace(traceOf(), options), samples: 11 });
+});
+
 test("a sample naming a node that no chunk defines is an error", () => {
 	assert.throws(
 		() => bucketTrace(traceOf({ samples: [3, 3, 3, 4, 3, 4, 6, 6, 2, 99] }), options),

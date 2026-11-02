@@ -27,6 +27,8 @@ export const PROFILE_SCENARIOS: readonly [
 export const TRACE_CATEGORIES: readonly string[];
 /** Top-level tasks at least this long are included, in milliseconds. */
 export const LONG_TASK_MS: 50;
+/** Allowed CPU-sample drift outside its profile start and trace end, in microseconds. */
+export const PROFILE_SAMPLE_SLACK_US: 1_000_000;
 /** Chrome names for renderer task boundaries. */
 export const TOP_LEVEL_EVENTS: readonly string[];
 /** Chrome names for style computation. */
@@ -183,8 +185,8 @@ export function tracingStart(options: TracingStartOptions): Promise<{ method: "c
 export function tracingStop(): Promise<TracingStopped>;
 /** Reads a bounded chunk of debugger trace events collected in the page. */
 export function tracingReadChunk(options: { readonly offset: number; readonly limit: number }): TraceEvent[];
-/** Aborts page-side recording and removes recording listeners and owned debugger attachments. */
-export function tracingAbort(): Promise<void>;
+/** Aborts page-side recording, or a main-process recording left behind when the page state was lost. */
+export function tracingAbort(options: { readonly path: string }): Promise<{ stoppedLeftover: boolean }>;
 
 /** The synchronous CLI boundary that evaluates an asynchronous page function and returns its JSON result. */
 export interface TraceCli {
