@@ -8,7 +8,7 @@
  * Plain code, apart from the measuring, so tests/benchab.test.ts can test it.
  */
 import { random, scaleOf, withoutScale } from "./bench-notes.mjs";
-import { counts, notJudgedAt, REPORT_ONLY_COUNTS, round, SLOWER_MS, SLOWER_RATIO } from "./bench-results.mjs";
+import { counts, notJudgedAt, REPORT_ONLY_COUNTS, round, SLOWER_RATIO, slowerMsOf } from "./bench-results.mjs";
 import { hodgesLehmann, signedRank } from "./bench-stats.mjs";
 
 /**
@@ -19,7 +19,7 @@ export const AB_ROUNDS = { 1: 8, 10: 6 };
 export const MIN_ROUNDS = 6;
 /** The runs each arm measures in a round, after its warm-ups; the round's value is the fastest of them. */
 export const AB_RUNS = { 1: { loads: 2, saves: 3, optionChanges: 2 }, 10: { loads: 1, saves: 2, optionChanges: 1 } };
-/** A change counts when the signed-rank test's p is below this, and it is larger than SLOWER_RATIO and SLOWER_MS. */
+/** A change counts with p below this and above 25 % and a 50 ms floor, 8 ms for scroll.p95FrameMs. */
 export const SIGNIFICANCE = 0.05;
 
 const ARMS = ["base", "candidate"];
@@ -203,7 +203,7 @@ function timingRow(name, base, candidate, judged) {
 	const { estimate, low, high, level } = hodgesLehmann(logs);
 	const deltaMs = hodgesLehmann(candidate.map((ms, i) => ms - base[i])).estimate;
 	const ratio = Math.exp(estimate);
-	const beyondFloor = (grew, grewMs) => grew > SLOWER_RATIO && grewMs > SLOWER_MS;
+	const beyondFloor = (grew, grewMs) => grew > SLOWER_RATIO && grewMs > slowerMsOf(name);
 	let verdict = "not judged";
 	if (judged) {
 		if (p >= SIGNIFICANCE) verdict = "none";
@@ -330,10 +330,11 @@ function tableLines(entries, rounds) {
 /**
  * Judges the candidate against the base from the slots of an A/B run, at `scale`. A timing got slower when the
  * candidate was slower across the rounds by the two-sided Wilcoxon signed-rank test on the paired log ratios (p below
- * SIGNIFICANCE), and the Hodges-Lehmann estimate of the change is over both SLOWER_RATIO and SLOWER_MS, as against the
- * baseline; a significant change under those is a "small" one and does not fail. The timings notJudgedAt(scale) leaves
- * out are shown, not judged. Counts are shown for both arms, and one that changed is a warning unless it is report
- * only. Another number of task rows is also a warning; a save without tasks that reloads the timeline is a failure.
+ * SIGNIFICANCE), and the Hodges-Lehmann estimate exceeds 25 % and a 50 ms floor, 8 ms for scroll.p95FrameMs, as against
+ * the baseline; a significant change under those is a "small" one and does not fail. The timings notJudgedAt(scale)
+ * leaves out are shown, not judged. Counts are shown for both arms, and one that changed is a warning unless it is
+ * report only. Another number of task rows is also a warning; a save without tasks that reloads the timeline is a
+ * failure.
  */
 export function compareAb(slots, scale) {
 	const rounds = pairedRounds(slots);

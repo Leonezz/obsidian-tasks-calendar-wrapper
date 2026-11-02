@@ -23,7 +23,8 @@
  * bench-results.mjs.
  *
  * `pnpm bench` builds the plugin, measures, and compares with fixtures/bench-vault.baseline.json; it fails when the
- * fastest run of a measurement got slower by more than 25 % and 50 ms, or a save without tasks reloads the timeline.
+ * fastest run got slower by more than 25 % and 50 ms (8 ms for scroll.p95FrameMs), or a save without tasks reloads
+ * the timeline.
  * `pnpm bench --update` records the new numbers as the baseline. `pnpm bench --scale 10` does the same in bench-vault-x10,
  * with fixtures/bench-vault-x10.baseline.json and 3 runs of each measurement. Numbers depend on the machine and the Obsidian version, which the baseline
  * records; compare on the same setup. Other work on the machine moves the medians a lot and the fastest runs little, so
@@ -34,9 +35,9 @@
  * machine was then. The ref is built in a temporary worktree. Each round measures each arm once, its build swapped in
  * between unloading and loading the plugin, with a warm-up load after each swap; which arm goes first changes from round
  * to round, in an order `--seed <n>` repeats. A round's value of a timing is the arm's fastest run, and bench-ab.mjs
- * judges the rounds as pairs, with the same 25 % and 50 ms floor and the same counts. It also measures the main
- * thread's CPU time of every step, which a busy machine moves far less than the clock. `--rounds <n>` (8 at scale 1, 6 at
- * scale 10), `--candidate <ref>` builds the candidate from a ref too, and `--report <file>` writes every number as JSON.
+ * judges the rounds as pairs, with the same 25 % and 50 ms floor (8 ms for scroll.p95FrameMs) and counts. It also measures
+ * each step's main-thread CPU time, which a busy machine moves far less than the clock. `--rounds <n>` (8 at scale 1,
+ * 6 at scale 10), `--candidate <ref>` builds the candidate from a ref too, and `--report <file>` writes every number as JSON.
  * The base must be the candidate's merge base unless `--any-base` explicitly allows a different one.
  * Both arms get this checkout's manifest.json, so a different version does not make one of them save its options while
  * it loads. scripts/bench-nightly.mjs runs this for labelled PRs at night.

@@ -99,6 +99,8 @@ export interface Load {
 
 export const SLOWER_RATIO: number;
 export const SLOWER_MS: number;
+export const SLOWER_MS_BY_METRIC: ReadonlyMap<string, number>;
+export function slowerMsOf(name: string): number;
 export function round(value: number): number;
 export function summary(samples: readonly number[]): Timing;
 export function counts(samples: readonly number[]): Counts;

@@ -3,9 +3,17 @@
  * arithmetic, apart from the measuring, so tests/bench.test.ts can test it.
  */
 
-/** A measurement counts as slower when its fastest run grew by more than both of these. */
+/** A measurement is slower above 25 % and a 50 ms floor, 8 ms for scroll.p95FrameMs. */
 export const SLOWER_RATIO = 1.25;
 export const SLOWER_MS = 50;
+
+/** Full scenario.metric names with their own timing floors. */
+export const SLOWER_MS_BY_METRIC = Object.freeze(new Map([["scroll.p95FrameMs", 8]]));
+
+/** The 50 ms floor masks regressions near 17 ms, so scroll.p95FrameMs uses 8 ms. */
+export function slowerMsOf(name) {
+	return SLOWER_MS_BY_METRIC.get(name) ?? SLOWER_MS;
+}
 
 /** Full scenario.metric names of counts reported without change warnings or verdicts. */
 export const REPORT_ONLY_COUNTS = Object.freeze(
@@ -216,7 +224,7 @@ export function compare(baseline, results, scale = 1) {
 			}
 			const judged = !notJudged.has(metric);
 			const isSlower =
-				judged && value.minMs > before.minMs * SLOWER_RATIO && value.minMs - before.minMs > SLOWER_MS;
+				judged && value.minMs > before.minMs * SLOWER_RATIO && value.minMs - before.minMs > slowerMsOf(name);
 			if (isSlower) slower++;
 			const change =
 				before.minMs === 0

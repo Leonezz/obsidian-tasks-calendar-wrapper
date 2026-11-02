@@ -187,6 +187,6 @@ export function benchComment({ head, base, baseRefName, runs }) {
 			? ["The two builds are identical, so this run shows only the noise between runs of the same build."]
 			: []),
 		...runs.filter((run) => run.report).map((run) => details(run.report)),
-		"Each round measures the base and the PR once each, the base first in half of the rounds, in a seeded random order. A round's value is each arm's fastest run. The change is the Hodges-Lehmann estimate of the paired ratios with its interval, and p is the two-sided Wilcoxon signed-rank test's: a measurement got slower when p < 0.05 and it grew by more than 25 % and 50 ms.",
+		"Each round measures the base and the PR once each, the base first in half of the rounds, in a seeded random order. A round's value is each arm's fastest run. The change is the Hodges-Lehmann estimate of the paired ratios with its interval, and p is the two-sided Wilcoxon signed-rank test's: a measurement got slower when p < 0.05 and it grew by more than 25 % and 50 ms (8 ms for scroll.p95FrameMs).",
 	].join("\n\n");
 }
