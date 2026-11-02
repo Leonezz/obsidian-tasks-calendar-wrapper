@@ -142,7 +142,14 @@ describe("Visual", () => {
 		);
 	});
 	// Phase 4 step 0c: add the Blue Topaz theme to the same comparison.
-	it.todo("Blue Topaz screenshots are compared against the base");
+	it("Blue Topaz screenshots are compared against the base", () => {
+		coveredBy("tests/screenshotsab.test.ts", "a Blue Topaz style difference names its theme folder");
+		coveredBy(
+			"tests/screenshotthemes.test.ts",
+			"a --themes=all plan takes 168 PNGs, 172 fingerprints and 42 visible",
+		);
+		coveredBy("tests/screenshotthemes.test.ts", "a theme.css with another sha256 is an error that names both");
+	});
 });
 
 // 平台 (l.235–237) | 移动端可用但未专门适配 | 定义移动端的最小可用范围（触控区域、无悬停交互），移动端继续支持

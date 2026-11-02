@@ -65,6 +65,7 @@ test("--ab needs a ref", () => {
 			update: false,
 			only: "",
 			ab: { base: "master", candidate: null, report: null, allowOtherBase: false },
+			themes: "default",
 		});
 });
 
@@ -83,6 +84,7 @@ test("--update cannot be combined with --ab", () => {
 		update: true,
 		only: "",
 		ab: null,
+		themes: "default",
 	});
 });
 
@@ -119,6 +121,7 @@ test("--candidate, --report and --any-base only go with --ab", () => {
 			update: false,
 			only: "light",
 			ab: { base: "master", candidate: "other", report: "report.md", allowOtherBase: true },
+			themes: "default",
 		});
 });
 
@@ -131,12 +134,19 @@ test("--styles is redundant with --ab", () => {
 			name: "Error",
 			message: "leave out --styles, --ab compares styles already.",
 		});
-	assert.deepEqual(parseScreenshotArgs(["--styles"]), { mode: "styles", update: false, only: "", ab: null });
+	assert.deepEqual(parseScreenshotArgs(["--styles"]), {
+		mode: "styles",
+		update: false,
+		only: "",
+		ab: null,
+		themes: "default",
+	});
 	assert.deepEqual(parseScreenshotArgs(["--styles", "--update"]), {
 		mode: "styles",
 		update: true,
 		only: "",
 		ab: null,
+		themes: "default",
 	});
 });
 
@@ -154,12 +164,14 @@ test("--only cannot be combined with --update", () => {
 		update: false,
 		only: "light",
 		ab: null,
+		themes: "default",
 	});
 	assert.deepEqual(parseScreenshotArgs(["--styles", "--only=dark"]), {
 		mode: "styles",
 		update: false,
 		only: "dark",
 		ab: null,
+		themes: "default",
 	});
 });
 
@@ -179,9 +191,88 @@ test("an unknown argument is an error", () => {
 	] as const)
 		assert.throws(() => parseScreenshotArgs(args), {
 			name: "Error",
-			message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
+			message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
 		});
-	assert.deepEqual(parseScreenshotArgs([]), { mode: "screenshots", update: false, only: "", ab: null });
+	assert.deepEqual(parseScreenshotArgs([]), {
+		mode: "screenshots",
+		update: false,
+		only: "",
+		ab: null,
+		themes: "default",
+	});
+});
+
+test("--themes defaults to default and takes all", () => {
+	const defaults = { mode: "screenshots", update: false, only: "", ab: null, themes: "default" };
+	assert.deepEqual(parseScreenshotArgs([]), defaults);
+	assert.deepEqual(parseScreenshotArgs(["--themes=default"]), defaults);
+	for (const [args, options] of [
+		[[], {}],
+		[["--styles"], { mode: "styles" }],
+		[["--update"], { update: true }],
+		[["--only=x"], { only: "x" }],
+		[
+			["--ab", "master"],
+			{ mode: "ab", ab: { base: "master", candidate: null, report: null, allowOtherBase: false } },
+		],
+	] as const)
+		assert.deepEqual(parseScreenshotArgs(["--themes=all", ...args]), { ...defaults, ...options, themes: "all" });
+});
+
+test("--themes rejects any other value", () => {
+	for (const arg of ["--themes=blue", "--themes="])
+		assert.throws(() => parseScreenshotArgs([arg]), {
+			name: "Error",
+			message: "--themes takes default or all, such as --themes=all.",
+		});
+	assert.throws(() => parseScreenshotArgs(["--themes=all", "--themes=default"]), {
+		name: "Error",
+		message: "--themes was given twice with different values.",
+	});
+	for (const [args, unknown] of [
+		[
+			["--themes", "all"],
+			["--themes", "all"],
+		],
+		[["--themes=blue", "--unknown"], ["--unknown"]],
+		[["--unknown", "--themes="], ["--unknown"]],
+	] as const)
+		assert.throws(() => parseScreenshotArgs(args), {
+			name: "Error",
+			message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
+		});
+	for (const themes of [[], ["--themes=all"]])
+		assert.throws(() => parseScreenshotArgs([...themes, "--only=x", "--update"]), {
+			name: "Error",
+			message: "--only cannot be combined with --update, which replaces all screenshots.",
+		});
+});
+
+test("--pin-theme takes no other option", () => {
+	assert.deepEqual(parseScreenshotArgs(["--pin-theme"]), {
+		mode: "pin-theme",
+		update: false,
+		only: "",
+		ab: null,
+		themes: "default",
+	});
+	for (const args of [
+		["--update"],
+		["--styles"],
+		["--only=x"],
+		["--themes=all"],
+		["--themes=default"],
+		["--ab", "master"],
+	])
+		assert.throws(() => parseScreenshotArgs(["--pin-theme", ...args]), {
+			name: "Error",
+			message: "--pin-theme takes no other option.",
+		});
+	const unknown = ["--unknown"];
+	assert.throws(() => parseScreenshotArgs(["--pin-theme", "--update", ...unknown]), {
+		name: "Error",
+		message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
+	});
 });
 
 test("identical visible text, PNGs and styles report no differences and exit 0", () => {
@@ -350,6 +441,41 @@ test("a style difference fails the A/B", () => {
 	assert.ok(text.includes(line));
 	assert.ok(text.includes("S: 1 fingerprints (2 values), 1 differ"));
 	assert.equal(lastLine(text), "V P S: 0 / 0 / 1 differences");
+});
+
+test("a Blue Topaz style difference names its theme folder", () => {
+	const name = "blue-topaz-light-today";
+	const base = new Map([[name, state({ styles: serializeStyles({ ".year": { color: "red", opacity: "1" } }) })]]);
+	const candidate = new Map([
+		[name, state({ styles: serializeStyles({ ".year": { color: "blue", opacity: "0.5" } }) })],
+	]);
+	const comparison = compareArms(base, candidate);
+	assert.deepEqual(comparison.counts, { v: 0, p: 0, s: 1 });
+	assert.equal(abExitCode(comparison), 1);
+	assert.equal(comparison.styles.differences.length, 1);
+	assert.equal(comparison.styles.differences[0].state, name);
+	const { lines } = comparison.styles.differences[0];
+	assert.equal(lines.length, 2);
+	for (const line of lines) {
+		assert.ok(line.startsWith(`blue-topaz-light/${name} `), line);
+		assert.ok(!line.startsWith("blue/"), line);
+		assert.ok(report(comparison).includes(line));
+	}
+});
+
+test("a Blue Topaz state taken by one arm only is a difference", () => {
+	const name = "blue-topaz-light-today";
+	const present: ArmStates = new Map([
+		[name, state({ png: encodePng(image(2, 2)), styles: serializeStyles({ ".year": { color: "red" } }) })],
+	]);
+	const absent: ArmStates = new Map();
+	for (const arm of ["base", "candidate"] as const) {
+		const comparison = compareArms(arm === "base" ? present : absent, arm === "candidate" ? present : absent);
+		assert.deepEqual(comparison.onlyInOne, [{ state: name, arm, what: "state" }]);
+		assert.deepEqual(comparison.counts, { v: 0, p: 1, s: 1 });
+		assert.equal(abExitCode(comparison), 1);
+		assert.ok(report(comparison).includes(`${name}: state taken only by ${arm}`));
+	}
 });
 
 test("the report names both builds and says when they are identical", () => {
