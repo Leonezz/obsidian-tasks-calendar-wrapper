@@ -176,6 +176,9 @@ export function updatedStylesManifest(
 /** Include --themes=all for a blue-topaz-* theme; otherwise return the existing styles update command. */
 export function styleUpdateCommand(theme: string): string;
 
+/** The problem reported for a state with no PNG; a blue-topaz-* state also names the recording command. */
+export function missingPngBaseline(name: string): string;
+
 /** Appearance setting keys mapped to their unchanged Obsidian settings names for warnings. */
 export const APPEARANCE: {
 	readonly accentColor: "accent colour";

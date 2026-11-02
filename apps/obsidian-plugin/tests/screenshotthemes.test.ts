@@ -22,6 +22,7 @@ import {
 	readAppearanceBackup,
 	restoreAppearanceFile,
 	isOtherSetState,
+	missingPngBaseline,
 	statesToRemove,
 	comparedBaselineNames,
 	updatedManifest,
@@ -389,6 +390,34 @@ test("a run that took only Blue Topaz warns without a default appearance", (t) =
 	warnAboutSetup(baseline, env, "the styles.json baselines");
 	assert.equal(warn.mock.callCount(), 1);
 	assert.ok(String(warn.mock.calls[0].arguments[0]).includes("the styles.json baselines (Blue Topaz)"));
+});
+
+test("a different Blue Topaz file is a setup difference the warnings name", (t) => {
+	const warn = t.mock.method(console, "warn", () => {});
+	const recorded = { cssTheme, themeVersion: "1", themeCssSha256: "aaa" };
+	warnAboutSetup(
+		{ blueTopazAppearance: recorded },
+		{ blueTopazAppearance: { ...recorded, themeVersion: "2", themeCssSha256: "bbb" } },
+	);
+	assert.deepEqual(
+		warn.mock.calls.map(({ arguments: args }) => args),
+		[
+			[
+				'screenshots: warning: the baselines (Blue Topaz) were taken with the theme version (themeVersion) "1", this run has "2"; pixels may differ for that reason alone.',
+			],
+			[
+				'screenshots: warning: the baselines (Blue Topaz) were taken with the theme.css sha256 (themeCssSha256) "aaa", this run has "bbb"; pixels may differ for that reason alone.',
+			],
+		],
+	);
+});
+
+test("a missing screenshot baseline names the recording command only for Blue Topaz", () => {
+	assert.equal(missingPngBaseline("light-x"), "has no screenshot baseline");
+	assert.equal(
+		missingPngBaseline("blue-topaz-dark-x"),
+		"has no screenshot baseline; run `pnpm screenshots --themes=all --update` to record it",
+	);
 });
 
 test("pinning adds only the themePins key", () => {

@@ -29,6 +29,9 @@ export const APPEARANCE = {
 	display: "display the window is on",
 };
 
+/** What blueTopazAppearance also records about the installed theme file. */
+const THEME_FILE = { themeVersion: "theme version", themeCssSha256: "theme.css sha256" };
+
 export function themeNames(set) {
 	if (set === "default") return ["light", "dark"];
 	if (set === "all") return Object.keys(THEMES);
@@ -383,6 +386,12 @@ export function styleUpdateCommand(theme) {
 		: "pnpm screenshots --styles --update";
 }
 
+export function missingPngBaseline(name) {
+	return name.startsWith("blue-topaz-")
+		? "has no screenshot baseline; run `pnpm screenshots --themes=all --update` to record it"
+		: "has no screenshot baseline";
+}
+
 /** Warns about each thing that decides the pixels and differs between the baselines and this run. */
 export function warnAboutSetup(baseline, env, label = "the baselines") {
 	for (const key of ["obsidianVersion", "electron", "machine", "viewportWidth", "today"]) {
@@ -392,12 +401,12 @@ export function warnAboutSetup(baseline, env, label = "the baselines") {
 			);
 		}
 	}
-	for (const [appearance, appearanceLabel] of [
-		["appearance", label],
-		["blueTopazAppearance", `${label} (Blue Topaz)`],
+	for (const [appearance, appearanceLabel, settings] of [
+		["appearance", label, APPEARANCE],
+		["blueTopazAppearance", `${label} (Blue Topaz)`, { ...APPEARANCE, ...THEME_FILE }],
 	]) {
 		if (env[appearance] === undefined) continue;
-		for (const [key, setting] of Object.entries(APPEARANCE)) {
+		for (const [key, setting] of Object.entries(settings)) {
 			const before = baseline[appearance]?.[key];
 			if (JSON.stringify(before) !== JSON.stringify(env[appearance][key])) {
 				const was =

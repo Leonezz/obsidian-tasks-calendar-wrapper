@@ -83,6 +83,7 @@ import {
 	comparedBaselineNames,
 	COUNTERS,
 	plan,
+	missingPngBaseline,
 	readAppearanceBackup,
 	readInstalledTheme,
 	resetCssTheme,
@@ -481,7 +482,7 @@ function compareVisible(outDir, name) {
 
 function comparePng(outDir, name) {
 	const expectedFile = path.join(baselineDir, `${name}.png`);
-	if (!existsSync(expectedFile)) return "has no screenshot baseline";
+	if (!existsSync(expectedFile)) return missingPngBaseline(name);
 	const expectedBytes = readFileSync(expectedFile);
 	const actualBytes = readFileSync(path.join(outDir, `${name}.png`));
 	if (expectedBytes.equals(actualBytes)) return null;
@@ -708,7 +709,13 @@ function backupAppearance(vaultPath) {
 function restoreAppearance(cli, vaultPath) {
 	const backup = readAppearanceBackup(vaultPath);
 	if (backup === null) return;
-	cli.evaluate(resetCssTheme, { cssTheme: backup.cssTheme });
+	try {
+		cli.evaluate(resetCssTheme, { cssTheme: backup.cssTheme });
+	} catch (error) {
+		// Obsidian did not answer; the bytes on disk are still ours to put back.
+		restoreAppearanceFile(vaultPath);
+		throw error;
+	}
 	restoreAppearanceFile(vaultPath);
 }
 
