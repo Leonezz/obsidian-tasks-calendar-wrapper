@@ -1045,5 +1045,11 @@
 			},
 			"visibleLines": null
 		}
+	},
+	"themePins": {
+		"Blue Topaz": {
+			"version": "2026110201",
+			"themeCssSha256": "fe7500d7203793ab4dafccb067816d916a7d18fe7718b06cd7b51c7c704ac1ff"
+		}
 	}
 }
