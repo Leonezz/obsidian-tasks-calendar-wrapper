@@ -1,18 +1,23 @@
 /** Parses screenshot modes, compares the visible text, PNGs and styles of two builds, and formats their A/B report. */
 import { comparePngs, decodePng, encodePng, screenshotVerdict } from "./png.mjs";
 import { compareStyles, formatStyleDifference } from "./screenshots-styles.mjs";
+import { themeOfState } from "./screenshots-themes.mjs";
 
 /** Parses all options before checking their combinations, so unknown arguments are always reported first. */
 export function parseScreenshotArgs(argv) {
 	const values = {};
 	const unknown = [];
+	const themeValues = [];
 	let update = false;
 	let styles = false;
+	let pinTheme = false;
 	let only;
 	for (let i = 0; i < argv.length; i++) {
 		const arg = argv[i];
 		if (arg === "--update") update = true;
 		else if (arg === "--styles") styles = true;
+		else if (arg === "--pin-theme") pinTheme = true;
+		else if (arg.startsWith("--themes=")) themeValues.push(arg.slice("--themes=".length));
 		else if (arg === "--any-base") values[arg] = true;
 		else if (arg.startsWith("--only=")) only ??= arg.slice("--only=".length);
 		else {
@@ -32,8 +37,13 @@ export function parseScreenshotArgs(argv) {
 	}
 	if (unknown.length)
 		throw new Error(
-			`unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
+			`unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
 		);
+	if (pinTheme && (update || styles || only !== undefined || themeValues.length || Object.keys(values).length))
+		throw new Error("--pin-theme takes no other option.");
+	if (themeValues.some((value) => value !== "default" && value !== "all"))
+		throw new Error("--themes takes default or all, such as --themes=all.");
+	if (new Set(themeValues).size > 1) throw new Error("--themes was given twice with different values.");
 	if (values["--ab"] === undefined) {
 		const stray = ["--candidate", "--report", "--any-base"].filter((name) => values[name] !== undefined);
 		if (stray.length) throw new Error(`${stray.join(", ")} only go with --ab <ref>.`);
@@ -54,7 +64,13 @@ export function parseScreenshotArgs(argv) {
 					report: values["--report"] ?? null,
 					allowOtherBase: values["--any-base"] === true,
 				};
-	return { mode: ab ? "ab" : styles ? "styles" : "screenshots", update, only: only ?? "", ab };
+	return {
+		mode: pinTheme ? "pin-theme" : ab ? "ab" : styles ? "styles" : "screenshots",
+		update,
+		only: only ?? "",
+		ab,
+		themes: themeValues[0] ?? "default",
+	};
 }
 
 /** The first line where two texts differ, for the report. */
@@ -124,7 +140,7 @@ export function compareArms(base, candidate) {
 					comparison.counts.p++;
 				} else comparison.png[verdict]++;
 			} else if (kind === "styles" && a !== b) {
-				const prefix = `${state.split("-")[0]}/${state}`;
+				const prefix = `${themeOfState(state)}/${state}`;
 				const lines = compareStyles(baseStyles, candidateStyles).map((difference) =>
 					formatStyleDifference(prefix, difference),
 				);
