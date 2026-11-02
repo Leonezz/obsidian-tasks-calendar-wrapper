@@ -14,6 +14,58 @@ export interface Counts {
 	readonly samples: readonly number[];
 }
 
+/** One control click's wall time and long tasks, with optional main-thread CPU time. */
+export interface ClickStep {
+	readonly paintedMs: number;
+	readonly blockedMs: number;
+	readonly longestMs: number;
+	readonly cpuMs?: number;
+}
+
+/** The measured runs of a view control, each timing rounded to a tenth of a millisecond. */
+export type ClickResults = {
+	readonly runs: number;
+	readonly paintedMs: Timing;
+	readonly blockedMs: Timing;
+	readonly longestTaskMs: Timing;
+	readonly cpuMs?: Timing;
+};
+
+/** One scroll's animation-frame timestamps and the page's visibility while scrolling. */
+export interface ScrollRun {
+	readonly timestamps: readonly number[];
+	readonly visibilityState: string;
+}
+
+/** The measured scroll runs, with frame counts reported separately from timings. */
+export type ScrollResults = {
+	readonly runs: number;
+	readonly p95FrameMs: Timing;
+	readonly framesOver50Ms: Counts;
+	readonly frames: Counts;
+	readonly visibilityState: string;
+};
+
+/** Full scenario.metric names of counts reported without change warnings or verdicts. */
+export const REPORT_ONLY_COUNTS: ReadonlySet<string>;
+/** Summarises a view control's measured clicks, with CPU timings only when requested. */
+export function clickResults(steps: readonly ClickStep[], cpu: boolean): ClickResults;
+/** Summarises the on and off clicks separately under the flat Focus on today scenario names. */
+export function focusTodayResults(
+	pairs: readonly { readonly on: ClickStep; readonly off: ClickStep }[],
+	cpu: boolean,
+): { "focusToday.on": ClickResults; "focusToday.off": ClickResults };
+/** Computes nearest-rank p95 and counts; requires at least two strictly increasing timestamps. */
+export function frameStats(timestamps: readonly number[]): {
+	p95FrameMs: number;
+	framesOver50Ms: number;
+	frames: number;
+};
+/** Summarises scroll frame timings and counts, joining distinct visibility states with a comma and space. */
+export function scrollResults(runs: readonly ScrollRun[]): ScrollResults;
+/** Summarises used heap bytes collected after garbage collection. */
+export function heapResults(usedSizes: readonly number[]): { usedBytes: Counts };
+
 export interface Frame {
 	readonly startedAt: number;
 	readonly paintedAt: number;

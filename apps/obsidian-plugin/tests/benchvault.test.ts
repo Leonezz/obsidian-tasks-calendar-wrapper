@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 
 import { BENCH_TARGETS, benchVaultName, benchVaultNotes, scaleOf, withoutScale } from "../scripts/bench-notes.mjs";
+import { SAVE_MARKER } from "../scripts/bench-notes.mjs";
 
 // scripts/bench-notes.mjs generates the vaults `pnpm bench` measures. The user generates each once and keeps it open in
 // Obsidian, and its baseline was measured in it, so the notes must not change by accident.
@@ -103,4 +104,20 @@ test("the other arguments are left when --scale and its value are taken out", ()
 	assert.deepEqual(withoutScale(["folder", "--scale", "10"]), ["folder"]);
 	assert.deepEqual(withoutScale(["--scale", "10", "--update"]), ["--update"]);
 	assert.deepEqual(withoutScale(["--scale=10", "--update"]), ["--update"]);
+});
+
+test("the save marker is an open task dated the pinned today", () => {
+	for (const scale of [1, 10]) {
+		assert.equal(SAVE_MARKER.path, BENCH_TARGETS.withTasks);
+		assert.equal(SAVE_MARKER.path, "Projects/Learning/Project 0228.md");
+		assert.equal(SAVE_MARKER.line, 12);
+		assert.equal(SAVE_MARKER.text, "Task 0228 b");
+		const note = benchVaultNotes(scale).get(SAVE_MARKER.path);
+		assert.ok(note, `no save marker note at scale ${scale}`);
+		assert.doesNotMatch(note, /\r/);
+		const line = note.split("\n")[SAVE_MARKER.line];
+		assert.ok(line.startsWith("- [ ] "));
+		assert.ok(line.includes(SAVE_MARKER.text));
+		assert.ok(line.includes("2026-01-15"));
+	}
 });
