@@ -281,3 +281,17 @@ test("a missing baseline is an error that names the file and the update command"
 	assert.ok(malformed[0].includes(file));
 	assert.match(malformed[0], /parse|JSON/i);
 });
+
+test("a missing Blue Topaz baseline names the --themes=all update command", () => {
+	const serialized = serializeStyles({ ".taskido": { color: "red" } });
+	for (const [theme, command] of [
+		["blue-topaz-light", "pnpm screenshots --styles --themes=all --update"],
+		["light", "pnpm screenshots --styles --update"],
+	]) {
+		const name = `${theme}-x`;
+		const taken = new Map([[`${theme}/${name}`, serialized]]);
+		assert.deepEqual(stylesBaselineProblems(taken, new Map()), [
+			`fixtures/screenshots/styles/${theme}/${name}.json has no baseline; run \`${command}\` to record it.`,
+		]);
+	}
+});

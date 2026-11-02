@@ -2,7 +2,7 @@
 
 /** The selected screenshot mode and the options needed before any git or Obsidian work starts. */
 export type ScreenshotArgs = {
-	mode: "screenshots" | "styles" | "ab";
+	mode: "screenshots" | "styles" | "ab" | "pin-theme";
 	update: boolean;
 	/** The substring from --only=<text>, or an empty string when no filter was supplied. */
 	only: string;
@@ -13,14 +13,21 @@ export type ScreenshotArgs = {
 		report: string | null;
 		allowOtherBase: boolean;
 	} | null;
+	/** --themes=default uses light and dark; --themes=all also uses Blue Topaz light and dark. */
+	themes: "default" | "all";
 };
 
 /**
- * Parses --ab/--candidate/--report with a separate or = value, --any-base, --styles, --update and --only=<text>.
- * Defaults to { mode: "screenshots", update: false, only: "", ab: null }; --styles selects "styles" and --ab selects "ab".
- * Unsupported arguments are rejected first, then missing A/B values or stray A/B options, then incompatible combinations.
+ * Parses --ab/--candidate/--report with a separate or = value, --any-base, --styles, --update, --only=<text>,
+ * --themes=default|all and --pin-theme. Defaults to mode "screenshots", update false, only "", ab null and
+ * themes "default"; --styles selects "styles", --ab selects "ab" and --pin-theme selects "pin-theme".
+ * Unsupported arguments are rejected first, then --pin-theme combinations, invalid or conflicting --themes
+ * values, missing A/B values or stray A/B options, and the remaining incompatible combinations.
  * Throws plain Errors with these exact messages:
- * - unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.
+ * - unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.
+ * - --pin-theme takes no other option.
+ * - --themes takes default or all, such as --themes=all.
+ * - --themes was given twice with different values.
  * - --ab needs a git ref to compare against, such as --ab master.
  * - --candidate needs a git ref to build the candidate from.
  * - --report needs a file to write the report to.
@@ -28,7 +35,8 @@ export type ScreenshotArgs = {
  * - --ab compares two builds and records no baseline; leave out --update.
  * - leave out --styles, --ab compares styles already.
  * - --only cannot be combined with --update, which replaces all screenshots.
- * A missing value includes an empty = value or a following option. --only with a separate value stays unknown.
+ * A missing value includes an empty = value or a following option. --only and --themes with separate values
+ * stay unknown. Repeating the same --themes value is allowed; --pin-theme takes no other option, even --themes=default.
  */
 export function parseScreenshotArgs(argv: readonly string[]): ScreenshotArgs;
 
@@ -95,7 +103,8 @@ export function firstDifference(expected: string, actual: string): string;
  * comparePngs and screenshotVerdict. "same", "noise" and "drift" PNGs pass; "changed" PNGs fail.
  * A state or record kind present in one arm only fails the corresponding categories.
  * Style changes are expanded through compareStyles and formatStyleDifference. Screenshot state names
- * start with light- or dark-; style lines use the corresponding <theme>/<state> prefix.
+ * start with light-, dark-, blue-topaz-light- or blue-topaz-dark-; style lines use <theme>/<state>,
+ * matching the longest known theme prefix.
  */
 export function compareArms(base: ArmStates, candidate: ArmStates): AbComparison;
 

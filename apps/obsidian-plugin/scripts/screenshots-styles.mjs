@@ -1,4 +1,5 @@
 /** Computed-style fingerprints and baseline comparisons for screenshot states. */
+import { styleUpdateCommand } from "./screenshots-themes.mjs";
 
 /** The first match for each representative part of the timeline, including the status strip's pseudo-element. */
 export const STYLE_PROBES = Object.freeze(
@@ -198,7 +199,7 @@ export function stylesBaselineProblems(taken, baselines) {
 		const file = stylesFile(theme, name);
 		const expected = baselines.get(state);
 		if (expected === undefined) {
-			problems.push(`${file} has no baseline; run \`pnpm screenshots --styles --update\` to record it.`);
+			problems.push(`${file} has no baseline; run \`${styleUpdateCommand(theme)}\` to record it.`);
 			continue;
 		}
 		let baseline;

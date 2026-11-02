@@ -1,13 +1,13 @@
 /**
  * What the timeline in fixtures/golden-vault shows, taken in a real Obsidian, to check that a change looks the same.
- * The states: Obsidian's default theme in light and dark, each entry position (top, today, bottom), "Focus on today"
+ * The sets: Obsidian's default theme in light and dark, plus Blue Topaz light and dark with --themes=all.
+ * The states: each entry position (top, today, bottom), "Focus on today"
  * off and on, and no active counter or the Todo, Overdue or Unplanned counter with the Filter or the Focus behaviour.
  * Two records per state, in fixtures/screenshots:
  * - visible/<state>.txt, for every light state: one line per year, date, counter and task that is displayed, in order,
  *   with the task's status, whether the Focus behaviour highlights it, and its text. Exact, small and diffable, and the
  *   same whether a hidden task is left out of the DOM or hidden with CSS.
- * - <state>.png, a screenshot of the whole timeline, for all 84 states: about 780 KB for one without a filter, 36 MB
- *   in all.
+ * - <state>.png, a screenshot of the whole timeline: 84 states by default, or 168 with --themes=all, all in this folder.
  *
  * `pnpm screenshots` builds the plugin, takes both and compares them with fixtures/screenshots, the screenshots pixel by
  * pixel, writes what it took and a diff image of each screenshot that differs to a folder it names, and fails if anything
@@ -15,6 +15,9 @@
  * rest, so re-recording changes no file that only differs by rendering noise or colour drift, see screenshotVerdict in png.mjs. `--only=<text>` takes only the states whose
  * name contains the text, e.g. `--only=dark-today`, and cannot be combined with --update.
  * `--styles` compares computed-style fingerprints only; `--styles --update` records them in styles/<theme>/<state>.json.
+ * Blue Topaz fingerprints go in styles/blue-topaz-{light,dark}/; PNGs stay flat alongside the default-theme PNGs.
+ * `--themes=default` is the default for every mode. `--pin-theme`, on its own, records the installed community theme's
+ * version and CSS SHA-256 in screenshots.json; install it by hand first. Every --themes=all run checks that pin.
  * `--ab <ref>` compares visible text, PNGs and styles of that build and this checkout in one session; --candidate <ref>
  * builds another candidate, --report <file> saves the Markdown report, and --any-base allows a different merge base.
  * Both modes also fingerprint a dimmed row in each theme, without taking its visible text or PNG.
@@ -27,7 +30,8 @@
  * Needs Obsidian running with the vault named golden-vault open, as for `pnpm capture:golden`. The script only talks to
  * that vault, after checking its notes are exactly fixtures/golden-vault. It installs the build into the vault, turns
  * community plugins on, pins today to 2026-01-15, sizes the window's page through the DevTools protocol, switches the
- * theme and the layout, and puts all of that back at the end.
+ * theme and the layout, and puts all of that back at the end. Each group selects and verifies the loaded community
+ * theme, including an empty stylesheet for the default theme. appearance.json is restored byte for byte.
  */
 import { execFileSync } from "child_process";
 import { createHash } from "crypto";
@@ -74,6 +78,27 @@ import {
 	stylesBaselineProblems,
 	stylesFile,
 } from "./screenshots-styles.mjs";
+import {
+	checkInstalledTheme,
+	comparedBaselineNames,
+	COUNTERS,
+	plan,
+	missingPngBaseline,
+	readAppearanceBackup,
+	readInstalledTheme,
+	resetCssTheme,
+	restoreAppearanceFile,
+	saveAppearanceBackup,
+	selectCssTheme,
+	statesToRemove,
+	styleUpdateCommand,
+	themeNames,
+	THEMES,
+	updatedManifest,
+	updatedStylesManifest,
+	warnAboutSetup,
+	withThemePin,
+} from "./screenshots-themes.mjs";
 
 const VAULT_NAME = "golden-vault";
 const baselineDir = path.join(repoRoot, "fixtures", "screenshots");
@@ -91,93 +116,7 @@ const MAX_HEIGHT = 16_000;
  */
 const SETTLE_AFTER_LOAD_MS = 1_500;
 
-/** The appearance settings recorded in screenshots.json, with their names in Obsidian's settings for the warnings. */
-const APPEARANCE = {
-	accentColor: "accent colour",
-	baseFontSize: "font size",
-	interfaceFontFamily: "interface font",
-	textFontFamily: "text font",
-	monospaceFontFamily: "monospace font",
-	cssTheme: "community theme",
-	enabledCssSnippets: "CSS snippets",
-	showRibbon: "ribbon",
-	zoom: "zoom level",
-	timelineFont: "font of the timeline, as the browser computes it",
-	// Chrome converts screenshots into the colour space of the display the window is on.
-	display: "display the window is on",
-};
-
-const THEMES = { light: "moonstone", dark: "obsidian" };
-const POSITIONS = ["top", "today", "bottom"];
-const COUNTERS = { todo: "Todo Tasks", overdue: "Overdue Tasks", unplanned: "Unplanned Tasks" };
 const TODAY_FOCUS = "Focus today";
-
-/** Every state has a screenshot. A smaller set would keep fewer megabytes in git; this is the place to pick one. */
-const takesPng = () => true;
-
-/** Which elements are displayed does not depend on the theme, so only light states get a visible/<state>.txt. */
-const takesVisible = ({ theme }) => theme === "light";
-
-/** The screenshots whose name contains `only`, grouped by the settings that need the plugin loaded again. */
-function plan(only, mode = "screenshots") {
-	const groups = [];
-	const wanted = (shot) => (shot.png || shot.visible || shot.styles) && shot.name.includes(only);
-	for (const position of POSITIONS) {
-		for (const behavior of ["Filter", "Focus"]) {
-			// Without an active counter the behaviour changes nothing, so that state is taken once.
-			const counters = behavior === "Filter" ? ["none", ...Object.keys(COUNTERS)] : Object.keys(COUNTERS);
-			const shots = [];
-			for (const theme of Object.keys(THEMES)) {
-				for (const todayFocus of [false, true]) {
-					for (const counter of counters) {
-						const name = [
-							theme,
-							position,
-							todayFocus ? "today-focus" : "all-days",
-							counter === "none" ? "no-counter" : `${counter}-${behavior.toLowerCase()}`,
-						].join("-");
-						const state = {
-							name,
-							theme,
-							position,
-							todayFocus,
-							counter,
-							behavior: counter === "none" ? null : behavior,
-						};
-						shots.push({
-							...state,
-							png: mode !== "styles" && takesPng(state),
-							visible: mode !== "styles" && takesVisible(state),
-							styles: mode !== "screenshots",
-						});
-					}
-				}
-			}
-			const selected = shots.filter(wanted);
-			if (selected.length > 0)
-				groups.push({ settings: { entryPosition: position, counterBehavior: behavior }, shots: selected });
-		}
-	}
-	if (mode !== "screenshots") {
-		for (const theme of Object.keys(THEMES)) {
-			const shot = {
-				name: `${theme}-row-dimmed`,
-				theme,
-				position: "today",
-				todayFocus: false,
-				counter: "none",
-				behavior: null,
-				dimmed: true,
-				png: false,
-				visible: false,
-				styles: true,
-			};
-			if (wanted(shot))
-				groups.push({ settings: { entryPosition: "today", counterBehavior: "Filter" }, shots: [shot] });
-		}
-	}
-	return groups;
-}
 
 /**
  * Runs in Obsidian: everything the screenshots do in the window. Each action ends when the timeline's DOM has not
@@ -448,10 +387,10 @@ function capture(cli) {
 }
 
 /** Takes every state's records into `outDir` and returns what the manifest records about them. */
-function takeScreenshots(cli, plugin, outDir, only, mode = "screenshots", buildLabel = "this checkout") {
+function takeScreenshots(cli, plugin, outDir, only, mode, themes, pins, buildLabel = "this checkout") {
 	const shots = {};
 	if (mode !== "styles") mkdirSync(path.join(outDir, VISIBLE), { recursive: true });
-	for (const group of plan(only, mode)) {
+	for (const group of plan(only, mode, themes)) {
 		plugin.writeSettings(quietSettings(group.settings));
 		cli.cdp("Emulation.setDeviceMetricsOverride", {
 			width: VIEWPORT_WIDTH,
@@ -459,6 +398,8 @@ function takeScreenshots(cli, plugin, outDir, only, mode = "screenshots", buildL
 			deviceScaleFactor: 1,
 			mobile: false,
 		});
+		const { cssTheme } = THEMES[group.shots[0].theme];
+		cli.evaluate(selectCssTheme, { cssTheme, sha256: pins[cssTheme]?.themeCssSha256 });
 		cli.evaluate(timeline, {
 			action: "open",
 			viewType: TIMELINE_VIEW,
@@ -468,7 +409,12 @@ function takeScreenshots(cli, plugin, outDir, only, mode = "screenshots", buildL
 		const state = { theme: null, todayFocus: false, counter: "none" };
 		for (const shot of group.shots) {
 			if (state.theme !== shot.theme) {
-				cli.evaluate(timeline, { action: "theme", viewType: TIMELINE_VIEW, theme: THEMES[shot.theme] });
+				const { base, cssTheme } = THEMES[shot.theme];
+				if (state.theme !== null)
+					cli.evaluate(selectCssTheme, { cssTheme, sha256: pins[cssTheme]?.themeCssSha256 });
+				cli.evaluate(timeline, { action: "theme", viewType: TIMELINE_VIEW, theme: base });
+				if (state.theme !== null && THEMES[state.theme].cssTheme !== cssTheme)
+					cli.evaluate(timeline, { action: "settle", viewType: TIMELINE_VIEW });
 				state.theme = shot.theme;
 			}
 			if (shot.styles && shot.dimmed) {
@@ -536,7 +482,7 @@ function compareVisible(outDir, name) {
 
 function comparePng(outDir, name) {
 	const expectedFile = path.join(baselineDir, `${name}.png`);
-	if (!existsSync(expectedFile)) return "has no screenshot baseline";
+	if (!existsSync(expectedFile)) return missingPngBaseline(name);
 	const expectedBytes = readFileSync(expectedFile);
 	const actualBytes = readFileSync(path.join(outDir, `${name}.png`));
 	if (expectedBytes.equals(actualBytes)) return null;
@@ -555,35 +501,9 @@ function comparePng(outDir, name) {
 	return null;
 }
 
-/** Warns about each thing that decides the pixels and differs between the baselines and this run. */
-function warnAboutSetup(baseline, env, label = "the baselines") {
-	for (const key of ["obsidianVersion", "electron", "machine", "viewportWidth", "today"]) {
-		if (JSON.stringify(baseline[key]) !== JSON.stringify(env[key])) {
-			console.warn(
-				`screenshots: warning: ${label} were taken with ${key} ${JSON.stringify(baseline[key])}, this run has ${JSON.stringify(env[key])}; pixels may differ for that reason alone.`,
-			);
-		}
-	}
-	for (const [key, setting] of Object.entries(APPEARANCE)) {
-		const before = baseline.appearance?.[key];
-		if (JSON.stringify(before) !== JSON.stringify(env.appearance[key])) {
-			const was =
-				before === undefined
-					? `${label} do not record the ${setting} (${key})`
-					: `${label} were taken with the ${setting} (${key}) ${JSON.stringify(before)}`;
-			console.warn(
-				`screenshots: warning: ${was}, this run has ${JSON.stringify(env.appearance[key])}; pixels may differ for that reason alone.`,
-			);
-		}
-	}
-}
-
-function compare(outDir, shots, only) {
+function compare(outDir, shots, only, themes) {
 	const baseline = JSON.parse(readFileSync(manifestFile, "utf8"));
-	const names = new Set([
-		...Object.keys(shots),
-		...Object.keys(baseline.shots).filter((name) => name.includes(only)),
-	]);
+	const names = new Set([...Object.keys(shots), ...comparedBaselineNames(baseline.shots, only, themes)]);
 	const results = [];
 	for (const name of [...names].sort()) {
 		const shot = shots[name];
@@ -601,9 +521,9 @@ function compare(outDir, shots, only) {
 }
 
 /** Only theme folders hold fingerprints; styles.json is the setup record, never a state to remove. */
-function styleBaselines() {
+function styleBaselines(themes) {
 	const baselines = new Map();
-	for (const theme of Object.keys(THEMES)) {
+	for (const theme of themeNames(themes)) {
 		const dir = path.join(stylesDir, theme);
 		if (!existsSync(dir)) continue;
 		for (const file of readdirSync(dir).filter((file) => file.endsWith(".json") && file !== "styles.json"))
@@ -613,10 +533,10 @@ function styleBaselines() {
 }
 
 /** Compare or update the fingerprints after the window and plugin have been restored. */
-function finishStyles(outDir, shots, env, build, only, update) {
-	if (existsSync(stylesManifestFile))
-		warnAboutSetup(JSON.parse(readFileSync(stylesManifestFile, "utf8")), env, "the styles.json baselines");
-	const baselines = styleBaselines();
+function finishStyles(outDir, shots, env, build, only, update, themes) {
+	const previous = existsSync(stylesManifestFile) ? JSON.parse(readFileSync(stylesManifestFile, "utf8")) : null;
+	if (previous) warnAboutSetup(previous, env, "the styles.json baselines");
+	const baselines = styleBaselines(themes);
 	const taken = new Map(
 		Object.entries(shots)
 			.filter(([, shot]) => shot.styles)
@@ -640,16 +560,17 @@ function finishStyles(outDir, shots, env, build, only, update) {
 			rmSync(path.join(stylesDir, `${state}.json`));
 			removed.push(`${state}.json`);
 		}
-		const record = {
-			note: "Taken by apps/obsidian-plugin/scripts/screenshots.mjs (`pnpm screenshots --styles --update`). Do not edit by hand.",
-			...env,
+		const record = updatedStylesManifest({
+			previous,
+			env,
 			takenAt: new Date().toISOString().slice(0, 10),
 			plugin: build,
-			states: Object.keys(shots).sort(),
+			shots,
 			probes: STYLE_PROBES,
 			properties: STYLE_PROPERTIES,
 			rootCustomProperties: ROOT_CUSTOM_PROPERTIES,
-		};
+			themes,
+		});
 		writeFileSync(stylesManifestFile, JSON.stringify(record, null, "\t") + "\n");
 		for (const file of changed) console.log(`screenshots: changed styles/${file}`);
 		for (const file of removed) console.log(`screenshots: removed styles/${file}, a state no longer taken`);
@@ -693,8 +614,113 @@ function armStates(outDir, shots) {
 	);
 }
 
-/** Build both arms first, then take them in one fixture session without consulting stored baselines. */
-function runAb(ab, only) {
+function screenshotVault() {
+	const cli = fixtureCli(VAULT_NAME);
+	const vaultDir = path.join(repoRoot, "fixtures", VAULT_NAME);
+	const vaultPath = fixtureVaultPath(
+		cli,
+		VAULT_NAME,
+		notesOf(vaultDir),
+		`Open ${vaultDir}, or a copy of it in a folder named ${VAULT_NAME}, with "Open folder as vault", then run this again.`,
+	);
+	return { cli, vaultPath };
+}
+
+const communityThemes = () => [
+	...new Set(
+		Object.values(THEMES)
+			.map(({ cssTheme }) => cssTheme)
+			.filter(Boolean),
+	),
+];
+
+/** Check the installed files before changing the window or installing either build. */
+function checkedThemePins(vaultPath, themes) {
+	if (themes === "default") return {};
+	try {
+		const previous = existsSync(manifestFile) ? JSON.parse(readFileSync(manifestFile, "utf8")) : null;
+		return Object.fromEntries(
+			communityThemes().map((cssTheme) => {
+				const pin = checkInstalledTheme({ vaultPath, cssTheme, pin: previous?.themePins?.[cssTheme] });
+				console.log(`screenshots: ${cssTheme} version ${pin.version}, sha256 ${pin.themeCssSha256}`);
+				return [cssTheme, pin];
+			}),
+		);
+	} catch (error) {
+		throw new ScriptError(error.message);
+	}
+}
+
+/** Pin only the installed community theme files; no timeline or plugin build is needed. */
+function pinThemes() {
+	const { vaultPath } = screenshotVault();
+	try {
+		const previous = JSON.parse(readFileSync(manifestFile, "utf8"));
+		const pins = communityThemes().map((cssTheme) => ({
+			cssTheme,
+			...readInstalledTheme({ vaultPath, cssTheme }),
+		}));
+		const record = pins.reduce((current, pin) => withThemePin(current, pin), previous);
+		writeFileSync(manifestFile, JSON.stringify(record, null, "\t") + "\n");
+		for (const { cssTheme } of pins)
+			console.log(
+				`screenshots: ${cssTheme} pin ${JSON.stringify(previous.themePins?.[cssTheme] ?? null)} -> ${JSON.stringify(record.themePins[cssTheme])}`,
+			);
+		return 0;
+	} catch (error) {
+		throw new ScriptError(error.message);
+	}
+}
+
+/** The last timeline is still open; record each community theme used, leaving the default until last. */
+function appearances(cli, shots, pins) {
+	const cssThemes = [...new Set(Object.values(shots).map(({ theme }) => THEMES[theme].cssTheme))];
+	const records = Object.fromEntries(
+		cssThemes
+			.sort((a, b) => Number(a === "") - Number(b === ""))
+			.map((cssTheme) => {
+				cli.evaluate(selectCssTheme, { cssTheme, sha256: pins[cssTheme]?.themeCssSha256 });
+				const appearance = cli.evaluate(timeline, { action: "appearance", viewType: TIMELINE_VIEW });
+				return cssTheme === ""
+					? ["appearance", appearance]
+					: [
+							"blueTopazAppearance",
+							{
+								...appearance,
+								themeVersion: pins[cssTheme].version,
+								themeCssSha256: pins[cssTheme].themeCssSha256,
+							},
+						];
+			}),
+	);
+	return {
+		...(records.appearance ? { appearance: records.appearance } : {}),
+		...(records.blueTopazAppearance ? { blueTopazAppearance: records.blueTopazAppearance } : {}),
+	};
+}
+
+function backupAppearance(vaultPath) {
+	if (saveAppearanceBackup(vaultPath).leftover)
+		console.warn(
+			".obsidian/.tcw-fixture-appearance.json is left from a run that did not finish; taking the backup as the original appearance.",
+		);
+}
+
+function restoreAppearance(cli, vaultPath) {
+	const backup = readAppearanceBackup(vaultPath);
+	if (backup === null) return;
+	try {
+		cli.evaluate(resetCssTheme, { cssTheme: backup.cssTheme });
+	} catch (error) {
+		// Obsidian did not answer; the bytes on disk are still ours to put back.
+		restoreAppearanceFile(vaultPath);
+		throw error;
+	}
+	restoreAppearanceFile(vaultPath);
+}
+
+/** Check theme pins, build both arms, then take them in one fixture session without consulting stored shots. */
+function runAb(ab, only, themes) {
 	try {
 		const git = (args) =>
 			execFileSync("git", args, {
@@ -728,6 +754,8 @@ function runAb(ab, only) {
 		if (!existsSync(dir) || !statSync(dir).isDirectory())
 			throw new ScriptError(`the folder of the report ${ab.report} does not exist.`);
 	}
+	const session = themes === "all" ? screenshotVault() : null;
+	const pins = session ? checkedThemePins(session.vaultPath, themes) : {};
 
 	const workDir = path.join(os.tmpdir(), "tcw-screenshots-ab");
 	rmSync(workDir, { recursive: true, force: true });
@@ -748,17 +776,11 @@ function runAb(ab, only) {
 		console.log(
 			`screenshots: A/B in ${VAULT_NAME}: the base is ${describe(builds.base)}, the candidate ${describe(builds.candidate)}${identical ? "; the two builds are identical, so this shows the noise" : ""}.`,
 		);
-		const cli = fixtureCli(VAULT_NAME);
-		const vaultDir = path.join(repoRoot, "fixtures", VAULT_NAME);
-		const vaultPath = fixtureVaultPath(
-			cli,
-			VAULT_NAME,
-			notesOf(vaultDir),
-			`Open ${vaultDir}, or a copy of it in a folder named ${VAULT_NAME}, with "Open folder as vault", then run this again.`,
-		);
+		const { cli, vaultPath } = session ?? screenshotVault();
 		const plugin = installPlugin(vaultPath, quietSettings(), builds.base);
 		const fixture = fixtureWindow(cli, VAULT_NAME, plugin);
 		const { shots, env } = runAndUndo(() => {
+			backupAppearance(vaultPath);
 			const prepared = fixture.prepare();
 			const env = environment(cli, prepared);
 			const shots = {};
@@ -783,15 +805,17 @@ function runAb(ab, only) {
 					path.join(workDir, arm),
 					only,
 					"ab",
+					themes,
+					pins,
 					`${arm} ${describe(builds[arm])}`,
 				);
 			}
-			env.appearance = cli.evaluate(timeline, { action: "appearance", viewType: TIMELINE_VIEW });
-			return { shots, env };
+			return { shots, env: { ...env, ...appearances(cli, shots.candidate, pins) } };
 		}, [
 			["clear the page size", () => cli.cdp("Emulation.clearDeviceMetricsOverride")],
 			["remove the style that hides the status bar", () => cli.evaluate(timeline, { action: "cleanup" })],
 			...fixture.undoSteps,
+			["restore appearance.json", () => restoreAppearance(cli, vaultPath)],
 		]);
 		const comparison = compareArms(
 			armStates(path.join(workDir, "base"), shots.base),
@@ -830,10 +854,17 @@ await runScript("screenshots", async () => {
 	} catch (error) {
 		throw new ScriptError(error.message);
 	}
-	const { mode, update, only, ab } = args;
-	const groups = plan(only, mode);
-	if (groups.length === 0) throw new ScriptError(`no screenshot name contains "${only}".`);
-	if (ab) return runAb(ab, only);
+	const { mode, update, only, ab, themes } = args;
+	if (mode === "pin-theme") return pinThemes();
+	const groups = plan(only, mode, themes);
+	if (groups.length === 0)
+		throw new ScriptError(
+			`no screenshot name contains "${only}".${themes === "default" && plan(only, mode, "all").length ? " Add --themes=all to include Blue Topaz states." : ""}`,
+		);
+	if (ab) return runAb(ab, only, themes);
+	// A wrong theme is refused before anything else is said about this run's baselines.
+	const session = themes === "all" ? screenshotVault() : null;
+	const pins = session ? checkedThemePins(session.vaultPath, themes) : {};
 	// Checked before the run, which takes minutes, rather than after it.
 	if (mode === "screenshots" && !update && !existsSync(manifestFile))
 		throw new ScriptError(
@@ -841,24 +872,15 @@ await runScript("screenshots", async () => {
 		);
 	if (mode === "styles" && !update) {
 		const missing = groups.flatMap(({ shots }) =>
-			shots
-				.map(({ theme, name }) => stylesFile(theme, name))
-				.filter((file) => !existsSync(path.join(repoRoot, file))),
+			shots.filter(({ theme, name }) => !existsSync(path.join(repoRoot, stylesFile(theme, name)))),
 		);
 		if (missing.length)
 			throw new ScriptError(
-				`missing style baselines: ${JSON.stringify(missing.slice(0, 5))}${missing.length > 5 ? ` and ${missing.length - 5} more` : ""}; run \`pnpm screenshots --styles --update\` to record them.`,
+				`missing style baselines: ${JSON.stringify(missing.slice(0, 5).map(({ theme, name }) => stylesFile(theme, name)))}${missing.length > 5 ? ` and ${missing.length - 5} more` : ""}; run \`${styleUpdateCommand(missing.find(({ theme }) => THEMES[theme].cssTheme)?.theme ?? missing[0].theme)}\` to record them.`,
 			);
 	}
 	const build = buildInfo();
-	const cli = fixtureCli(VAULT_NAME);
-	const vaultDir = path.join(repoRoot, "fixtures", VAULT_NAME);
-	const vaultPath = fixtureVaultPath(
-		cli,
-		VAULT_NAME,
-		notesOf(vaultDir),
-		`Open ${vaultDir}, or a copy of it in a folder named ${VAULT_NAME}, with "Open folder as vault", then run this again.`,
-	);
+	const { cli, vaultPath } = session ?? screenshotVault();
 
 	// Taken into a folder of their own first, so a run that fails halfway leaves the baselines alone.
 	const outDir = path.join(os.tmpdir(), "tcw-screenshots");
@@ -868,22 +890,23 @@ await runScript("screenshots", async () => {
 	const plugin = installPlugin(vaultPath, quietSettings());
 	const fixture = fixtureWindow(cli, VAULT_NAME, plugin);
 	const { shots, env } = runAndUndo(() => {
+		backupAppearance(vaultPath);
 		const prepared = fixture.prepare();
 		const env = environment(cli, prepared);
-		const shots = takeScreenshots(cli, plugin, outDir, only, mode);
-		// The last timeline is still open.
-		env.appearance = cli.evaluate(timeline, { action: "appearance", viewType: TIMELINE_VIEW });
-		return { env, shots };
+		const shots = takeScreenshots(cli, plugin, outDir, only, mode, themes, pins);
+		return { env: { ...env, ...appearances(cli, shots, pins) }, shots };
 	}, [
 		["clear the page size", () => cli.cdp("Emulation.clearDeviceMetricsOverride")],
 		["remove the style that hides the status bar", () => cli.evaluate(timeline, { action: "cleanup" })],
 		...fixture.undoSteps,
+		["restore appearance.json", () => restoreAppearance(cli, vaultPath)],
 	]);
 
-	if (mode === "styles") return finishStyles(outDir, shots, env, build, only, update);
+	if (mode === "styles") return finishStyles(outDir, shots, env, build, only, update, themes);
 
 	if (update) {
-		if (existsSync(manifestFile)) warnAboutSetup(JSON.parse(readFileSync(manifestFile, "utf8")), env);
+		const previous = existsSync(manifestFile) ? JSON.parse(readFileSync(manifestFile, "utf8")) : null;
+		if (previous) warnAboutSetup(previous, env);
 		// A baseline that still matches, rendering noise and colour drift included, is kept as it is, so re-recording adds to the git
 		// history only what really changed.
 		const visibleDir = path.join(baselineDir, VISIBLE);
@@ -900,26 +923,30 @@ await runScript("screenshots", async () => {
 			}
 		}
 		const removed = [];
-		for (const file of readdirSync(baselineDir).filter((file) => file.endsWith(".png"))) {
-			if (!shots[file.slice(0, -".png".length)]?.png) {
-				rmSync(path.join(baselineDir, file));
-				removed.push(file);
-			}
+		const pngNames = readdirSync(baselineDir)
+			.filter((file) => file.endsWith(".png"))
+			.map((file) => file.slice(0, -".png".length));
+		const takenPng = new Set(Object.keys(shots).filter((name) => shots[name].png));
+		for (const name of statesToRemove(pngNames, takenPng, themes)) {
+			rmSync(path.join(baselineDir, `${name}.png`));
+			removed.push(`${name}.png`);
 		}
-		for (const file of readdirSync(visibleDir).filter((file) => file.endsWith(".txt"))) {
-			const shot = shots[file.slice(0, -".txt".length)];
-			if (!shot || shot.visibleLines === null) {
-				rmSync(path.join(visibleDir, file));
-				removed.push(`${VISIBLE}/${file}`);
-			}
+		const visibleNames = readdirSync(visibleDir)
+			.filter((file) => file.endsWith(".txt"))
+			.map((file) => file.slice(0, -".txt".length));
+		const takenVisible = new Set(Object.keys(shots).filter((name) => shots[name].visibleLines !== null));
+		for (const name of statesToRemove(visibleNames, takenVisible, themes)) {
+			rmSync(path.join(visibleDir, `${name}.txt`));
+			removed.push(`${VISIBLE}/${name}.txt`);
 		}
-		const record = {
-			note: "Taken by apps/obsidian-plugin/scripts/screenshots.mjs (`pnpm screenshots --update`). Do not edit by hand.",
-			...env,
+		const record = updatedManifest({
+			previous,
+			env,
 			takenAt: new Date().toISOString().slice(0, 10),
 			plugin: build,
 			shots,
-		};
+			themes,
+		});
 		writeFileSync(manifestFile, JSON.stringify(record, null, "\t") + "\n");
 		for (const file of changed) console.log(`screenshots: changed ${file}`);
 		for (const file of removed) console.log(`screenshots: removed ${file}, a state no longer taken`);
@@ -929,7 +956,7 @@ await runScript("screenshots", async () => {
 		return 0;
 	}
 
-	const { baseline, results } = compare(outDir, shots, only);
+	const { baseline, results } = compare(outDir, shots, only, themes);
 	warnAboutSetup(baseline, env);
 	if (results.length === 0) {
 		console.log(
