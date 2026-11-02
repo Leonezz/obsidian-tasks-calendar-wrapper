@@ -101,9 +101,9 @@ const BURST_GAP_MS = 500;
 /** How long after Obsidian reports a save without tasks the timeline is watched for a reload. */
 const NO_RELOAD_WINDOW_MS = 3_000;
 /**
- * The plugin pushes its options to open views 200 ms after it loads (#203), which renders the timeline again. A load is
- * watched until it shows task rows, at least this long, and then until the timeline is quiet, so that render is seen and
- * counted apart from the first one.
+ * Up to phase 4 step 1, the options push 200 ms after loading (#203) rendered the timeline again; an A/B base may
+ * still do so. A load is watched until it shows task rows, at least this long, and then until the timeline is quiet,
+ * so any such render is seen and counted apart from the first one.
  */
 const LOAD_WATCH_MS = 2_000;
 
@@ -347,7 +347,7 @@ function measureAll(
 			renderedMs: summary(loads.map((load) => load.renderedMs)),
 			blockedMs: summary(loads.map((load) => load.blockedMs)),
 			longestTaskMs: summary(loads.map((load) => load.longestMs)),
-			// Renders after the first one, such as the reload after the options push 200 ms after loading.
+			// Renders after the first one, including the 200 ms options push in builds up to phase 4 step 1.
 			laterRenders: counts(loads.map((load) => load.laterRenders)),
 			laterBlockedMs: summary(loads.map((load) => load.laterBlockedMs)),
 			// All of the load's work: the first render, and what the options push adds before or after it.

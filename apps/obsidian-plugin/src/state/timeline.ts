@@ -80,10 +80,11 @@ export function initialTimelineState(): TimelineState {
 }
 
 /**
- * The state with a frozen copy of these options; a new one also for the same options, as each push renders again.
+ * The same state when the options are equal by value; otherwise a new state with a frozen copy of these options.
  * What was handed in is not frozen.
  */
 export function withOptions(state: TimelineState, options: Readonly<UserOption>): TimelineState {
+	if (isEqual(state.options, options)) return state;
 	return { ...state, options: deepFreeze(copyJsonValue(options)) };
 }
 

@@ -175,12 +175,12 @@ export function splitLoad(raw, burstGapMs) {
  * The timings shown but not judged in the vault at a scale:
  * - indexedMs: how long Obsidian takes to read a saved note, which is not up to the plugin;
  * - overlayPaintedMs: the toggle overlay's first painted frame, recorded only for reporting;
- * - laterBlockedMs in the 40,000-task vault: the work after a load's first render. The plugin pushes its options to
- *   the view 200 ms after it loads; whether that lands before the first render is painted or after it is a race, and
- *   after it the timeline reloads and renders again. With the noise of a busy machine on top, this moved between
- *   1.7 s and 7.1 s across loads of the same build. The whole load's work, totalBlockedMs, moved 1.6 %, and is judged
- *   instead; the push's own reload and render are also judged in optionChange, which runs the same code. In the
- *   4,000-task vault laterBlockedMs stayed within 230-245 ms over 20 loads, and is judged.
+ * - laterBlockedMs in the 40,000-task vault: the work after a load's first render. Up to phase 4 step 1, the options
+ *   push 200 ms after loading reloaded and rendered the timeline again; an A/B base may still do so. Whether that
+ *   lands before the first render is painted or after it is a race. With the noise of a busy machine on top, this
+ *   moved between 1.7 s and 7.1 s across loads of the same build. The whole load's work, totalBlockedMs, moved 1.6 %,
+ *   and is judged instead; the push's own reload and render are also judged in optionChange, which runs the same code.
+ *   In the 4,000-task vault laterBlockedMs stayed within 230-245 ms over 20 loads, and is judged.
  */
 export function notJudgedAt(scale) {
 	return new Set(
