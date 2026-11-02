@@ -119,6 +119,35 @@ test("a measurement is slower when its fastest run grew by more than 25 % and 50
 	assert.equal(slowerLoad(1251), 1);
 });
 
+test("scroll.p95FrameMs is slower when its fastest run grew by more than 25 % and 8 ms", () => {
+	for (const [before, after, expected] of [
+		[17, 22, 0],
+		[17, 26, 1],
+		[20, 28, 0],
+		[100, 120, 0],
+		[100, 126, 1],
+	]) {
+		const result = compare(
+			baselineWith({ scroll: { p95FrameMs: timing(before) } }),
+			resultsWith({ scroll: { p95FrameMs: timing(after) } }),
+		);
+		assert.equal(result.slower, expected, `${before} to ${after} ms`);
+	}
+});
+
+test("only scroll.p95FrameMs has the 8 ms floor", () => {
+	for (const [scenario, metric] of [
+		["saveWithTasks", "renderedMs"],
+		["other", "p95FrameMs"],
+	]) {
+		const result = compare(
+			baselineWith({ [scenario]: { [metric]: timing(17) } }),
+			resultsWith({ [scenario]: { [metric]: timing(40) } }),
+		);
+		assert.equal(result.slower, 0, `${scenario}.${metric}`);
+	}
+});
+
 test("how long Obsidian takes to read a note is shown but not judged", () => {
 	const base = baselineWith({ saveWithTasks: { indexedMs: timing(2) } });
 	const result = compare(base, resultsWith({ saveWithTasks: { indexedMs: timing(500) } }));
