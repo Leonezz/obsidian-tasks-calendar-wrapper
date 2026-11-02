@@ -12,6 +12,7 @@ import {
 	type ProfileSummary,
 	type TraceEvent,
 } from "../scripts/bench-profile.mjs";
+import { realProfileEvents, realThread } from "./benchprofile-chunks";
 
 const pluginId = "tasks-calendar-wrapper";
 const pluginUrl = `plugin:${pluginId}`;
@@ -237,6 +238,27 @@ test("samples under renderMarkdown count as MarkdownRenderer whatever is below t
 	assert.equal(result.totalMs, 80);
 });
 
+test("V8's method frame name t.renderMarkdown counts as MarkdownRenderer, a longer name does not", () => {
+	const renamed = (functionName: string) =>
+		bucketTrace(
+			traceOf({
+				events: [complete("RunTask", 0, 80), complete("FunctionCall", 0, 80)],
+				samples: [6],
+				times: [20],
+				profileNodes: nodes.map((profileNode) =>
+					profileNode.id === 5
+						? { ...profileNode, callFrame: { ...profileNode.callFrame, functionName } }
+						: profileNode,
+				),
+			}),
+			options,
+		).categories;
+	// Obsidian's app.js defines it as a method, and V8 names the frame after the object it was assigned on.
+	assert.equal(renamed("t.renderMarkdown").MarkdownRenderer, 80);
+	assert.equal(renamed("t.renderMarkdownLater").MarkdownRenderer, 0);
+	assert.equal(renamed("prerenderMarkdown").MarkdownRenderer, 0);
+});
+
 test("GC inside script time counts as GC, not as script", () => {
 	const result = bucketTrace(
 		traceOf({
@@ -405,4 +427,100 @@ test("CPU-profile chunks from V8's sampler thread count for the main thread's pr
 	// A profile started on another thread of the process, such as a worker, is not the main thread's.
 	const worker = traceOf().map((event) => (event.name === "Profile" ? { ...event, tid: 9 } : event));
 	assert.throws(() => bucketTrace(worker, options), /no CPU-profile samples/);
+});
+
+/** Replaces the trace's single ProfileChunk's data, leaving the other events as they are. */
+function withChunkData(
+	change: (
+		data: NonNullable<NonNullable<TraceEvent["args"]>["data"]>,
+	) => NonNullable<NonNullable<TraceEvent["args"]>["data"]>,
+	profileNodes = nodes,
+): TraceEvent[] {
+	return traceOf({ profileNodes }).map((event) =>
+		event.name === "ProfileChunk" ? { ...event, args: { data: change(event.args?.data ?? {}) } } : event,
+	);
+}
+
+test("out-of-order samples (negative timeDeltas) are placed by their time, as DevTools does", () => {
+	// V8 emits a sample before an earlier one; the cumulative time goes back and the sample lands where it belongs.
+	const reordered = traceOf({
+		samples: [3, 3, 3, 3, 4, 4, 6, 6, 2, 7],
+		times: [5, 15, 25, 45, 35, 55, 65, 75, 85, 95],
+	});
+	const chunk = reordered.find((event) => event.name === "ProfileChunk");
+	assert.ok(chunk?.args?.data?.timeDeltas?.some((delta) => delta < 0));
+	assert.deepEqual(bucketTrace(reordered, options), bucketTrace(traceOf(), options));
+});
+
+test("a real renderer trace excerpt with out-of-order samples and nodes from earlier chunks is bucketed", () => {
+	const pluginNodes = realProfileEvents
+		.flatMap((event) => event.args?.data?.cpuProfile?.nodes ?? [])
+		.filter((profileNode) => profileNode.callFrame.url === pluginUrl);
+	// A bundle with each sampled plugin function on its own line, under one module comment, aligns at offset 0.
+	const lines = Array.from(
+		{ length: Math.max(...pluginNodes.map((n) => n.callFrame.lineNumber ?? 0)) + 1 },
+		() => "",
+	);
+	lines[0] = "// src/main.ts";
+	for (const { callFrame } of pluginNodes)
+		if (callFrame.functionName) lines[callFrame.lineNumber ?? 0] += ` function ${callFrame.functionName}() {}`;
+	const startTime = realProfileEvents[0].args?.data?.startTime ?? 0;
+	const thread = (event: TraceEvent): TraceEvent => ({ ...event, ...realThread });
+	const trace: TraceEvent[] = [
+		thread({ ph: "M", name: "thread_name", pid: 0, args: { name: "CrRendererMain" } }),
+		...(["start", "end"] as const).map((edge, index) =>
+			thread({
+				ph: "I",
+				name: "TimeStamp",
+				pid: 0,
+				ts: startTime - 1000 + index * 100_000,
+				args: { data: { message: profileMarker("initialLoad", edge) } },
+			}),
+		),
+		thread({ ph: "X", name: "RunTask", pid: 0, ts: startTime, dur: 60_000 }),
+		thread({ ph: "X", name: "FunctionCall", pid: 0, ts: startTime, dur: 60_000 }),
+		...realProfileEvents,
+	];
+	const deltas = realProfileEvents.flatMap((event) => event.args?.data?.timeDeltas ?? []);
+	assert.ok(deltas.some((delta) => delta < 0));
+	const result = bucketTrace(trace, { ...options, mainJs: lines.join("\n"), requireMarkdown: true });
+	assert.equal(result.samples, 24);
+	assert.equal(result.lineOffset, 0);
+	assert.equal(result.totalMs, 60);
+	assert.equal(result.unattributedMs, 0);
+	assert.ok(result.categories.MarkdownRenderer > 0);
+	assert.ok(result.categories["other script"] > 0);
+});
+
+test("a chunk whose samples and timeDeltas differ in length is an error naming the chunk", () => {
+	const short = withChunkData((data) => ({ ...data, timeDeltas: data.timeDeltas?.slice(1) }));
+	assert.throws(
+		() => bucketTrace(short, options),
+		/ProfileChunk of profile 0x1 at ts 200000 has 10 samples but 9 timeDeltas/,
+	);
+	const missing = withChunkData(({ timeDeltas: _deltas, ...data }) => data);
+	assert.throws(() => bucketTrace(missing, options), /has 10 samples but 0 timeDeltas/);
+});
+
+test("a timeDelta that is not a finite number is an error naming its index", () => {
+	const broken = withChunkData((data) => ({
+		...data,
+		timeDeltas: data.timeDeltas?.map((delta, index) => (index === 3 ? Number.NaN : delta)),
+	}));
+	assert.throws(() => bucketTrace(broken, options), /ProfileChunk of profile 0x1 at ts 200000 has timeDelta 3 = NaN/);
+});
+
+test("a sample naming a node that no chunk defines is an error", () => {
+	assert.throws(
+		() => bucketTrace(traceOf({ samples: [3, 3, 3, 4, 3, 4, 6, 6, 2, 99] }), options),
+		/CPU-profile sample 99 has no stack node/,
+	);
+});
+
+test("a stack node naming a parent that no chunk defines is an error", () => {
+	const orphan = nodes.map((profileNode) => (profileNode.id === 3 ? { ...profileNode, parent: 42 } : profileNode));
+	assert.throws(
+		() => bucketTrace(traceOf({ profileNodes: orphan }), options),
+		/CPU-profile node 3 names parent 42, which no chunk of profile 0x1 defines/,
+	);
 });

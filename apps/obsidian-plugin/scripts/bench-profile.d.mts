@@ -44,13 +44,14 @@ export const SCRIPT_EVENTS: readonly string[];
 /** The public MarkdownRenderer frame name used to recognise its entire sampled stack. */
 export const MARKDOWN_FUNCTION: "renderMarkdown";
 
-/** A V8 CPU-profile frame, with zero-based source positions. */
+/** A V8 CPU-profile frame, with zero-based source positions; V8's own frames, such as (root), have no url or line. */
 export interface ProfileFrame {
 	readonly functionName: string;
-	readonly url: string;
-	readonly scriptId?: string;
-	readonly lineNumber: number;
-	readonly columnNumber: number;
+	readonly url?: string;
+	readonly scriptId?: string | number;
+	readonly codeType?: string;
+	readonly lineNumber?: number;
+	readonly columnNumber?: number;
 }
 
 /** A CPU-profile stack node, linked towards its caller by parent. */
@@ -70,16 +71,21 @@ export interface TraceEvent {
 	readonly dur?: number;
 	readonly cat?: string;
 	readonly id?: string | number;
+	readonly tts?: number;
 	readonly args?: {
 		readonly name?: string;
 		readonly data?: {
 			readonly message?: string;
 			readonly startTime?: number;
+			readonly source?: string;
 			readonly cpuProfile?: {
 				readonly nodes?: readonly ProfileNode[];
 				readonly samples?: readonly number[];
+				readonly trace_ids?: Readonly<Record<string, number>>;
 			};
 			readonly timeDeltas?: readonly number[];
+			readonly lines?: readonly number[];
+			readonly columns?: readonly number[];
 		};
 	};
 }
@@ -120,10 +126,10 @@ export function moduleMap(mainJs: string): { line: number; path: string }[];
 /** Categorises a bundle module, including React and scheduler in the react-dom bucket. */
 export function moduleCategory(path: string): "core" | "react-dom" | "other script";
 /** Recognises the plugin's evaluated bundle URL in a sampled frame. */
-export function isPluginScript(url: string, pluginId: string): boolean;
+export function isPluginScript(url: string | undefined, pluginId: string): boolean;
 /** Finds the unique offset from 0 through 10 aligning sampled function names with the bundle source. */
 export function pluginLineOffset(
-	frames: readonly { readonly functionName: string; readonly lineNumber: number }[],
+	frames: readonly { readonly functionName: string; readonly lineNumber?: number }[],
 	mainJs: string,
 ): number;
 /** Attributes renderer long-task self time and sampled script stacks inside one marked scenario window. */
