@@ -66,6 +66,7 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 	private readonly counterHandlers: Readonly<Record<"todo" | "overdue" | "unplanned", () => void>>;
 	private userOptionValue?: React.ContextType<typeof UserOptionContext>;
 	private entry?: EntryProps;
+	private tags?: { readonly tasks: readonly Task[]; readonly tags: readonly string[] };
 	private rows?: {
 		readonly options: RowOptions;
 		readonly day: string;
@@ -92,7 +93,20 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 		return this.userOptionValue;
 	}
 
-	private entryFor(counts: Counts, taskFiles: readonly string[]): EntryProps {
+	/** Every tag on the tasks, once whatever its case, sorted. */
+	private tagsFor(tasks: readonly Task[]): readonly string[] {
+		if (this.tags?.tasks !== tasks) {
+			const byKey = new Map<string, string>();
+			for (const task of tasks)
+				for (const tag of task.tags) if (!byKey.has(tag.toLowerCase())) byKey.set(tag.toLowerCase(), tag);
+			const tags = [...byKey.values()].sort((a, b) => a.localeCompare(b));
+			// The same tags keep their array, so an edit that changes none re-renders no entry.
+			this.tags = { tasks, tags: this.tags && isEqual(this.tags.tags, tags) ? this.tags.tags : tags };
+		}
+		return this.tags.tags;
+	}
+
+	private entryFor(counts: Counts, taskFiles: readonly string[], tags: readonly string[]): EntryProps {
 		const previous = this.entry;
 		const counters =
 			previous &&
@@ -123,8 +137,8 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 							ariaLabel: "Unplanned Tasks",
 						},
 					];
-		if (!previous || previous.counters !== counters || previous.taskFiles !== taskFiles)
-			this.entry = { counters, taskFiles };
+		if (!previous || previous.counters !== counters || previous.taskFiles !== taskFiles || previous.tags !== tags)
+			this.entry = { counters, taskFiles, tags };
 		return this.entry!;
 	}
 
@@ -262,7 +276,7 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 		const counterFilter = counterClass(this.state.filter, this.props.userOptions.counterBehavior);
 		const todayFocus = this.state.todayFocus ? "todayFocus" : "";
 		const userOptionValue = this.optionsFor(userOptions, now);
-		const entry = this.entryFor(counts, userOptionValue.taskFiles);
+		const entry = this.entryFor(counts, userOptionValue.taskFiles, this.tagsFor(this.props.tasks));
 		const { dateFormat, hideTags, tagPalette, useBuiltinStyle } = userOptionValue;
 		const modelFor = this.modelsFor({ dateFormat, hideTags, tagPalette, useBuiltinStyle }, now);
 		process.env.NODE_ENV !== "production" && recordProvider("TodayFocusEventHandlersContext", this.todayHandlers);

@@ -16,6 +16,8 @@ import { TaskItemView } from "./taskitemview";
 export type EntryProps = {
 	readonly counters: readonly CounterProps[];
 	readonly taskFiles: readonly string[];
+	/** The tags on the tasks, suggested by the tag filter. */
+	readonly tags: readonly string[];
 };
 
 type DateViewProps = {
@@ -61,7 +63,12 @@ export class DateView extends React.Component<DateViewProps> {
 				{entry && <Counters counters={entry.counters} />}
 				{entry && (
 					<QuickEntryHandlerContext.Consumer>
-						{({ quickFilter }) => <QuickEntry applied={quickFilter} taskFiles={entry.taskFiles} />}
+						{({ quickFilter }) => (
+							<>
+								<TagFilter applied={quickFilter} tags={entry.tags} />
+								<QuickEntry applied={quickFilter} taskFiles={entry.taskFiles} />
+							</>
+						)}
 					</QuickEntryHandlerContext.Consumer>
 				)}
 				{day.tasks.length > 0 && (
@@ -104,6 +111,76 @@ class NormalDateContent extends React.Component<NormalDateContentProps> {
 				{this.props.tasks.map((resolved) => (
 					<TaskItemView key={resolved.task.id} model={this.props.modelFor(resolved)} />
 				))}
+			</div>
+		);
+	}
+}
+
+/** The tag typed in the tag filter, with its "#"; none for an empty filter. */
+function tagsOf(text: string): string[] {
+	const tag = text.trim().replace(/^#+/, "");
+	return tag === "" ? [] : ["#" + tag];
+}
+
+type TagFilterProps = { readonly applied?: QuickFilter; readonly tags: readonly string[] };
+type TagFilterState = { readonly text: string; readonly applied?: QuickFilter };
+
+/**
+ * Shows only tasks with the typed tag, suggesting the tags on the tasks. A suggestion or Enter applies it, and emptying
+ * the box clears it. It is shown whether the quick entry panel is or not, and keeps the panel's dates and priorities.
+ */
+class TagFilter extends React.Component<TagFilterProps, TagFilterState> {
+	static contextType = QuickEntryHandlerContext;
+	declare context: React.ContextType<typeof QuickEntryHandlerContext>;
+	private readonly input = React.createRef<HTMLInputElement>();
+	private stopSuggesting?: () => void;
+	state: TagFilterState = { text: this.props.applied?.tags?.join(" ") ?? "", applied: this.props.applied };
+
+	/** A filter applied or cleared elsewhere, such as by adding a task, shows its own tag. */
+	static getDerivedStateFromProps(props: TagFilterProps, state: TagFilterState): TagFilterState | null {
+		if (props.applied === state.applied) return null;
+		return { text: props.applied?.tags?.join(" ") ?? "", applied: props.applied };
+	}
+
+	componentDidMount(): void {
+		if (this.input.current)
+			this.stopSuggesting = this.context.suggestTags?.(
+				this.input.current,
+				() => this.props.tags,
+				(tag) => {
+					this.setState({ text: tag });
+					this.apply(tag);
+				},
+			);
+	}
+
+	componentWillUnmount(): void {
+		this.stopSuggesting?.();
+	}
+
+	private apply(text: string): void {
+		const { applied } = this.props;
+		this.context.handleFilterEnable(applied?.from, applied?.to, [...(applied?.priorities ?? [])], tagsOf(text));
+	}
+
+	render(): React.ReactNode {
+		return (
+			<div className="tagFilterBar">
+				<input
+					ref={this.input}
+					type="search"
+					placeholder="🏷️ Filter by tag: #home"
+					aria-label="Show only tasks with this tag"
+					value={this.state.text}
+					onChange={(e) => {
+						const text = e.target.value;
+						this.setState({ text });
+						if (text.trim() === "") this.apply("");
+					}}
+					onKeyUp={(e) => {
+						if (e.key === "Enter") this.apply(this.state.text);
+					}}
+				/>
 			</div>
 		);
 	}
@@ -359,9 +436,12 @@ class QuickEntry extends React.Component<QuickEntryProps, QuickEntryState> {
 											this.textInput.current?.focus();
 										}
 									} else {
-										callback.handleFilterEnable(this.state.draft.from, this.state.draft.to, [
-											...this.state.draft.priorities,
-										]);
+										callback.handleFilterEnable(
+											this.state.draft.from,
+											this.state.draft.to,
+											[...this.state.draft.priorities],
+											[...(this.props.applied?.tags ?? [])],
+										);
 									}
 								}}
 							>
