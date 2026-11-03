@@ -354,6 +354,41 @@ export class Modal {
 	}
 }
 
+/** Keeps the input it suggests for; a test asks it for suggestions and picks one, as typing and a click would. */
+export abstract class AbstractInputSuggest<T> {
+	/** Not in Obsidian: every suggester made, the last one at the end. */
+	static readonly made: AbstractInputSuggest<unknown>[] = [];
+	isOpen = true;
+
+	constructor(
+		public app: unknown,
+		readonly textInputEl: HTMLInputElement,
+	) {
+		AbstractInputSuggest.made.push(this);
+	}
+
+	setValue(value: string): void {
+		this.textInputEl.value = value;
+	}
+
+	getValue(): string {
+		return this.textInputEl.value;
+	}
+
+	close(): void {
+		this.isOpen = false;
+	}
+
+	/** Not in Obsidian: what the popover would list for the input's text. */
+	suggestions(): T[] | Promise<T[]> {
+		return this.getSuggestions(this.getValue());
+	}
+
+	protected abstract getSuggestions(query: string): T[] | Promise<T[]>;
+	abstract renderSuggestion(value: T, el: HTMLElement): void;
+	abstract selectSuggestion(value: T, evt?: MouseEvent | KeyboardEvent): void;
+}
+
 /** Not in Obsidian: the element of a setting row. It keeps its Setting, so a test reads the rows in the order they show. */
 export class SettingItemElement extends FakeElement {
 	constructor(readonly setting: Setting) {

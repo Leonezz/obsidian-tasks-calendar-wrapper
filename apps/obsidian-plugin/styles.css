@@ -365,6 +365,15 @@
 	color: var(--taskido-color-overdue);
 }
 
+/* Tag Filter, shown with or without the quick entry panel */
+.taskido .tagFilterBar {
+	margin: 0 5px 10px 5px;
+}
+
+.taskido .tagFilterBar input {
+	width: 100%;
+}
+
 /* Quick Entry Panel */
 .taskido .quickEntryPanel {
 	display: flex;
