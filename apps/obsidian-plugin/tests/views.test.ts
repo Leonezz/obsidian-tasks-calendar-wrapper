@@ -128,7 +128,7 @@ test("an equal push on a new day reloads", async (t) => {
 	assert.equal(reload.mock.callCount(), 1);
 });
 
-test("a reload on the new day counts for the next equal push", async (t) => {
+test("a reload that no push started does not stand in for the new day's equal push", async (t) => {
 	t.after(() => {
 		moment.now = () => GOLDEN_NOW;
 	});
@@ -138,7 +138,7 @@ test("a reload on the new day counts for the next equal push", async (t) => {
 	await view.onReloadTasks();
 	const reload = t.mock.method(view, "onReloadTasks");
 	await view.onUpdateOptions(structuredClone(store.getSnapshot().options));
-	assert.equal(reload.mock.callCount(), 0);
+	assert.equal(reload.mock.callCount(), 1);
 });
 
 test("every reload hands the bridge new frozen tasks, also when nothing changed, and the options frozen", async () => {
@@ -383,6 +383,48 @@ test("an equal push after a failed reload reloads", async (t) => {
 	const reload = t.mock.method(view, "onReloadTasks");
 	await view.onUpdateOptions(structuredClone(store.getSnapshot().options));
 	assert.equal(reload.mock.callCount(), 1);
+	assert.deepEqual(ids(store.getSnapshot().tasks), ["A.md:0"]);
+});
+
+test("an equal push during a reload that fails retries once it has failed", async (t) => {
+	const app = notesApp({ "A.md": "- [ ] alpha 📅 2026-03-20" });
+	let release = () => {};
+	let failing = true;
+	const { view, store } = openView(app);
+	const held = view as unknown as { reader: { update: (...args: unknown[]) => Promise<unknown> } };
+	const { reader } = held;
+	held.reader = {
+		...reader,
+		update: (...args) => {
+			if (!failing) return reader.update(...args);
+			failing = false;
+			return new Promise((_, reject) => {
+				release = () => reject(new Error("the vault is not ready"));
+			});
+		},
+	};
+	t.mock.method(console, "error", () => {});
+	const first = view.onUpdateOptions({ ...defaultUserOptions });
+	await view.onUpdateOptions({ ...defaultUserOptions });
+	release();
+	await first;
+	assert.deepEqual(ids(store.getSnapshot().tasks), ["A.md:0"]);
+});
+
+test("an equal push after a reload with an unreadable note reloads", async (t) => {
+	const app = notesApp({ "A.md": "- [ ] alpha 📅 2026-03-20" });
+	const cachedRead = app.vault.cachedRead;
+	let fail = true;
+	app.vault.cachedRead = async (file) => {
+		if (!fail) return cachedRead(file);
+		fail = false;
+		throw new Error("the disk was busy");
+	};
+	t.mock.method(console, "error", () => {});
+	const { view, store } = openView(app);
+	await view.onUpdateOptions({ ...defaultUserOptions });
+	assert.deepEqual(store.getSnapshot().tasks, []);
+	await view.onUpdateOptions(structuredClone(store.getSnapshot().options));
 	assert.deepEqual(ids(store.getSnapshot().tasks), ["A.md:0"]);
 });
 

@@ -91,8 +91,10 @@ export class TasksTimelineView extends ItemView {
 	private readonly reporter = createReadReporter();
 
 	private isReloading = false;
-	/** The day the last reload started, cleared on failure. */
-	private lastReloadDay: DayKey | undefined;
+	/** The day a push last reloaded, until a reload fails or misses a note; equal pushes on that day do nothing. */
+	private pushedDay: DayKey | undefined;
+	/** An equal push did nothing while a reload was running, so it counts again if that reload fails. */
+	private pushSkippedInReload = false;
 	/** A reload was asked for while one was running, so the list is loaded again when it is done. */
 	private reloadAgain = false;
 	/** Quick entries indexed in the same tick reload once, see reloadWhenIndexed. */
@@ -270,11 +272,16 @@ export class TasksTimelineView extends ItemView {
 		this.requestReload();
 	}
 
-	/** Applies the options and reloads, unless equal options have already had a reload start today. */
+	/** Applies the options and reloads, unless equal options have already been pushed today. */
 	onUpdateOptions(opt: UserOption): Promise<void> {
 		const before = this.store.getSnapshot();
 		const next = withOptions(before, opt);
-		if (next === before && dayKey(moment()) === this.lastReloadDay) return Promise.resolve();
+		const day = dayKey(moment());
+		if (next === before && day === this.pushedDay) {
+			this.pushSkippedInReload = this.isReloading;
+			return Promise.resolve();
+		}
+		this.pushedDay = day;
 		// On a new day, a fresh options reference updates today's dates even when the list shown stays the same.
 		this.store.setState(next === before ? { ...before, options: deepFreeze(copyJsonValue(opt)) } : next);
 		return this.onReloadTasks();
@@ -327,7 +334,6 @@ export class TasksTimelineView extends ItemView {
 			return Promise.resolve();
 		}
 		this.isReloading = true;
-		this.lastReloadDay = dayKey(moment());
 		const { options } = this.store.getSnapshot();
 		const releaseSeq = this.writer.releaseSeq();
 		const refreshTasks = this.refreshTasks;
@@ -336,6 +342,7 @@ export class TasksTimelineView extends ItemView {
 			.update(options)
 			.then(({ tasks, warned, failures, pinned }) => {
 				this.reporter.report({ warned, failures });
+				if (failures.length > 0) this.countPushesAgain();
 				this.filesWithTasks = new Set(tasks.map((task) => task.path));
 				const { env, parseKey } = this.resolveEnv(moment());
 				const resolved = resolveTasks(tasks, options, env);
@@ -365,19 +372,25 @@ export class TasksTimelineView extends ItemView {
 					flushSync(() => this.clearReloadsThrough(reloadId));
 			})
 			.catch((reason) => {
-				this.lastReloadDay = undefined;
+				this.countPushesAgain();
 				this.refreshTasks ||= refreshTasks;
 				new Notice("Error when generating tasks from files: " + reason, 5000);
 				console.error("Tasks Calendar Wrapper: reloading tasks failed", reason);
 			})
 			.finally(() => {
 				this.isReloading = false;
+				this.pushSkippedInReload = false;
 				if (this.reloadAgain) {
 					this.reloadAgain = false;
 					return this.onReloadTasks();
 				}
 				if (this.closed) this.reader.close();
 			});
+	}
+
+	private countPushesAgain(): void {
+		this.pushedDay = undefined;
+		if (this.pushSkippedInReload) this.reloadAgain = true;
 	}
 
 	getViewType(): string {
