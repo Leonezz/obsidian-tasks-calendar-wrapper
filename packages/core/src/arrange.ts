@@ -52,6 +52,8 @@ export interface QuickFilter {
 	readonly to?: DayKey;
 	/** Priority labels, compared as written. */
 	readonly priorities: readonly string[];
+	/** Tags with their "#"; a task with any of them is kept, compared ignoring case as Obsidian does. */
+	readonly tags?: readonly string[];
 }
 
 /** What the view shows: the settings and the state of the view's controls. */
@@ -184,6 +186,10 @@ function quickFiltered(shown: readonly ResolvedTask[], quick: QuickFilter | unde
 				: [];
 	}
 	if (quick.priorities.length !== 0) tasks = tasks.filter((r) => quick.priorities.includes(r.task.priority));
+	if (quick.tags?.length) {
+		const wanted = quick.tags.map((tag) => tag.toLowerCase());
+		tasks = tasks.filter((r) => r.task.tags.some((tag) => wanted.includes(tag.toLowerCase())));
+	}
 	return tasks;
 }
 

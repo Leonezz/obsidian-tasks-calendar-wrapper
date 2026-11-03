@@ -122,4 +122,6 @@ export class TaskRegularExpressions {
 	// matches: #dog, #car, #house
 	public static readonly hashTags = /(^|\s)#[^ !@#$%^&*(),.?":{}|<>]*/g;
 	public static readonly hashTagsFromEnd = new RegExp(this.hashTags.source + "$");
+	/** Links, whose text is no tag: [[note#heading|alias]], [text](url), <url> and bare URLs. */
+	public static readonly linkRegex = /\[\[[^\]]*\]\]|\[[^\]]*\]\([^)]*\)|<[^>\s]*>|\b[a-z][a-z0-9+.-]*:\/\/\S+/gi;
 }

@@ -488,6 +488,17 @@ test("hashtags are taken out after the inline fields, so a hashtag inside a fiel
 	assert.deepEqual(parsed.tags, []);
 });
 
+test("a hashtag inside a link stays in the text and is no tag", () => {
+	const line =
+		"- [ ] review [Fix it · Pull Request #42 · a/b](https://github.com/a/b/pull/42) and [[Note|see #x]] #work";
+	const parsed = task(line);
+	assert.equal(
+		parsed.visual,
+		"review [Fix it · Pull Request #42 · a/b](https://github.com/a/b/pull/42) and [[Note|see #x]]",
+	);
+	assert.deepEqual(parsed.tags, ["#work"]);
+});
+
 test("taking out a leading hashtag leaves the space after it", () => {
 	const parsed = task("- [ ] #work call Bob");
 	assert.equal(parsed.visual, " call Bob");
