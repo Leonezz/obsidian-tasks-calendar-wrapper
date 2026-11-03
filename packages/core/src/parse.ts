@@ -410,16 +410,24 @@ function readInlineFields(
 	};
 }
 
-/** Takes the hashtags out of the text and adds them to the tags; duplicates are kept. */
+/** Takes the hashtags out of the text, but those inside links, and adds them to the tags; duplicates are kept. */
 function takeHashtags(
 	visual: string,
 	tags: readonly string[],
 ): { readonly visual: string; readonly tags: readonly string[] } {
-	const found = visual.match(TaskRegularExpressions.hashTags);
-	if (!found) return { visual, tags: Object.freeze([...tags]) };
-	let rest = visual;
-	for (const tag of found) rest = rest.replace(tag, "");
-	return { visual: rest, tags: Object.freeze([...tags, ...found.map((tag) => tag.trim())]) };
+	const links = [...visual.matchAll(TaskRegularExpressions.linkRegex)].map((m) => [m.index, m.index + m[0].length]);
+	const found = [...visual.matchAll(TaskRegularExpressions.hashTags)].filter(
+		(m) => !links.some(([start, end]) => m.index >= start && m.index < end),
+	);
+	if (found.length === 0) return { visual, tags: Object.freeze([...tags]) };
+	let rest = "";
+	let at = 0;
+	for (const m of found) {
+		rest += visual.slice(at, m.index);
+		at = m.index + m[0].length;
+	}
+	rest += visual.slice(at);
+	return { visual: rest, tags: Object.freeze([...tags, ...found.map((m) => m[0].trim())]) };
 }
 
 /** Removes the first ⏰ reminder from the task's text. */
