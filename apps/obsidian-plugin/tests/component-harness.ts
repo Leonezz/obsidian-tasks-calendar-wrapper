@@ -12,6 +12,8 @@ import { StatusMarker as StripWithIcon } from "@tasks-calendar-wrapper/ui/src/ro
 import { TagBadge, FileBadge, DateStatusBadge, ModifyBadge } from "@tasks-calendar-wrapper/ui/src/row/Badges";
 import { YearHeader } from "@tasks-calendar-wrapper/ui/src/timeline/YearHeader";
 import { DayHeader } from "@tasks-calendar-wrapper/ui/src/timeline/DayHeader";
+import { Year } from "@tasks-calendar-wrapper/ui/src/timeline/Year";
+import { DayContent } from "@tasks-calendar-wrapper/ui/src/timeline/DayContent";
 import { Counters, CounterItem } from "@tasks-calendar-wrapper/ui/src/entry/Counters";
 import { QuickEntry } from "@tasks-calendar-wrapper/ui/src/entry/QuickEntry";
 import { MultiSelect } from "@tasks-calendar-wrapper/ui/src/entry/MultiSelect";
@@ -330,6 +332,8 @@ const componentNames = [
 	"ModifyBadge",
 ] as const;
 const uiComponents = {
+	YearView: Year,
+	NormalDateContent: DayContent,
 	QuickEntry,
 	MultiSelect,
 	YearHeader,

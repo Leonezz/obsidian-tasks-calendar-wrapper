@@ -23,8 +23,8 @@ import {
 import { TodayFocusEventHandlersContext } from "@tasks-calendar-wrapper/ui/src/contexts";
 import { RowWriteContext, UserOptionContext } from "./context";
 import { createPendingWrites, type PendingWrites } from "../pendingwrites";
-import { YearView } from "./yearview";
-import type { EntryProps } from "./dateview";
+import { Year } from "@tasks-calendar-wrapper/ui/src/timeline/Year";
+import type { EntryProps } from "@tasks-calendar-wrapper/ui/src/timeline/Day";
 import { recordProvider } from "@tasks-calendar-wrapper/ui/src/renderprobe";
 
 interface TimelineProps {
@@ -292,7 +292,7 @@ export class TimelineView extends React.Component<TimelineProps, TimelineStates>
 									// Keyed by place, then by year, as before: a year added in front of the entry's year makes
 									// React build the entry day, and with it the quick entry panel, again.
 									<React.Fragment key={i}>
-										<YearView year={year} entry={entry} modelFor={modelFor} key={year.year} />
+										<Year year={year} entry={entry} modelFor={modelFor} key={year.year} />
 									</React.Fragment>
 								))}
 							</span>
