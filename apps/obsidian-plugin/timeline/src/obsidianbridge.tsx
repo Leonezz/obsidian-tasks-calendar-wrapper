@@ -41,7 +41,7 @@ import type { PendingWrites } from "./pendingwrites";
 import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "./components/context";
 import { recordProvider } from "@tasks-calendar-wrapper/ui/src/renderprobe";
 import { TagSuggest } from "./tagsuggest";
-import { TimelineView } from "./components/timelineview";
+import { Timeline } from "@tasks-calendar-wrapper/ui/src/timeline/Timeline";
 
 const defaultObsidianBridgeProps = {
 	plugin: {} as ItemView,
@@ -378,7 +378,7 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 			<HostContext.Provider value={this.props.host}>
 				<QuickEntryHandlerContext.Provider value={quickEntryHandlers}>
 					<TaskItemEventHandlersContext.Provider value={this.getTaskItemHandlers()}>
-						<TimelineView
+						<Timeline
 							userOptions={userOptions}
 							tasks={tasks}
 							pendingWrites={this.props.pendingWrites}
