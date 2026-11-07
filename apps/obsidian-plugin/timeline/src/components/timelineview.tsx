@@ -25,7 +25,7 @@ import { RowWriteContext, UserOptionContext } from "./context";
 import { createPendingWrites, type PendingWrites } from "../pendingwrites";
 import { YearView } from "./yearview";
 import type { EntryProps } from "./dateview";
-import { recordProvider } from "./renderprobe";
+import { recordProvider } from "@tasks-calendar-wrapper/ui/src/renderprobe";
 
 interface TimelineProps {
 	readonly userOptions: UserOption;
