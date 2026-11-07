@@ -1,5 +1,6 @@
-import { App, CachedMetadata, debounce, ItemView, Notice, WorkspaceLeaf } from "obsidian";
+import { App, CachedMetadata, debounce, ItemView, WorkspaceLeaf } from "obsidian";
 import {
+	copy,
 	copyJsonValue,
 	createStore,
 	dayKey,
@@ -16,7 +17,8 @@ import { watchChanges, type TaskIndexReader } from "../timeline/src/taskindex";
 import { createShiftLedger, type TaskWriter, type WriteEvent, type WriteResult } from "../timeline/src/taskwriter";
 import { createPendingWrites } from "../timeline/src/pendingwrites";
 import { createUndoNotices } from "../timeline/src/undonotices";
-import type { NoticePresenter } from "../timeline/src/notices";
+import { reportNotice, type NoticePresenter } from "../timeline/src/notices";
+import { ERROR_NOTICE_MS } from "../timeline/src/writerconstants";
 import { flushSync } from "react-dom";
 import { createRoot, Root } from "react-dom/client";
 import { moment } from "../utils/moment";
@@ -379,7 +381,7 @@ export class TasksTimelineView extends ItemView {
 			.catch((reason) => {
 				this.countPushesAgain();
 				this.refreshTasks ||= refreshTasks;
-				new Notice("Error when generating tasks from files: " + reason, 5000);
+				reportNotice(copy.notices.reloadFailure({ reason }), ERROR_NOTICE_MS);
 				console.error("Tasks Calendar Wrapper: reloading tasks failed", reason);
 			})
 			.finally(() => {
@@ -403,7 +405,7 @@ export class TasksTimelineView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "Tasks Timeline";
+		return copy.timeline.displayText;
 	}
 
 	getIcon(): string {

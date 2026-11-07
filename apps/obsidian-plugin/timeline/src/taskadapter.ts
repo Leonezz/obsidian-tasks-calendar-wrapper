@@ -1,6 +1,8 @@
-import { App, Notice, TFile } from "obsidian";
-import { hasTaskItems, noteVisible, parseNote } from "@tasks-calendar-wrapper/core";
+import { App, TFile } from "obsidian";
+import { copy, hasTaskItems, noteVisible, parseNote } from "@tasks-calendar-wrapper/core";
 import type { MomentFactory, NoteFilterSettings, ParseWarning, Task } from "@tasks-calendar-wrapper/core";
+import { reportNotice } from "./notices";
+import { ERROR_NOTICE_MS } from "./writerconstants";
 
 /** A note that could not be read or parsed. Only `reason` is logged; `path` is for the index's callers and tests. */
 export interface NoteReadFailure {
@@ -16,10 +18,7 @@ export const warningLine = (warning: ParseWarning): string =>
 export function tellFailures(failures: readonly NoteReadFailure[], notice: boolean): void {
 	failures.forEach((failure) => console.error("Tasks Calendar Wrapper: reading a file failed", failure.reason));
 	if (!notice || failures.length === 0) return;
-	new Notice(
-		`Tasks Calendar Wrapper: ${failures.length} file(s) could not be read, their tasks are missing. See the developer console.`,
-		5000,
-	);
+	reportNotice(copy.notices.readFailures({ count: failures.length }), ERROR_NOTICE_MS);
 }
 
 /**

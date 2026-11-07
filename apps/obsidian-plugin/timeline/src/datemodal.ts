@@ -1,5 +1,6 @@
 import { App, ButtonComponent, Modal } from "obsidian";
 import {
+	copy,
 	dayKey,
 	isRealDay,
 	type DateField,
@@ -37,7 +38,7 @@ export class DateModal extends Modal {
 	}
 
 	onOpen(): void {
-		this.setTitle(`Pick ${this.field} date`);
+		this.setTitle(copy.modals.pickDate({ field: this.field }));
 		const own = ownDate(this.sourceLine, this.field, this.dateMoment);
 		const input = this.contentEl.createEl("input", { attr: { type: "date" } });
 		this.input = input;
@@ -50,13 +51,13 @@ export class DateModal extends Modal {
 		};
 		const buttons = this.contentEl.createDiv({ cls: "modal-button-container" });
 		if (own) {
-			new ButtonComponent(buttons).setButtonText("Clear").onClick(() => {
+			new ButtonComponent(buttons).setButtonText(copy.modals.clear).onClick(() => {
 				this.selected = Object.freeze({ kind: "clear" });
 				this.close();
 			});
 		}
 		const saveButton = new ButtonComponent(buttons)
-			.setButtonText("Save")
+			.setButtonText(copy.modals.save)
 			.setCta()
 			.setDisabled(!valid())
 			.onClick(save);

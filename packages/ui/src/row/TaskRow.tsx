@@ -1,5 +1,5 @@
 import * as React from "react";
-import { sameRowModel, type BadgeKind, type TaskRowModel } from "@tasks-calendar-wrapper/core";
+import { copy, sameRowModel, type BadgeKind, type TaskRowModel } from "@tasks-calendar-wrapper/core";
 import { Content } from "./Content";
 import * as Icons from "../icons";
 import { TaskItemEventHandlersContext, useHost, type RowOverlay } from "../contexts";
@@ -98,8 +98,8 @@ export const TaskRow = React.memo(function TaskRow(props: TaskRowProps) {
 				<div className="line info">
 					{callbacks.handleModifyTask && <ModifyBadge onClick={onModifyTask}></ModifyBadge>}
 					{callbacks.handleRowMenu && host.isMobile && (
-						<a className="menu" aria-label="Task menu" onClick={onRowMenu}>
-							⋯
+						<a className="menu" aria-label={copy.row.menuAria} onClick={onRowMenu}>
+							{copy.row.menuGlyph}
 						</a>
 					)}
 					{model.badges.map(({ kind, ariaLabel, label }) => (

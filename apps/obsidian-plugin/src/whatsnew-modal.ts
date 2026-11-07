@@ -1,5 +1,5 @@
 import { App, ButtonComponent, Modal } from "obsidian";
-import type { ReleaseNote } from "@tasks-calendar-wrapper/core";
+import { copy, type ReleaseNote } from "@tasks-calendar-wrapper/core";
 import { REPOSITORY_URL, SupportLink } from "../utils/whatsnew";
 
 /** Lists what changed in the versions since the user last looked, with links to support the plugin. */
@@ -14,29 +14,29 @@ export class WhatsNewModal extends Modal {
 
 	onOpen(): void {
 		const { contentEl } = this;
-		this.titleEl.setText("What's new in Tasks Calendar Wrapper");
+		this.titleEl.setText(copy.modals.whatsNewTitle);
 		contentEl.addClass("tasks-calendar-wrapper-whats-new");
 
 		for (const note of this.notes) {
-			contentEl.createEl("h4", { text: `Version ${note.version}` });
+			contentEl.createEl("h4", { text: copy.modals.version({ version: note.version }) });
 			const list = contentEl.createEl("ul");
 			note.items.forEach((item) => list.createEl("li", { text: item }));
 		}
 
 		contentEl.createEl("p", {
-			text: "If you find this plugin useful, a star on GitHub or your support for its development helps a lot.",
+			text: copy.modals.support,
 			cls: "tasks-calendar-wrapper-support-text",
 		});
 
 		const links = contentEl.createDiv({ cls: "tasks-calendar-wrapper-support-links" });
-		new ButtonComponent(links).setButtonText("⭐ Star on GitHub").onClick(() => window.open(REPOSITORY_URL));
+		new ButtonComponent(links).setButtonText(copy.modals.starOnGitHub).onClick(() => window.open(REPOSITORY_URL));
 		for (const link of this.links) {
 			new ButtonComponent(links).setButtonText(link.label).onClick(() => window.open(link.url));
 		}
 
 		const buttons = contentEl.createDiv({ cls: "modal-button-container" });
 		new ButtonComponent(buttons)
-			.setButtonText("Thanks!")
+			.setButtonText(copy.modals.thanks)
 			.setCta()
 			.onClick(() => this.close());
 	}

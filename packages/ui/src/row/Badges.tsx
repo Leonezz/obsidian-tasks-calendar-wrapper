@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { getFileTitle } from "@tasks-calendar-wrapper/core";
+import { copy, getFileTitle } from "@tasks-calendar-wrapper/core";
 import * as Icons from "../icons";
 
 export type TagBadgeProps = {
@@ -89,8 +89,8 @@ export type ModifyBadgeProps = {
 
 export function ModifyBadge(props: ModifyBadgeProps) {
 	return (
-		<a className="modify" aria-label="Modify Task" onClick={props.onClick}>
-			✏️
+		<a className="modify" aria-label={copy.row.modifyAria} onClick={props.onClick}>
+			{copy.row.modifyGlyph}
 		</a>
 	);
 }

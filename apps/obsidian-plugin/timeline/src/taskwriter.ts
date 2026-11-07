@@ -8,6 +8,7 @@ import {
 	type Workspace,
 } from "obsidian";
 import {
+	copy,
 	checkEncoding,
 	decodeUtf8Strict,
 	deepFreeze,
@@ -222,7 +223,7 @@ export function createShiftLedger(): ShiftLedger {
 }
 
 const origin = "tasks-calendar-wrapper";
-const timeoutMessage = "File system operation timed out.";
+const timeoutMessage = copy.notices.fileSystemTimeout;
 
 class Refusal extends Error {
 	constructor(
@@ -449,13 +450,13 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 		const deadline = new Promise<never>((_, reject) => {
 			abort = () => {
 				abandoned = true;
-				reject(new Error(disposed ? "The plugin unloaded." : timeoutMessage));
+				reject(new Error(disposed ? copy.notices.pluginUnloaded : timeoutMessage));
 			};
 			timer = deps.setTimeout(abort, 60000);
 			aborts.add(abort);
 		});
 		function active(): void {
-			if (abandoned || disposed) throw new Error("The write was abandoned.");
+			if (abandoned || disposed) throw new Error(copy.notices.writeAbandoned);
 			if (record.invalidated) throw new Refusal("moved-or-deleted");
 		}
 		async function bytes(): Promise<string> {
@@ -685,7 +686,7 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 	function enqueue(target: () => LineTarget, edit: TaskEdit | InsertEdit): Promise<WriteResult> {
 		if (disposed)
 			return Promise.resolve(
-				Object.freeze({ kind: "failed", unknownOutcome: false, error: new Error("The plugin unloaded.") }),
+				Object.freeze({ kind: "failed", unknownOutcome: false, error: new Error(copy.notices.pluginUnloaded) }),
 			);
 		const path = target().path;
 		const request: TaskEdit | InsertEdit =
@@ -699,12 +700,12 @@ export function createTaskWriter(deps: TaskWriterDeps): TaskWriter {
 		const next = previous.then(async () => {
 			await watch.ready(path);
 			const latest = target();
-			if (latest.path !== path) throw new Error("A queued task target changed notes.");
+			if (latest.path !== path) throw new Error(copy.notices.queuedTargetChanged);
 			if (disposed)
 				return Object.freeze({
 					kind: "failed" as const,
 					unknownOutcome: false,
-					error: new Error("The plugin unloaded."),
+					error: new Error(copy.notices.pluginUnloaded),
 				});
 			try {
 				return await run(latest, request, undoRequest?.record);

@@ -4,6 +4,7 @@
  * renders only from this, so two rows with the same data look the same, and a row whose data did not change can skip
  * rendering. Every save gives new task objects, so comparing the tasks themselves would never match, see #63.
  */
+import { copy } from "./copy";
 import { relativeDate, type DateValue, type MomentFactory } from "./dates";
 import { getFileTitle } from "./paths";
 import type { ResolvedTask } from "./resolve";
@@ -110,20 +111,20 @@ export function taskRowModel(resolved: ResolvedTask, options: RowOptions, env: R
 			: [];
 	const recurrence = task.recurrence ? task.recurrence.replace(recurrenceSymbol, "") : undefined;
 	const badges: Badge[] = [
-		...dateBadge("created", "create at ", dates.created),
-		...dateBadge("start", "start at ", dates.start),
-		...dateBadge("scheduled", "scheduled to ", dates.scheduled),
-		...dateBadge("due", "due at ", dates.due),
-		...dateBadge("done", "complete at ", dates.completion),
+		...dateBadge("created", copy.row.createdPrefix, dates.created),
+		...dateBadge("start", copy.row.startPrefix, dates.start),
+		...dateBadge("scheduled", copy.row.scheduledPrefix, dates.scheduled),
+		...dateBadge("due", copy.row.duePrefix, dates.due),
+		...dateBadge("done", copy.row.donePrefix, dates.completion),
 		...(recurrence !== undefined
-			? [{ kind: "repeat" as const, ariaLabel: "recurrent: " + recurrence, label: recurrence }]
+			? [{ kind: "repeat" as const, ariaLabel: copy.row.recurrencePrefix + recurrence, label: recurrence }]
 			: []),
 		...(task.priority
 			? [
 					{
 						kind: "priority" as const,
-						ariaLabel: "priority: " + task.priority,
-						label: task.priority + " Priority",
+						ariaLabel: copy.row.priorityPrefix + task.priority,
+						label: task.priority + copy.row.prioritySuffix,
 					},
 				]
 			: []),

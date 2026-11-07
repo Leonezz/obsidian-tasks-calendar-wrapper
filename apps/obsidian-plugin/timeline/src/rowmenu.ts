@@ -1,5 +1,6 @@
 import type { Menu as ObsidianMenu } from "obsidian";
 import {
+	copy,
 	dayKey,
 	dayKeyAfter,
 	parseTaskLine,
@@ -37,17 +38,21 @@ export function rowMenuItems(
 	if (!options.changesInPlace) return Object.freeze([]);
 	const { moment } = options;
 	const items: RowMenuItem[] = [
-		{ title: "Due today", section: "due", action: { kind: "set", field: "due", day: () => dayKey(moment()) } },
 		{
-			title: "Due tomorrow",
+			title: copy.menus.dueToday,
+			section: "due",
+			action: { kind: "set", field: "due", day: () => dayKey(moment()) },
+		},
+		{
+			title: copy.menus.dueTomorrow,
 			section: "due",
 			action: { kind: "set", field: "due", day: () => dayKeyAfter(moment(), 1, "day") },
 		},
 	];
 	for (const field of ["due", "scheduled", "start"] as const) {
-		items.push({ title: `Pick ${field} date…`, section: field, action: { kind: "pick", field } });
+		items.push({ title: copy.menus.pickDate({ field }), section: field, action: { kind: "pick", field } });
 		if (ownDate(sourceLine, field, moment))
-			items.push({ title: `Remove ${field} date`, section: field, action: { kind: "remove", field } });
+			items.push({ title: copy.menus.removeDate({ field }), section: field, action: { kind: "remove", field } });
 	}
 	return Object.freeze(items.map((item) => Object.freeze({ ...item, action: Object.freeze(item.action) })));
 }

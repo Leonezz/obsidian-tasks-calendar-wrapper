@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { QuickFilter } from "@tasks-calendar-wrapper/core";
+import { copy, type QuickFilter } from "@tasks-calendar-wrapper/core";
 import { QuickEntryHandlerContext } from "../contexts";
 
 /** The static markup tests render rows without a DOM, where React warns about layout effects. */
@@ -53,8 +53,8 @@ export function TagFilter({ applied, tags }: TagFilterProps) {
 			<input
 				ref={input}
 				type="search"
-				placeholder="🏷️ Filter by tag: #home"
-				aria-label="Show only tasks with this tag"
+				placeholder={copy.quickEntry.tagPlaceholder}
+				aria-label={copy.quickEntry.tagAria}
 				value={effectiveText}
 				onChange={(e) => {
 					const text = e.target.value;

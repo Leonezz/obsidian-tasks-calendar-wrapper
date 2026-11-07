@@ -1,5 +1,6 @@
-import { ItemView, Menu, Notice, normalizePath, Pos, type UserEvent } from "obsidian";
+import { ItemView, Menu, normalizePath, Pos, type UserEvent } from "obsidian";
 import {
+	copy,
 	createStore,
 	dayKey,
 	normalizeNotePath,
@@ -30,9 +31,10 @@ import { DateModal, type DateAnswer } from "./datemodal";
 import { rowMenuItems, showRowMenu } from "./rowmenu";
 import { changesInPlace } from "./taskactions";
 import { canEditInTasksDialog } from "./tasksplugin";
-import { writeFailureText } from "./notices";
+import { reportNotice, writeFailureText } from "./notices";
 import {
 	createShiftLedger,
+	ERROR_NOTICE_MS,
 	REFUSAL_NOTICE_MS,
 	type ShiftLedger,
 	type TaskWriter,
@@ -192,16 +194,16 @@ export function createBridgeActions(
 				return added;
 			} catch (reason) {
 				console.error("Tasks Calendar Wrapper: adding a task failed", reason);
-				new Notice(writeFailureText({ path: notePath, line: 0, text: append }, reason), REFUSAL_NOTICE_MS);
+				reportNotice(writeFailureText({ path: notePath, line: 0, text: append }, reason), REFUSAL_NOTICE_MS);
 				return false;
 			}
 		},
 
 		confirmCreateNote(path: string): Promise<boolean> {
 			return new ConfirmModal(app, {
-				title: "Create note",
-				message: "No such file: " + path + ". Would you like to create it?",
-				confirmText: "Create",
+				title: copy.modals.createNote,
+				message: copy.modals.createNoteMessage({ path }),
+				confirmText: copy.modals.create,
 			}).ask();
 		},
 
@@ -213,9 +215,12 @@ export function createBridgeActions(
 		handleOpenFile(path: string, position: Pos, evt?: UserEvent) {
 			openNoteAt(app, path, position.start.line, evt).catch((reason) => {
 				console.error("Tasks Calendar Wrapper: opening a note failed", reason);
-				new Notice(
-					"Could not open " + path + ": " + (reason instanceof Error ? reason.message : String(reason)),
-					5000,
+				reportNotice(
+					copy.notices.openFailure({
+						path,
+						reason: reason instanceof Error ? reason.message : String(reason),
+					}),
+					ERROR_NOTICE_MS,
 				);
 			});
 		},

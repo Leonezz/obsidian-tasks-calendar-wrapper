@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+	copy,
 	counterClass,
 	createQuery,
 	dayKey,
@@ -157,23 +158,23 @@ function entryFor(
 					{
 						onClick: memo.counterHandlers.todo,
 						cnt: counts.todo,
-						label: "Todo",
+						label: copy.counters.todo,
 						id: "todo",
-						ariaLabel: "Todo Tasks",
+						ariaLabel: copy.counters.todoAria,
 					},
 					{
 						onClick: memo.counterHandlers.overdue,
 						cnt: counts.overdue,
 						id: "overdue",
-						label: "Overdue",
-						ariaLabel: "Overdue Tasks",
+						label: copy.counters.overdue,
+						ariaLabel: copy.counters.overdueAria,
 					},
 					{
 						onClick: memo.counterHandlers.unplanned,
 						cnt: counts.unplanned,
 						id: "unplanned",
-						label: "Unplanned",
-						ariaLabel: "Unplanned Tasks",
+						label: copy.counters.unplanned,
+						ariaLabel: copy.counters.unplannedAria,
 					},
 				];
 	if (!previous || previous.counters !== counters || previous.taskFiles !== taskFiles || previous.tags !== tags)

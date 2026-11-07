@@ -1,4 +1,5 @@
 import { App, ButtonComponent, Modal, Notice, Platform } from "obsidian";
+import { copy } from "@tasks-calendar-wrapper/core";
 import { openNoteAt } from "../../src/open-note";
 import { REFUSAL_NOTICE_MS, SLOW_NOTICE_MS, UNDO_DONE_NOTICE_MS, UNDO_NOTICE_MS } from "./writerconstants";
 
@@ -59,92 +60,96 @@ export function refusalText(reason: RefuseReason, context: NoticeContext, touch 
 	switch (reason) {
 		case "impossible-date":
 			return (
-				`“${text}” has a ${context.field} date that does not exist (${context.value}). Nothing was written.` +
+				copy.notices.impossibleDate({ text, field: context.field, value: context.value }) +
 				(context.menuFixable
-					? ` Change it with ${touch ? "⋯" : "right-click"} → Pick ${context.field} date….`
-					: " Fix it in the note.")
+					? copy.notices.changeDateWithMenu({
+							gesture: touch ? copy.notices.touchMenu : copy.notices.rightClick,
+							field: context.field,
+						})
+					: copy.notices.fixInNote)
 			);
 		case "unreadable-date": {
 			const message =
 				context.action === "toggle" || context.action === undefined
-					? `Tasks returned a date the timeline cannot read back (“${context.token}”) for “${text}”. Nothing was written.`
-					: `“${text}” would get a date the timeline cannot read back (“${context.token}”). Nothing was written.`;
-			return (
-				message +
-				(context.localDigits ? ` Tasks wrote it in the digits of Obsidian's language (${context.locale}).` : "")
-			);
+					? copy.notices.unreadableReturnedDate({ token: context.token, text })
+					: copy.notices.unreadableChangedDate({ text, token: context.token });
+			return message + (context.localDigits ? copy.notices.localDigits({ locale: context.locale }) : "");
 		}
 		case "recurrence-lost":
-			return `Tasks could not read the recurrence rule in “${text}” and would drop it. Nothing was written. Fix the rule in the note, then try again.`;
+			return copy.notices.recurrenceLost({ text });
 		case "recurring-needs-tasks":
-			return "Recurring tasks need the Tasks plugin. Nothing was written.";
+			return copy.notices.recurringNeedsTasks;
 		case "not-task-line":
-			return `The timeline can't change “${text}” safely because it isn't a plain task line. Open the note to change it.`;
+			return copy.notices.notTaskLine({ text });
 		case "ambiguous":
-			return `“${text}” appears more than once near here in ${note}, and the timeline can't tell which one you clicked. Nothing was written.`;
+			return copy.notices.ambiguous({ text, note });
 		case "moved-or-deleted":
-			return `${context.action === "undo" ? "Could not undo: " : ""}${note} was moved or deleted. Nothing was written.`;
+			return copy.notices.movedOrDeleted({
+				prefix: context.action === "undo" ? copy.notices.couldNotUndo : "",
+				note,
+			});
 		case "not-utf8":
-			return `${note} is not saved as UTF-8. Nothing was written: writing would replace its unreadable characters (shown as �) for good. Convert the note to UTF-8 to edit its tasks from the timeline.`;
+			return copy.notices.notUtf8({ note });
 		case "queue-blocked":
-			return `${note} may not have been saved yet. The timeline won't change it until the note changes or two minutes pass.`;
+			return copy.notices.queueBlocked({ note });
 		case "date-ambiguous":
-			return `“${text}” has more than one ${context.field} date (${context.a} and ${context.b}). Nothing was changed. Keep one of them in the note, then try again.`;
+			return copy.notices.dateAmbiguous({ text, field: context.field, a: context.a, b: context.b });
 		case "date-unreadable":
-			return `“${text}” has its ${context.field} date written as ${context.found}, which the timeline cannot change. Nothing was changed. Edit it in the note.`;
+			return copy.notices.dateUnreadable({ text, field: context.field, found: context.found });
 		case "date-style-mixed":
-			return `“${text}” uses both emoji dates and [key:: value] fields, so the timeline cannot tell which style to add. Nothing was changed. Add the ${context.field} date in the note.`;
+			return copy.notices.dateStyleMixed({ text, field: context.field });
 		case "line-changed":
-			return `“${text}” changed in ${note} since the timeline read it. Nothing was written. The timeline updates once Obsidian has re-read the note; then try again.`;
+			return copy.notices.lineChanged({ text, note });
 		case "not-reread":
-			return `Obsidian hasn't re-read ${note} yet, so the timeline can't change “${text}” again. Try again in a moment.`;
+			return copy.notices.notReread({ note, text });
 		case "tasks-too-old":
-			return "Completing from the timeline needs Tasks 7.2.0 or newer, so the note was opened at the task.";
+			return copy.notices.tasksTooOld;
 		case "tasks-error":
-			return `Tasks could not change “${text}”: ${context.message}. Nothing was written.`;
+			return copy.notices.tasksError({ text, message: context.message });
 		case "bad-output":
-			return `Tasks returned something the timeline cannot write safely for “${text}”. Nothing was written.`;
+			return copy.notices.badOutput({ text });
 		case "undo-changed":
-			return `Could not undo: “${text}” in ${note} changed or moved after the timeline wrote it. Nothing was written.`;
+			return copy.notices.undoChanged({ text, note });
 	}
 }
 
 /** Shows the original error message without exposing a stack trace in a notice. */
 export function writeFailureText(context: NoticeContext, error: unknown): string {
-	return `Could not write to ${noteName(context.path)}: ${error instanceof Error ? error.message : String(error)}`;
+	return copy.notices.writeFailure({
+		note: noteName(context.path),
+		reason: error instanceof Error ? error.message : String(error),
+	});
 }
 
 /** Explains why an interrupted write cannot safely be retried yet. */
 export function mayNotSavedText(context: NoticeContext, kind: "timeout" | "editor"): string {
 	const note = noteName(context.path);
-	return kind === "timeout"
-		? `${note} may not have been saved: the file system didn't answer within 60 s. Check the note before trying again.`
-		: `${note} may not have been saved: Obsidian could not save it, and the line changed in its editor afterwards. The change is still in the open note and is saved with it. Check the note before trying again.`;
+	return kind === "timeout" ? copy.notices.mayNotSavedTimeout({ note }) : copy.notices.mayNotSavedEditor({ note });
 }
 
 /** Distinguishes a successful write from Obsidian finishing its metadata read. */
 export function slowText(context: NoticeContext): string {
-	return `Saved in ${noteName(context.path)}. The timeline will show the change once Obsidian has re-read the note.`;
+	return copy.notices.slow({ note: noteName(context.path) });
 }
 
 /** Explains why an older Tasks version opened the note instead of its edit dialog. */
 export function tasksDialogTooOldText(): string {
-	return "Tasks 7.21 or later edits here";
+	return copy.notices.tasksDialogTooOld;
 }
 
 /** Reports an unavailable Tasks API without treating it as a disabled plugin. */
 export function tasksDialogErrorText(reason: string): string {
-	return `Could not reach the Tasks plugin: ${reason}`;
+	return copy.notices.tasksDialogError({ reason });
 }
 
 /** Reports a dialog that could not open or finish. */
 export function tasksDialogFailureText(reason: string): string {
-	return `Tasks' edit dialog failed: ${reason}`;
+	return copy.notices.tasksDialogFailure({ reason });
 }
 
 /** Explains why an empty dialog result cannot complete a task that deletes itself. */
 export function tasksDialogDeleteText(): string {
-	return "Nothing was written. If you completed this task in the dialog: Tasks returns nothing for a task set to delete itself, so use the checkbox to complete it.";
+	return copy.notices.tasksDialogDelete;
 }
 
 /** The completed action selects the undo notice; it does not execute an undo. */
@@ -161,53 +166,53 @@ export function undoNoticeText(context: NoticeContext, change: UndoNoticeChange)
 	const note = noteName(context.path);
 	switch (change.kind) {
 		case "complete":
-			return `Completed “${task}” in ${note}.`;
+			return copy.notices.completed({ task, note });
 		case "recurring-replaced":
-			return `Completed “${task}” in ${note}; it was replaced by the next occurrence.`;
+			return copy.notices.recurringReplaced({ task, note });
 		case "recurring-added":
-			return `Completed “${task}” in ${note}; the next occurrence was added.`;
+			return copy.notices.recurringAdded({ task, note });
 		case "deleted":
-			return `Completed “${task}” and removed it from ${note}.`;
+			return copy.notices.deleted({ task, note });
 		case "uncomplete":
-			return `Marked “${task}” not done in ${note}.`;
+			return copy.notices.uncompleted({ task, note });
 		case "date":
 			return change.day === null
-				? `Removed the ${change.field} date from “${task}”.`
-				: `Set the ${change.field} date of “${task}” to ${change.day}.`;
+				? copy.notices.dateRemoved({ field: change.field, task })
+				: copy.notices.dateSet({ field: change.field, task, day: change.day });
 		case "cancel":
-			return `Cancelled “${task}” in ${note}.`;
+			return copy.notices.cancelled({ task, note });
 		case "replace":
-			return `Saved your edit to “${task}” in ${note}.`;
+			return copy.notices.replaced({ task, note });
 	}
 }
 
 /** Confirms the one line restored by an undo, including a dialog edit's limits. */
 export function undoDoneText(context: NoticeContext, dialogEdit = false): string {
 	return (
-		`Undid the change to “${displayTask(context.text)}”.` +
-		(dialogEdit ? " Changes the Tasks dialog made to other tasks are not undone." : "")
+		copy.notices.undoDone({ task: displayTask(context.text) }) +
+		(dialogEdit ? copy.notices.dialogChangesNotUndone : "")
 	);
 }
 
 /** Explains why an undo that is already present needs no write. */
 export function undoAlreadyText(context: NoticeContext): string {
-	return `“${displayTask(context.text)}” in ${noteName(context.path)} is already back to how it was.`;
+	return copy.notices.undoAlready({ task: displayTask(context.text), note: noteName(context.path) });
 }
 
 /** Refuses an undo whose retained record is gone. */
 export function undoExpiredText(context: NoticeContext): string {
-	return `Could not undo: the change to “${displayTask(context.text)}” was too long ago. Nothing was written.`;
+	return copy.notices.undoExpired({ task: displayTask(context.text) });
 }
 
 /** Supplies the later revert check's single-write and grouped wording. */
 export function overwrittenText(context: NoticeContext, count: number): string {
 	return count === 1
-		? `“${displayTask(context.text)}” in ${noteName(context.path)} is back to how it was before the timeline changed it (another save, a sync, or a change made in the note). Redo?`
-		: `${count} timeline changes in ${noteName(context.path)} are back to how they were before (another save, a sync, or a change made in the note). Redo?`;
+		? copy.notices.overwritten({ task: displayTask(context.text), note: noteName(context.path) })
+		: copy.notices.overwrittenMany({ count, note: noteName(context.path) });
 }
 
 /** The recovery dialog leaves its selectable text in place after a clipboard failure. */
-export const COPY_FAILURE_TEXT = "Couldn't copy. Select the text and copy it yourself.";
+export const COPY_FAILURE_TEXT = copy.notices.copyFailure;
 
 /** Optional browser dependencies keep notice and clipboard tests independent of Obsidian. */
 export interface NoticePresenterOptions {
@@ -221,7 +226,7 @@ export interface NoticePresenterOptions {
 export class EditRecoveryModal extends Modal {
 	constructor(
 		app: App,
-		private readonly title: "Edit not saved" | "Edit changed back",
+		private readonly title: typeof copy.notices.editNotSaved | typeof copy.notices.editChangedBack,
 		private readonly context: NoticeContext,
 		private readonly editedLine: string,
 		private readonly options: NoticePresenterOptions = {},
@@ -237,14 +242,14 @@ export class EditRecoveryModal extends Modal {
 		text.readOnly = true;
 		const failure = this.contentEl.createEl("p");
 		const buttons = this.contentEl.createDiv({ cls: "modal-button-container" });
-		new ButtonComponent(buttons).setButtonText("Copy").onClick(async () => {
+		new ButtonComponent(buttons).setButtonText(copy.notices.copy).onClick(async () => {
 			try {
 				await (this.options.clipboard ?? navigator.clipboard).writeText(this.editedLine);
 			} catch {
 				failure.setText(COPY_FAILURE_TEXT);
 			}
 		});
-		new ButtonComponent(buttons).setButtonText("Open note").onClick(() => {
+		new ButtonComponent(buttons).setButtonText(copy.notices.openNote).onClick(() => {
 			const open = this.options.openNote ?? ((path, line) => openNoteAt(this.app, path, line));
 			void open(this.context.path, this.context.line);
 		});
@@ -266,6 +271,11 @@ export interface NoticePresenter {
 	undoAlready(context: NoticeContext): void;
 	undoExpired(context: NoticeContext): string;
 	dispose(): void;
+}
+
+/** Reports a notice without changing its text, duration, or merging rules. */
+export function reportNotice(message: string | DocumentFragment, duration: number): Notice {
+	return new Notice(message, duration);
 }
 
 /** Presents notices once per reason and note while they remain visible, including while hovered. */
@@ -292,12 +302,12 @@ export function createNoticePresenter(app: App, options: NoticePresenterOptions 
 	}
 
 	function openButton(context: NoticeContext): { text: string; run: () => unknown } {
-		return { text: "Open note", run: () => open(context.path, context.line) };
+		return { text: copy.notices.openNote, run: () => open(context.path, context.line) };
 	}
 
 	function show(message: string | DocumentFragment, duration: number): Notice {
 		for (const notice of notices) if (!notice.noticeEl.isConnected) notices.delete(notice);
-		const notice = new Notice(message, duration);
+		const notice = reportNotice(message, duration);
 		notices.add(notice);
 		return notice;
 	}
@@ -309,7 +319,11 @@ export function createNoticePresenter(app: App, options: NoticePresenterOptions 
 		else map.set(key, show(message, duration));
 	}
 
-	function recovery(title: "Edit not saved" | "Edit changed back", context: NoticeContext, editedLine: string): void {
+	function recovery(
+		title: typeof copy.notices.editNotSaved | typeof copy.notices.editChangedBack,
+		context: NoticeContext,
+		editedLine: string,
+	): void {
 		const modal = new EditRecoveryModal(app, title, context, editedLine, options);
 		modals.add(modal);
 		modal.setCloseCallback(() => modals.delete(modal));
@@ -347,15 +361,15 @@ export function createNoticePresenter(app: App, options: NoticePresenterOptions 
 			merged(slow, context.path, slowText(context), SLOW_NOTICE_MS);
 		},
 		editNotSaved(context: NoticeContext, editedLine: string): void {
-			recovery("Edit not saved", context, editedLine);
+			recovery(copy.notices.editNotSaved, context, editedLine);
 		},
 		editChangedBack(context: NoticeContext, editedLine: string): void {
-			recovery("Edit changed back", context, editedLine);
+			recovery(copy.notices.editChangedBack, context, editedLine);
 		},
 		overwritten(context: NoticeContext, count: number, redo?: () => Promise<void>): void {
 			show(
 				fragment(overwrittenText(context, count), [
-					...(redo ? [{ text: "Redo", run: redo }] : []),
+					...(redo ? [{ text: copy.notices.redo, run: redo }] : []),
 					openButton(context),
 				]),
 				0,
@@ -363,7 +377,10 @@ export function createNoticePresenter(app: App, options: NoticePresenterOptions 
 		},
 		undo(context: NoticeContext, change: UndoNoticeChange, undo: () => unknown): Notice {
 			return show(
-				fragment(undoNoticeText(context, change), [{ text: "Undo", run: undo }, openButton(context)]),
+				fragment(undoNoticeText(context, change), [
+					{ text: copy.notices.undo, run: undo },
+					openButton(context),
+				]),
 				UNDO_NOTICE_MS,
 			);
 		},

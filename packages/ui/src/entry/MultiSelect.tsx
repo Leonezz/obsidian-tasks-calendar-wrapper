@@ -5,7 +5,7 @@ export type MultiSelectProps = {
 	className: string;
 	options: string[];
 	selected: readonly string[];
-	visual: string[];
+	visual: readonly string[];
 	selectChangeHandler: (options: string[]) => void;
 	fallbackValueIndex: number;
 };

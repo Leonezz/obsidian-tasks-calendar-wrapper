@@ -1,5 +1,5 @@
 import * as React from "react";
-import { type DayGroup, type ResolvedTask, type TaskRowModel } from "@tasks-calendar-wrapper/core";
+import { copy, type DayGroup, type ResolvedTask, type TaskRowModel } from "@tasks-calendar-wrapper/core";
 import { Counters, type CounterProps } from "../entry/Counters";
 import { QuickEntry } from "../entry/QuickEntry";
 import { TagFilter } from "../entry/TagFilter";
@@ -68,7 +68,7 @@ export const Day = React.memo(function Day(props: DayProps) {
 	const types = day.statuses.join(" ");
 	return (
 		<div>
-			{entry && <TodayFocus visual={"Focus On Today"} />}
+			{entry && <TodayFocus visual={copy.timeline.focusOnToday} />}
 			{entry && <Counters counters={entry.counters} />}
 			{entry && <EntryFilters entry={entry} />}
 			{day.tasks.length > 0 && (
