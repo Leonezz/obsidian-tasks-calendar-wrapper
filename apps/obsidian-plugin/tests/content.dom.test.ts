@@ -15,6 +15,7 @@ import { createTaskIndex } from "../timeline/src/taskindex";
 import { moment } from "../utils/moment";
 import { parseKeyOf } from "../utils/parsekey";
 import { mountView } from "./component-harness";
+import { metadataOf } from "./fakevault";
 import { notesApp, unusedNotices, unusedWriter } from "./view-harness";
 
 type RenderCall = { sourcePath: string; markdown: string; owner: Component };
@@ -200,7 +201,7 @@ test("a remount after a commit renders again", async (t) => {
 	notes["Content/View.md"] = "- [ ] Changed view task";
 	fixture.edited("Content/View.md");
 	await fixture.reload();
-	assert.equal(clear.mock.callCount(), 1, "the list commit clears the view's cache once");
+	assert.equal(clear.mock.callCount(), 1, "the reload clears the view's cache once");
 	await content.mount();
 	assert.equal(renderCount(), 2);
 });
@@ -247,14 +248,15 @@ test("a link target created then reload shows the resolved display", async (t) =
 	const viewContent = fixture.container.querySelector(".task .lines > .content");
 	assert.ok(viewContent);
 	assert.equal(viewContent.innerHTML, "<a>" + unresolved + "</a>");
+	// The view's own row cached this display at mount, so the probe reads that entry.
 	await content.mount();
 	assert.equal(content.container.innerHTML, "<a>" + unresolved + "</a>");
-	assert.equal(renderCount(), 2);
+	assert.equal(renderCount(), 1);
 	targets.add("New");
 	await content.unmount();
 	await content.mount();
 	assert.equal(content.container.innerHTML, "<a>" + unresolved + "</a>");
-	assert.equal(renderCount(), 2);
+	assert.equal(renderCount(), 1);
 	await content.unmount();
 	// Changed metadata makes reload commit while preserving the row's display and position in its day.
 	notes[props.fileName] = "- [ ] [[New]] [priority:: high]";
@@ -262,8 +264,51 @@ test("a link target created then reload shows the resolved display", async (t) =
 	await fixture.reload();
 	await content.mount();
 	assert.equal(content.container.innerHTML, "<a>" + resolved + "</a>");
-	assert.equal(renderCount(), 3);
+	assert.equal(renderCount(), 2);
 	// As with PureComponent, an unchanged mounted row keeps its copied HTML on reload.
 	assert.equal(fixture.container.querySelector(".task .lines > .content"), viewContent);
 	assert.equal(viewContent.innerHTML, "<a>" + unresolved + "</a>");
+});
+
+test("a row that remounts in a reload's render shows a link target created before it", async (t) => {
+	const targets = new Set<string>();
+	const unresolved = '<a class="internal-link is-unresolved">B</a>';
+	const resolved = '<a class="internal-link">B</a>';
+	const props = { display: "see [[B]]", fileName: "Content/Day.md" };
+	t.mock.method(MarkdownRenderer, "renderMarkdown", (markdown: string, el: object) => {
+		Object.defineProperty(el, "firstElementChild", {
+			value: { innerHTML: markdown === props.display ? (targets.has("B") ? resolved : unresolved) : markdown },
+			configurable: true,
+		});
+		return Promise.resolve();
+	});
+	const notes = { [props.fileName]: "- [ ] a\n- [ ] " + props.display };
+	const app = notesApp(notes);
+	t.mock.method(app.metadataCache, "getFileCache", (file: { path: string }) => metadataOf(notes[file.path]));
+	const fixture = await mountView(t, {
+		app,
+		options: {
+			...structuredClone(defaultUserOptions),
+			defaultFilters: "",
+			defaultTodayFocus: false,
+			filterEmpty: false,
+		},
+	});
+	assert.equal(fixture.container.querySelectorAll(".task").length, 2);
+	const viewContent = fixture.container.querySelector(".task .internal-link")?.closest(".lines > .content");
+	assert.ok(viewContent);
+	assert.equal(viewContent.innerHTML, "<a>" + unresolved + "</a>");
+	// A quick-filter remount can cache this display between reloads.
+	const content = contentRoot(t, fixture.host, props);
+	await content.mount();
+	assert.equal(content.container.innerHTML, "<a>" + unresolved + "</a>");
+	await content.unmount();
+	targets.add("B");
+	notes[props.fileName] = "- [ ] top\n" + notes[props.fileName];
+	fixture.edited(props.fileName);
+	await fixture.reload();
+	const reloadedContent = fixture.container.querySelector(".task .internal-link")?.closest(".lines > .content");
+	assert.ok(reloadedContent);
+	assert.notEqual(reloadedContent, viewContent, "the shifted task id remounts the row during reload");
+	assert.equal(reloadedContent.innerHTML, "<a>" + resolved + "</a>");
 });

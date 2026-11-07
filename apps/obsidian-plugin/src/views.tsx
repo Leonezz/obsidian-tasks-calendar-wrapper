@@ -149,6 +149,7 @@ export class TasksTimelineView extends ItemView {
 
 		container.empty();
 		this.root = createRoot(container);
+		this.uiHost.clearMarkdownCache();
 		this.root.render(
 			<ObsidianBridge
 				plugin={this}
@@ -293,7 +294,6 @@ export class TasksTimelineView extends ItemView {
 	/** Clears releases in the layout phase of the commit that shows their reload's tasks. */
 	readonly onListCommitted = (reloadId: number): void => {
 		if (this.closed) return;
-		this.uiHost.clearMarkdownCache();
 		this.bridgeCommitted = true;
 		this.clearReloadsThrough(reloadId);
 		const mounted = this.mountingTasks.get(reloadId);
@@ -353,6 +353,7 @@ export class TasksTimelineView extends ItemView {
 				const kept = new Set(pinned);
 				const before = this.store.getSnapshot();
 				const reloadId = ++this.reloadId;
+				this.uiHost.clearMarkdownCache();
 				this.store.setState((state) =>
 					withReload(
 						state,
