@@ -195,6 +195,62 @@ test("a candidate faster in every round by more than 25 % and 50 ms is faster, a
 	assert.equal(rowOf(verdict).verdict, "faster");
 });
 
+test("scroll.p95FrameMs is slower in the paired comparison over 25 % and 8 ms", () => {
+	const name = "scroll.p95FrameMs";
+	const base = BASE.map((ms) => (ms / 200) * 17);
+	const verdict = compareAb(
+		timingSlots(
+			base,
+			base.map((ms) => ms * 1.6),
+			name,
+		),
+		1,
+	);
+	assert.equal(verdict.slower, 1);
+	assert.equal(rowOf(verdict, name).verdict, "slower");
+	assert.ok(verdict.lines.some((line) => line.includes(name) && line.endsWith("  SLOWER")));
+});
+
+test("scroll.p95FrameMs under 8 ms or under 25 % is a small change", () => {
+	const name = "scroll.p95FrameMs";
+	for (const [ms, factor] of [
+		[17, 1.3],
+		[100, 1.1],
+	]) {
+		const base = BASE.map((value) => (value / 200) * ms);
+		const verdict = compareAb(
+			timingSlots(
+				base,
+				base.map((value) => value * factor),
+				name,
+			),
+			1,
+		);
+		assert.equal(verdict.slower, 0);
+		assert.equal(rowOf(verdict, name).verdict, "small", `${ms} ms times ${factor}`);
+	}
+});
+
+test("scroll.p95FrameMs faster by over 25 % and 8 ms is faster", () => {
+	const name = "scroll.p95FrameMs";
+	for (const [ms, expected] of [
+		[25, "faster"],
+		[17, "small"],
+	] as const) {
+		const base = BASE.map((value) => (value / 200) * ms);
+		const verdict = compareAb(
+			timingSlots(
+				base,
+				base.map((value) => value * 0.6),
+				name,
+			),
+			1,
+		);
+		assert.equal(verdict.slower, 0);
+		assert.equal(rowOf(verdict, name).verdict, expected, `${ms} ms times 0.6`);
+	}
+});
+
 test("each round compares the fastest run of each arm, not the median", () => {
 	const of = (minMs: number, medianMs: number) => ({ saveWithTasks: { renderedMs: timing(minMs, medianMs) } });
 	const verdict = compareAb(

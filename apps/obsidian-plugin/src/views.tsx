@@ -1,5 +1,14 @@
 import { App, CachedMetadata, debounce, ItemView, Notice, WorkspaceLeaf } from "obsidian";
-import { createStore, dayKey, pickResolveSettings, resolveTasks, type LineTarget } from "@tasks-calendar-wrapper/core";
+import {
+	copyJsonValue,
+	createStore,
+	dayKey,
+	deepFreeze,
+	pickResolveSettings,
+	resolveTasks,
+	type DayKey,
+	type LineTarget,
+} from "@tasks-calendar-wrapper/core";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
 import { createReadReporter } from "../timeline/src/readreporter";
 import { createSharedTaskIndex, type ReaderSource, type SharedTaskIndex } from "../timeline/src/sharedindex";
@@ -82,6 +91,10 @@ export class TasksTimelineView extends ItemView {
 	private readonly reporter = createReadReporter();
 
 	private isReloading = false;
+	/** The day a push last reloaded, until a reload fails or misses a note; equal pushes on that day do nothing. */
+	private pushedDay: DayKey | undefined;
+	/** An equal push did nothing while a reload was running, so it counts again if that reload fails. */
+	private pushSkippedInReload = false;
 	/** A reload was asked for while one was running, so the list is loaded again when it is done. */
 	private reloadAgain = false;
 	/** Quick entries indexed in the same tick reload once, see reloadWhenIndexed. */
@@ -259,9 +272,18 @@ export class TasksTimelineView extends ItemView {
 		this.requestReload();
 	}
 
-	/** Reloads the tasks with the options. Returns once the reload is done. */
+	/** Applies the options and reloads, unless equal options have already been pushed today. */
 	onUpdateOptions(opt: UserOption): Promise<void> {
-		this.store.setState((state) => withOptions(state, opt));
+		const before = this.store.getSnapshot();
+		const next = withOptions(before, opt);
+		const day = dayKey(moment());
+		if (next === before && day === this.pushedDay) {
+			this.pushSkippedInReload = this.isReloading;
+			return Promise.resolve();
+		}
+		this.pushedDay = day;
+		// On a new day, a fresh options reference updates today's dates even when the list shown stays the same.
+		this.store.setState(next === before ? { ...before, options: deepFreeze(copyJsonValue(opt)) } : next);
 		return this.onReloadTasks();
 	}
 
@@ -320,6 +342,7 @@ export class TasksTimelineView extends ItemView {
 			.update(options)
 			.then(({ tasks, warned, failures, pinned }) => {
 				this.reporter.report({ warned, failures });
+				if (failures.length > 0) this.countPushesAgain();
 				this.filesWithTasks = new Set(tasks.map((task) => task.path));
 				const { env, parseKey } = this.resolveEnv(moment());
 				const resolved = resolveTasks(tasks, options, env);
@@ -349,18 +372,25 @@ export class TasksTimelineView extends ItemView {
 					flushSync(() => this.clearReloadsThrough(reloadId));
 			})
 			.catch((reason) => {
+				this.countPushesAgain();
 				this.refreshTasks ||= refreshTasks;
 				new Notice("Error when generating tasks from files: " + reason, 5000);
 				console.error("Tasks Calendar Wrapper: reloading tasks failed", reason);
 			})
 			.finally(() => {
 				this.isReloading = false;
+				this.pushSkippedInReload = false;
 				if (this.reloadAgain) {
 					this.reloadAgain = false;
 					return this.onReloadTasks();
 				}
 				if (this.closed) this.reader.close();
 			});
+	}
+
+	private countPushesAgain(): void {
+		this.pushedDay = undefined;
+		if (this.pushSkippedInReload) this.reloadAgain = true;
 	}
 
 	getViewType(): string {

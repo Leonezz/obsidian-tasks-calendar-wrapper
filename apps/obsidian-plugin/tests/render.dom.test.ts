@@ -47,9 +47,10 @@ async function mountWritingTimeline(
 	text: string,
 	toggle?: (line: string) => string,
 	probe?: { onCommit?: (container: HTMLElement) => void; suspend?: boolean },
+	plugins: Record<string, object> = {},
 ) {
 	const h = writerHarness({ "Note.md": text });
-	Object.assign(h.app, { plugins: { plugins: {} } });
+	Object.assign(h.app, { plugins: { plugins } });
 	const index = timelineTaskIndex(h.app as never);
 	const writer = h.create({
 		index,
@@ -116,13 +117,18 @@ async function mountNoteActions(
 	{ openNoteInsteadOfInPlace = true, tasks = {} }: { openNoteInsteadOfInPlace?: boolean; tasks?: object | null } = {},
 ) {
 	const text = "Heading\n\n- [ ] a";
-	const fixture = await mountWritingTimeline(t, text, (line) => line.replace("[ ]", "[x]"));
+	const fixture = await mountWritingTimeline(
+		t,
+		text,
+		(line) => line.replace("[ ]", "[x]"),
+		undefined,
+		tasks === null ? {} : { "obsidian-tasks-plugin": tasks },
+	);
 	const noteView = new MarkdownView();
 	noteView.editor = { setCursor: () => {} };
 	const openFile = t.mock.fn(async () => {});
 	const getLeaf = t.mock.fn(() => ({ view: noteView, openFile }));
 	Object.assign(fixture.h.app.workspace, { getLeaf });
-	Object.assign(fixture.h.app, { plugins: { plugins: tasks === null ? {} : { "obsidian-tasks-plugin": tasks } } });
 	const command = t.mock.fn();
 	const commands = t.mock.fn(() => ({
 		commands: { "obsidian-tasks-plugin:edit-task": { editorCheckCallback: command } },

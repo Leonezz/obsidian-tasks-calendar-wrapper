@@ -111,8 +111,8 @@ const VIEWPORT_WIDTH = 600;
 const MIN_HEIGHT = 600;
 const MAX_HEIGHT = 16_000;
 /**
- * The plugin pushes its options to open views 200 ms after it loads (#203), which renders the timeline again; the
- * timeline is left this long after opening, and then until it is quiet, before the first screenshot.
+ * Up to phase 4 step 1, the options push 200 ms after loading (#203) rendered the timeline again. The timeline is
+ * left this long after opening, and then until it is quiet, before the first screenshot.
  */
 const SETTLE_AFTER_LOAD_MS = 1_500;
 

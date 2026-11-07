@@ -34,7 +34,7 @@ test("the state starts with copies of the defaults and nothing read", () => {
 	assert.ok(nothingFrozen(defaultUserOptions), "the defaults are not frozen");
 });
 
-test("new options make a new state, also when they are the same, and keep the tasks and the list shown", () => {
+test("new options make a new state and keep the tasks and the list shown", () => {
 	const before = state({ tasks: [task("- [ ] call")], shown: [{ id: "Inbox.md:0" }] as never });
 	const options: UserOption = { ...defaultUserOptions, dateFormat: "YYYY" };
 	const after = withOptions(before, options);
@@ -45,12 +45,18 @@ test("new options make a new state, also when they are the same, and keep the ta
 	assert.equal(after.tasks, before.tasks);
 	assert.equal(after.shown, before.shown);
 	const again = withOptions(after, options);
-	assert.notEqual(again, after);
-	assert.notEqual(again.options, after.options);
-	// Frozen options, as the plugin hands them, are copied too, so every push renders again.
+	assert.equal(again, after);
 	const frozen = loadedSettings({ dateFormat: "YYYY" });
-	assert.notEqual(withOptions(after, frozen).options, frozen);
-	assert.deepEqual(withOptions(after, frozen).options, frozen);
+	assert.notEqual(withOptions(before, frozen).options, frozen);
+	assert.deepEqual(withOptions(before, frozen).options, frozen);
+});
+
+test("equal options built separately keep the same state", () => {
+	const before = state();
+	const options: UserOption = { ...defaultUserOptions, taskFiles: [], hideStatusTasks: ["x", "-"] };
+	assert.notEqual(options, before.options);
+	assert.notEqual(options.hideStatusTasks, before.options.hideStatusTasks);
+	assert.equal(withOptions(before, options), before);
 });
 
 test("a reload takes the tasks read, and keeps the list shown when it holds the same", () => {
