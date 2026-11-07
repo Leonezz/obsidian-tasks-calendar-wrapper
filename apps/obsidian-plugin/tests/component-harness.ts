@@ -7,6 +7,7 @@ import { createRoot } from "react-dom/client";
 import type { Store } from "@tasks-calendar-wrapper/core";
 import { HostContext, type UiHost } from "@tasks-calendar-wrapper/ui";
 import { Content, sameContentProps, type ContentProps } from "@tasks-calendar-wrapper/ui/src/row/Content";
+import { TaskRow, sameRowModelProps } from "@tasks-calendar-wrapper/ui/src/row/TaskRow";
 import { StatusMarker as StripWithIcon } from "@tasks-calendar-wrapper/ui/src/row/StatusMarker";
 import { TagBadge, FileBadge, DateStatusBadge, ModifyBadge } from "@tasks-calendar-wrapper/ui/src/row/Badges";
 import { YearHeader } from "@tasks-calendar-wrapper/ui/src/timeline/YearHeader";
@@ -23,7 +24,7 @@ import { moment } from "../utils/moment";
 import { parseKeyOf } from "../utils/parsekey";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
 import { TimelineView } from "../timeline/src/components/timelineview";
-import { providerValues, rendersOf, resetRenderCounts } from "../timeline/src/components/renderprobe";
+import { providerValues, rendersOf, resetRenderCounts } from "@tasks-calendar-wrapper/ui/src/renderprobe";
 import { goldenApp, loadVault } from "./golden-vault";
 import { unusedNotices, unusedWriter } from "./view-harness";
 import { testHost } from "./stubs/host";
@@ -338,7 +339,7 @@ const uiComponents = {
 	DateStatusBadge,
 	ModifyBadge,
 };
-type UiComponentName = keyof typeof uiComponents | "Content";
+type UiComponentName = keyof typeof uiComponents | "Content" | "TaskRow";
 type UiObserver = {
 	created?: (key: UiComponentName) => void;
 	rendered?: (key: UiComponentName) => void;
@@ -374,6 +375,24 @@ uiWrappers.set(Content, {
 		return memoContent.type(props);
 	}, memoContent.compare),
 });
+type TaskRowProps = ComponentProps<typeof TaskRow>;
+const memoTaskRow = TaskRow as unknown as {
+	$$typeof: symbol;
+	type: ((props: TaskRowProps) => ReactNode) & { prototype?: { render?: unknown } };
+	compare: typeof sameRowModelProps;
+};
+assert.equal(typeof TaskRow, "object", "TaskRow is a React.memo object");
+assert.equal(memoTaskRow.$$typeof, Symbol.for("react.memo"), "TaskRow is a React.memo object");
+assert.equal(typeof memoTaskRow.type, "function", "TaskRow wraps a plain function component");
+assert.equal(memoTaskRow.type.prototype?.render, undefined, "TaskRow wraps a plain function component");
+assert.equal(memoTaskRow.compare, sameRowModelProps, "TaskRow compares with sameRowModelProps");
+uiWrappers.set(TaskRow, {
+	key: "TaskRow",
+	render: memo(function counted(props: TaskRowProps) {
+		for (const observer of uiObservers) observer.rendered?.("TaskRow");
+		return memoTaskRow.type(props);
+	}, memoTaskRow.compare),
+});
 const runtime = jsxRuntime as unknown as Record<"jsx" | "jsxs", (type: unknown, ...args: unknown[]) => unknown>;
 // Stable types from the first mount let observers join later without remounting a component.
 for (const key of ["jsx", "jsxs"] as const) {
@@ -385,7 +404,7 @@ for (const key of ["jsx", "jsxs"] as const) {
 		return create(wrapper.render, ...args);
 	};
 }
-const classNames = componentNames.filter((name) => name !== "Content" && !(name in uiComponents));
+const classNames = componentNames.filter((name) => name !== "Content" && name !== "TaskRow" && !(name in uiComponents));
 const providerNames = ["QuickEntryHandlerContext", "TodayFocusEventHandlersContext", "UserOptionContext"] as const;
 
 /** Counts class renders with prototype spies and UI function/memo renders through the stable JSX wrappers. */

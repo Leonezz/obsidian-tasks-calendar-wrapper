@@ -39,7 +39,7 @@ import {
 } from "./taskwriter";
 import type { PendingWrites } from "./pendingwrites";
 import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "./components/context";
-import { recordProvider } from "./components/renderprobe";
+import { recordProvider } from "@tasks-calendar-wrapper/ui/src/renderprobe";
 import { TagSuggest } from "./tagsuggest";
 import { TimelineView } from "./components/timelineview";
 

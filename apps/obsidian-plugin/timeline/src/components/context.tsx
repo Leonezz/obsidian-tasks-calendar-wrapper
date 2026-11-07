@@ -1,13 +1,6 @@
-import { Pos, type UserEvent } from "obsidian";
-import type { DateField, QuickFilter, TaskRowModel } from "@tasks-calendar-wrapper/core";
+import type { QuickFilter } from "@tasks-calendar-wrapper/core";
 import * as React from "react";
-import { createPendingWrites } from "../pendingwrites";
-import type { ListChangeClock } from "./clickguard";
-
-export const RowWriteContext = React.createContext({
-	pendingWrites: createPendingWrites(),
-	clock: { lastListChangeAt: -Infinity } as ListChangeClock,
-});
+export { RowWriteContext, TaskItemEventHandlersContext } from "@tasks-calendar-wrapper/ui/src/contexts";
 
 export const UserOptionContext = React.createContext({
 	taskFiles: [] as string[],
@@ -33,13 +26,4 @@ export const QuickEntryHandlerContext = React.createContext<{
 	handleCreateNewTask: async (filePath: string, content: string) => false,
 	handleFilterEnable: (startDate: string | undefined, enddate: string | undefined, priorities: string[]) => {},
 	quickFilter: undefined,
-});
-
-export const TaskItemEventHandlersContext = React.createContext({
-	handleOpenFile: (filePath: string, position: Pos, evt?: UserEvent) => {},
-	handleCompleteTask: (model: TaskRowModel, evt: MouseEvent) => {},
-	handleTagClick: (tag: string) => {},
-	handleModifyTask: undefined as ((model: TaskRowModel, evt: MouseEvent) => void) | undefined,
-	handleRowMenu: undefined as ((model: TaskRowModel, evt: MouseEvent) => void) | undefined,
-	handleDateBadge: undefined as ((model: TaskRowModel, field: DateField) => void) | undefined,
 });

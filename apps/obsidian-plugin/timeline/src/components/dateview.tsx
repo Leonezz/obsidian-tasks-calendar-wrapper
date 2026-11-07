@@ -13,8 +13,8 @@ import { Counters, type CounterProps } from "@tasks-calendar-wrapper/ui/src/entr
 import { TodayFocus } from "@tasks-calendar-wrapper/ui/src/entry/TodayFocus";
 import { DayHeader } from "@tasks-calendar-wrapper/ui/src/timeline/DayHeader";
 import { QuickEntryHandlerContext } from "./context";
-import { recordRender } from "./renderprobe";
-import { TaskItemView } from "./taskitemview";
+import { recordRender } from "@tasks-calendar-wrapper/ui/src/renderprobe";
+import { TaskItem } from "@tasks-calendar-wrapper/ui/src/row/TaskItem";
 
 // The date line's height (20.8 px plus its 10 px margins), rounded up.
 const DATE_LINE_ESTIMATE = "41px";
@@ -113,7 +113,7 @@ class NormalDateContent extends React.Component<NormalDateContentProps> {
 			<div className="content">
 				{/* Keyed by the task's place in the vault, so a row is never reused for another task, see issue #138. */}
 				{this.props.tasks.map((resolved) => (
-					<TaskItemView key={resolved.task.id} model={this.props.modelFor(resolved)} />
+					<TaskItem key={resolved.task.id} model={this.props.modelFor(resolved)} />
 				))}
 			</div>
 		);
