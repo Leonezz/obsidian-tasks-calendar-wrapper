@@ -1,13 +1,14 @@
 import { MarkdownRenderer, Platform } from "obsidian";
 import * as React from "react";
-import { getFileTitle, sameRowModel, type BadgeKind, type TaskRowModel } from "@tasks-calendar-wrapper/core";
+import { sameRowModel, type BadgeKind, type TaskRowModel } from "@tasks-calendar-wrapper/core";
 import { TasksTimelineView } from "../../../src/views";
-import * as Icons from "./asserts/icons";
+import * as Icons from "@tasks-calendar-wrapper/ui/src/icons";
 import { RowWriteContext, TaskItemEventHandlersContext } from "./context";
 import { clickIsGuarded, type ListChangeClock } from "./clickguard";
 import type { PendingWrite } from "../pendingwrites";
 import { recordRender } from "./renderprobe";
-import { StripWithIcon } from "./statusmarker";
+import { StatusMarker } from "@tasks-calendar-wrapper/ui/src/row/StatusMarker";
+import { TagBadge, FileBadge, DateStatusBadge, ModifyBadge } from "@tasks-calendar-wrapper/ui/src/row/Badges";
 
 type TaskItemProps = { readonly model: TaskRowModel };
 
@@ -128,7 +129,7 @@ class TaskRow extends React.Component<TaskRowProps> {
 				aria-busy={overlay?.dimmed ? true : undefined}
 				aria-disabled={overlay?.dimmed ? true : undefined}
 			>
-				<StripWithIcon
+				<StatusMarker
 					onToggle={onToggleTask}
 					useBuiltinStyle={model.useBuiltinStyle}
 					marker={model.statusMarker}
@@ -190,108 +191,5 @@ class Content extends React.PureComponent<ContentProps> {
 		const cont = createEl("a");
 		MarkdownRenderer.renderMarkdown(this.props.display, cont, this.props.fileName, TasksTimelineView.view!);
 		return <a dangerouslySetInnerHTML={{ __html: cont.firstElementChild!.innerHTML }} />;
-	}
-}
-
-type TagBadgeProps = {
-	tag: string;
-	color: string | undefined;
-	onClick: (tag: string) => void;
-};
-
-class TagBadge extends React.Component<TagBadgeProps> {
-	render(): React.ReactNode {
-		const tag = this.props.tag;
-		const tagText = tag.replace("#", "");
-		const color = this.props.color;
-		let style: Record<string, unknown>;
-		if (color) {
-			style = {
-				"--tag-color": color,
-				"--tag-background": `${color}1a`,
-				zIndex: 9999,
-			};
-		} else {
-			style = {
-				"--tag-color": "var(--text-muted)",
-				zIndex: 9999,
-			};
-		}
-		return (
-			<a
-				href={tag}
-				className={"tag"}
-				target="_blank"
-				rel="noopener"
-				style={style}
-				aria-label={tag}
-				onClick={(e) => {
-					e.stopPropagation();
-					this.props.onClick(tag);
-				}}
-			>
-				<div className="icon">{Icons.tagIcon}</div>
-				<div className="label">{tagText}</div>
-			</a>
-		);
-	}
-}
-
-const defaultFileBadgeProps = {
-	filePath: "",
-	subPath: "",
-};
-
-type FileBadgeProps = Readonly<typeof defaultFileBadgeProps>;
-class FileBadge extends React.Component<FileBadgeProps> {
-	render(): React.ReactNode {
-		const filePath = this.props.filePath;
-		const fileName = getFileTitle(filePath);
-		const subPath = this.props.subPath;
-		return (
-			<a className="file" aria-label={filePath}>
-				<div className="icon">{Icons.fileIcon}</div>
-				<div className="label">{fileName}</div>
-				<span className="header">{subPath != "" ? "  >  " + subPath : subPath}</span>
-			</a>
-		);
-	}
-}
-
-const defaultBadgeProps = {
-	className: "",
-	ariaLabel: "",
-	label: "",
-	icon: Icons.taskIcon,
-};
-
-type BadgeProps = Readonly<typeof defaultBadgeProps> & { readonly onClick?: React.MouseEventHandler };
-
-class DateStatusBadge extends React.Component<BadgeProps> {
-	render(): React.ReactNode {
-		const type = this.props.className;
-		const aria_label = this.props.ariaLabel;
-		const label = this.props.label;
-		const icon = this.props.icon;
-		return (
-			<a className={type} aria-label={aria_label} onClick={this.props.onClick}>
-				<div className="icon">{icon}</div>
-				<div className="label">{label}</div>
-			</a>
-		);
-	}
-}
-
-const defaultModifyBadgeProps = {
-	onClick: (evt: React.MouseEvent) => {},
-};
-type ModifyBadgeProps = Readonly<typeof defaultModifyBadgeProps>;
-class ModifyBadge extends React.Component<ModifyBadgeProps> {
-	render(): React.ReactNode {
-		return (
-			<a className="modify" aria-label="Modify Task" onClick={this.props.onClick}>
-				✏️
-			</a>
-		);
 	}
 }

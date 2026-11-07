@@ -17,7 +17,7 @@ import { TasksTimelineView, timelineTaskIndex } from "../src/views";
 import type { TimelineState } from "../src/state/timeline";
 import { providerValues } from "../timeline/src/components/renderprobe";
 import { TaskItemEventHandlersContext } from "../timeline/src/components/context";
-import { getTaskStatusIcon } from "../timeline/src/components/asserts/icons";
+import { getTaskStatusIcon } from "@tasks-calendar-wrapper/ui/src/icons";
 import { createPendingWrites } from "../timeline/src/pendingwrites";
 import { clickTime, clickIsGuarded } from "../timeline/src/components/clickguard";
 import { mountBridge, timelineElement, onTimelineRender, onStripRender } from "./component-harness";

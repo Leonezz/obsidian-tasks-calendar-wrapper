@@ -35,10 +35,6 @@ export const QuickEntryHandlerContext = React.createContext<{
 	quickFilter: undefined,
 });
 
-export const TodayFocusEventHandlersContext = React.createContext({
-	handleTodayFocusClick: () => {},
-});
-
 export const TaskItemEventHandlersContext = React.createContext({
 	handleOpenFile: (filePath: string, position: Pos, evt?: UserEvent) => {},
 	handleCompleteTask: (model: TaskRowModel, evt: MouseEvent) => {},

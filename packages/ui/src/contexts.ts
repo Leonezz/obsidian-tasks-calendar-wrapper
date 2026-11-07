@@ -10,3 +10,7 @@ export function useHost(): UiHost {
 	if (host === null) throw new Error("useHost needs a HostContext provider around the timeline");
 	return host;
 }
+
+export const TodayFocusEventHandlersContext = React.createContext({
+	handleTodayFocusClick: () => {},
+});

@@ -5,6 +5,12 @@ import { act, createElement, type ComponentProps, type ReactNode } from "react";
 import jsxRuntime from "react/jsx-runtime";
 import { createRoot } from "react-dom/client";
 import type { Store } from "@tasks-calendar-wrapper/core";
+import { StatusMarker as StripWithIcon } from "@tasks-calendar-wrapper/ui/src/row/StatusMarker";
+import { TagBadge, FileBadge, DateStatusBadge, ModifyBadge } from "@tasks-calendar-wrapper/ui/src/row/Badges";
+import { YearHeader } from "@tasks-calendar-wrapper/ui/src/timeline/YearHeader";
+import { DayHeader } from "@tasks-calendar-wrapper/ui/src/timeline/DayHeader";
+import { Counters, CounterItem } from "@tasks-calendar-wrapper/ui/src/entry/Counters";
+import { TodayFocus } from "@tasks-calendar-wrapper/ui/src/entry/TodayFocus";
 import { TasksTimelineView } from "../src/views";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import type { TimelineState } from "../src/state/timeline";
@@ -14,7 +20,6 @@ import { moment } from "../utils/moment";
 import { parseKeyOf } from "../utils/parsekey";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
 import { TimelineView } from "../timeline/src/components/timelineview";
-import { StripWithIcon } from "../timeline/src/components/statusmarker";
 import { providerValues, rendersOf, resetRenderCounts } from "../timeline/src/components/renderprobe";
 import { goldenApp, loadVault } from "./golden-vault";
 import { unusedNotices, unusedWriter } from "./view-harness";
@@ -163,12 +168,16 @@ export function onTimelineRender(
 	};
 }
 
-/** Step 4 will observe the function strip's renders instead of wrapping its class prototype. */
+/** Observes strip renders through the stable JSX wrapper installed when the harness loads. */
 export function onStripRender(t: TestContext, spy: () => void) {
-	const render = StripWithIcon.prototype.render;
-	t.mock.method(StripWithIcon.prototype, "render", function (this: StripWithIcon) {
-		spy();
-		return render.call(this);
+	const observer: UiObserver = {
+		rendered: (key) => {
+			if (key === "StripWithIcon") spy();
+		},
+	};
+	uiObservers.add(observer);
+	t.after(() => {
+		uiObservers.delete(observer);
 	});
 }
 
@@ -285,7 +294,7 @@ export async function mountView(
 	};
 }
 
-const classNames = [
+const componentNames = [
 	"ObsidianBridge",
 	"TimelineView",
 	"YearView",
@@ -305,12 +314,67 @@ const classNames = [
 	"DateStatusBadge",
 	"ModifyBadge",
 ] as const;
+const uiComponents = {
+	YearHeader,
+	DateHeader: DayHeader,
+	TodayFocus,
+	Counters,
+	CounterItem,
+	StripWithIcon,
+	TagBadge,
+	FileBadge,
+	DateStatusBadge,
+	ModifyBadge,
+};
+type UiComponentName = keyof typeof uiComponents;
+type UiObserver = {
+	created?: (key: UiComponentName) => void;
+	rendered?: (key: UiComponentName) => void;
+};
+const uiObservers = new Set<UiObserver>();
+const uiWrappers = new Map<unknown, { key: UiComponentName; render: (props: never) => ReactNode }>();
+for (const key of Object.keys(uiComponents) as UiComponentName[]) {
+	const component = uiComponents[key];
+	assert.equal(typeof component, "function", `${key} is a plain function component`);
+	assert.equal(component.prototype?.render, undefined, `${key} is a plain function component`);
+	uiWrappers.set(component, {
+		key,
+		render: (props: never) => {
+			for (const observer of uiObservers) observer.rendered?.(key);
+			return component(props);
+		},
+	});
+}
+const runtime = jsxRuntime as unknown as Record<"jsx" | "jsxs", (type: unknown, ...args: unknown[]) => unknown>;
+// Stable types from the first mount let observers join later without remounting a component.
+for (const key of ["jsx", "jsxs"] as const) {
+	const create = runtime[key];
+	runtime[key] = (type: unknown, ...args: unknown[]) => {
+		const wrapper = uiWrappers.get(type);
+		if (!wrapper) return create(type, ...args);
+		for (const observer of uiObservers) observer.created?.(wrapper.key);
+		return create(wrapper.render, ...args);
+	};
+}
+const classNames = componentNames.filter((name) => !(name in uiComponents));
 const providerNames = ["QuickEntryHandlerContext", "TodayFocusEventHandlersContext", "UserOptionContext"] as const;
 
-/** Counts private classes as JSX creates their elements, before React calls the prototype render method. */
+/** Counts class renders with prototype spies and UI function renders through the stable JSX wrappers. */
 export function countRenders(t: TestContext) {
-	const counts = Object.fromEntries(classNames.map((name) => [name, 0]));
+	const counts = Object.fromEntries(componentNames.map((name) => [name, 0]));
 	const observed = new Set<string>();
+	const observer: UiObserver = {
+		created: (key) => {
+			observed.add(key);
+		},
+		rendered: (key) => {
+			counts[key]++;
+		},
+	};
+	uiObservers.add(observer);
+	t.after(() => {
+		uiObservers.delete(observer);
+	});
 	let before: ReturnType<typeof providerValues> = {};
 	const observe = (type: unknown) => {
 		if (typeof type !== "function" || !classNames.includes(type.name as (typeof classNames)[number])) return;
@@ -325,8 +389,7 @@ export function countRenders(t: TestContext) {
 		});
 	};
 	// These can be made with createElement instead of JSX; hidden classes are discovered through jsx/jsxs below.
-	for (const type of [ObsidianBridge, TimelineView, StripWithIcon]) observe(type);
-	const runtime = jsxRuntime as unknown as Record<"jsx" | "jsxs", (type: unknown, ...args: unknown[]) => unknown>;
+	for (const type of [ObsidianBridge, TimelineView]) observe(type);
 	for (const key of ["jsx", "jsxs"] as const) {
 		const create = runtime[key];
 		t.mock.method(runtime, key, (type: unknown, ...args: unknown[]) => {
@@ -338,7 +401,7 @@ export function countRenders(t: TestContext) {
 	return {
 		reset: () => {
 			before = providerValues();
-			for (const name of classNames) counts[name] = 0;
+			for (const name of componentNames) counts[name] = 0;
 			resetRenderCounts();
 		},
 		snapshot: () => {
@@ -351,6 +414,6 @@ export function countRenders(t: TestContext) {
 				),
 			};
 		},
-		assertAllObserved: () => assert.deepEqual([...observed].sort(), [...classNames].sort()),
+		assertAllObserved: () => assert.deepEqual([...observed].sort(), [...componentNames].sort()),
 	};
 }

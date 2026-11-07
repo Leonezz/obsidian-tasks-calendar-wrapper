@@ -1,5 +1,6 @@
 import * as React from "react";
 import type { ResolvedTask, TaskRowModel, YearGroup } from "@tasks-calendar-wrapper/core";
+import { YearHeader } from "@tasks-calendar-wrapper/ui/src/timeline/YearHeader";
 import { DateView, type EntryProps } from "./dateview";
 
 type YearViewProps = {
@@ -25,17 +26,6 @@ export class YearView extends React.Component<YearViewProps> {
 						key={day.key}
 					/>
 				))}
-			</div>
-		);
-	}
-}
-
-class YearHeader extends React.Component<{ readonly year: YearGroup }> {
-	render(): React.ReactNode {
-		const { year } = this.props;
-		return (
-			<div className={"year" + (year.isCurrent ? " current" : "")} data-types={year.statuses.join(" ")}>
-				{year.label}
 			</div>
 		);
 	}
