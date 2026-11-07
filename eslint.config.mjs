@@ -171,6 +171,57 @@ export default tseslint.config(
 		},
 	},
 	{
+		// ui holds React components and hooks; it depends only on react and core (see the restructuring plan).
+		files: ["packages/ui/**/*.{ts,tsx}"],
+		rules: {
+			"no-restricted-imports": [
+				"error",
+				{
+					paths: [
+						{
+							name: "obsidian",
+							message:
+								"ui must not depend on Obsidian; the plugin passes what it needs in through UiHost.",
+						},
+						{
+							name: "moment",
+							message:
+								"ui sees dates as core's DateValue and MomentFactory and gets moment through UiHost; it has no moment of its own.",
+						},
+						{ name: "underscore", message: "ui compares with its own code or core's." },
+						{
+							name: "@tasks-calendar-wrapper/obsidian-plugin",
+							message: "The dependency only goes from the plugin to ui.",
+						},
+					],
+					patterns: [
+						{
+							group: ["moment/*"],
+							message:
+								"ui sees dates as core's DateValue and MomentFactory and gets moment through UiHost; it has no moment of its own.",
+						},
+						{ group: ["underscore/*"], message: "ui compares with its own code or core's." },
+						{
+							group: ["**/apps/**", "**/obsidian-plugin/**"],
+							message: "ui must not reach into the plugin; the dependency only goes the other way.",
+						},
+					],
+				},
+			],
+			"no-restricted-globals": [
+				"error",
+				{
+					name: "createEl",
+					message: "Obsidian's DOM helpers do not exist outside Obsidian; render with React, or ask UiHost.",
+				},
+				{
+					name: "createDiv",
+					message: "Obsidian's DOM helpers do not exist outside Obsidian; render with React, or ask UiHost.",
+				},
+			],
+		},
+	},
+	{
 		// core is the bottom layer: no UI, no other workspace package.
 		files: ["packages/core/**/*.{ts,tsx}"],
 		rules: {
