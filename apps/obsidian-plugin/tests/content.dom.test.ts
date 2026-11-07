@@ -4,7 +4,10 @@ import "./setup";
 
 import assert from "node:assert/strict";
 import { test, type TestContext } from "node:test";
-import { act } from "react";
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
+import { HostContext, type UiHost } from "@tasks-calendar-wrapper/ui";
+import { Content, type ContentProps } from "@tasks-calendar-wrapper/ui/src/row/Content";
 import { MarkdownRenderer, type Component } from "obsidian";
 import { TasksTimelineView } from "../src/views";
 import { defaultUserOptions } from "../src/useroptions";
@@ -156,4 +159,111 @@ test("rows render their markdown with the static view as the owner", async (t) =
 	} finally {
 		await other.onClose();
 	}
+});
+
+/** A second root remounts Content between commits of the real view. */
+function contentRoot(t: TestContext, host: UiHost, props: ContentProps) {
+	const container = document.body.appendChild(document.createElement("div"));
+	let root: ReturnType<typeof createRoot> | undefined;
+	const unmount = async () => {
+		await act(() => root?.unmount());
+		root = undefined;
+	};
+	t.after(async () => {
+		await unmount();
+		container.remove();
+	});
+	return {
+		container,
+		mount: async () => {
+			root = createRoot(container);
+			await act(() =>
+				root!.render(createElement(HostContext.Provider, { value: host }, createElement(Content, props))),
+			);
+		},
+		unmount,
+	};
+}
+
+test("a remount after a commit renders again", async (t) => {
+	const { calls } = mockMarkdown(t);
+	const notes = { "Content/View.md": "- [ ] View task" };
+	const fixture = await mountView(t, { app: notesApp(notes) });
+	const props = { display: "Remounted task", fileName: "Content/Remount.md" };
+	const content = contentRoot(t, fixture.host, props);
+	const renderCount = () =>
+		calls.filter(({ markdown, sourcePath }) => markdown === props.display && sourcePath === props.fileName).length;
+	await content.mount();
+	assert.equal(renderCount(), 1);
+	await content.unmount();
+	const clear = t.mock.method(fixture.host, "clearMarkdownCache");
+	notes["Content/View.md"] = "- [ ] Changed view task";
+	fixture.edited("Content/View.md");
+	await fixture.reload();
+	assert.equal(clear.mock.callCount(), 1, "the list commit clears the view's cache once");
+	await content.mount();
+	assert.equal(renderCount(), 2);
+});
+
+test("a remount without a commit hits the cache", async (t) => {
+	const { calls } = mockMarkdown(t);
+	const fixture = await mountView(t, { app: notesApp({ "Content/View.md": "- [ ] View task" }) });
+	const props = { display: "Cached task", fileName: "Content/Cache.md" };
+	const content = contentRoot(t, fixture.host, props);
+	const renderCount = () =>
+		calls.filter(({ markdown, sourcePath }) => markdown === props.display && sourcePath === props.fileName).length;
+	await content.mount();
+	assert.equal(renderCount(), 1);
+	const html = content.container.innerHTML;
+	await content.unmount();
+	await content.mount();
+	assert.equal(renderCount(), 1);
+	assert.equal(content.container.innerHTML, html);
+});
+
+test("a link target created then reload shows the resolved display", async (t) => {
+	const targets = new Set<string>();
+	const calls: RenderCall[] = [];
+	const unresolved = '<a class="internal-link is-unresolved">New</a>';
+	const resolved = '<a class="internal-link">New</a>';
+	t.mock.method(
+		MarkdownRenderer,
+		"renderMarkdown",
+		(markdown: string, el: object, sourcePath: string, owner: Component) => {
+			calls.push({ markdown, sourcePath, owner });
+			Object.defineProperty(el, "firstElementChild", {
+				value: { innerHTML: targets.has("New") ? resolved : unresolved },
+				configurable: true,
+			});
+			return Promise.resolve();
+		},
+	);
+	const props = { display: "[[New]]", fileName: "Content/Link.md" };
+	const notes = { [props.fileName]: "- [ ] [[New]]" };
+	const fixture = await mountView(t, { app: notesApp(notes) });
+	const content = contentRoot(t, fixture.host, props);
+	const renderCount = () =>
+		calls.filter(({ markdown, sourcePath }) => markdown === props.display && sourcePath === props.fileName).length;
+	const viewContent = fixture.container.querySelector(".task .lines > .content");
+	assert.ok(viewContent);
+	assert.equal(viewContent.innerHTML, "<a>" + unresolved + "</a>");
+	await content.mount();
+	assert.equal(content.container.innerHTML, "<a>" + unresolved + "</a>");
+	assert.equal(renderCount(), 2);
+	targets.add("New");
+	await content.unmount();
+	await content.mount();
+	assert.equal(content.container.innerHTML, "<a>" + unresolved + "</a>");
+	assert.equal(renderCount(), 2);
+	await content.unmount();
+	// Changed metadata makes reload commit while preserving the row's display and position in its day.
+	notes[props.fileName] = "- [ ] [[New]] [priority:: high]";
+	fixture.edited(props.fileName);
+	await fixture.reload();
+	await content.mount();
+	assert.equal(content.container.innerHTML, "<a>" + resolved + "</a>");
+	assert.equal(renderCount(), 3);
+	// As with PureComponent, an unchanged mounted row keeps its copied HTML on reload.
+	assert.equal(fixture.container.querySelector(".task .lines > .content"), viewContent);
+	assert.equal(viewContent.innerHTML, "<a>" + unresolved + "</a>");
 });

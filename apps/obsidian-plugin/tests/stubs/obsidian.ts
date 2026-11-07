@@ -653,10 +653,13 @@ export class PluginSettingTab {
 const escapeHtml = (text: string) =>
 	text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-/** Writes the markdown as escaped text where Obsidian would render it, so a test reads the row's own text. */
+/** Writes escaped markdown on plain objects and DOM elements, so a test reads the row's own text. */
 export const MarkdownRenderer = {
 	renderMarkdown(markdown: string, el: { firstElementChild: unknown }): Promise<void> {
-		el.firstElementChild = { innerHTML: escapeHtml(markdown) };
+		Object.defineProperty(el, "firstElementChild", {
+			value: { innerHTML: escapeHtml(markdown) },
+			configurable: true,
+		});
 		return Promise.resolve();
 	},
 };

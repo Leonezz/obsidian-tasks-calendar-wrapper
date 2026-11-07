@@ -113,3 +113,50 @@ test("the host reports the platform and the time", () => {
 	assert.ok(Math.abs(now.valueOf() - Date.now()) < 1000);
 	assert.equal(host.moment, moment);
 });
+
+test("a render that leaves no element throws as Content did and caches nothing", (t) => {
+	const render = t.mock.method(MarkdownRenderer, "renderMarkdown", () => Promise.resolve());
+	const owner = new Component();
+	const { elements, createElement } = detachedElements();
+	const host = createUiHost({ owner: () => owner, createElement });
+
+	for (let attempt = 1; attempt <= 2; attempt++) {
+		assert.throws(() => host.renderMarkdown("", "Notes/Empty.md"), {
+			name: "TypeError",
+			message: /innerHTML/,
+		});
+		assert.equal(render.mock.callCount(), attempt);
+		assert.equal(elements.length, attempt);
+	}
+});
+
+test("the render's promise is neither awaited nor caught", (t) => {
+	const calls: string[] = [];
+	const thenable = {
+		then() {
+			calls.push("then");
+			return Promise.resolve();
+		},
+		catch() {
+			calls.push("catch");
+			return Promise.resolve();
+		},
+		finally() {
+			calls.push("finally");
+			return Promise.resolve();
+		},
+	};
+	t.mock.method(MarkdownRenderer, "renderMarkdown", (_markdown: string, el: object) => {
+		Object.defineProperty(el, "firstElementChild", {
+			value: { innerHTML: "rendered" },
+			configurable: true,
+		});
+		return thenable as unknown as Promise<void>;
+	});
+	const owner = new Component();
+	const { createElement } = detachedElements();
+	const host = createUiHost({ owner: () => owner, createElement });
+
+	assert.equal(host.renderMarkdown("same", "Notes/Day.md"), "rendered");
+	assert.deepEqual(calls, []);
+});

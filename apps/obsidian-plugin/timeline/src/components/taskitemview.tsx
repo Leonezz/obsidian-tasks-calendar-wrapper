@@ -1,7 +1,7 @@
-import { MarkdownRenderer, Platform } from "obsidian";
+import { Platform } from "obsidian";
 import * as React from "react";
 import { sameRowModel, type BadgeKind, type TaskRowModel } from "@tasks-calendar-wrapper/core";
-import { TasksTimelineView } from "../../../src/views";
+import { Content } from "@tasks-calendar-wrapper/ui/src/row/Content";
 import * as Icons from "@tasks-calendar-wrapper/ui/src/icons";
 import { RowWriteContext, TaskItemEventHandlersContext } from "./context";
 import { clickIsGuarded, type ListChangeClock } from "./clickguard";
@@ -174,22 +174,5 @@ class TaskRow extends React.Component<TaskRowProps> {
 				</div>
 			</div>
 		);
-	}
-}
-
-const defaultContentProps = {
-	display: "",
-	fileName: "",
-};
-type ContentProps = Readonly<typeof defaultContentProps>;
-/**
- * Rendering markdown is the most expensive part of a row, so it only runs again when the text or the file changes.
- * Every reload creates new task objects, so without this every row was rendered again after each save (issue #63).
- */
-class Content extends React.PureComponent<ContentProps> {
-	render(): React.ReactNode {
-		const cont = createEl("a");
-		MarkdownRenderer.renderMarkdown(this.props.display, cont, this.props.fileName, TasksTimelineView.view!);
-		return <a dangerouslySetInnerHTML={{ __html: cont.firstElementChild!.innerHTML }} />;
 	}
 }

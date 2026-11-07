@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import type { TestContext } from "node:test";
 import { Events, type App } from "obsidian";
-import { act, createElement, type ComponentProps, type ReactNode } from "react";
+import { act, createElement, memo, type ComponentProps, type ReactNode } from "react";
 import jsxRuntime from "react/jsx-runtime";
 import { createRoot } from "react-dom/client";
 import type { Store } from "@tasks-calendar-wrapper/core";
+import { HostContext, type UiHost } from "@tasks-calendar-wrapper/ui";
+import { Content, sameContentProps, type ContentProps } from "@tasks-calendar-wrapper/ui/src/row/Content";
 import { StatusMarker as StripWithIcon } from "@tasks-calendar-wrapper/ui/src/row/StatusMarker";
 import { TagBadge, FileBadge, DateStatusBadge, ModifyBadge } from "@tasks-calendar-wrapper/ui/src/row/Badges";
 import { YearHeader } from "@tasks-calendar-wrapper/ui/src/timeline/YearHeader";
@@ -12,6 +14,7 @@ import { DayHeader } from "@tasks-calendar-wrapper/ui/src/timeline/DayHeader";
 import { Counters, CounterItem } from "@tasks-calendar-wrapper/ui/src/entry/Counters";
 import { TodayFocus } from "@tasks-calendar-wrapper/ui/src/entry/TodayFocus";
 import { TasksTimelineView } from "../src/views";
+import type { PluginUiHost } from "../src/uihost";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import type { TimelineState } from "../src/state/timeline";
 import { createTaskIndex, type ParseNote } from "../timeline/src/taskindex";
@@ -23,9 +26,12 @@ import { TimelineView } from "../timeline/src/components/timelineview";
 import { providerValues, rendersOf, resetRenderCounts } from "../timeline/src/components/renderprobe";
 import { goldenApp, loadVault } from "./golden-vault";
 import { unusedNotices, unusedWriter } from "./view-harness";
+import { testHost } from "./stubs/host";
 
 /** Step 10 will take these props from createBridgeActions instead of the bridge constructor. */
-export type BridgeProps = ConstructorParameters<typeof ObsidianBridge>[0];
+export type BridgeProps = Omit<ConstructorParameters<typeof ObsidianBridge>[0], "host"> & {
+	readonly host?: UiHost;
+};
 
 /** Step 10 will keep this state/action/render contract over createBridgeActions and the bridge's pure tree. */
 export type BridgeHandle = Pick<
@@ -51,7 +57,8 @@ export type BridgeHandle = Pick<
 };
 
 type BridgeState = BridgeHandle["state"];
-type Update = Partial<BridgeState> | ((state: BridgeState, props: BridgeProps) => Partial<BridgeState> | null) | null;
+type Update =
+	Partial<BridgeState> | ((state: BridgeState, props: BridgeHandle["props"]) => Partial<BridgeState> | null) | null;
 type DeferredBridge = BridgeHandle & {
 	flush(): void;
 	renderPending(): void;
@@ -73,7 +80,8 @@ function handleOf(bridge: ObsidianBridge): BridgeHandle {
 export function bridgeActions(props: BridgeProps, options: BridgeOptions & { mode: "deferred" }): DeferredBridge;
 export function bridgeActions(props: BridgeProps, options?: BridgeOptions): BridgeHandle;
 export function bridgeActions(props: BridgeProps, { mode = "sync", mount = true }: BridgeOptions = {}): BridgeHandle {
-	const instance = new ObsidianBridge(props);
+	// testHost is a test default for cases written before the host prop existed.
+	const instance = new ObsidianBridge({ ...props, host: props.host ?? testHost });
 	const bridge = handleOf(instance);
 	const apply = (update: Update) => {
 		bridge.state = {
@@ -139,6 +147,7 @@ export function mountBridge(props: BridgeProps) {
 	const bridge: { current: BridgeHandle | null } = { current: null };
 	const element = createElement(ObsidianBridge, {
 		...props,
+		host: props.host ?? testHost,
 		ref: (instance: ObsidianBridge | null) => {
 			bridge.current = instance ? handleOf(instance) : null;
 		},
@@ -146,9 +155,9 @@ export function mountBridge(props: BridgeProps) {
 	return { element, bridge, bridgeState: () => bridge.current!.state };
 }
 
-/** Step 9 will render the function timeline with the same props, without exposing an instance. */
+/** Step 9 will render the function timeline with the same props and test host, without exposing an instance. */
 export function timelineElement(props: ComponentProps<typeof TimelineView>) {
-	return createElement(TimelineView, props);
+	return createElement(HostContext.Provider, { value: testHost }, createElement(TimelineView, props));
 }
 
 /** Step 9 will use a renderprobe hook for this wrapper and the timeline's commit clock. */
@@ -226,12 +235,14 @@ export async function mountView(
 	const internals = view as unknown as {
 		store: Store<TimelineState>;
 		resolveEnv: BridgeProps["resolveEnv"];
+		uiHost: PluginUiHost;
 	};
 	const container = document.body.appendChild(document.createElement("div"));
 	Object.assign(container, { empty: () => container.replaceChildren() });
 	(view.containerEl as unknown as { children: HTMLElement[] }).children[1] = container;
 	const bridgeProps: BridgeProps = {
 		plugin: view,
+		host: internals.uiHost,
 		store: internals.store,
 		resolveEnv: internals.resolveEnv,
 		writer: view.viewWriter,
@@ -270,6 +281,7 @@ export async function mountView(
 	});
 	return {
 		view,
+		host: internals.uiHost,
 		container,
 		bridgeProps,
 		store: internals.store,
@@ -326,14 +338,14 @@ const uiComponents = {
 	DateStatusBadge,
 	ModifyBadge,
 };
-type UiComponentName = keyof typeof uiComponents;
+type UiComponentName = keyof typeof uiComponents | "Content";
 type UiObserver = {
 	created?: (key: UiComponentName) => void;
 	rendered?: (key: UiComponentName) => void;
 };
 const uiObservers = new Set<UiObserver>();
 const uiWrappers = new Map<unknown, { key: UiComponentName; render: (props: never) => ReactNode }>();
-for (const key of Object.keys(uiComponents) as UiComponentName[]) {
+for (const key of Object.keys(uiComponents) as (keyof typeof uiComponents)[]) {
 	const component = uiComponents[key];
 	assert.equal(typeof component, "function", `${key} is a plain function component`);
 	assert.equal(component.prototype?.render, undefined, `${key} is a plain function component`);
@@ -345,6 +357,23 @@ for (const key of Object.keys(uiComponents) as UiComponentName[]) {
 		},
 	});
 }
+const memoContent = Content as unknown as {
+	$$typeof: symbol;
+	type: ((props: ContentProps) => ReactNode) & { prototype?: { render?: unknown } };
+	compare: typeof sameContentProps;
+};
+assert.equal(typeof Content, "object", "Content is a React.memo object");
+assert.equal(memoContent.$$typeof, Symbol.for("react.memo"), "Content is a React.memo object");
+assert.equal(typeof memoContent.type, "function", "Content wraps a plain function component");
+assert.equal(memoContent.type.prototype?.render, undefined, "Content wraps a plain function component");
+assert.equal(memoContent.compare, sameContentProps, "Content compares with sameContentProps");
+uiWrappers.set(Content, {
+	key: "Content",
+	render: memo(function counted(props: ContentProps) {
+		for (const observer of uiObservers) observer.rendered?.("Content");
+		return memoContent.type(props);
+	}, memoContent.compare),
+});
 const runtime = jsxRuntime as unknown as Record<"jsx" | "jsxs", (type: unknown, ...args: unknown[]) => unknown>;
 // Stable types from the first mount let observers join later without remounting a component.
 for (const key of ["jsx", "jsxs"] as const) {
@@ -356,10 +385,10 @@ for (const key of ["jsx", "jsxs"] as const) {
 		return create(wrapper.render, ...args);
 	};
 }
-const classNames = componentNames.filter((name) => !(name in uiComponents));
+const classNames = componentNames.filter((name) => name !== "Content" && !(name in uiComponents));
 const providerNames = ["QuickEntryHandlerContext", "TodayFocusEventHandlersContext", "UserOptionContext"] as const;
 
-/** Counts class renders with prototype spies and UI function renders through the stable JSX wrappers. */
+/** Counts class renders with prototype spies and UI function/memo renders through the stable JSX wrappers. */
 export function countRenders(t: TestContext) {
 	const counts = Object.fromEntries(componentNames.map((name) => [name, 0]));
 	const observed = new Set<string>();

@@ -25,6 +25,7 @@ import { changeAffectsTasks } from "../utils/refresh";
 import { createResolveEnv } from "./state/resolveenv";
 import { heldOf, initialTimelineState, type TimelineState, withOptions, withReload } from "./state/timeline";
 import { UserOption } from "./useroptions";
+import { createUiHost, type PluginUiHost } from "./uihost";
 
 export const TIMELINE_VIEW = "tasks_timeline_view";
 
@@ -40,6 +41,7 @@ export function timelineTaskIndex(app: App): SharedTaskIndex {
 
 export class TasksTimelineView extends ItemView {
 	private root?: Root;
+	private readonly uiHost: PluginUiHost = createUiHost({ owner: () => TasksTimelineView.view! });
 	/** The options, the tasks read last and the list shown, see TimelineState, which the bridge renders. */
 	private readonly store = createStore<TimelineState>(initialTimelineState());
 	/** Tasks belonging to the committed list, which can lag behind the store during a transition. */
@@ -150,6 +152,7 @@ export class TasksTimelineView extends ItemView {
 		this.root.render(
 			<ObsidianBridge
 				plugin={this}
+				host={this.uiHost}
 				store={this.store}
 				resolveEnv={this.resolveEnv}
 				writer={this.viewWriter}
@@ -290,6 +293,7 @@ export class TasksTimelineView extends ItemView {
 	/** Clears releases in the layout phase of the commit that shows their reload's tasks. */
 	readonly onListCommitted = (reloadId: number): void => {
 		if (this.closed) return;
+		this.uiHost.clearMarkdownCache();
 		this.bridgeCommitted = true;
 		this.clearReloadsThrough(reloadId);
 		const mounted = this.mountingTasks.get(reloadId);
