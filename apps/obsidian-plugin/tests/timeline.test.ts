@@ -9,7 +9,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import "moment/locale/ar";
 
 import { query, taskRowModel, type QuickFilter, type Task } from "@tasks-calendar-wrapper/core";
-import { onTimelineRender } from "@tasks-calendar-wrapper/ui/src/renderprobe";
+import { onTimelineRender } from "@tasks-calendar-wrapper/ui";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { timelineElement } from "./timeline-element";
 import { readTasks } from "../timeline/src/taskadapter";

@@ -1,6 +1,5 @@
 import { createElement, useRef } from "react";
-import { HostContext } from "@tasks-calendar-wrapper/ui";
-import { Timeline, type TimelineProps } from "@tasks-calendar-wrapper/ui/src/timeline/Timeline";
+import { HostContext, Timeline, type TimelineProps } from "@tasks-calendar-wrapper/ui";
 import { createResolveEnv } from "../src/state/resolveenv";
 import { testHost } from "./stubs/host";
 

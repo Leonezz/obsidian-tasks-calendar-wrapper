@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { StatusMarker as StripWithIcon } from "@tasks-calendar-wrapper/ui/src/row/StatusMarker";
+import { StatusMarker as StripWithIcon } from "@tasks-calendar-wrapper/ui";
 
 // Issue #138: an open task was shown with a ticked checkbox
 

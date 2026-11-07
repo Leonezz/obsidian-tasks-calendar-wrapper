@@ -7,7 +7,7 @@ import { test, type TestContext } from "node:test";
 import { act, createElement, type ContextType, type ReactNode } from "react";
 import type { TaskRowModel } from "@tasks-calendar-wrapper/core";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
-import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "../timeline/src/components/context";
+import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "@tasks-calendar-wrapper/ui";
 import { mountView, onTimelineRender } from "./component-harness";
 import { notesApp } from "./view-harness";
 import { AbstractInputSuggest, Platform } from "./stubs/obsidian";

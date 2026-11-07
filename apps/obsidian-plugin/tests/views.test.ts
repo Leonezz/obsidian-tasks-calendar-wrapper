@@ -14,7 +14,7 @@ import { initialTimelineState, withReload } from "../src/state/timeline";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { ConfirmModal } from "../src/confirm-modal";
 import { heldOf, TasksTimelineView, timelineTaskIndex } from "../src/views";
-import { quickFilterOf } from "../timeline/src/obsidianbridge";
+import { quickFilterOf } from "../timeline/src/bridgeactions";
 import { bridgeActions, type BridgeHandle, type BridgeProps } from "./component-harness";
 import { readTasks } from "../timeline/src/taskadapter";
 import { moment } from "../utils/moment";

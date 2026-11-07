@@ -1,25 +1,39 @@
 import assert from "node:assert/strict";
 import type { TestContext } from "node:test";
 import { Events, type App } from "obsidian";
-import { act, createElement, memo, type ComponentProps, type ReactNode } from "react";
+import { act, createElement, memo, startTransition, type ComponentProps, type ReactNode } from "react";
 import jsxRuntime from "react/jsx-runtime";
 import { createRoot } from "react-dom/client";
 import type { Store } from "@tasks-calendar-wrapper/core";
-import type { UiHost } from "@tasks-calendar-wrapper/ui";
-import type { ListChangeClock } from "@tasks-calendar-wrapper/ui/src/clickguard";
-import { Content, sameContentProps, type ContentProps } from "@tasks-calendar-wrapper/ui/src/row/Content";
-import { TaskRow, sameRowModelProps } from "@tasks-calendar-wrapper/ui/src/row/TaskRow";
-import { StatusMarker as StripWithIcon } from "@tasks-calendar-wrapper/ui/src/row/StatusMarker";
-import { TagBadge, FileBadge, DateStatusBadge, ModifyBadge } from "@tasks-calendar-wrapper/ui/src/row/Badges";
-import { YearHeader } from "@tasks-calendar-wrapper/ui/src/timeline/YearHeader";
-import { DayHeader } from "@tasks-calendar-wrapper/ui/src/timeline/DayHeader";
-import { Year } from "@tasks-calendar-wrapper/ui/src/timeline/Year";
-import { DayContent } from "@tasks-calendar-wrapper/ui/src/timeline/DayContent";
-import { Counters, CounterItem } from "@tasks-calendar-wrapper/ui/src/entry/Counters";
-import { QuickEntry } from "@tasks-calendar-wrapper/ui/src/entry/QuickEntry";
-import { MultiSelect } from "@tasks-calendar-wrapper/ui/src/entry/MultiSelect";
-import { TodayFocus } from "@tasks-calendar-wrapper/ui/src/entry/TodayFocus";
-import { Timeline, type TimelineProps } from "@tasks-calendar-wrapper/ui/src/timeline/Timeline";
+import {
+	type UiHost,
+	type ListChangeClock,
+	Content,
+	sameContentProps,
+	type ContentProps,
+	TaskRow,
+	sameRowModelProps,
+	StatusMarker as StripWithIcon,
+	TagBadge,
+	FileBadge,
+	DateStatusBadge,
+	ModifyBadge,
+	YearHeader,
+	DayHeader,
+	Year,
+	DayContent,
+	Counters,
+	CounterItem,
+	QuickEntry,
+	MultiSelect,
+	TodayFocus,
+	Timeline,
+	type TimelineProps,
+	providerValues,
+	rendersOf,
+	resetRenderCounts,
+	onTimelineRender as onTimelineRenderHook,
+} from "@tasks-calendar-wrapper/ui";
 import { TasksTimelineView } from "../src/views";
 import type { PluginUiHost } from "../src/uihost";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
@@ -28,46 +42,45 @@ import { createTaskIndex, type ParseNote } from "../timeline/src/taskindex";
 import type { TaskWriter, WriteEvent } from "../timeline/src/taskwriter";
 import { moment } from "../utils/moment";
 import { parseKeyOf } from "../utils/parsekey";
-import { ObsidianBridge } from "../timeline/src/obsidianbridge";
+import { ObsidianBridge, bridgeTree, type MountedBridgeHandle } from "../timeline/src/bridge";
 import {
-	providerValues,
-	rendersOf,
-	resetRenderCounts,
-	onTimelineRender as onTimelineRenderHook,
-} from "@tasks-calendar-wrapper/ui/src/renderprobe";
+	createBridgeActions,
+	listChanged,
+	listUpdate,
+	type BridgeActions,
+	type BridgeProps as ActionBridgeProps,
+	type BridgeState,
+} from "../timeline/src/bridgeactions";
 import { goldenApp, loadVault } from "./golden-vault";
 import { unusedNotices, unusedWriter } from "./view-harness";
 import { testHost } from "./stubs/host";
 
-/** Step 10 will take these props from createBridgeActions instead of the bridge constructor. */
-export type BridgeProps = Omit<ConstructorParameters<typeof ObsidianBridge>[0], "host"> & {
+/** testHost supplies the host for cases written before that prop existed. */
+export type BridgeProps = Omit<ActionBridgeProps, "host"> & {
 	readonly host?: UiHost;
 };
 
-/** Step 10 will keep this state/action/render contract over createBridgeActions and the bridge's pure tree. */
-export type BridgeHandle = Pick<
-	ObsidianBridge,
-	| "state"
-	| "props"
-	| "setState"
-	| "handleCreateNewTask"
-	| "handleCompleteTask"
-	| "handleFilterEnable"
-	| "handleRowMenu"
-	| "handleSetDate"
-	| "handleDateBadge"
-	| "handleModifyTask"
-	| "handleOpenFile"
-	| "handleTagClick"
-	| "onUpdateTasks"
-	| "getTaskItemHandlers"
-	| "render"
-> & {
+/** The action harness keeps writable state and methods so tests can replace or spy on them. */
+export type BridgeHandle = {
+	state: BridgeState;
+	props: ActionBridgeProps;
+	setState(update: Update): void;
+	handleCreateNewTask: BridgeActions["handleCreateNewTask"];
+	handleCompleteTask: BridgeActions["handleCompleteTask"];
+	handleFilterEnable: BridgeActions["handleFilterEnable"];
+	handleRowMenu: BridgeActions["handleRowMenu"];
+	handleSetDate: BridgeActions["handleSetDate"];
+	handleDateBadge: BridgeActions["handleDateBadge"];
+	handleModifyTask: BridgeActions["handleModifyTask"];
+	handleOpenFile: BridgeActions["handleOpenFile"];
+	handleTagClick: BridgeActions["handleTagClick"];
+	onUpdateTasks: BridgeActions["onUpdateTasks"];
+	getTaskItemHandlers: BridgeActions["getTaskItemHandlers"];
+	render(): ReactNode;
 	mount(): void;
 	unmount(): void;
 };
 
-type BridgeState = BridgeHandle["state"];
 type Update =
 	Partial<BridgeState> | ((state: BridgeState, props: BridgeHandle["props"]) => Partial<BridgeState> | null) | null;
 type DeferredBridge = BridgeHandle & {
@@ -78,34 +91,57 @@ type DeferredBridge = BridgeHandle & {
 };
 type BridgeOptions = { mode?: "sync" | "deferred"; mount?: boolean };
 
-// The handle is the instance: internal setState calls and replaced handlers still go through the same object
-// the tests spy on. Its narrower type hides lifecycle names while preserving writable state and handler identity.
-function handleOf(bridge: ObsidianBridge): BridgeHandle {
-	return Object.assign(bridge, {
-		mount: () => bridge.componentDidMount(),
-		unmount: () => bridge.componentWillUnmount(),
-	});
-}
-
-/** Step 10 will drive createBridgeActions with these same synchronous or deferred state/commit semantics. */
+/** Drives the shared actions with synchronous or deferred state/commit semantics. */
 export function bridgeActions(props: BridgeProps, options: BridgeOptions & { mode: "deferred" }): DeferredBridge;
 export function bridgeActions(props: BridgeProps, options?: BridgeOptions): BridgeHandle;
 export function bridgeActions(props: BridgeProps, { mode = "sync", mount = true }: BridgeOptions = {}): BridgeHandle {
 	// testHost is a test default for cases written before the host prop existed.
-	const instance = new ObsidianBridge({ ...props, host: props.host ?? testHost });
-	const bridge = handleOf(instance);
+	const bridgeProps = { ...props, host: props.host ?? testHost };
+	let seen = bridgeProps.store.getSnapshot();
+	let unsubscribe: (() => void) | undefined;
+	const bridge: BridgeActions & BridgeHandle = Object.assign(
+		createBridgeActions(
+			bridgeProps,
+			() => bridge.state,
+			(update) => bridge.setState(update),
+		),
+		{
+			state: { userOptions: seen.options, tasks: seen.tasks, reloadId: seen.reloadId },
+			props: bridgeProps,
+			setState: (update: Update) => {
+				const before = bridge.state;
+				apply(update);
+				reportCommit(before);
+			},
+			render: () => bridgeTree(bridge.props, bridge.state, bridge),
+			mount: () => {
+				const onStateChanged = () => {
+					const next = bridge.props.store.getSnapshot();
+					const before = seen;
+					seen = next;
+					if (next.options !== before.options) bridge.setState({ userOptions: next.options });
+					if (listChanged(before, next))
+						startTransition(() => bridge.setState(listUpdate(bridge.props.store)));
+				};
+				unsubscribe = bridge.props.store.subscribe(onStateChanged);
+				// A change between reading the state and subscribing would not be heard of otherwise.
+				onStateChanged();
+				bridge.props.onListCommitted?.(bridge.state.reloadId ?? 0);
+			},
+			unmount: () => unsubscribe?.(),
+		},
+	);
 	const apply = (update: Update) => {
 		bridge.state = {
 			...bridge.state,
 			...(typeof update === "function" ? update(bridge.state, bridge.props) : update),
 		};
 	};
+	const reportCommit = (before: BridgeState) => {
+		const id = bridge.state.reloadId;
+		if (id !== undefined && id !== before.reloadId) bridge.props.onListCommitted?.(id);
+	};
 	if (mode === "sync") {
-		bridge.setState = (update) => {
-			const before = bridge.state;
-			apply(update);
-			instance.componentDidUpdate(bridge.props, before);
-		};
 		if (mount) bridge.mount();
 		return bridge;
 	}
@@ -122,7 +158,7 @@ export function bridgeActions(props: BridgeProps, { mode = "sync", mount = true 
 	const commit = () => {
 		const before = commits;
 		commits = [];
-		for (const state of before) instance.componentDidUpdate(bridge.props, state);
+		for (const state of before) reportCommit(state);
 	};
 	const renderPending = () => {
 		const updates = queued;
@@ -153,15 +189,15 @@ export function bridgeActions(props: BridgeProps, { mode = "sync", mount = true 
 	return deferred;
 }
 
-/** Step 10 will expose the function bridge's actions/state here, keeping the ref-like handle and bridgeState(). */
+/** Exposes the real function bridge's actions and latest rendered state through its test handle. */
 export function mountBridge(props: BridgeProps) {
-	const bridge: { current: BridgeHandle | null } = { current: null };
-	const element = createElement(ObsidianBridge, {
+	const bridge: { current: MountedBridgeHandle | null } = { current: null };
+	const wrapper = uiWrappers.get(ObsidianBridge)!;
+	for (const observer of uiObservers) observer.created?.(wrapper.key);
+	const element = createElement(wrapper.render as typeof ObsidianBridge, {
 		...props,
 		host: props.host ?? testHost,
-		ref: (instance: ObsidianBridge | null) => {
-			bridge.current = instance ? handleOf(instance) : null;
-		},
+		handleRef: bridge,
 	});
 	return { element, bridge, bridgeState: () => bridge.current!.state };
 }
@@ -330,6 +366,7 @@ const componentNames = [
 	"ModifyBadge",
 ] as const;
 const uiComponents = {
+	ObsidianBridge,
 	TimelineView: Timeline,
 	YearView: Year,
 	NormalDateContent: DayContent,
@@ -411,10 +448,9 @@ for (const key of ["jsx", "jsxs"] as const) {
 		return create(wrapper.render, ...args);
 	};
 }
-const classNames = componentNames.filter((name) => name !== "Content" && name !== "TaskRow" && !(name in uiComponents));
 const providerNames = ["QuickEntryHandlerContext", "TodayFocusEventHandlersContext", "UserOptionContext"] as const;
 
-/** Counts class renders with prototype spies and UI function/memo renders through the stable JSX wrappers. */
+/** Counts function and memo renders through the stable JSX wrappers. */
 export function countRenders(t: TestContext) {
 	const counts = Object.fromEntries(componentNames.map((name) => [name, 0]));
 	const observed = new Set<string>();
@@ -431,27 +467,6 @@ export function countRenders(t: TestContext) {
 		uiObservers.delete(observer);
 	});
 	let before: ReturnType<typeof providerValues> = {};
-	const observe = (type: unknown) => {
-		if (typeof type !== "function" || !classNames.includes(type.name as (typeof classNames)[number])) return;
-		if (observed.has(type.name)) return;
-		const prototype = type.prototype as { render(): ReactNode };
-		assert.equal(typeof prototype.render, "function", `${type.name} is a class component`);
-		observed.add(type.name);
-		const render = prototype.render;
-		t.mock.method(prototype, "render", function (this: typeof prototype) {
-			counts[type.name]++;
-			return render.call(this);
-		});
-	};
-	// These can be made with createElement instead of JSX; hidden classes are discovered through jsx/jsxs below.
-	for (const type of [ObsidianBridge]) observe(type);
-	for (const key of ["jsx", "jsxs"] as const) {
-		const create = runtime[key];
-		t.mock.method(runtime, key, (type: unknown, ...args: unknown[]) => {
-			observe(type);
-			return create(type, ...args);
-		});
-	}
 	resetRenderCounts();
 	return {
 		reset: () => {

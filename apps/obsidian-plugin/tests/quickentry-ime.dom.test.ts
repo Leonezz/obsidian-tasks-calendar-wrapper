@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { test, type TestContext } from "node:test";
 import { act, createElement, type ContextType, type ReactNode } from "react";
 import { defaultUserOptions } from "../src/useroptions";
-import { QuickEntryHandlerContext } from "../timeline/src/components/context";
+import { QuickEntryHandlerContext } from "@tasks-calendar-wrapper/ui";
 import { mountView, onTimelineRender } from "./component-harness";
 import { notesApp } from "./view-harness";
 
