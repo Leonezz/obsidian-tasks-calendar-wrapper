@@ -5,7 +5,8 @@ import { act, createElement, memo, type ComponentProps, type ReactNode } from "r
 import jsxRuntime from "react/jsx-runtime";
 import { createRoot } from "react-dom/client";
 import type { Store } from "@tasks-calendar-wrapper/core";
-import { HostContext, type UiHost } from "@tasks-calendar-wrapper/ui";
+import type { UiHost } from "@tasks-calendar-wrapper/ui";
+import type { ListChangeClock } from "@tasks-calendar-wrapper/ui/src/clickguard";
 import { Content, sameContentProps, type ContentProps } from "@tasks-calendar-wrapper/ui/src/row/Content";
 import { TaskRow, sameRowModelProps } from "@tasks-calendar-wrapper/ui/src/row/TaskRow";
 import { StatusMarker as StripWithIcon } from "@tasks-calendar-wrapper/ui/src/row/StatusMarker";
@@ -18,6 +19,7 @@ import { Counters, CounterItem } from "@tasks-calendar-wrapper/ui/src/entry/Coun
 import { QuickEntry } from "@tasks-calendar-wrapper/ui/src/entry/QuickEntry";
 import { MultiSelect } from "@tasks-calendar-wrapper/ui/src/entry/MultiSelect";
 import { TodayFocus } from "@tasks-calendar-wrapper/ui/src/entry/TodayFocus";
+import { Timeline, type TimelineProps } from "@tasks-calendar-wrapper/ui/src/timeline/Timeline";
 import { TasksTimelineView } from "../src/views";
 import type { PluginUiHost } from "../src/uihost";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
@@ -27,8 +29,12 @@ import type { TaskWriter, WriteEvent } from "../timeline/src/taskwriter";
 import { moment } from "../utils/moment";
 import { parseKeyOf } from "../utils/parsekey";
 import { ObsidianBridge } from "../timeline/src/obsidianbridge";
-import { TimelineView } from "../timeline/src/components/timelineview";
-import { providerValues, rendersOf, resetRenderCounts } from "@tasks-calendar-wrapper/ui/src/renderprobe";
+import {
+	providerValues,
+	rendersOf,
+	resetRenderCounts,
+	onTimelineRender as onTimelineRenderHook,
+} from "@tasks-calendar-wrapper/ui/src/renderprobe";
 import { goldenApp, loadVault } from "./golden-vault";
 import { unusedNotices, unusedWriter } from "./view-harness";
 import { testHost } from "./stubs/host";
@@ -160,26 +166,18 @@ export function mountBridge(props: BridgeProps) {
 	return { element, bridge, bridgeState: () => bridge.current!.state };
 }
 
-/** Step 9 will render the function timeline with the same props and test host, without exposing an instance. */
-export function timelineElement(props: ComponentProps<typeof TimelineView>) {
-	return createElement(HostContext.Provider, { value: testHost }, createElement(TimelineView, props));
-}
+export { timelineElement } from "./timeline-element";
 
-/** Step 9 will use a renderprobe hook for this wrapper and the timeline's commit clock. */
-export function onTimelineRender(
-	t: TestContext,
-	wrap: (props: ComponentProps<typeof TimelineView>, rendered: ReactNode) => ReactNode,
-) {
-	const mounted: { timeline?: TimelineView } = {};
-	const render = TimelineView.prototype.render;
-	t.mock.method(TimelineView.prototype, "render", function (this: TimelineView) {
-		mounted.timeline = this;
-		return wrap(this.props, render.call(this));
-	});
-	return {
-		clock: () =>
-			(mounted.timeline as unknown as { rowWrites: { clock: { lastListChangeAt: number } } }).rowWrites.clock,
-	};
+/** Uses the renderprobe hook for this wrapper and the timeline's commit clock. */
+export function onTimelineRender(t: TestContext, wrap: (props: TimelineProps, rendered: ReactNode) => ReactNode) {
+	let captured: ListChangeClock;
+	t.after(
+		onTimelineRenderHook((props, rendered, clock) => {
+			captured = clock;
+			return wrap(props, rendered);
+		}),
+	);
+	return { clock: () => captured };
 }
 
 /** Observes strip renders through the stable JSX wrapper installed when the harness loads. */
@@ -332,6 +330,7 @@ const componentNames = [
 	"ModifyBadge",
 ] as const;
 const uiComponents = {
+	TimelineView: Timeline,
 	YearView: Year,
 	NormalDateContent: DayContent,
 	QuickEntry,
@@ -445,7 +444,7 @@ export function countRenders(t: TestContext) {
 		});
 	};
 	// These can be made with createElement instead of JSX; hidden classes are discovered through jsx/jsxs below.
-	for (const type of [ObsidianBridge, TimelineView]) observe(type);
+	for (const type of [ObsidianBridge]) observe(type);
 	for (const key of ["jsx", "jsxs"] as const) {
 		const create = runtime[key];
 		t.mock.method(runtime, key, (type: unknown, ...args: unknown[]) => {

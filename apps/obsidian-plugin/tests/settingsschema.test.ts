@@ -9,7 +9,6 @@ import { settingIssues, type SettingControl, type SettingSpec } from "@tasks-cal
 import type { TasksCalendarSettingTab } from "../src/settings";
 import { settingsSchema } from "../src/settings-schema";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
-import { TimelineView } from "../timeline/src/components/timelineview";
 import { FIXTURE_NAMES, readFixture, rowsOf, startPlugin, type Control, type Row } from "./settings-fixtures";
 import type { FakeElement } from "./stubs/obsidian";
 
@@ -255,34 +254,11 @@ test("the schema records the options read only when the plugin loads or a timeli
 	const readAt = (when: SettingSpec["readWhen"]) =>
 		settingsSchema.filter((spec) => spec.readWhen === when).map((spec) => spec.key);
 	// main.ts reads these in onload and when the layout is ready, see plugin.test.ts for opening on start and for what
-	// is new; TimelineView's constructor reads the next two, see the test below.
+	// is new; the timeline reads the next two when it opens, see timeline-instance.dom.test.ts.
 	assert.deepEqual(readAt("pluginLoad"), ["openViewOnStartup", "showWhatsNewOnUpdate", "lastSeenVersion"]);
 	assert.deepEqual(readAt("viewOpen"), ["defaultTodayFocus", "defaultFilters"]);
 	// Nothing in the plugin or its packages reads styles.
 	assert.deepEqual(readAt("never"), ["styles"]);
-});
-
-test("an open timeline keeps the filter and today focus it opened with, and takes other options when they change", async () => {
-	// A push changes the props while the user's filter and focus remain in state. The update hook only records
-	// changes to row order for the click guard.
-	assert.equal((TimelineView as { getDerivedStateFromProps?: unknown }).getDerivedStateFromProps, undefined);
-	const opened: UserOption = { ...defaultUserOptions, defaultFilters: "todoFilter", defaultTodayFocus: true };
-	const pushed: UserOption = { ...defaultUserOptions, useCounters: false };
-	const classOf = (view: TimelineView) => (view.render() as { props: { className: string } }).props.className;
-	const view = new TimelineView({ userOptions: opened, tasks: [] });
-	const atOpen = classOf(view);
-	assert.match(atOpen, /todoFilter/);
-	assert.match(atOpen, /todayFocus/);
-	(view as { props: object }).props = { userOptions: pushed, tasks: [] };
-	const beforeUpdate = view.state;
-	view.componentDidUpdate();
-	assert.equal(view.state, beforeUpdate);
-	const afterPush = classOf(view);
-	assert.match(afterPush, /todoFilter/, "the filter it opened with");
-	assert.match(afterPush, /todayFocus/, "the today focus it opened with");
-	assert.match(afterPush, /noCounters/, "an option read on every push");
-	const reopened = classOf(new TimelineView({ userOptions: pushed, tasks: [] }));
-	assert.doesNotMatch(reopened, /todoFilter|todayFocus/, "a timeline opened after the change");
 });
 
 /** Whether a control is a tag, or holds rows with one, as the palette's rows in the row of Use Tags. */

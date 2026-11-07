@@ -5,18 +5,16 @@ import "./setup";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import "moment/locale/ar";
 
 import { query, taskRowModel, type QuickFilter, type Task } from "@tasks-calendar-wrapper/core";
-import { HostContext } from "@tasks-calendar-wrapper/ui";
+import { onTimelineRender } from "@tasks-calendar-wrapper/ui/src/renderprobe";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
-import { TimelineView } from "../timeline/src/components/timelineview";
+import { timelineElement } from "./timeline-element";
 import { readTasks } from "../timeline/src/taskadapter";
 import { moment } from "../utils/moment";
 import { goldenApp, loadVault } from "./golden-vault";
-import { testHost } from "./stubs/host";
 import { cssRules } from "./css-rules";
 import { allWithClass, classesOf, displayedLines, findClass, parseMarkup, textOf, type Element } from "./markup";
 import {
@@ -49,13 +47,7 @@ function rendered(tasks: readonly Task[], state: State, extra: Partial<UserOptio
 		defaultTodayFocus: state.todayFocus,
 		...extra,
 	};
-	return renderToStaticMarkup(
-		createElement(
-			HostContext.Provider,
-			{ value: testHost },
-			createElement(TimelineView, { userOptions, tasks, quickFilter }),
-		),
-	);
+	return renderToStaticMarkup(timelineElement({ userOptions, tasks, quickFilter }));
 }
 
 let golden: Promise<Task[]> | undefined;
@@ -280,10 +272,17 @@ test("timeline: a saved counter whose class turns its Filter on filters, whateve
 	}
 });
 
-test("timeline: years are keyed by place, then by year, so React builds the entry day again when they shift", async () => {
+test("timeline: years are keyed by place, then by year, so React builds the entry day again when they shift", async (t) => {
 	const tasks = await goldenTasks();
 	const userOptions = settingsOf(stateOf("light-today-all-days-no-counter"));
-	const view = new TimelineView({ userOptions, tasks });
+	let tree: unknown;
+	t.after(
+		onTimelineRender((_props, rendered) => {
+			tree = rendered;
+			return rendered;
+		}),
+	);
+	renderToStaticMarkup(timelineElement({ userOptions, tasks }));
 	const years = query(tasks, { settings: userOptions, counter: "" }, { now: NOW, moment }).years;
 	/** The children of the first element under `node` whose children are an array. */
 	const listUnder = (node: unknown): { key: unknown; props: { children: { key: unknown } } }[] => {
@@ -291,7 +290,7 @@ test("timeline: years are keyed by place, then by year, so React builds the entr
 		if (Array.isArray(children)) return children;
 		return listUnder(children);
 	};
-	const keyed = listUnder(view.render());
+	const keyed = listUnder(tree);
 	assert.deepEqual(
 		keyed.map((fragment) => [fragment.key, fragment.props.children.key]),
 		years.map((year, i) => [String(i), String(year.year)]),
