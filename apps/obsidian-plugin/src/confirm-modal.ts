@@ -1,4 +1,5 @@
 import { App, ButtonComponent, Modal } from "obsidian";
+import { copy } from "@tasks-calendar-wrapper/core";
 
 export interface ConfirmOptions {
 	title: string;
@@ -39,7 +40,7 @@ export class ConfirmModal extends Modal {
 	onOpen(): void {
 		this.setTitle(this.options.title).setContent(this.options.message);
 		const buttons = this.contentEl.createDiv({ cls: "modal-button-container" });
-		this.cancelButton = new ButtonComponent(buttons).setButtonText("Cancel").onClick(() => this.close());
+		this.cancelButton = new ButtonComponent(buttons).setButtonText(copy.modals.cancel).onClick(() => this.close());
 		this.confirmButton = new ButtonComponent(buttons)
 			.setButtonText(this.options.confirmText)
 			.setCta()

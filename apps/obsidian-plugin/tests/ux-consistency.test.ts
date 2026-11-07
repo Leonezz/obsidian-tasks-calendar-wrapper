@@ -103,12 +103,17 @@ describe("Feedback and confirmation", () => {
 		coveredBy("tests/confirmmodal.test.ts", "pressing cancel answers no");
 		coveredBy("tests/confirmmodal.test.ts", "closing the dialog any other way, such as with Escape, answers no");
 	});
-	// Phase 4 step 11: route errors through one reporter.
-	it.todo("errors use one report function");
-	// Phase 4 step 11, then steps 12 and 14 for settings: centralize all user-facing copy.
-	it.todo("user-facing copy comes from one string table");
-	// Phase 4 step 11: give the copy table a type usable by later translations.
-	it.todo("the string table has a Copy type for translations");
+	it("errors use one report function", () => {
+		coveredBy("tests/copy.test.ts", "new Notice( appears only in notices.ts");
+	});
+	// Settings follow in steps 12 and 14.
+	it("user-facing copy comes from one string table", () => {
+		coveredBy("tests/copy.test.ts", "no user-visible string literal is written outside copy.ts");
+		coveredBy("tests/copy.test.ts", "the copy table matches fixtures/copy/en.json");
+	});
+	it("the string table has a Copy type for translations", () => {
+		coveredBy("tests/copy.test.ts", "parameterised copy are typed functions");
+	});
 });
 
 // 视觉 (l.232–234) | 重复类名抢优先级，另有一份废弃 CSS | 以 Obsidian CSS 变量定义的一组 token（状态色、间距、徽标），组件只用 token；在默认主题与常见主题（如 README 提到的 Blue Topaz）下截图对比

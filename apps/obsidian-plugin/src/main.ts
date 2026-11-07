@@ -1,9 +1,10 @@
-import { Notice, Plugin, requireApiVersion } from "obsidian";
+import { Plugin, requireApiVersion } from "obsidian";
 
 import { TasksTimelineView, TIMELINE_VIEW, timelineTaskIndex } from "./views";
 
-import { dayKey, notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
-import { createNoticePresenter } from "../timeline/src/notices";
+import { copy, dayKey, notesSince, shouldShowWhatsNew } from "@tasks-calendar-wrapper/core";
+import { createNoticePresenter, reportNotice } from "../timeline/src/notices";
+import { ERROR_NOTICE_MS, SETTINGS_UNREADABLE_NOTICE_MS } from "../timeline/src/writerconstants";
 import { getTasksDialog, getTasksToggle } from "../timeline/src/tasksplugin";
 import { createTaskWriter } from "../timeline/src/taskwriter";
 import { moment } from "../utils/moment";
@@ -78,7 +79,7 @@ export default class TasksCalendarWrapper extends Plugin {
 
 		this.addCommand({
 			id: "open-tasks-timeline-view",
-			name: "Open Tasks Timeline View",
+			name: copy.commands.openTimeline,
 			callback: () => {
 				this.activateView(TIMELINE_VIEW).catch(reportError);
 			},
@@ -86,7 +87,7 @@ export default class TasksCalendarWrapper extends Plugin {
 
 		this.addCommand({
 			id: "show-whats-new",
-			name: "Show what's new",
+			name: copy.commands.showWhatsNew,
 			callback: () => {
 				new WhatsNewModal(this.app, notesSince(RELEASE_NOTES, "", this.manifest.version), SUPPORT_LINKS).open();
 			},
@@ -146,10 +147,7 @@ export default class TasksCalendarWrapper extends Plugin {
 			savedOptions = undefined;
 		}
 		if (savedOptions === undefined) {
-			new Notice(
-				"Tasks Calendar Wrapper: data.json changed outside Obsidian but could not be read, so the settings stay as they were; the next change of a setting saves them. See the developer console.",
-				10000,
-			);
+			reportNotice(copy.notices.settingsUnreadable, SETTINGS_UNREADABLE_NOTICE_MS);
 			return;
 		}
 		this.useSavedOptions(savedOptions);
@@ -184,5 +182,5 @@ export default class TasksCalendarWrapper extends Plugin {
 
 function reportError(error: unknown) {
 	console.error("Tasks Calendar Wrapper: failed to open the timeline view", error);
-	new Notice("Failed to open the timeline view. See the developer console for details.", 5000);
+	reportNotice(copy.notices.openViewFailure, ERROR_NOTICE_MS);
 }

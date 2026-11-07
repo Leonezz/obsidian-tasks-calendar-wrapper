@@ -1,5 +1,5 @@
 import type { App } from "obsidian";
-import { isTaskLine, type LineTarget } from "@tasks-calendar-wrapper/core";
+import { copy, isTaskLine, type LineTarget } from "@tasks-calendar-wrapper/core";
 import { openNoteAt } from "../../src/open-note";
 import type { NoticeContext, RefuseReason } from "./notices";
 import type { TaskWriter, TaskWriterDeps, WriteResult } from "./taskwriter";
@@ -38,7 +38,7 @@ function dependencies(lines: readonly string[]): string {
 }
 
 function unloaded(): WriteResult {
-	return Object.freeze({ kind: "failed", unknownOutcome: false, error: new Error("The plugin unloaded.") });
+	return Object.freeze({ kind: "failed", unknownOutcome: false, error: new Error(copy.notices.pluginUnloaded) });
 }
 
 /** Keeps dialog input and dependency waits outside the writer's queue and index holds. */
@@ -156,9 +156,9 @@ export function createWriterDialog(
 		}
 		if (prepared.recurrenceRemoved) {
 			const confirmed = await deps.confirm?.({
-				title: "Remove recurrence?",
-				message: `The edited task no longer repeats. If you cleared Recurs, save it. If you did not, Tasks could not read the rule in “${expected}” and dropped it.`,
-				confirmText: "Save without recurrence",
+				title: copy.modals.removeRecurrence,
+				message: copy.modals.removeRecurrenceMessage({ expected }),
+				confirmText: copy.modals.saveWithoutRecurrence,
 				focusCancel: true,
 			});
 			if (isDisposed()) return unloaded();

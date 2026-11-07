@@ -26,3 +26,7 @@ export const FS_TIMEOUT_BLOCK_MS = 120000;
 export const DEPENDENCY_QUIET_MS = 1500;
 /** Longest Tasks' dialog waits for dependency edits. */
 export const DEPENDENCY_WAIT_MAX_MS = 5000;
+/** Duration of an error notice. */
+export const ERROR_NOTICE_MS = 5000;
+/** Duration of the notice for settings that could not be read. */
+export const SETTINGS_UNREADABLE_NOTICE_MS = 10000;

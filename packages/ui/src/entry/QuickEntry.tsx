@@ -1,5 +1,5 @@
 import * as React from "react";
-import { expandShortcuts, getFileTitle, type QuickFilter } from "@tasks-calendar-wrapper/core";
+import { copy, expandShortcuts, getFileTitle, type QuickFilter } from "@tasks-calendar-wrapper/core";
 import * as Icons from "../icons";
 import { QuickEntryHandlerContext, useHost } from "../contexts";
 import { MultiSelect } from "./MultiSelect";
@@ -81,10 +81,10 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 						}}
 					>
 						<option value={"append"} key={1}>
-							New Task
+							{copy.quickEntry.newTask}
 						</option>
 						<option value={"filter"} key={2}>
-							Filter
+							{copy.quickEntry.filter}
 						</option>
 					</select>
 					{action === "append" ? (
@@ -92,7 +92,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 							name="File name"
 							className="fileSelect"
 							ref={fileSelect}
-							aria-label="Select a note to add a new task to"
+							aria-label={copy.quickEntry.selectNoteAria}
 							onChange={onQuickEntryFileSelectChange}
 							defaultValue={taskFiles[0]}
 						>
@@ -120,7 +120,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 							selectChangeHandler={(res) => {
 								setFilters(res);
 							}}
-							visual={["➕", "📆 date", "⏫ priority"]}
+							visual={copy.quickEntry.filterVisual}
 						/>
 					)}
 				</div>
@@ -130,7 +130,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 						<input
 							className="newTask"
 							type="text"
-							placeholder="Enter your tasks here"
+							placeholder={copy.quickEntry.placeholder}
 							ref={textInput}
 							onInput={onQuickEntryNewTaskInput}
 							onKeyUp={onQuickEntryNewTaskKeyUp}
@@ -143,7 +143,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 								if (f === "date") {
 									return (
 										<div key={i} className="dateFilter">
-											<a key={0}>From: </a>
+											<a key={0}>{copy.quickEntry.from}</a>
 											<input
 												key={1}
 												type="date"
@@ -159,7 +159,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 													}));
 												}}
 											/>
-											<a key={2}>{"  To: "}</a>
+											<a key={2}>{copy.quickEntry.to}</a>
 											<input
 												key={3}
 												type="date"
@@ -177,14 +177,14 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 								} else if (f === "priority") {
 									return (
 										<div key={i} className="actionSelect">
-											<a>Priorities: </a>
+											<a>{copy.quickEntry.priorities}</a>
 											<MultiSelect
 												key={1}
 												name="priorityFilter"
 												className=""
 												options={["+", "1", "2", "3", "4"]}
 												selected={draft.priorities}
-												visual={["➕", "High", "Medium", "None", "Low"]}
+												visual={copy.quickEntry.priorityVisual}
 												fallbackValueIndex={0}
 												selectChangeHandler={(res) => {
 													setDraftState((s) => ({
@@ -210,7 +210,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 				<button
 					className="ok"
 					ref={okButton}
-					aria-label="Append new task to selected note"
+					aria-label={copy.quickEntry.appendTaskAria}
 					onClick={() => {
 						if (action === "append") {
 							if (appendPending.current) return;
