@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { StripWithIcon } from "../timeline/src/components/statusmarker";
+import { StatusMarker as StripWithIcon } from "@tasks-calendar-wrapper/ui/src/row/StatusMarker";
 
 // Issue #138: an open task was shown with a ticked checkbox
 
@@ -36,8 +36,11 @@ test("the checkbox of a done task is ticked", () => {
 // The checked state follows the task on every render instead of only setting the initial value,
 // so a checkbox reused for another task cannot keep the previous task's state.
 test("the checkbox is controlled by the task's marker", () => {
-	const element = StripWithIcon.prototype.render.call({
-		props: { marker: " ", status: "unplanned", useBuiltinStyle: false, onToggle: () => undefined },
+	const element = StripWithIcon({
+		marker: " ",
+		status: "unplanned",
+		useBuiltinStyle: false,
+		onToggle: () => undefined,
 	}) as React.ReactElement<{ children: React.ReactElement[] }>;
 	const input = React.Children.toArray(element.props.children)[0] as React.ReactElement<Record<string, unknown>>;
 	assert.equal(input.props.checked, false);

@@ -8,8 +8,11 @@ import {
 	type ResolvedTask,
 	type TaskRowModel,
 } from "@tasks-calendar-wrapper/core";
-import * as Icons from "./asserts/icons";
-import { QuickEntryHandlerContext, TodayFocusEventHandlersContext } from "./context";
+import * as Icons from "@tasks-calendar-wrapper/ui/src/icons";
+import { Counters, type CounterProps } from "@tasks-calendar-wrapper/ui/src/entry/Counters";
+import { TodayFocus } from "@tasks-calendar-wrapper/ui/src/entry/TodayFocus";
+import { DayHeader } from "@tasks-calendar-wrapper/ui/src/timeline/DayHeader";
+import { QuickEntryHandlerContext } from "./context";
 import { recordRender } from "./renderprobe";
 import { TaskItemView } from "./taskitemview";
 
@@ -88,26 +91,12 @@ export class DateView extends React.Component<DateViewProps> {
 								: undefined
 						}
 					>
-						<DateHeader thisDate={day.label} />
+						<DayHeader thisDate={day.label} />
 						<div className={className} data-year={yearLabel} data-types={types}>
 							<NormalDateContent tasks={day.tasks} modelFor={modelFor} />
 						</div>
 					</div>
 				)}
-			</div>
-		);
-	}
-}
-
-type DateHeaderProps = {
-	thisDate: string;
-};
-class DateHeader extends React.Component<DateHeaderProps> {
-	render(): React.ReactNode {
-		return (
-			<div className="dateLine">
-				<div className="date">{this.props.thisDate}</div>
-				<div className="weekday"></div>
 			</div>
 		);
 	}
@@ -519,66 +508,6 @@ class MultiSelect extends React.Component<MultiSelectProps> {
 				{this.props.selected.map((f) => (
 					<a key={f}>{this.props.visual[this.props.options.indexOf(f)] + "🎯"}</a>
 				))}
-			</div>
-		);
-	}
-}
-
-const defaultTodayFocusProps = {
-	visual: "Today" as string,
-};
-type TodayFocusProps = Readonly<typeof defaultTodayFocusProps>;
-class TodayFocus extends React.Component<TodayFocusProps> {
-	render(): React.ReactNode {
-		return (
-			<TodayFocusEventHandlersContext.Consumer>
-				{(callback) => (
-					<div className="todayHeader" aria-label="Focus today" onClick={callback.handleTodayFocusClick}>
-						{this.props.visual}
-					</div>
-				)}
-			</TodayFocusEventHandlersContext.Consumer>
-		);
-	}
-}
-
-type CountersProps = { readonly counters: readonly CounterProps[] };
-
-class Counters extends React.Component<CountersProps> {
-	render(): React.ReactNode {
-		return (
-			<div className="counters">
-				{this.props.counters.map((c, i) => (
-					<CounterItem
-						onClick={c.onClick}
-						cnt={c.cnt}
-						id={c.id}
-						label={c.label}
-						ariaLabel={c.ariaLabel}
-						key={i}
-					/>
-				))}
-			</div>
-		);
-	}
-}
-
-const defaultCounterProps = {
-	onClick: () => {},
-	cnt: 0,
-	id: "",
-	label: "",
-	ariaLabel: "",
-};
-
-export type CounterProps = Readonly<typeof defaultCounterProps>;
-
-class CounterItem extends React.Component<CounterProps> {
-	render(): React.ReactNode {
-		return (
-			<div className="counter" id={this.props.id} aria-label={this.props.ariaLabel} onClick={this.props.onClick}>
-				<div className="count">{this.props.cnt}</div>
-				<div className="label">{this.props.label}</div>
 			</div>
 		);
 	}

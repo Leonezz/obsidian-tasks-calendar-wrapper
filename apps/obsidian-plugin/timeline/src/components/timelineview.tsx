@@ -20,7 +20,8 @@ import {
 	type TaskRowModel,
 	type Task,
 } from "@tasks-calendar-wrapper/core";
-import { RowWriteContext, TodayFocusEventHandlersContext, UserOptionContext } from "./context";
+import { TodayFocusEventHandlersContext } from "@tasks-calendar-wrapper/ui/src/contexts";
+import { RowWriteContext, UserOptionContext } from "./context";
 import { createPendingWrites, type PendingWrites } from "../pendingwrites";
 import { YearView } from "./yearview";
 import type { EntryProps } from "./dateview";
