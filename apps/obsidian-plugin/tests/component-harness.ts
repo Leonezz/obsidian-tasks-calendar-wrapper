@@ -13,6 +13,8 @@ import { TagBadge, FileBadge, DateStatusBadge, ModifyBadge } from "@tasks-calend
 import { YearHeader } from "@tasks-calendar-wrapper/ui/src/timeline/YearHeader";
 import { DayHeader } from "@tasks-calendar-wrapper/ui/src/timeline/DayHeader";
 import { Counters, CounterItem } from "@tasks-calendar-wrapper/ui/src/entry/Counters";
+import { QuickEntry } from "@tasks-calendar-wrapper/ui/src/entry/QuickEntry";
+import { MultiSelect } from "@tasks-calendar-wrapper/ui/src/entry/MultiSelect";
 import { TodayFocus } from "@tasks-calendar-wrapper/ui/src/entry/TodayFocus";
 import { TasksTimelineView } from "../src/views";
 import type { PluginUiHost } from "../src/uihost";
@@ -328,6 +330,8 @@ const componentNames = [
 	"ModifyBadge",
 ] as const;
 const uiComponents = {
+	QuickEntry,
+	MultiSelect,
 	YearHeader,
 	DateHeader: DayHeader,
 	TodayFocus,
