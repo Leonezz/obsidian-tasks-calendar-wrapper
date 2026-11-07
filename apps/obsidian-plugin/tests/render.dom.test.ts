@@ -15,11 +15,14 @@ import { MarkdownView, Notice, Platform } from "./stubs/obsidian";
 import { defaultUserOptions } from "../src/useroptions";
 import { TasksTimelineView, timelineTaskIndex } from "../src/views";
 import type { TimelineState } from "../src/state/timeline";
-import { providerValues } from "@tasks-calendar-wrapper/ui/src/renderprobe";
-import { TaskItemEventHandlersContext } from "../timeline/src/components/context";
-import { getTaskStatusIcon } from "@tasks-calendar-wrapper/ui/src/icons";
+import {
+	providerValues,
+	TaskItemEventHandlersContext,
+	getTaskStatusIcon,
+	clickTime,
+	clickIsGuarded,
+} from "@tasks-calendar-wrapper/ui";
 import { createPendingWrites } from "../timeline/src/pendingwrites";
-import { clickTime, clickIsGuarded } from "@tasks-calendar-wrapper/ui/src/clickguard";
 import { mountBridge, timelineElement, onTimelineRender, onStripRender } from "./component-harness";
 import { undoNoticeText } from "../timeline/src/notices";
 import { getTasksDialog } from "../timeline/src/tasksplugin";

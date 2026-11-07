@@ -7,8 +7,13 @@ import assert from "node:assert/strict";
 import { act, type ContextType } from "react";
 import { createRoot } from "react-dom/client";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
-import { providerValues, renderedDays, rendersOf, resetRenderCounts } from "@tasks-calendar-wrapper/ui/src/renderprobe";
-import { QuickEntryHandlerContext } from "../timeline/src/components/context";
+import {
+	providerValues,
+	renderedDays,
+	rendersOf,
+	resetRenderCounts,
+	QuickEntryHandlerContext,
+} from "@tasks-calendar-wrapper/ui";
 import { mountBridge } from "./component-harness";
 import { moment } from "../utils/moment";
 import { notesApp, openView } from "./view-harness";

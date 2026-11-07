@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import isEqual from "underscore/modules/isEqual.js";
 import { quickEntryTargets } from "@tasks-calendar-wrapper/core";
-import { sameJsonValue } from "@tasks-calendar-wrapper/ui/src/sameJsonValue";
+import { sameJsonValue } from "@tasks-calendar-wrapper/ui";
 import type { UserOption } from "../src/useroptions";
 import { NOW, settingsOf, stateOf } from "./visible-states";
 

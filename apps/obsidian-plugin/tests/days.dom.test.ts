@@ -6,7 +6,7 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { renderedDays, rendersOf, resetRenderCounts } from "@tasks-calendar-wrapper/ui/src/renderprobe";
+import { renderedDays, rendersOf, resetRenderCounts } from "@tasks-calendar-wrapper/ui";
 import { defaultUserOptions } from "../src/useroptions";
 import { mountBridge } from "./component-harness";
 import { notesApp, openView } from "./view-harness";

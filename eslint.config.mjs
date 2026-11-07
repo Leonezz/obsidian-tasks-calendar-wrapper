@@ -128,6 +128,28 @@ export default tseslint.config(
 							message:
 								"Obsidian's moment already has its locales; importing one from the npm package bundles a second moment.",
 						},
+						{
+							group: ["@tasks-calendar-wrapper/ui/*", "**/packages/ui/**"],
+							message:
+								"The plugin imports ui only through its public entry, @tasks-calendar-wrapper/ui; export what it needs from packages/ui/src/index.ts.",
+						},
+					],
+				},
+			],
+		},
+	},
+	{
+		files: ["apps/obsidian-plugin/tests/**/*.{ts,tsx}"],
+		rules: {
+			"no-restricted-imports": [
+				"error",
+				{
+					patterns: [
+						{
+							group: ["@tasks-calendar-wrapper/ui/*", "**/packages/ui/**"],
+							message:
+								"The plugin imports ui only through its public entry, @tasks-calendar-wrapper/ui; export what it needs from packages/ui/src/index.ts.",
+						},
 					],
 				},
 			],

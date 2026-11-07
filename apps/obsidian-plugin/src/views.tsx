@@ -9,7 +9,7 @@ import {
 	type DayKey,
 	type LineTarget,
 } from "@tasks-calendar-wrapper/core";
-import { ObsidianBridge } from "../timeline/src/obsidianbridge";
+import { ObsidianBridge } from "../timeline/src/bridge";
 import { createReadReporter } from "../timeline/src/readreporter";
 import { createSharedTaskIndex, type ReaderSource, type SharedTaskIndex } from "../timeline/src/sharedindex";
 import { watchChanges, type TaskIndexReader } from "../timeline/src/taskindex";

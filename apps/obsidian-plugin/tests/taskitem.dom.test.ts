@@ -9,7 +9,7 @@ import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { parseTaskLine } from "@tasks-calendar-wrapper/core";
 import { defaultUserOptions } from "../src/useroptions";
-import { TaskItemEventHandlersContext } from "../timeline/src/components/context";
+import { TaskItemEventHandlersContext } from "@tasks-calendar-wrapper/ui";
 import { createPendingWrites } from "../timeline/src/pendingwrites";
 import { moment } from "../utils/moment";
 import { countRenders, mountView, timelineElement } from "./component-harness";
