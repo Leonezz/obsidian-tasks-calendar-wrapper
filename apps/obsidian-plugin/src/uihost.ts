@@ -2,11 +2,11 @@ import { MarkdownRenderer, Platform, type Component } from "obsidian";
 import type { UiHost } from "@tasks-calendar-wrapper/ui";
 import { moment } from "../utils/moment";
 
-/** Keeps 40,000 renders by default; step 5 of the restructuring sizes it from the heap. */
+/** Keeps 40,000 renders until heapAfterLoad is measured at the beta check. */
 export const MARKDOWN_CACHE_CAPACITY = 40_000;
 
 export interface PluginUiHost extends UiHost {
-	/** Drops every cached render. The view calls it when a list commits (wired in step 5). */
+	/** Drops every cached render before the view mounts or publishes a reload. */
 	clearMarkdownCache(): void;
 }
 
@@ -19,9 +19,8 @@ export interface UiHostOptions {
 }
 
 /**
- * Not used at runtime yet. A row mounting again after a focus switch or scrolling back renders its markdown again.
- * Cache those renders; links can resolve differently as notes change, so the view clears it on every list commit
- * (wired in step 5).
+ * Caches markdown between reloads. The view clears before mounting and before a reload reaches the store,
+ * so rows remounting in the reload's render cannot read old entries.
  */
 export function createUiHost(options: UiHostOptions): PluginUiHost {
 	const { owner, createElement = () => document.createElement("a"), capacity = MARKDOWN_CACHE_CAPACITY } = options;

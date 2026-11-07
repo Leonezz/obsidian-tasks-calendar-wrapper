@@ -14,6 +14,7 @@ import {
 	type TaskRowModel,
 } from "@tasks-calendar-wrapper/core";
 import * as React from "react";
+import { HostContext, type UiHost } from "@tasks-calendar-wrapper/ui";
 import isEqual from "underscore/modules/isEqual.js";
 import { createResolveEnv } from "../../src/state/resolveenv";
 import { initialTimelineState, type TimelineState } from "../../src/state/timeline";
@@ -48,6 +49,7 @@ const defaultObsidianBridgeProps = {
 	store: createStore<TimelineState>(initialTimelineState()) as Store<TimelineState>,
 };
 type ObsidianBridgeProps = Readonly<typeof defaultObsidianBridgeProps> & {
+	readonly host: UiHost;
 	readonly writer: Pick<TaskWriter, "insert" | "write" | "editInTasksDialog" | "refuseIfNotReread">;
 	readonly ledger?: ShiftLedger;
 	readonly pendingWrites?: PendingWrites;
@@ -373,17 +375,19 @@ export class ObsidianBridge extends React.Component<ObsidianBridgeProps, Obsidia
 		const quickEntryHandlers = this.getQuickEntryHandlers();
 		process.env.NODE_ENV !== "production" && recordProvider("QuickEntryHandlerContext", quickEntryHandlers);
 		return (
-			<QuickEntryHandlerContext.Provider value={quickEntryHandlers}>
-				<TaskItemEventHandlersContext.Provider value={this.getTaskItemHandlers()}>
-					<TimelineView
-						userOptions={userOptions}
-						tasks={tasks}
-						pendingWrites={this.props.pendingWrites}
-						quickFilter={this.state.quickFilter}
-						queryEnv={(now) => this.queryEnvFor(now, tasks, userOptions)}
-					/>
-				</TaskItemEventHandlersContext.Provider>
-			</QuickEntryHandlerContext.Provider>
+			<HostContext.Provider value={this.props.host}>
+				<QuickEntryHandlerContext.Provider value={quickEntryHandlers}>
+					<TaskItemEventHandlersContext.Provider value={this.getTaskItemHandlers()}>
+						<TimelineView
+							userOptions={userOptions}
+							tasks={tasks}
+							pendingWrites={this.props.pendingWrites}
+							quickFilter={this.state.quickFilter}
+							queryEnv={(now) => this.queryEnvFor(now, tasks, userOptions)}
+						/>
+					</TaskItemEventHandlersContext.Provider>
+				</QuickEntryHandlerContext.Provider>
+			</HostContext.Provider>
 		);
 	}
 }

@@ -10,11 +10,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import "moment/locale/ar";
 
 import { query, taskRowModel, type QuickFilter, type Task } from "@tasks-calendar-wrapper/core";
+import { HostContext } from "@tasks-calendar-wrapper/ui";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { TimelineView } from "../timeline/src/components/timelineview";
 import { readTasks } from "../timeline/src/taskadapter";
 import { moment } from "../utils/moment";
 import { goldenApp, loadVault } from "./golden-vault";
+import { testHost } from "./stubs/host";
 import { cssRules } from "./css-rules";
 import { allWithClass, classesOf, displayedLines, findClass, parseMarkup, textOf, type Element } from "./markup";
 import {
@@ -47,7 +49,13 @@ function rendered(tasks: readonly Task[], state: State, extra: Partial<UserOptio
 		defaultTodayFocus: state.todayFocus,
 		...extra,
 	};
-	return renderToStaticMarkup(createElement(TimelineView, { userOptions, tasks, quickFilter }));
+	return renderToStaticMarkup(
+		createElement(
+			HostContext.Provider,
+			{ value: testHost },
+			createElement(TimelineView, { userOptions, tasks, quickFilter }),
+		),
+	);
 }
 
 let golden: Promise<Task[]> | undefined;
