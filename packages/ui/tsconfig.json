@@ -3,6 +3,10 @@
 		"module": "ESNext",
 		"target": "ES2018",
 		"moduleResolution": "bundler",
+		// UI runs in Obsidian on desktop and mobile, so it gets the DOM but no Node types.
+		"lib": ["DOM", "ES2021"],
+		"types": [],
+		"jsx": "react-jsx",
 		"strict": true,
 		"isolatedModules": true,
 		"noEmit": true

@@ -88,6 +88,7 @@ const context = await esbuild.context({
 	},
 	entryPoints: ["src/main.ts"],
 	bundle: true,
+	metafile: true,
 	define: {
 		"process.env.NODE_ENV": JSON.stringify(prod ? "production" : "development"),
 	},
@@ -118,7 +119,7 @@ const context = await esbuild.context({
 });
 
 if (prod) {
-	await context.rebuild();
+	const result = await context.rebuild();
 	// Esbuild writes these filenames in path comments, which minify drops.
 	// React's key warning is a string only development builds hold, so it survives minify.
 	const bundle = readFileSync(`${releaseDir}/main.js`, "utf8");
@@ -132,6 +133,22 @@ if (prod) {
 		if (bundle.includes(developmentMarker))
 			throw new Error(
 				`main.js contains "${developmentMarker}"; define process.env.NODE_ENV as "production" so the release bundles React's production builds.`,
+			);
+	}
+	// Two copies of React break hooks at runtime ("Invalid hook call"). ui takes React as a peer dependency,
+	// so a mismatched install must not bundle a second copy.
+	for (const [name, entry] of [
+		["react", /(^|[\\/])node_modules[\\/]react[\\/]index\.js$/],
+		["react-dom", /(^|[\\/])node_modules[\\/]react-dom[\\/]index\.js$/],
+	]) {
+		const paths = Object.keys(result.metafile.inputs).filter((path) => entry.test(path));
+		if (paths.length === 0)
+			throw new Error(
+				`main.js has no input for ${name}'s entry; the single-React guard cannot check the bundle.`,
+			);
+		if (paths.length > 1)
+			throw new Error(
+				`main.js bundles ${name} ${paths.length} times:\n${paths.join("\n")}\nEvery package must resolve the same copy; check that packages/ui takes it as a peer dependency at the plugin's version.`,
 			);
 	}
 	process.exit(0);
