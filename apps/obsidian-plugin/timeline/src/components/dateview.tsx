@@ -13,6 +13,9 @@ import { QuickEntryHandlerContext, TodayFocusEventHandlersContext } from "./cont
 import { recordRender } from "./renderprobe";
 import { TaskItemView } from "./taskitemview";
 
+// The date line's height (20.8 px plus its 10 px margins), rounded up.
+const DATE_LINE_ESTIMATE = "41px";
+
 export type EntryProps = {
 	readonly counters: readonly CounterProps[];
 	readonly taskFiles: readonly string[];
@@ -31,6 +34,7 @@ type DateViewProps = {
 /**
  * A day of the timeline, as core arranged it: the entry panel when the entry sits on it, then its heading and its
  * rows when it lists any. The statuses it lists before the counter filter go on its data-types, as before.
+ * Days other than the entry day skip their rows' style, layout and paint while off screen.
  */
 export class DateView extends React.Component<DateViewProps> {
 	shouldComponentUpdate(next: DateViewProps): boolean {
@@ -72,7 +76,18 @@ export class DateView extends React.Component<DateViewProps> {
 					</QuickEntryHandlerContext.Consumer>
 				)}
 				{day.tasks.length > 0 && (
-					<div className={className} data-year={yearLabel} data-types={types}>
+					<div
+						className={className + (entry === undefined ? " tcw-day" : "")}
+						data-year={yearLabel}
+						data-types={types}
+						style={
+							entry === undefined
+								? ({
+										"--tcw-day-estimate": `calc(${day.tasks.length} * var(--tcw-day-row-estimate) + ${DATE_LINE_ESTIMATE})`,
+									} as React.CSSProperties)
+								: undefined
+						}
+					>
 						<DateHeader thisDate={day.label} />
 						<div className={className} data-year={yearLabel} data-types={types}>
 							<NormalDateContent tasks={day.tasks} modelFor={modelFor} />

@@ -10,6 +10,8 @@
 	--taskido-color-overdue: var(--taskido-color-warning);
 	--taskido-color-done: var(--color-green);
 	--taskido-color-process: var(--color-orange);
+	/* The height of a row with its info line, from the screenshots' style fingerprints. */
+	--tcw-day-row-estimate: 43px;
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido a {
@@ -53,6 +55,12 @@
 	flex-wrap: nowrap;
 	width: 100%;
 	height: auto;
+}
+
+/* Days off screen skip style, layout and paint; the estimate holds their place until they are first laid out. */
+.taskido .details.tcw-day {
+	content-visibility: auto;
+	contain-intrinsic-size: auto var(--tcw-day-estimate);
 }
 
 .taskido .todayHeader {
