@@ -15,6 +15,7 @@ import { TimelineView } from "../timeline/src/components/timelineview";
 import { readTasks } from "../timeline/src/taskadapter";
 import { moment } from "../utils/moment";
 import { goldenApp, loadVault } from "./golden-vault";
+import { cssRules } from "./css-rules";
 import { allWithClass, classesOf, displayedLines, findClass, parseMarkup, textOf, type Element } from "./markup";
 import {
 	assertDisplayed,
@@ -158,7 +159,9 @@ test("timeline: days and years are marked with today, their year in the locale's
 						"data-year": element.attrs["data-year"],
 						"data-types": element.attrs["data-types"],
 					},
-					expected,
+					element === outer[i]
+						? { ...expected, class: expected.class + (day.isEntry ? "" : " tcw-day") }
+						: expected,
 					`${name}, ${day.key}`,
 				);
 			}
@@ -182,6 +185,55 @@ test("timeline: days and years are marked with today, their year in the locale's
 				"years are written in Arabic digits",
 			);
 	}
+});
+
+test("timeline: every day content carries the estimate", async (t) => {
+	const tasks = await goldenTasks();
+	const cases: { name: string; quickFilter?: QuickFilter }[] = [
+		{ name: "light-today-all-days-no-counter" },
+		{ name: "light-top-all-days-no-counter" },
+		{ name: "light-bottom-all-days-no-counter" },
+		{ name: "light-today-all-days-no-counter", quickFilter: { priorities: ["High"] } },
+	];
+	let hasMultipleRows = false;
+	for (const { name, quickFilter } of cases) {
+		await t.test(`${name}${quickFilter ? " with High priority" : ""}`, () => {
+			const state = stateOf(name);
+			const result = query(
+				tasks,
+				{ settings: settingsOf(state), counter: "", quickFilter },
+				{ now: NOW, moment },
+			);
+			const shown = result.years.flatMap((year) => year.days).filter((day) => day.tasks.length > 0);
+			const markup = parseMarkup(rendered(tasks, state, {}, quickFilter));
+			const outer = allWithClass(markup, "details").filter((element) => findClass(element, "dateLine"));
+			assert.equal(outer.length, shown.length, name);
+			shown.forEach((day, i) => {
+				assert.equal(classesOf(outer[i]).includes("tcw-day"), !day.isEntry, `${name}, ${day.key}`);
+				assert.equal(
+					outer[i].attrs["style"],
+					day.isEntry
+						? undefined
+						: `--tcw-day-estimate:calc(${day.tasks.length} * var(--tcw-day-row-estimate) + 41px)`,
+					`${name}, ${day.key}`,
+				);
+			});
+			const skipped = shown.filter((day) => !day.isEntry);
+			assert.equal(allWithClass(markup, "tcw-day").length, skipped.length, name);
+			const withEstimate = (element: Element): Element[] => [
+				...(element.attrs["style"]?.includes("--tcw-day-estimate") ? [element] : []),
+				...element.children.flatMap((child) => (typeof child === "string" ? [] : withEstimate(child))),
+			];
+			assert.equal(withEstimate(markup).length, skipped.length, name);
+			hasMultipleRows ||= skipped.some((day) => day.tasks.length > 1);
+			const skippedToday = allWithClass(markup, "details").filter((element) => {
+				const classes = classesOf(element);
+				return classes.includes("today") && classes.includes("tcw-day");
+			});
+			assert.equal(skippedToday.length > 0, state.position !== "today", name);
+		});
+	}
+	assert.ok(hasMultipleRows, "a non-entry day has more than one row");
 });
 
 test("timeline: a saved counter is read as its class was, so a saved todo filters as todoFilter did", async () => {
@@ -250,53 +302,26 @@ test("timeline: the counter's class stays on the timeline for its highlight, wit
 	}
 });
 
-/** Every rule of a stylesheet, inside at-rules too: its selectors, without the prefix that scopes them to the view. */
-function cssRules(css: string): { selectors: string[]; body: string }[] {
-	const text = css.replace(/\/\*[\s\S]*?\*\//g, "");
-	const rules: { selectors: string[]; body: string }[] = [];
-	let prelude = "";
-	for (let i = 0; i < text.length; i++) {
-		const char = text[i];
-		if (char === "{") {
-			// An at-rule such as @media opens a block of rules, which are read as any other.
-			if (!prelude.trim().startsWith("@")) {
-				const end = text.indexOf("}", i);
-				rules.push({ selectors: selectorsOf(prelude), body: text.slice(i + 1, end) });
-				i = end;
-			}
-			prelude = "";
-		} else if (char === "}") prelude = "";
-		else prelude += char;
-	}
-	return rules;
-}
-
-/** A rule's selectors, split at the commas outside parentheses, with their spaces collapsed. */
-function selectorsOf(prelude: string): string[] {
-	const selectors: string[] = [];
-	let depth = 0;
-	let current = "";
-	for (const char of prelude) {
-		depth += char === "(" ? 1 : char === ")" ? -1 : 0;
-		if (char === "," && depth === 0) {
-			selectors.push(current);
-			current = "";
-		} else current += char;
-	}
-	return [...selectors, current]
-		.map((selector) =>
-			selector
-				.replace(/\s+/g, " ")
-				.replace(/\( /g, "(")
-				.replace(/ \)/g, ")")
-				.trim()
-				.replace('.workspace-leaf-content[data-type="tasks_timeline_view"] ', ""),
-		)
-		.filter(Boolean);
-}
-
 // The test runs in the plugin's folder.
 const stylesheet = () => cssRules(readFileSync("styles.css", "utf8"));
+
+test("timeline: the day estimate's row height is defined on .taskido", () => {
+	const rules = stylesheet();
+	assert.ok(
+		rules.some(
+			({ selectors, body }) =>
+				selectors.includes(".taskido") && /(^|[;\s])--tcw-day-row-estimate\s*:\s*43px\s*(;|$)/.test(body),
+		),
+	);
+	const skippedDay = rules.find(({ selectors }) => selectors.includes(".taskido .details.tcw-day"));
+	assert.ok(skippedDay);
+	assert.ok(
+		skippedDay.body
+			.split(";")
+			.map((declaration) => declaration.replace(/\s+/g, " ").trim())
+			.includes("contain-intrinsic-size: auto var(--tcw-day-estimate)"),
+	);
+});
 
 test("timeline: the stylesheet hides nothing the markup reader does not know of", () => {
 	const hiding = stylesheet()
