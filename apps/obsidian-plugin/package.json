@@ -21,6 +21,7 @@
 	"license": "MIT",
 	"dependencies": {
 		"@tasks-calendar-wrapper/core": "workspace:*",
+		"@tasks-calendar-wrapper/ui": "workspace:*",
 		"react": "18.3.1",
 		"react-dom": "18.3.1",
 		"underscore": "1.13.7"

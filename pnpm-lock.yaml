@@ -32,6 +32,9 @@ importers:
       '@tasks-calendar-wrapper/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@tasks-calendar-wrapper/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       react:
         specifier: 18.3.1
         version: 18.3.1
@@ -95,7 +98,32 @@ importers:
         version: 6.0.3
 
   packages/ui:
+    dependencies:
+      '@tasks-calendar-wrapper/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
+      '@types/node':
+        specifier: 20.19.43
+        version: 20.19.43
+      '@types/react':
+        specifier: 18.3.27
+        version: 18.3.27
+      '@types/react-dom':
+        specifier: 18.3.7
+        version: 18.3.7(@types/react@18.3.27)
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
+      jsdom:
+        specifier: 29.1.1
+        version: 29.1.1
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: 18.3.1
+        version: 18.3.1(react@18.3.1)
       typescript:
         specifier: 6.0.3
         version: 6.0.3
