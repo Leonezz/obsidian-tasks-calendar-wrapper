@@ -1,4 +1,4 @@
-import { copy, type SettingControl, type SettingIssue } from "@tasks-calendar-wrapper/core";
+import { copy, pathListCodec, type SettingControl, type SettingIssue } from "@tasks-calendar-wrapper/core";
 import { settingGroups, settingsSchema, type SettingGroup, type SettingsSpec } from "../settings-schema";
 import type { UserOption } from "../useroptions";
 
@@ -98,5 +98,58 @@ function frozenSpec(spec: SettingsSpec): SettingsSpec {
 		...(spec.codec && {
 			codec: Object.isFrozen(spec.codec) ? spec.codec : Object.freeze({ ...spec.codec }),
 		}),
+	});
+}
+
+/** Inline feedback belonging to one row, independent of its saved value. */
+export interface RowMessages {
+	readonly warnings?: readonly string[];
+	readonly preview?: string;
+}
+
+/** Builds every description from the row's copy, applicability, issues and live feedback. */
+export function rowDescription(row: SettingRowOf<"setting">, messages: RowMessages = {}): string | DocumentFragment {
+	const applies =
+		row.spec.readWhen === "viewOpen" || row.spec.readWhen === "pluginLoad"
+			? copy.settings.tab.appliesWhen[row.spec.readWhen]
+			: undefined;
+	const description = row.texts.desc + (applies ? ` ${applies}` : "");
+	const issues = [row.issue, row.palette?.issue].flatMap((issue) =>
+		issue
+			? [
+					copy.settings.tab.wrongType({
+						actual: issue.found,
+						expected: copy.settings.tab.expectedType[issue.expected],
+					}),
+				]
+			: [],
+	);
+	const warnings = [...issues, ...(messages.warnings ?? [])];
+	if (
+		row.control !== "momentFormat" &&
+		row.spec.codec !== pathListCodec &&
+		warnings.length === 0 &&
+		messages.preview === undefined
+	)
+		return description;
+	return createFragment((fragment) => {
+		fragment.appendText(row.texts.desc);
+		if (row.control === "momentFormat") {
+			if (row.texts.descAfterLink === undefined) throw new Error(`Missing setting descAfterLink: ${row.key}`);
+			fragment.createEl("a", {
+				text: copy.settings.tab.momentDocsLink,
+				href: "https://momentjs.com/docs/#/displaying/format/",
+			});
+			fragment.appendText(row.texts.descAfterLink);
+		}
+		if (row.spec.codec === pathListCodec)
+			fragment.createEl("p", {
+				text: copy.settings.tab.pathFilterWarning,
+				cls: "tasks-calendar-wrapper-setting-warning",
+			});
+		if (applies) fragment.appendText(` ${applies}`);
+		for (const message of warnings)
+			fragment.createEl("p", { text: message, cls: "tasks-calendar-wrapper-setting-warning" });
+		if (messages.preview !== undefined) fragment.createEl("p", { text: messages.preview });
 	});
 }

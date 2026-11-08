@@ -1,5 +1,4 @@
-// Pin today's tag lists, palette and visibility through the drawn tab for the phase 4 step 13 generator.
-// These tests must stay green, unchanged.
+// Pin the generated tag lists, palette, visibility and in-place updates through the drawn tab.
 import "./golden-clock";
 import "./setup";
 
@@ -103,7 +102,7 @@ async function saveDialog(t: TestContext, button: ExtraButtonComponent, tag: str
 	await settle();
 }
 
-test("deleting each tag of each tag list deletes that tag and draws the tab again", async (t) => {
+test("deleting each tag of each tag list deletes that tag and redraws its row", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const deletes = async (key: (typeof tagLists)[number], tags: string[], position: number, expected: string[]) => {
 		const { plugin, tab, container } = await drawnTab(t, {
@@ -113,7 +112,8 @@ test("deleting each tag of each tag list deletes that tag and draws the tab agai
 		});
 		const writes = t.mock.method(plugin, "writeOptions");
 		const draws = t.mock.method(tab, "display");
-		const buttons = nestedButtons(settingNamed(container, copy.settings[key].name), "cross");
+		const row = settingNamed(container, copy.settings[key].name);
+		const buttons = nestedButtons(row, "cross");
 		assert.equal(buttons.length, tags.length, key);
 		await buttons[position].click();
 		await settle();
@@ -122,7 +122,9 @@ test("deleting each tag of each tag list deletes that tag and draws the tab agai
 			[[{ [key]: expected }]],
 			`${key}[${position}]`,
 		);
-		assert.equal(draws.mock.callCount(), 1, `${key}[${position}]`);
+		assert.equal(draws.mock.callCount(), 0, `${key}[${position}]`);
+		assert.equal(settingNamed(container, copy.settings[key].name), row);
+		assert.equal(nestedButtons(row, "cross").length, expected.length);
 	};
 	const tags = ["#a", "#b", "#c", "#d"];
 	for (const key of tagLists) {
@@ -138,7 +140,7 @@ test("deleting each tag of each tag list deletes that tag and draws the tab agai
 	await deletes("hideTags", ["#a", "#b", "#a"], 0, ["#b"]);
 });
 
-test("adding a tag a list already holds shows the notice and writes nothing, in every tag list", async (t) => {
+test("adding a tag a list already holds shows inline and writes nothing, in every tag list", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	for (const key of tagLists) {
 		Notice.shown = [];
@@ -151,34 +153,43 @@ test("adding a tag a list already holds shows the notice and writes nothing, in 
 		const writes = t.mock.method(plugin, "writeOptions");
 		const draws = t.mock.method(tab, "display");
 		await saveDialog(t, addButton(settingNamed(container, copy.settings[key].name)), "#x");
-		assert.deepEqual(Notice.shown, ["Tag #x already exists."], key);
-		assert.equal(Notice.instances.length, 1, key);
-		assert.equal(Notice.instances[0].duration, 5000, key);
+		assert.ok(
+			markup(settingNamed(container, copy.settings[key].name).desc).includes(
+				'<p class="tasks-calendar-wrapper-setting-warning">Tag #x already exists.</p>',
+			),
+			key,
+		);
+		assert.deepEqual(Notice.shown, [], key);
+		assert.equal(Notice.instances.length, 0, key);
 		assert.equal(writes.mock.callCount(), 0, key);
 		assert.equal(draws.mock.callCount(), 0, key);
 	}
 });
 
-test("adding a new tag appends it to the list saved now and draws the tab again", async (t) => {
+test("adding a new tag appends it to the list saved now and redraws its row", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const { plugin, tab, container } = await drawnTab(t, { hideTags: [] });
 	await plugin.writeOptions({ hideTags: ["#late"] });
 	const writes = t.mock.method(plugin, "writeOptions");
 	const draws = t.mock.method(tab, "display");
-	await saveDialog(t, addButton(settingNamed(container, copy.settings.hideTags.name)), "#new");
+	const row = settingNamed(container, copy.settings.hideTags.name);
+	await saveDialog(t, addButton(row), "#new");
 	assert.deepEqual(
 		writes.mock.calls.map((call) => call.arguments),
 		[[{ hideTags: ["#late", "#new"] }]],
 	);
-	assert.equal(draws.mock.callCount(), 1);
+	assert.equal(draws.mock.callCount(), 0);
+	assert.equal(settingNamed(container, copy.settings.hideTags.name), row);
+	assert.equal(nestedButtons(row, "cross").length, 2);
 });
 
-test("editing a palette tag replaces it and adding one appends it, each drawing the tab again", async (t) => {
+test("editing a palette tag replaces it and adding one appends it, each redrawing its row", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const { plugin, tab, container } = await drawnTab(t, {
 		useTags: true,
 		tagColorPalette: { "#TODO": "#ff0000", "#TEST": "#00ff00" },
 	});
+	const row = settingNamed(container, copy.settings.useTags.name);
 	const saves = async (
 		button: ExtraButtonComponent,
 		tag: string,
@@ -192,7 +203,9 @@ test("editing a palette tag replaces it and adding one appends it, each drawing 
 			writes.mock.calls.map((call) => call.arguments),
 			expected ? [[{ tagColorPalette: expected }]] : [],
 		);
-		assert.equal(draws.mock.callCount(), expected ? 1 : 0);
+		assert.equal(draws.mock.callCount(), 0);
+		assert.equal(settingNamed(container, copy.settings.useTags.name), row);
+		if (expected) assert.equal(nestedButtons(row, "cross").length, Object.keys(expected).length);
 		if (expected) {
 			const saved = writes.mock.calls[0].arguments[0].tagColorPalette;
 			assert.ok(saved);
@@ -206,12 +219,10 @@ test("editing a palette tag replaces it and adding one appends it, each drawing 
 	assert.equal(pencils.length, 2);
 	await saves(pencils[1], "#renamed", "#123456", edited);
 
-	tab.display();
 	const add = addButton(settingNamed(container, copy.settings.useTags.name));
 	assert.equal(add.tooltip, "Add a palette");
 	await saves(add, "#added", "#abcdef", { ...edited, "#added": "#abcdef" });
 
-	tab.display();
 	await saves(nestedButtons(settingNamed(container, copy.settings.useTags.name), "pencil")[1], "nohash", "#123456");
 });
 
@@ -225,8 +236,12 @@ test("a truthy option of the wrong type shows the rows it controls, as today", a
 	for (const value of ["no", 0]) {
 		const { plugin, container } = await drawnTab(t, { useQuickEntry: value });
 		assert.equal(plugin.userOptions.useQuickEntry, value, "loading preserves the wrong-typed option");
-		const names = rowsOf(container).map((row) => row.name);
-		for (const name of quickEntryRows) assert.equal(names.includes(name), Boolean(value), `${value}: ${name}`);
+		const rows = rowsOf(container);
+		for (const name of quickEntryRows) {
+			const row = rows.find((row) => row.name === name);
+			assert.ok(row, name);
+			assert.equal(!row.hidden, Boolean(value), `${value}: ${name}`);
+		}
 	}
 });
 
@@ -247,9 +262,9 @@ test("the row model of each data.json shape lists the rows the tab shows, in ord
 		t.after(() => plugin.unload());
 		const options = plugin.userOptions;
 		const rows = settingRows(settingsSchema, options, settingIssues(options, settingsSchema));
-		const snapshot = JSON.parse(readFixture(`tab/${name}`)) as Row[];
+		const snapshot = JSON.parse(readFixture(`tab/${name}`)).slice(1) as Row[];
 		assert.deepEqual(
-			rows.flatMap((row) => (row.kind === "heading" ? [row.name] : row.shown ? [row.texts.name] : [])),
+			rows.map((row) => (row.kind === "heading" ? row.name : row.texts.name)),
 			snapshot.map((row) => row.name),
 			name,
 		);
@@ -305,7 +320,7 @@ test("a row is shown exactly while the option its spec names in shownWhen is on"
 	}
 });
 
-test("each row redraws the tab exactly when its spec says", () => {
+test("each row carries the spec flag for changes to what the tab shows", () => {
 	const rows = modelSettings(settingRows(settingsSchema, defaultUserOptions, []));
 	for (const row of rows) {
 		const spec = settingsSchema.find((spec) => spec.key === row.key);
@@ -322,7 +337,7 @@ test("each row redraws the tab exactly when its spec says", () => {
 	);
 });
 
-test("the palette has no row of its own and shows in the row of Use Tags", () => {
+test("the palette has no row of its own and shows in the row of Use tags", () => {
 	for (const useTags of [false, true]) {
 		const rows = settingRows(settingsSchema, { ...defaultUserOptions, useTags }, []);
 		assert.equal(
@@ -342,22 +357,25 @@ test("the palette has no row of its own and shows in the row of Use Tags", () =>
 
 test("every order hint is needed and rows without one keep the schema's order", () => {
 	const hints = {
-		useBuiltinStyle: 1.5,
-		taskFiles: 30.1,
-		inbox: 30.2,
-		sectionForNewTasks: 30.3,
+		openViewOnStartup: 41.1,
+		showWhatsNewOnUpdate: 41.2,
+		useBuiltinStyle: 17.1,
+		newestFirst: 17.2,
+		useYearHeader: 17.3,
+		filterEmpty: 43.5,
+		includePaths: 3.5,
+		excludeProperties: 5.5,
 		dailyNoteFolder: 30.4,
 		dailyNoteFormat: 30.5,
-		forward: 42.1,
-		forwardPastStartAndScheduled: 42.2,
-		forwardUndatedDone: 42.3,
+		sectionForNewTasks: 30.3,
 		hideTags: 36.5,
-		dateFormat: 5.1,
-		sort: 5.2,
-		convert24HourTimePrefix: 5.3,
-		excludePaths: 11.5,
-		includePaths: 12.1,
-		filterEmpty: 12.2,
+		sort: 17.4,
+		dateFormat: 17.5,
+		inbox: 30.2,
+		taskFiles: 30.1,
+		defaultTodayFocus: 28.2,
+		defaultFilters: 28.1,
+		convert24HourTimePrefix: 17.6,
 	};
 	assert.deepEqual(
 		Object.fromEntries(

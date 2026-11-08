@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
-import { copy, type Copy } from "@tasks-calendar-wrapper/core";
+import { copy, type Copy, type SettingType } from "@tasks-calendar-wrapper/core";
 import { settingsSchema } from "../src/settings-schema";
 
 const roots = ["src", "timeline/src", "utils", "../../packages/ui/src", "../../packages/core/src"];
@@ -155,7 +155,6 @@ test("new Notice( appears only in notices.ts", () => {
 	const notices: string[] = [];
 	const failures: string[] = [];
 	for (const source of sources()) {
-		if (source.fileName.startsWith(`src${path.sep}settings${path.sep}`)) continue;
 		const visit = (node: ts.Node): void => {
 			if (isNotice(node)) {
 				const site = location(source, node);
@@ -227,10 +226,21 @@ test("every copy key is used", () => {
 		};
 		visit(source);
 	}
-	// Brief-derived extension: the schema routes the texts used by each control and its heading.
+	// Brief-derived extension: the schema routes control, heading, type and application-time copy.
+	const types = [
+		"boolean",
+		"string",
+		"stringList",
+		"stringMap",
+		"stringListMap",
+	] as const satisfies readonly SettingType[];
+	for (const type of types) used.add(`copy.settings.tab.expectedType.${type}`);
 	for (const spec of settingsSchema) {
 		if (spec.control !== "none" && spec.group !== undefined && spec.group in copy.settings.groups) {
 			used.add(`copy.settings.groups.${spec.group}`);
+		}
+		if (spec.control !== "none" && spec.readWhen in copy.settings.tab.appliesWhen) {
+			used.add(`copy.settings.tab.appliesWhen.${spec.readWhen}`);
 		}
 		if (spec.copy === undefined) continue;
 		const prefix = `copy.settings.${spec.copy}`;

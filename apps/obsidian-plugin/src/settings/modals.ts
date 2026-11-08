@@ -1,6 +1,8 @@
-import { Modal, Notice, Plugin, Setting } from "obsidian";
+import { Modal, Plugin, Setting } from "obsidian";
 import { copy, TaskRegularExpressions } from "@tasks-calendar-wrapper/core";
 import { textsOf } from "./rows";
+import { reportNotice } from "../../timeline/src/notices";
+import { ERROR_NOTICE_MS } from "../../timeline/src/writerconstants";
 
 export class TagColorPaletteModal extends Modal {
 	tagText: string;
@@ -19,7 +21,7 @@ export class TagColorPaletteModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		const settingdiv = contentEl.createDiv();
-		new Setting(settingdiv)
+		const input = new Setting(settingdiv)
 			.setName(textsOf("tagColorPalette").name)
 			.setDesc(textsOf("tagColorPalette").desc)
 			.addText((t) => {
@@ -38,11 +40,20 @@ export class TagColorPaletteModal extends Modal {
 				btn.onClick(() => {
 					if (!this.tagText.match(TaskRegularExpressions.hashTags)) {
 						this.valid = false;
-						return new Notice(copy.settings.tab.invalidTag({ tag: this.tagText }), 5000);
+						input.setDesc(
+							createFragment((fragment) => {
+								fragment.appendText(textsOf("tagColorPalette").desc);
+								fragment.createEl("p", {
+									text: copy.settings.tab.invalidTag({ tag: this.tagText }),
+									cls: "tasks-calendar-wrapper-setting-warning",
+								});
+							}),
+						);
+						return;
 					}
 					if (this.color === "") {
 						this.valid = false;
-						return new Notice(copy.settings.tab.emptyColor, 5000);
+						return reportNotice(copy.settings.tab.emptyColor, ERROR_NOTICE_MS);
 					}
 					this.valid = true;
 					this.close();
@@ -63,6 +74,7 @@ export class TagColorPaletteModal extends Modal {
 
 export class TagModal extends Modal {
 	tagText: string;
+	rejected?: string;
 	valid: boolean;
 	constructor(plugin: Plugin) {
 		super(plugin.app);
@@ -94,7 +106,7 @@ export class TagModal extends Modal {
 				btn.onClick(() => {
 					if (!this.tagText.match(TaskRegularExpressions.hashTags)) {
 						this.valid = false;
-						new Notice(copy.settings.tab.invalidTag({ tag: this.tagText }), 5000);
+						this.rejected = this.tagText;
 					} else {
 						this.valid = true;
 					}
