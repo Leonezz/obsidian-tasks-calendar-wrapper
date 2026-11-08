@@ -33,6 +33,7 @@ export function TagBadge(props: TagBadgeProps) {
 			rel="noopener"
 			style={style}
 			aria-label={tag}
+			tabIndex={-1}
 			onClick={(e) => {
 				e.stopPropagation();
 				props.onClick(tag);
@@ -67,7 +68,7 @@ export type BadgeProps = {
 	readonly ariaLabel: string;
 	readonly label: string;
 	readonly icon: JSX.Element;
-	readonly onClick?: React.MouseEventHandler;
+	readonly onClick?: (evt: React.MouseEvent | React.KeyboardEvent) => void;
 };
 
 export function DateStatusBadge(props: BadgeProps) {
@@ -76,7 +77,22 @@ export function DateStatusBadge(props: BadgeProps) {
 	const label = props.label;
 	const icon = props.icon;
 	return (
-		<a className={type} aria-label={aria_label} onClick={props.onClick}>
+		<a
+			className={type}
+			aria-label={aria_label}
+			role={props.onClick ? "button" : undefined}
+			tabIndex={props.onClick ? -1 : undefined}
+			onClick={props.onClick}
+			onKeyDown={
+				props.onClick
+					? (evt) => {
+							if (evt.key !== "Enter" && evt.key !== " ") return;
+							evt.preventDefault();
+							props.onClick?.(evt);
+						}
+					: undefined
+			}
+		>
 			<div className="icon">{icon}</div>
 			<div className="label">{label}</div>
 		</a>
@@ -84,12 +100,23 @@ export function DateStatusBadge(props: BadgeProps) {
 }
 
 export type ModifyBadgeProps = {
-	readonly onClick: (evt: React.MouseEvent) => void;
+	readonly onClick: (evt: React.MouseEvent | React.KeyboardEvent) => void;
 };
 
 export function ModifyBadge(props: ModifyBadgeProps) {
 	return (
-		<a className="modify" aria-label={copy.row.modifyAria} onClick={props.onClick}>
+		<a
+			className="modify"
+			aria-label={copy.row.modifyAria}
+			role="button"
+			tabIndex={-1}
+			onClick={props.onClick}
+			onKeyDown={(evt) => {
+				if (evt.key !== "Enter" && evt.key !== " ") return;
+				evt.preventDefault();
+				props.onClick(evt);
+			}}
+		>
 			{copy.row.modifyGlyph}
 		</a>
 	);

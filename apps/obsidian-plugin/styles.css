@@ -12,6 +12,25 @@
 	--taskido-color-process: var(--color-orange);
 	/* The height of a row with its info line, from the screenshots' style fingerprints. */
 	--tcw-day-row-estimate: 43px;
+	--tcw-focus-ring: 2px solid var(--interactive-accent);
+}
+
+.taskido :is(.task, [role="button"], a.tag):focus-visible {
+	outline: var(--tcw-focus-ring);
+	outline-offset: 2px;
+}
+
+.taskido .tcw-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido a {

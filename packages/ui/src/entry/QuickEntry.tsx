@@ -74,6 +74,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 					<select
 						name="Action"
 						className="actionName"
+						aria-label={copy.quickEntry.actionAria}
 						value={action}
 						onChange={(event) => {
 							setAction(event.target.value);
@@ -113,6 +114,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 						<MultiSelect
 							key={0}
 							name="Filter Type"
+							ariaLabel={copy.quickEntry.filterTypeAria}
 							className="filterSelector"
 							options={filterNames}
 							selected={filters}
@@ -148,6 +150,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 												key={1}
 												type="date"
 												value={draft.from}
+												aria-label={copy.quickEntry.fromAria}
 												onChange={(e) => {
 													const from = e.target.value;
 													setDraftState((s) => ({
@@ -164,6 +167,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 												key={3}
 												type="date"
 												value={draft.to}
+												aria-label={copy.quickEntry.toAria}
 												onChange={(e) => {
 													const to = e.target.value;
 													setDraftState((s) => ({
@@ -181,6 +185,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 											<MultiSelect
 												key={1}
 												name="priorityFilter"
+												ariaLabel={copy.quickEntry.priorityAria}
 												className=""
 												options={["+", "1", "2", "3", "4"]}
 												selected={draft.priorities}

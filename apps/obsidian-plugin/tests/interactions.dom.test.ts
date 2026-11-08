@@ -15,7 +15,7 @@ import { AbstractInputSuggest, Platform } from "./stubs/obsidian";
 // Inline Note.md has the action badges; Done.md supplies a noninteractive relative badge, Other.md an unplanned row.
 const sourceLine = "- [ ] all badges #work ⏫ 🔁 every day 🛫 2026-01-13 ⏳ 2026-01-14 📅 2026-01-16";
 const doneLine = "- [x] finished ✅ 2026-01-14";
-const taskSelector = '.task[aria-label="Note"]';
+const taskSelector = '.task:has(a.file[aria-label="Note.md"])';
 const position = {
 	start: { line: 0, col: 0, offset: 0 },
 	end: { line: 0, col: sourceLine.length, offset: sourceLine.length },
@@ -121,7 +121,7 @@ const interactions: Interaction[] = [
 	})),
 	{
 		name: "the relative badge bubbles to handleOpenFile",
-		selector: '.task[aria-label="Done"] a.relative[aria-label^="complete at"]',
+		selector: '.task:has(a.file[aria-label="Done.md"]) a.relative[aria-label^="complete at"]',
 		event: "click",
 		handler: "handleOpenFile",
 		args: [

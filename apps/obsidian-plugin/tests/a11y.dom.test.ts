@@ -420,6 +420,70 @@ test("Home and End move focus to the first and last row", async (t) => {
 	}
 });
 
+test("rows sharing a task id keep distinct names and keyboard stops for each day", async (t) => {
+	moment.now = () => SCREENSHOT_NOW;
+	const fixture = await mountView(t, {
+		app: Object.assign(
+			notesApp({ "Repeated.md": "- [ ] Across days #work 🛫 2026-01-14 ⏳ 2026-01-15 📅 2026-01-16" }),
+			{ plugins: { plugins: tasksPlugin } },
+		),
+		options: {
+			...settingsOf(stateOf(defaultMarkupState)),
+			forward: false,
+			openNoteInsteadOfInPlace: false,
+		},
+	});
+	const root = fixture.root();
+	const instances = rows(root);
+	assert.equal(instances.length, 3, "one task is listed on three days");
+	assert.equal(new Set(instances.map((row) => row.closest(".details"))).size, 3);
+	const labels = instances.map((row) => {
+		assert.equal(row.dataset.line, "0");
+		assert.equal(get(row, "a.file").getAttribute("aria-label"), "Repeated.md");
+		assert.ok(all(row, rowControls).length > 0, "each instance has controls to enter");
+		const ids = [get(row, ".lines > .content").id, get(row, ":scope > .tcw-sr-only").id];
+		assert.equal(row.getAttribute("aria-labelledby"), ids.join(" "));
+		for (const id of ids) {
+			assert.match(id, /^tcw-r[0-9a-v]+-/);
+			assert.equal(all(root, "[id]").filter((element) => element.id === id).length, 1);
+		}
+		return ids.join(" ");
+	});
+	assert.equal(new Set(labels.flatMap((label) => label.split(" "))).size, 6);
+	for (const [from, value, to] of [
+		[0, "ArrowDown", 1],
+		[1, "ArrowDown", 2],
+		[2, "ArrowUp", 1],
+		[1, "ArrowUp", 0],
+		[0, "End", 2],
+		[2, "Home", 0],
+	] as const) {
+		assert.equal((await key(instances[from], value)).defaultPrevented, true);
+		assert.ok(document.activeElement === instances[to], `${value} reaches the day instance in DOM order`);
+		assertRoving(root, instances[to], `${value} to instance ${to}`);
+	}
+	await focus(instances[2]);
+	await fixture.reload();
+	assert.ok(
+		rows(root).every((row, index) => row === instances[index]),
+		"reload preserves each row instance",
+	);
+	assert.deepEqual(
+		rows(root).map((row) => row.getAttribute("aria-labelledby")),
+		labels,
+	);
+	assertRoving(root, instances[2], "reload keeps the exact day instance as the stop");
+	await key(get(root, ".todayHeader"), "Enter");
+	const today = instances[1];
+	assert.ok(today.closest(".details.today"));
+	assertRoving(root, today, "Focus today chooses today's instance of the same task");
+	for (const value of ["Home", "End", "ArrowUp", "ArrowDown"]) {
+		await key(today, value);
+		assert.ok(document.activeElement === today, `${value} excludes the same task's hidden instances`);
+		assertRoving(root, today, value);
+	}
+});
+
 test("a focused row that leaves the list hands its Tab stop to another row", async (t) => {
 	const fixture = await mountState(t);
 	const stop = get(fixture.root(), ".task.unplanned");

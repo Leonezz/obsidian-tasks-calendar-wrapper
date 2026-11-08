@@ -107,8 +107,8 @@ export interface BridgeActions {
 	confirmCreateNote(path: string): Promise<boolean>;
 	handleTagClick(tag: string): void;
 	handleOpenFile(path: string, position: Pos, evt?: UserEvent): void;
-	handleModifyTask(model: TaskRowModel, evt: MouseEvent): Promise<WriteResult | void>;
-	handleCompleteTask(model: TaskRowModel, evt: MouseEvent): Promise<WriteResult | void>;
+	handleModifyTask(model: TaskRowModel, evt: UserEvent): Promise<WriteResult | void>;
+	handleCompleteTask(model: TaskRowModel, evt: UserEvent): Promise<WriteResult | void>;
 	handleRowMenu(model: TaskRowModel, evt: MouseEvent): void;
 	handleDateBadge(model: TaskRowModel, field: DateField): Promise<WriteResult | void>;
 	handleSetDate(model: TaskRowModel, field: DateField, day: DayKey | null): Promise<WriteResult | void>;

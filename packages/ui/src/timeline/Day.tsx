@@ -86,7 +86,7 @@ export const Day = React.memo(function Day(props: DayProps) {
 				>
 					<DayHeader thisDate={day.label} />
 					<div className={className} data-year={yearLabel} data-types={types}>
-						<DayContent tasks={day.tasks} modelFor={modelFor} />
+						<DayContent dayKey={day.key} tasks={day.tasks} modelFor={modelFor} />
 					</div>
 				</div>
 			)}

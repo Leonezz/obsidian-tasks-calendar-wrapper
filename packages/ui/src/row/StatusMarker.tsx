@@ -1,4 +1,5 @@
 import type * as React from "react";
+import { copy } from "@tasks-calendar-wrapper/core";
 import * as Icons from "../icons";
 
 export type StatusMarkerProps = {
@@ -22,6 +23,8 @@ export function StatusMarker(props: StatusMarkerProps) {
 		<div className="timeline">
 			<input
 				type="checkbox"
+				tabIndex={-1}
+				aria-label={copy.row.checkboxAria}
 				className={props.useBuiltinStyle ? "icon" : ""}
 				data-task={marker}
 				checked={marker !== " "}

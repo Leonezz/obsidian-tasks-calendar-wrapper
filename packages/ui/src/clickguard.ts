@@ -4,11 +4,11 @@ export interface ListChangeClock {
 }
 
 /** A popout's event timestamp belongs to that window's clock, not the main window's. */
-export function clickTime(evt: MouseEvent): number {
+export function clickTime(evt: UIEvent): number {
 	return performance.now() - ((evt.view ?? window).performance.now() - evt.timeStamp);
 }
 
-export function clickIsGuarded(evt: MouseEvent, clock: ListChangeClock): boolean {
+export function clickIsGuarded(evt: UIEvent, clock: ListChangeClock): boolean {
 	const clickAt = clickTime(evt);
 	return clickAt < clock.lastListChangeAt || clickAt - clock.lastListChangeAt < 300;
 }
