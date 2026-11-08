@@ -199,10 +199,12 @@ describe("Platform", () => {
 
 // 可访问性 (l.238–240) | 图标按钮没有统一的标签与键盘操作 | 按钮带 aria-label，任务行可用键盘切换完成
 describe("Accessibility", () => {
-	// Phase 4 step 15: label every icon button.
-	it.todo("icon buttons have aria-labels");
-	// Phase 4 step 15: make a task row's completion action keyboard accessible.
-	it.todo("a task row can be toggled with the keyboard");
+	it("icon buttons have aria-labels", () => {
+		coveredBy("tests/a11y.dom.test.ts", "every interactive element is focusable and has an accessible name");
+	});
+	it("a task row can be toggled with the keyboard", () => {
+		coveredBy("tests/a11y.dom.test.ts", "Space on a focused row writes the same edit as a click");
+	});
 });
 
 // 解析行为的一致性由 fixtures/ 里的黄金样例保证：同一种任务写法在每个版本都应解析出同样的日期和状态。

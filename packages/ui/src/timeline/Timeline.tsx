@@ -24,6 +24,7 @@ import {
 	RowWriteContext,
 	TodayFocusEventHandlersContext,
 	UserOptionContext,
+	rowInstanceKey,
 	useHost,
 	type RowOverlayStore,
 } from "../contexts";
@@ -87,7 +88,15 @@ function counterFilterOf(filter: string, behavior: string): CounterFilter {
 interface TimelineMemo {
 	readonly rowWrites: React.ContextType<typeof RowWriteContext>;
 	committedIds: readonly string[];
+	committedInstanceIds: readonly string[];
 	committed: boolean;
+	committedTodayFocus?: boolean;
+	focusId?: string;
+	focusElement?: HTMLElement;
+	/** Whether the stop row held DOM focus when this render began, before its commit could detach it. */
+	stopHadFocus: boolean;
+	eligibleIds: readonly string[];
+	rowElements: ReadonlyMap<string, HTMLElement>;
 	/** Remembers the last layout, so a click on a counter or on Focus on today resolves no task again. */
 	readonly query: ReturnType<typeof createQuery>;
 	/** The options with the Filter behaviour, kept while the options are the same, see settingsFor. */
@@ -104,6 +113,46 @@ interface TimelineMemo {
 		readonly clock: { now: DateValue };
 		readonly modelFor: (task: ResolvedTask) => TaskRowModel;
 	};
+}
+
+function setRowTabIndex(row: HTMLElement, tabIndex: number) {
+	row.tabIndex = tabIndex;
+	for (const control of row.querySelectorAll<HTMLElement>('[role="button"], a.tag, .content a[href]'))
+		control.tabIndex = tabIndex;
+}
+
+function focusRow(memo: TimelineMemo, id: string | undefined, refresh = false) {
+	const row = id === undefined ? undefined : memo.rowElements.get(id);
+	if (memo.focusId === id && memo.focusElement === row) {
+		if (refresh && row) setRowTabIndex(row, 0);
+		return;
+	}
+	if (memo.focusElement) setRowTabIndex(memo.focusElement, -1);
+	memo.focusId = id;
+	memo.focusElement = row;
+	if (row) setRowTabIndex(row, 0);
+}
+
+/** The nearest row that is still listed: after the old stop in the previous list, else before it. */
+function survivingNeighbour(previous: readonly string[], id: string, eligible: readonly string[]): string | undefined {
+	const listed = new Set(eligible);
+	const index = previous.indexOf(id);
+	if (index < 0) return undefined;
+	return (
+		previous.slice(index + 1).find((id) => listed.has(id)) ??
+		previous
+			.slice(0, index)
+			.reverse()
+			.find((id) => listed.has(id))
+	);
+}
+
+function moveFocus(memo: TimelineMemo, id: string, key: string) {
+	const index = memo.eligibleIds.indexOf(id);
+	const next =
+		key === "Home" ? 0 : key === "End" ? memo.eligibleIds.length - 1 : key === "ArrowDown" ? index + 1 : index - 1;
+	if (index >= 0 && next >= 0 && next < memo.eligibleIds.length)
+		memo.rowElements.get(memo.eligibleIds[next])?.focus();
 }
 
 function optionsFor(
@@ -233,14 +282,23 @@ export function Timeline(props: TimelineProps) {
 	const host = useHost();
 	const [filter, setFilter] = React.useState(() => props.userOptions.defaultFilters);
 	const [todayFocus, setTodayFocus] = React.useState(() => props.userOptions.defaultTodayFocus);
+	const root = React.useRef<HTMLDivElement>(null);
+	const id = React.useId();
 	const ref = React.useRef<TimelineMemo>();
 	const memo: TimelineMemo = (ref.current ??= {
 		query: createQuery(),
 		committedIds: [],
+		committedInstanceIds: [],
 		committed: false,
+		stopHadFocus: false,
+		eligibleIds: [],
+		rowElements: new Map(),
 		rowWrites: {
 			pendingWrites: props.pendingWrites ?? { getSnapshot: () => undefined, subscribe: () => () => {} },
 			clock: { lastListChangeAt: -Infinity },
+			prefix: `tcw-${id.replace(/:/g, "")}-`,
+			focusRow: (id) => focusRow(memo, id, true),
+			moveFocus: (id, key) => moveFocus(memo, id, key),
 		},
 		todayHandlers: { handleTodayFocusClick: () => setTodayFocus((focus) => !focus) },
 		counterHandlers: {
@@ -261,16 +319,63 @@ export function Timeline(props: TimelineProps) {
 		prepared,
 	);
 	const renderedIds = years.flatMap((year) => year.days.flatMap((day) => day.tasks.map(({ task }) => task.id)));
+	const days = years.flatMap((year) => year.days);
+	const instanceIds = days.flatMap((day) => day.tasks.map(({ task }) => rowInstanceKey(day.key, task.id)));
+	const active = memo.focusElement?.ownerDocument.activeElement;
+	memo.stopHadFocus = !!active && !!memo.focusElement?.contains(active);
 
 	useClientLayoutEffect(() => {
-		if (memo.committed) {
-			if (
-				renderedIds.length !== memo.committedIds.length ||
-				renderedIds.some((id, index) => id !== memo.committedIds[index])
-			)
-				rowWrites.clock.lastListChangeAt = performance.now();
-		} else memo.committed = true;
+		const listChanged =
+			renderedIds.length !== memo.committedIds.length ||
+			renderedIds.some((id, index) => id !== memo.committedIds[index]);
+		const instancesChanged =
+			instanceIds.length !== memo.committedInstanceIds.length ||
+			instanceIds.some((id, index) => id !== memo.committedInstanceIds[index]);
+		const focusChanged = !memo.committed || instancesChanged || memo.committedTodayFocus !== todayFocus;
+		if (memo.committed && listChanged) rowWrites.clock.lastListChangeAt = performance.now();
+		memo.committed = true;
 		memo.committedIds = renderedIds;
+		memo.committedInstanceIds = instanceIds;
+		memo.committedTodayFocus = todayFocus;
+		if (!root.current) return;
+		root.current.querySelector(".todayHeader")?.setAttribute("aria-pressed", String(todayFocus));
+		const classes = counterFilter.split(/\s+/);
+		for (const counter of root.current.querySelectorAll<HTMLElement>(".counter"))
+			counter.setAttribute(
+				"aria-pressed",
+				String(classes.includes(`${counter.id}Filter`) || classes.includes(`${counter.id}Focus`)),
+			);
+		// Markdown can render again without a list change; initialize only its new links.
+		for (const link of root.current.querySelectorAll<HTMLElement>(".task .content a[href]:not([tabindex])"))
+			link.tabIndex = link.closest(".task") === memo.focusElement ? 0 : -1;
+		// A control mounted since the last commit, such as a new tag, follows the stop row.
+		if (!focusChanged) return focusRow(memo, memo.focusId, true);
+		const elements = root.current.querySelectorAll<HTMLElement>(".task");
+		memo.rowElements = new Map(instanceIds.map((id, index) => [id, elements[index]]));
+		const eligible = days.filter((day) => !todayFocus || day.isToday);
+		const previousEligible = memo.eligibleIds;
+		memo.eligibleIds = eligible.flatMap((day) => day.tasks.map(({ task }) => rowInstanceKey(day.key, task.id)));
+		const afterEntry = days
+			.slice(
+				Math.max(
+					0,
+					days.findIndex((day) => day.isEntry),
+				),
+			)
+			.filter((day) => !todayFocus || day.isToday)
+			.flatMap((day) => day.tasks.map(({ task }) => rowInstanceKey(day.key, task.id)));
+		const stop = memo.focusId;
+		if (stop !== undefined && memo.eligibleIds.includes(stop)) return focusRow(memo, stop, true);
+		// A focused stop row that leaves (completed, filtered, moved) hands focus to its nearest listed neighbour;
+		// a stop without focus goes back to the default, as the markup goldens record.
+		const neighbour =
+			stop === undefined || !memo.stopHadFocus
+				? undefined
+				: survivingNeighbour(previousEligible, stop, memo.eligibleIds);
+		focusRow(memo, neighbour ?? afterEntry[0] ?? memo.eligibleIds[0], true);
+		// Focus fell to the body with the detached stop row; never take it from anywhere else.
+		const active = root.current.ownerDocument.activeElement;
+		if (memo.stopHadFocus && (!active || active === root.current.ownerDocument.body)) memo.focusElement?.focus();
 	});
 
 	const styles = new Array<string>();
@@ -312,7 +417,7 @@ export function Timeline(props: TimelineProps) {
 	process.env.NODE_ENV !== "production" && recordProvider("TodayFocusEventHandlersContext", todayHandlers);
 	process.env.NODE_ENV !== "production" && recordProvider("UserOptionContext", userOptionValue);
 	const tree = (
-		<div className={`taskido ${baseStyles} ${counterFilter} ${todayFocusClass}`}>
+		<div ref={root} className={`taskido ${baseStyles} ${counterFilter} ${todayFocusClass}`}>
 			<RowWriteContext.Provider value={rowWrites}>
 				<TodayFocusEventHandlersContext.Provider value={todayHandlers}>
 					<UserOptionContext.Provider value={userOptionValue}>

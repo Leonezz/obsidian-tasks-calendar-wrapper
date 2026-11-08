@@ -8,7 +8,14 @@ export function TodayFocus({ visual }: { readonly visual: string }) {
 		<div
 			className="todayHeader"
 			aria-label={copy.timeline.focusOnTodayAria}
+			role="button"
+			tabIndex={0}
 			onClick={callback.handleTodayFocusClick}
+			onKeyDown={(evt) => {
+				if (evt.key !== "Enter" && evt.key !== " ") return;
+				evt.preventDefault();
+				callback.handleTodayFocusClick();
+			}}
 		>
 			{visual}
 		</div>

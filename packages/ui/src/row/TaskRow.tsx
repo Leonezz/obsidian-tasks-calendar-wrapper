@@ -1,8 +1,15 @@
 import * as React from "react";
-import { copy, sameRowModel, type BadgeKind, type TaskRowModel } from "@tasks-calendar-wrapper/core";
+import { copy, sameRowModel, type BadgeKind, type TaskRowModel, type TaskStatus } from "@tasks-calendar-wrapper/core";
 import { Content } from "./Content";
 import * as Icons from "../icons";
-import { TaskItemEventHandlersContext, useHost, type RowOverlay } from "../contexts";
+import {
+	RowDayKeyContext,
+	RowWriteContext,
+	TaskItemEventHandlersContext,
+	rowInstanceKey,
+	useHost,
+	type RowOverlay,
+} from "../contexts";
 import { clickIsGuarded, type ListChangeClock } from "../clickguard";
 import { StatusMarker } from "./StatusMarker";
 import { TagBadge, FileBadge, DateStatusBadge, ModifyBadge } from "./Badges";
@@ -27,6 +34,17 @@ const badgeClasses: Record<BadgeKind, string> = {
 	priority: "priority",
 };
 
+const statusAria: Record<TaskStatus, string> = {
+	due: copy.row.statusAria.due,
+	scheduled: copy.row.statusAria.scheduled,
+	start: copy.row.statusAria.start,
+	done: copy.row.statusAria.done,
+	unplanned: copy.row.statusAria.unplanned,
+	overdue: copy.row.statusAria.overdue,
+	process: copy.row.statusAria.process,
+	cancelled: copy.row.statusAria.cancelled,
+};
+
 type TaskRowProps = {
 	model: TaskRowModel;
 	callbacks: React.ContextType<typeof TaskItemEventHandlersContext>;
@@ -47,28 +65,60 @@ export const sameRowModelProps = (prev: TaskRowProps, next: TaskRowProps): boole
  */
 export const TaskRow = React.memo(function TaskRow(props: TaskRowProps) {
 	const host = useHost();
+	const rowWrites = React.useContext(RowWriteContext);
+	const dayKey = React.useContext(RowDayKeyContext);
 	const { model, callbacks, overlay, clock } = props;
-	const openTaskFile = (evt: React.MouseEvent<HTMLDivElement>) => {
+	const id = `${model.path}:${model.line}`;
+	const instanceId = rowInstanceKey(dayKey, id);
+	const contentId = `${rowWrites.prefix}${instanceId}-text`;
+	const summaryId = `${rowWrites.prefix}${instanceId}-summary`;
+	const openTaskFile = (evt: React.MouseEvent | React.KeyboardEvent) => {
 		callbacks.handleOpenFile(model.path, model.position, evt.nativeEvent);
 	};
-	const onToggleTask = (evt: React.MouseEvent) => {
+	const onToggleTask = (evt: React.MouseEvent | React.KeyboardEvent) => {
 		evt.stopPropagation();
 		if (overlay?.dimmed || clickIsGuarded(evt.nativeEvent, clock)) return;
 		callbacks.handleCompleteTask(model, evt.nativeEvent);
 	};
-	const onModifyTask = (evt: React.MouseEvent) => {
+	const onModifyTask = (evt: React.MouseEvent | React.KeyboardEvent) => {
 		evt.stopPropagation();
 		if (overlay?.dimmed || clickIsGuarded(evt.nativeEvent, clock)) return;
 		callbacks.handleModifyTask?.(model, evt.nativeEvent);
 	};
-	const onRowMenu = (evt: React.MouseEvent) => {
+	const onRowMenu = (evt: React.MouseEvent | React.KeyboardEvent, nativeEvent: MouseEvent) => {
 		evt.stopPropagation();
 		if (overlay?.dimmed || clickIsGuarded(evt.nativeEvent, clock)) return;
-		callbacks.handleRowMenu?.(model, evt.nativeEvent);
+		callbacks.handleRowMenu?.(model, nativeEvent);
 	};
 	const onContextMenu = (evt: React.MouseEvent) => {
 		evt.preventDefault();
-		onRowMenu(evt);
+		onRowMenu(evt, evt.nativeEvent);
+	};
+	const openKeyboardMenu = (evt: React.KeyboardEvent<HTMLElement>) => {
+		if (!callbacks.handleRowMenu) return;
+		const row = evt.currentTarget.closest<HTMLElement>(".task")!;
+		const view = row.ownerDocument.defaultView!;
+		const rect = row.getBoundingClientRect();
+		onRowMenu(evt, new view.MouseEvent("contextmenu", { view, clientX: rect.left, clientY: rect.bottom }));
+	};
+	const onKeyDown = (evt: React.KeyboardEvent<HTMLDivElement>) => {
+		if (evt.target === evt.currentTarget) {
+			if (["ArrowDown", "ArrowUp", "Home", "End"].includes(evt.key)) {
+				evt.preventDefault();
+				rowWrites.moveFocus(instanceId, evt.key);
+			} else if (evt.key === " ") {
+				evt.preventDefault();
+				// Holding Space repeats the keydown; only the first press toggles.
+				if (!evt.repeat) onToggleTask(evt);
+			} else if (evt.key === "Enter") {
+				evt.preventDefault();
+				openTaskFile(evt);
+			} else if (evt.key === "F10" && evt.shiftKey) {
+				// The ContextMenu key also fires a native contextmenu event, which onContextMenu handles.
+				evt.preventDefault();
+				openKeyboardMenu(evt);
+			}
+		}
 	};
 	return (
 		<div
@@ -80,7 +130,11 @@ export const TaskRow = React.memo(function TaskRow(props: TaskRowProps) {
 			data-dailynote={model.isDailyNote}
 			className={`task ${model.status}`}
 			style={{ "--task-color": model.color || "var(--text-muted)" } as React.CSSProperties}
-			aria-label={model.fileTitle}
+			role="listitem"
+			tabIndex={-1}
+			aria-labelledby={`${contentId} ${summaryId}`}
+			onFocus={() => rowWrites.focusRow(instanceId)}
+			onKeyDown={onKeyDown}
 			aria-busy={overlay?.dimmed ? true : undefined}
 			aria-disabled={overlay?.dimmed ? true : undefined}
 		>
@@ -92,13 +146,25 @@ export const TaskRow = React.memo(function TaskRow(props: TaskRowProps) {
 				predicted={overlay}
 			/>
 			<div className="lines" onClick={openTaskFile}>
-				<div className="content">
+				<div className="content" id={contentId}>
 					<Content display={model.display} fileName={model.path} />
 				</div>
 				<div className="line info">
 					{callbacks.handleModifyTask && <ModifyBadge onClick={onModifyTask}></ModifyBadge>}
 					{callbacks.handleRowMenu && host.isMobile && (
-						<a className="menu" aria-label={copy.row.menuAria} onClick={onRowMenu}>
+						<a
+							className="menu"
+							aria-label={copy.row.menuAria}
+							role="button"
+							tabIndex={-1}
+							onClick={(evt) => onRowMenu(evt, evt.nativeEvent)}
+							onKeyDown={(evt) => {
+								if (evt.key === "Enter" || evt.key === " ") {
+									evt.preventDefault();
+									openKeyboardMenu(evt);
+								}
+							}}
+						>
 							{copy.row.menuGlyph}
 						</a>
 					)}
@@ -127,6 +193,15 @@ export const TaskRow = React.memo(function TaskRow(props: TaskRowProps) {
 					))}
 				</div>
 			</div>
+			<span className="tcw-sr-only" id={summaryId}>
+				{copy.row.summary({
+					status: statusAria[model.status],
+					dates: model.badges
+						.filter(({ kind }) => ["created", "start", "scheduled", "due", "done"].includes(kind))
+						.map(({ ariaLabel }) => ariaLabel),
+					note: model.fileTitle,
+				})}
+			</span>
 		</div>
 	);
 }, sameRowModelProps);

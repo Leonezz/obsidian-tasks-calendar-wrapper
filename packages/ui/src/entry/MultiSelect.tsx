@@ -2,6 +2,7 @@ import * as React from "react";
 
 export type MultiSelectProps = {
 	name: string;
+	ariaLabel?: string;
 	className: string;
 	options: string[];
 	selected: readonly string[];
@@ -16,6 +17,7 @@ export function MultiSelect(props: MultiSelectProps) {
 		<div className="left MultiSelect">
 			<select
 				name={props.name}
+				aria-label={props.ariaLabel}
 				className={props.className}
 				ref={selectElem}
 				onClick={() => {

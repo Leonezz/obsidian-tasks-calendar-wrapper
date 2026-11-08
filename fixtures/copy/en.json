@@ -11,6 +11,11 @@
 		"newTask": "New Task",
 		"filter": "Filter",
 		"selectNoteAria": "Select a note to add a new task to",
+		"actionAria": "Quick entry action",
+		"filterTypeAria": "Add a filter",
+		"priorityAria": "Filter by priority",
+		"fromAria": "Show tasks from this date",
+		"toAria": "Show tasks up to this date",
 		"filterVisual": [
 			"➕",
 			"📆 date",
@@ -32,6 +37,18 @@
 		"tagAria": "Show only tasks with this tag"
 	},
 	"row": {
+		"checkboxAria": "Complete task",
+		"statusAria": {
+			"due": "Due",
+			"scheduled": "Scheduled",
+			"start": "Started",
+			"done": "Done",
+			"unplanned": "Unplanned",
+			"overdue": "Overdue",
+			"process": "In progress",
+			"cancelled": "Cancelled"
+		},
+		"summary": "{status}, {dates}, {note}",
 		"menuAria": "Task menu",
 		"menuGlyph": "⋯",
 		"modifyAria": "Modify Task",

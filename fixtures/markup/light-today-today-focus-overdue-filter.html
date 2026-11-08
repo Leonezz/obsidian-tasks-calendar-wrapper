@@ -42,11 +42,11 @@
       <div>
       </div>
       <div>
-        <div aria-label="Focus today" class="todayHeader">
+        <div aria-label="Focus today" aria-pressed="true" class="todayHeader" role="button" tabindex="0">
           Focus On Today
         </div>
         <div class="counters">
-          <div aria-label="Todo Tasks" class="counter" id="todo">
+          <div aria-label="Todo Tasks" aria-pressed="false" class="counter" id="todo" role="button" tabindex="0">
             <div class="count">
               65
             </div>
@@ -54,7 +54,7 @@
               Todo
             </div>
           </div>
-          <div aria-label="Overdue Tasks" class="counter" id="overdue">
+          <div aria-label="Overdue Tasks" aria-pressed="true" class="counter" id="overdue" role="button" tabindex="0">
             <div class="count">
               19
             </div>
@@ -62,7 +62,7 @@
               Overdue
             </div>
           </div>
-          <div aria-label="Unplanned Tasks" class="counter" id="unplanned">
+          <div aria-label="Unplanned Tasks" aria-pressed="false" class="counter" id="unplanned" role="button" tabindex="0">
             <div class="count">
               85
             </div>
@@ -77,7 +77,7 @@
         <div class="quickEntryPanel">
           <div class="left">
             <div class="actionSelect">
-              <select class="actionName" name="Action">
+              <select aria-label="Quick entry action" class="actionName" name="Action">
                 <option value="append">
                   New Task
                 </option>
@@ -118,10 +118,10 @@
             </div>
           </div>
           <div class="details today" data-types="overdue due scheduled start process unplanned" data-year="2026">
-            <div class="content">
-              <div aria-label="Emoji dates" class="task overdue" data-col="27" data-dailynote="false" data-line="5" data-link="Emoji dates.md" data-task=" " style="--task-color: var(--text-muted);">
+            <div class="content" role="list">
+              <div aria-labelledby="tcw-#-2026-01-15-Emoji%20dates.md%3A5-text tcw-#-2026-01-15-Emoji%20dates.md%3A5-summary" class="task overdue" data-col="27" data-dailynote="false" data-line="5" data-link="Emoji dates.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="0">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -134,13 +134,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Emoji%20dates.md%3A5-text">
                     <a>
                       overdue
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="due at Saturday, Jan, 10" class="relative">
+                    <a aria-label="due at Saturday, Jan, 10" class="relative" role="button" tabindex="0">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -181,10 +181,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Emoji%20dates.md%3A5-summary">
+                  Overdue, due at Saturday, Jan, 10, Emoji dates
+                </span>
               </div>
-              <div aria-label="Emoji dates" class="task overdue" data-col="75" data-dailynote="false" data-line="12" data-link="Emoji dates.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Emoji%20dates.md%3A12-text tcw-#-2026-01-15-Emoji%20dates.md%3A12-summary" class="task overdue" data-col="75" data-dailynote="false" data-line="12" data-link="Emoji dates.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -197,13 +200,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Emoji%20dates.md%3A12-text">
                     <a>
                       starts in one year and is due in the next
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="start at Wednesday, Dec, 31" class="relative">
+                    <a aria-label="start at Wednesday, Dec, 31" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z">
@@ -214,7 +217,7 @@
                         15 days ago
                       </div>
                     </a>
-                    <a aria-label="due at Friday, Jan, 2" class="relative">
+                    <a aria-label="due at Friday, Jan, 2" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -255,10 +258,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Emoji%20dates.md%3A12-summary">
+                  Overdue, start at Wednesday, Dec, 31, due at Friday, Jan, 2, Emoji dates
+                </span>
               </div>
-              <div aria-label="Emoji dates" class="task overdue" data-col="28" data-dailynote="false" data-line="18" data-link="Emoji dates.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Emoji%20dates.md%3A18-text tcw-#-2026-01-15-Emoji%20dates.md%3A18-summary" class="task overdue" data-col="28" data-dailynote="false" data-line="18" data-link="Emoji dates.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -271,13 +277,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Emoji%20dates.md%3A18-text">
                     <a>
                       leap day
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="due at Thursday, Feb, 29" class="relative">
+                    <a aria-label="due at Thursday, Feb, 29" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -318,10 +324,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Emoji%20dates.md%3A18-summary">
+                  Overdue, due at Thursday, Feb, 29, Emoji dates
+                </span>
               </div>
-              <div aria-label="Emoji dates" class="task overdue" data-col="56" data-dailynote="false" data-line="21" data-link="Emoji dates.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Emoji%20dates.md%3A21-text tcw-#-2026-01-15-Emoji%20dates.md%3A21-summary" class="task overdue" data-col="56" data-dailynote="false" data-line="21" data-link="Emoji dates.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -334,13 +343,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Emoji%20dates.md%3A21-text">
                     <a>
                       recurring
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="scheduled to Monday, Jan, 12" class="relative">
+                    <a aria-label="scheduled to Monday, Jan, 12" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M5 22h14">
@@ -357,7 +366,7 @@
                         3 days ago
                       </div>
                     </a>
-                    <a aria-label="due at Wednesday, Jan, 14" class="relative">
+                    <a aria-label="due at Wednesday, Jan, 14" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -415,10 +424,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Emoji%20dates.md%3A21-summary">
+                  Overdue, scheduled to Monday, Jan, 12, due at Wednesday, Jan, 14, Emoji dates
+                </span>
               </div>
-              <div aria-label="Emoji dates" class="task overdue" data-col="77" data-dailynote="false" data-line="31" data-link="Emoji dates.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Emoji%20dates.md%3A31-text tcw-#-2026-01-15-Emoji%20dates.md%3A31-summary" class="task overdue" data-col="77" data-dailynote="false" data-line="31" data-link="Emoji dates.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -431,13 +443,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Emoji%20dates.md%3A31-text">
                     <a>
                       write the report
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="scheduled to Sunday, Jan, 11" class="relative">
+                    <a aria-label="scheduled to Sunday, Jan, 11" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M5 22h14">
@@ -454,7 +466,7 @@
                         4 days ago
                       </div>
                     </a>
-                    <a aria-label="due at Tuesday, Jan, 13" class="relative">
+                    <a aria-label="due at Tuesday, Jan, 13" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -525,7 +537,7 @@
                           &gt;  Emoji dates
                       </span>
                     </a>
-                    <a aria-label="#work" class="tag" href="#work" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#work" class="tag" href="#work" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -538,7 +550,7 @@
                         work
                       </div>
                     </a>
-                    <a aria-label="#home" class="tag" href="#home" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#home" class="tag" href="#home" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -553,10 +565,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Emoji%20dates.md%3A31-summary">
+                  Overdue, scheduled to Sunday, Jan, 11, due at Tuesday, Jan, 13, Emoji dates
+                </span>
               </div>
-              <div aria-label="Inbox" class="task overdue" data-col="89" data-dailynote="false" data-line="12" data-link="Inbox.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Inbox.md%3A12-text tcw-#-2026-01-15-Inbox.md%3A12-summary" class="task overdue" data-col="89" data-dailynote="false" data-line="12" data-link="Inbox.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -569,13 +584,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Inbox.md%3A12-text">
                     <a>
                       Ten, Nine, Eight, Seven, Six, Five, Four, Three , Two, One, Liftoff
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="due at Friday, May, 26" class="relative">
+                    <a aria-label="due at Friday, May, 26" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -615,10 +630,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Inbox.md%3A12-summary">
+                  Overdue, due at Friday, May, 26, Inbox
+                </span>
               </div>
-              <div aria-label="Inbox" class="task overdue" data-col="54" data-dailynote="false" data-line="13" data-link="Inbox.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Inbox.md%3A13-text tcw-#-2026-01-15-Inbox.md%3A13-summary" class="task overdue" data-col="54" data-dailynote="false" data-line="13" data-link="Inbox.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -631,13 +649,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Inbox.md%3A13-text">
                     <a>
                       This is Ground Control to Major Tom
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="due at Friday, May, 26" class="relative">
+                    <a aria-label="due at Friday, May, 26" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -677,10 +695,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Inbox.md%3A13-summary">
+                  Overdue, due at Friday, May, 26, Inbox
+                </span>
               </div>
-              <div aria-label="Inbox" class="task overdue" data-col="47" data-dailynote="false" data-line="14" data-link="Inbox.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Inbox.md%3A14-text tcw-#-2026-01-15-Inbox.md%3A14-summary" class="task overdue" data-col="47" data-dailynote="false" data-line="14" data-link="Inbox.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -693,13 +714,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Inbox.md%3A14-text">
                     <a>
                       You've really made the grade
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="due at Friday, May, 26" class="relative">
+                    <a aria-label="due at Friday, May, 26" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -739,10 +760,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Inbox.md%3A14-summary">
+                  Overdue, due at Friday, May, 26, Inbox
+                </span>
               </div>
-              <div aria-label="Inbox" class="task overdue" data-col="69" data-dailynote="false" data-line="15" data-link="Inbox.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Inbox.md%3A15-text tcw-#-2026-01-15-Inbox.md%3A15-summary" class="task overdue" data-col="69" data-dailynote="false" data-line="15" data-link="Inbox.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -755,13 +779,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Inbox.md%3A15-text">
                     <a>
                       And the papers want to know whose shirts you wear
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="due at Friday, May, 26" class="relative">
+                    <a aria-label="due at Friday, May, 26" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -801,10 +825,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Inbox.md%3A15-summary">
+                  Overdue, due at Friday, May, 26, Inbox
+                </span>
               </div>
-              <div aria-label="Inbox" class="task overdue" data-col="69" data-dailynote="false" data-line="16" data-link="Inbox.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Inbox.md%3A16-text tcw-#-2026-01-15-Inbox.md%3A16-summary" class="task overdue" data-col="69" data-dailynote="false" data-line="16" data-link="Inbox.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -817,13 +844,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Inbox.md%3A16-text">
                     <a>
                       Now it's time to leave the capsule if you dare
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="due at Friday, May, 26" class="relative">
+                    <a aria-label="due at Friday, May, 26" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -863,10 +890,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Inbox.md%3A16-summary">
+                  Overdue, due at Friday, May, 26, Inbox
+                </span>
               </div>
-              <div aria-label="Inbox" class="task overdue" data-col="57" data-dailynote="false" data-line="17" data-link="Inbox.md" data-task="&gt;" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Inbox.md%3A17-text tcw-#-2026-01-15-Inbox.md%3A17-summary" class="task overdue" data-col="57" data-dailynote="false" data-line="17" data-link="Inbox.md" data-task="&gt;" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="&gt;" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="&gt;" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -879,13 +909,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Inbox.md%3A17-text">
                     <a>
                       This is Major Tom to Ground Control
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="due at Friday, May, 26" class="relative">
+                    <a aria-label="due at Friday, May, 26" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -925,10 +955,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Inbox.md%3A17-summary">
+                  Overdue, due at Friday, May, 26, Inbox
+                </span>
               </div>
-              <div aria-label="Markers" class="task overdue" data-col="17" data-dailynote="false" data-line="3" data-link="Markers.md" data-task="&gt;" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A3-text tcw-#-2026-01-15-Markers.md%3A3-summary" class="task overdue" data-col="17" data-dailynote="false" data-line="3" data-link="Markers.md" data-task="&gt;" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="&gt;" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="&gt;" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -941,7 +974,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A3-text">
                     <a>
                       Rescheduled
                     </a>
@@ -970,10 +1003,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A3-summary">
+                  Overdue, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task overdue" data-col="34" data-dailynote="false" data-line="29" data-link="Markers.md" data-task="X" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A29-text tcw-#-2026-01-15-Markers.md%3A29-summary" class="task overdue" data-col="34" data-dailynote="false" data-line="29" data-link="Markers.md" data-task="X" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="X" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="X" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -986,13 +1022,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A29-text">
                     <a>
                       uppercase done
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="due at Saturday, Jan, 10" class="relative">
+                    <a aria-label="due at Saturday, Jan, 10" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -1032,10 +1068,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A29-summary">
+                  Overdue, due at Saturday, Jan, 10, Markers
+                </span>
               </div>
-              <div aria-label="Status" class="task overdue" data-col="37" data-dailynote="false" data-line="7" data-link="Status.md" data-task="&gt;" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Status.md%3A7-text tcw-#-2026-01-15-Status.md%3A7-summary" class="task overdue" data-col="37" data-dailynote="false" data-line="7" data-link="Status.md" data-task="&gt;" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="&gt;" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="&gt;" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -1048,7 +1087,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Status.md%3A7-text">
                     <a>
                       forwarded marker without a date
                     </a>
@@ -1078,10 +1117,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Status.md%3A7-summary">
+                  Overdue, Status
+                </span>
               </div>
-              <div aria-label="Status" class="task overdue" data-col="46" data-dailynote="false" data-line="13" data-link="Status.md" data-task="&gt;" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Status.md%3A13-text tcw-#-2026-01-15-Status.md%3A13-summary" class="task overdue" data-col="46" data-dailynote="false" data-line="13" data-link="Status.md" data-task="&gt;" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="&gt;" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="&gt;" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -1094,13 +1136,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Status.md%3A13-text">
                     <a>
                       forwarded marker due today
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="due at Thursday, Jan, 15" class="relative">
+                    <a aria-label="due at Thursday, Jan, 15" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -1141,10 +1183,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Status.md%3A13-summary">
+                  Overdue, due at Thursday, Jan, 15, Status
+                </span>
               </div>
-              <div aria-label="Status" class="task overdue" data-col="60" data-dailynote="false" data-line="14" data-link="Status.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Status.md%3A14-text tcw-#-2026-01-15-Status.md%3A14-summary" class="task overdue" data-col="60" data-dailynote="false" data-line="14" data-link="Status.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -1157,13 +1202,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Status.md%3A14-text">
                     <a>
                       overdue but scheduled today
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="scheduled to Thursday, Jan, 15" class="relative">
+                    <a aria-label="scheduled to Thursday, Jan, 15" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M5 22h14">
@@ -1180,7 +1225,7 @@
                         Today
                       </div>
                     </a>
-                    <a aria-label="due at Saturday, Jan, 10" class="relative">
+                    <a aria-label="due at Saturday, Jan, 10" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -1221,10 +1266,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Status.md%3A14-summary">
+                  Overdue, scheduled to Thursday, Jan, 15, due at Saturday, Jan, 10, Status
+                </span>
               </div>
-              <div aria-label="Status" class="task overdue" data-col="57" data-dailynote="false" data-line="15" data-link="Status.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Status.md%3A15-text tcw-#-2026-01-15-Status.md%3A15-summary" class="task overdue" data-col="57" data-dailynote="false" data-line="15" data-link="Status.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -1237,13 +1285,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Status.md%3A15-text">
                     <a>
                       reopened, done date kept
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="due at Saturday, Jan, 10" class="relative">
+                    <a aria-label="due at Saturday, Jan, 10" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -1297,10 +1345,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Status.md%3A15-summary">
+                  Overdue, due at Saturday, Jan, 10, complete at Thursday, Jan, 15, Status
+                </span>
               </div>
-              <div aria-label="Status" class="task overdue" data-col="55" data-dailynote="false" data-line="16" data-link="Status.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Status.md%3A16-text tcw-#-2026-01-15-Status.md%3A16-summary" class="task overdue" data-col="55" data-dailynote="false" data-line="16" data-link="Status.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -1313,13 +1364,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Status.md%3A16-text">
                     <a>
                       overdue, starts today
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="start at Thursday, Jan, 15" class="relative">
+                    <a aria-label="start at Thursday, Jan, 15" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z">
@@ -1330,7 +1381,7 @@
                         Today
                       </div>
                     </a>
-                    <a aria-label="due at Saturday, Jan, 10" class="relative">
+                    <a aria-label="due at Saturday, Jan, 10" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -1371,10 +1422,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Status.md%3A16-summary">
+                  Overdue, start at Thursday, Jan, 15, due at Saturday, Jan, 10, Status
+                </span>
               </div>
-              <div aria-label="Status" class="task overdue" data-col="80" data-dailynote="false" data-line="17" data-link="Status.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Status.md%3A17-text tcw-#-2026-01-15-Status.md%3A17-summary" class="task overdue" data-col="80" data-dailynote="false" data-line="17" data-link="Status.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="12" cy="12" r="10">
@@ -1387,13 +1441,13 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Status.md%3A17-text">
                     <a>
                       overdue, unplanned field today
                     </a>
                   </div>
                   <div class="line info">
-                    <a aria-label="due at Saturday, Jan, 10" class="relative">
+                    <a aria-label="due at Saturday, Jan, 10" class="relative" role="button" tabindex="-1">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <rect height="18" rx="2" ry="2" width="18" x="3" y="4">
@@ -1434,6 +1488,9 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Status.md%3A17-summary">
+                  Overdue, due at Saturday, Jan, 10, Status
+                </span>
               </div>
             </div>
           </div>

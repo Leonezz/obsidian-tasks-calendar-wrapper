@@ -106,7 +106,15 @@ test("timeline: each row carries its row model's place, marker, link and status,
 			[String(model.line), model.statusMarker, String(model.col), model.link, String(model.isDailyNote)],
 			resolved.task.id,
 		);
-		assert.deepEqual([attrs["class"], attrs["aria-label"]], [`task ${model.status}`, model.fileTitle]);
+		assert.deepEqual(
+			[attrs["class"], attrs["role"], attrs["aria-label"]],
+			[`task ${model.status}`, "listitem", undefined],
+		);
+		const ids = attrs["aria-labelledby"].split(" ");
+		assert.equal(ids.length, 2);
+		const content = allWithClass(rows[i], "content")[0];
+		const summary = allWithClass(rows[i], "tcw-sr-only")[0];
+		assert.deepEqual([content.attrs["id"], summary.attrs["id"]], ids);
 		assert.equal(attrs["style"], `--task-color:${(model.color as string | undefined) || "var(--text-muted)"}`);
 	});
 });

@@ -25,7 +25,19 @@ export function Counters({ counters }: { readonly counters: readonly CounterProp
 
 export function CounterItem(props: CounterProps) {
 	return (
-		<div className="counter" id={props.id} aria-label={props.ariaLabel} onClick={props.onClick}>
+		<div
+			className="counter"
+			id={props.id}
+			aria-label={props.ariaLabel}
+			role="button"
+			tabIndex={0}
+			onClick={props.onClick}
+			onKeyDown={(evt) => {
+				if (evt.key !== "Enter" && evt.key !== " ") return;
+				evt.preventDefault();
+				props.onClick();
+			}}
+		>
 			<div className="count">{props.cnt}</div>
 			<div className="label">{props.label}</div>
 		</div>

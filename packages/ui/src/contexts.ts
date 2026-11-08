@@ -17,6 +17,11 @@ export const TodayFocusEventHandlersContext = React.createContext({
 	handleTodayFocusClick: () => {},
 });
 
+export const RowDayKeyContext = React.createContext("");
+
+export const rowInstanceKey = (dayKey: string, taskId: string): string =>
+	`${encodeURIComponent(dayKey)}-${encodeURIComponent(taskId)}`;
+
 export interface RowOverlay {
 	readonly dimmed: boolean;
 	readonly marker?: string;
@@ -31,16 +36,22 @@ export interface RowOverlayStore {
 export const RowWriteContext = React.createContext<{
 	readonly pendingWrites: RowOverlayStore;
 	readonly clock: ListChangeClock;
+	readonly prefix: string;
+	readonly focusRow: (id: string) => void;
+	readonly moveFocus: (id: string, key: string) => void;
 }>({
 	pendingWrites: { getSnapshot: () => undefined, subscribe: () => () => {} },
 	clock: { lastListChangeAt: -Infinity },
+	prefix: "tcw-row-",
+	focusRow: () => {},
+	moveFocus: () => {},
 });
 
 export const TaskItemEventHandlersContext = React.createContext({
-	handleOpenFile: (filePath: string, position: TextRange, evt?: MouseEvent) => {},
-	handleCompleteTask: (model: TaskRowModel, evt: MouseEvent) => {},
+	handleOpenFile: (filePath: string, position: TextRange, evt?: MouseEvent | KeyboardEvent) => {},
+	handleCompleteTask: (model: TaskRowModel, evt: MouseEvent | KeyboardEvent) => {},
 	handleTagClick: (tag: string) => {},
-	handleModifyTask: undefined as ((model: TaskRowModel, evt: MouseEvent) => void) | undefined,
+	handleModifyTask: undefined as ((model: TaskRowModel, evt: MouseEvent | KeyboardEvent) => void) | undefined,
 	handleRowMenu: undefined as ((model: TaskRowModel, evt: MouseEvent) => void) | undefined,
 	handleDateBadge: undefined as ((model: TaskRowModel, field: DateField) => void) | undefined,
 });

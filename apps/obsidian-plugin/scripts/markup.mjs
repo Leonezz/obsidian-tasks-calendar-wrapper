@@ -25,7 +25,13 @@ export function serializeMarkup(element) {
 			const tag = node.namespaceURI === HTML ? node.localName : node.tagName;
 			const attributes = [...node.attributes]
 				.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
-				.map((attribute) => ` ${attribute.name}="${escape(attribute.value)}"`)
+				.map((attribute) => {
+					const value =
+						attribute.name === "id" || attribute.name === "aria-labelledby"
+							? attribute.value.replace(/(^|\s)tcw-r[0-9a-v]+-/g, "$1tcw-#-")
+							: attribute.value;
+					return ` ${attribute.name}="${escape(value)}"`;
+				})
 				.join("");
 			lines.push(`${indent}<${tag}${attributes}>`);
 			for (const child of node.childNodes) visit(child, depth + 1);

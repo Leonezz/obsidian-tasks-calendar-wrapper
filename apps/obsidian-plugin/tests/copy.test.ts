@@ -180,10 +180,22 @@ test("new Notice( appears only in notices.ts", () => {
 
 type SnapshotValue = string | readonly string[] | { readonly [key: string]: SnapshotValue };
 
+/** Parameters that copy functions take as lists; the snapshot passes each as one placeholder item. */
+const listParameters = new Set(["dates"]);
+
 function snapshot(value: unknown): SnapshotValue {
 	if (typeof value === "string") return value;
 	if (typeof value === "function") {
-		const rendered: unknown = value(new Proxy({}, { get: (_target, name) => `{${String(name)}}` }));
+		const placeholder = (name: string | symbol) => `{${String(name)}}`;
+		const rendered: unknown = value(
+			new Proxy(
+				{},
+				{
+					get: (_target, name) =>
+						typeof name === "string" && listParameters.has(name) ? [placeholder(name)] : placeholder(name),
+				},
+			),
+		);
 		assert.equal(typeof rendered, "string");
 		return rendered as string;
 	}
