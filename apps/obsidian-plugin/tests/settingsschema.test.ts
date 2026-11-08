@@ -21,8 +21,8 @@ import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { FIXTURE_NAMES, readFixture, rowsOf, startPlugin, type Control, type Row } from "./settings-fixtures";
 import type { FakeElement } from "./stubs/obsidian";
 
-// The plugin's settings schema: one entry for each option. The tab reads its texts through the schema, but its rows
-// stay hand-written until step 13. These tests hold it to what step 4 recorded in fixtures/settings/tab.
+// The plugin's settings schema: one entry for each option. The tab is generated from the schema. These tests hold
+// it to what step 4 recorded in fixtures/settings/tab.
 
 type Key = keyof UserOption;
 

@@ -41,6 +41,11 @@ export interface SettingSpec<
 	readonly codec?: TextCodec<unknown>;
 	/** The heading the setting shows under; none for a setting without a control. */
 	readonly group?: G;
+	/**
+	 * Where the row shows within its group, when that differs from the schema's order: rows sort by `order`, or by
+	 * their place in the schema when they have none.
+	 */
+	readonly order?: number;
 	/** The setting shows only while this one is on. */
 	readonly shownWhen?: K;
 	/** Changing the setting draws the tab again: it shows or hides other settings, or its own tags change. */

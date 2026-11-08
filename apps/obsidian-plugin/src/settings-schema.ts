@@ -14,20 +14,22 @@ import {
 import type { UserOption } from "./useroptions";
 
 /** The headings of the settings tab. */
-export type SettingGroup = "interface" | "taskItems" | "formatsAndFilters";
+export const settingGroups = ["interface", "taskItems", "formatsAndFilters"] as const;
+export type SettingGroup = (typeof settingGroups)[number];
 
 type SettingCopyKey = Exclude<keyof Copy["settings"], "groups" | "tab">;
-type Spec = SettingSpec<keyof UserOption, SettingGroup, SettingCopyKey>;
+/** A plugin option and how the settings tab shows it. */
+export type SettingsSpec = SettingSpec<keyof UserOption, SettingGroup, SettingCopyKey>;
 
 /** Changes reach the timelines with the next push; most settings are read so. */
 const PUSH: ReadWhen = "push";
 
 /**
- * One entry for each option, in the order of defaultUserOptions, which hold the defaults. The settings tab reads its
- * texts through this schema but still writes its rows by hand until step 13. tests/settingsschema.test.ts holds it to
- * what the tab does.
+ * One entry for each option, in the order of defaultUserOptions, which hold the defaults. The settings tab in
+ * src/settings/ is generated from this schema, in `order` within each group. tests/settingsschema.test.ts holds it
+ * to what the tab does.
  */
-export const settingsSchema: readonly Spec[] = Object.freeze(
+export const settingsSchema: readonly SettingsSpec[] = Object.freeze(
 	(
 		[
 			{
@@ -55,6 +57,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				control: "toggle",
 				copy: "filterEmpty",
 				group: "formatsAndFilters",
+				order: 12.2,
 				redrawsTab: false,
 				readWhen: PUSH,
 			},
@@ -65,6 +68,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				copy: "excludePaths",
 				codec: pathListCodec,
 				group: "formatsAndFilters",
+				order: 11.5,
 				redrawsTab: false,
 				readWhen: PUSH,
 			},
@@ -75,6 +79,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				copy: "includePaths",
 				codec: pathListCodec,
 				group: "formatsAndFilters",
+				order: 12.1,
 				redrawsTab: false,
 				readWhen: PUSH,
 			},
@@ -154,6 +159,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				copy: "dailyNoteFolder",
 				codec: plainTextCodec,
 				group: "interface",
+				order: 30.4,
 				redrawsTab: false,
 				readWhen: PUSH,
 			},
@@ -164,6 +170,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				copy: "dailyNoteFormat",
 				codec: plainTextCodec,
 				group: "interface",
+				order: 30.5,
 				redrawsTab: false,
 				readWhen: PUSH,
 			},
@@ -174,6 +181,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				copy: "sectionForNewTasks",
 				codec: plainTextCodec,
 				group: "interface",
+				order: 30.3,
 				shownWhen: "useQuickEntry",
 				redrawsTab: false,
 				readWhen: PUSH,
@@ -184,6 +192,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				control: "tagList",
 				copy: "hideTags",
 				group: "taskItems",
+				order: 36.5,
 				redrawsTab: true,
 				readWhen: PUSH,
 			},
@@ -193,6 +202,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				control: "toggle",
 				copy: "forward",
 				group: "interface",
+				order: 42.1,
 				redrawsTab: false,
 				readWhen: PUSH,
 			},
@@ -202,6 +212,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				control: "toggle",
 				copy: "forwardPastStartAndScheduled",
 				group: "interface",
+				order: 42.2,
 				redrawsTab: false,
 				readWhen: PUSH,
 			},
@@ -211,6 +222,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				control: "toggle",
 				copy: "forwardUndatedDone",
 				group: "interface",
+				order: 42.3,
 				redrawsTab: false,
 				readWhen: PUSH,
 			},
@@ -234,6 +246,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 					"tags-desc": "tagsDesc",
 				}),
 				group: "formatsAndFilters",
+				order: 5.2,
 				redrawsTab: false,
 				readWhen: PUSH,
 			},
@@ -245,6 +258,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				copy: "dateFormat",
 				codec: plainTextCodec,
 				group: "formatsAndFilters",
+				order: 5.1,
 				redrawsTab: false,
 				readWhen: PUSH,
 			},
@@ -255,6 +269,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				copy: "inbox",
 				codec: trimmedTextCodec,
 				group: "interface",
+				order: 30.2,
 				shownWhen: "useQuickEntry",
 				redrawsTab: false,
 				readWhen: PUSH,
@@ -266,6 +281,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				copy: "taskFiles",
 				codec: fileListCodec,
 				group: "interface",
+				order: 30.1,
 				shownWhen: "useQuickEntry",
 				redrawsTab: false,
 				readWhen: PUSH,
@@ -473,6 +489,7 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				control: "toggle",
 				copy: "useBuiltinStyle",
 				group: "interface",
+				order: 1.5,
 				redrawsTab: false,
 				readWhen: PUSH,
 			},
@@ -482,9 +499,10 @@ export const settingsSchema: readonly Spec[] = Object.freeze(
 				control: "toggle",
 				copy: "convert24HourTimePrefix",
 				group: "formatsAndFilters",
+				order: 5.3,
 				redrawsTab: false,
 				readWhen: PUSH,
 			},
-		] satisfies Spec[]
+		] satisfies SettingsSpec[]
 	).map((spec) => Object.freeze(spec)),
 );

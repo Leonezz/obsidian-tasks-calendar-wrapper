@@ -155,7 +155,7 @@ test("new Notice( appears only in notices.ts", () => {
 	const notices: string[] = [];
 	const failures: string[] = [];
 	for (const source of sources()) {
-		if (source.fileName === "src/settings.ts") continue;
+		if (source.fileName.startsWith(`src${path.sep}settings${path.sep}`)) continue;
 		const visit = (node: ts.Node): void => {
 			if (isNotice(node)) {
 				const site = location(source, node);
@@ -227,13 +227,22 @@ test("every copy key is used", () => {
 		};
 		visit(source);
 	}
-	// Brief-derived extension: the schema routes only names, descriptions and dropdown labels.
+	// Brief-derived extension: the schema routes the texts used by each control and its heading.
 	for (const spec of settingsSchema) {
+		if (spec.control !== "none" && spec.group !== undefined && spec.group in copy.settings.groups) {
+			used.add(`copy.settings.groups.${spec.group}`);
+		}
 		if (spec.copy === undefined) continue;
 		const prefix = `copy.settings.${spec.copy}`;
+		const texts = copy.settings[spec.copy];
 		used.add(`${prefix}.name`);
 		used.add(`${prefix}.desc`);
 		for (const key of Object.values(spec.options ?? {})) used.add(`${prefix}.options.${key}`);
+		if (["text", "textArea", "momentFormat"].includes(spec.control) && "placeholder" in texts) {
+			used.add(`${prefix}.placeholder`);
+		}
+		if (spec.control === "momentFormat" && "descAfterLink" in texts) used.add(`${prefix}.descAfterLink`);
+		if (spec.control === "tagPalette" && "addTooltip" in texts) used.add(`${prefix}.addTooltip`);
 	}
 	const unused = leaves(copy)
 		.map(([name]) => name)
