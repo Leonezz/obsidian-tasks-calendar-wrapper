@@ -144,3 +144,32 @@ test("markup: Obsidian comparison normalizes only row markdown and reports every
 	}
 	assert.throws(() => parseVisibleState("mobile"), /Not a visible markup state/);
 });
+
+test("markup: serialization replaces each timeline's id prefix", () => {
+	const root = document.createElement("div");
+	const task = encodeURIComponent("Folder/task-tcw-r2-inner.md:17");
+	for (const prefix of ["tcw-r0-", "tcw-r1v-"]) {
+		const timeline = document.createElement("div");
+		timeline.innerHTML = `<div aria-labelledby="${prefix}${task}-text ${prefix}${task}-summary todo"><div id="${prefix}${task}-text">Task</div><span id="${prefix}${task}-summary">Due, Inbox</span></div>`;
+		root.append(timeline);
+	}
+	root.insertAdjacentHTML("beforeend", '<div id="todo"></div><div id="tcw-row-task-text"></div>');
+	const restored = deserializeMarkup(serializeMarkup(root), document);
+	assert.deepEqual(
+		[...restored.querySelectorAll("[id]")].map((element) => element.id),
+		[
+			`tcw-#-${task}-text`,
+			`tcw-#-${task}-summary`,
+			`tcw-#-${task}-text`,
+			`tcw-#-${task}-summary`,
+			"todo",
+			"tcw-row-task-text",
+		],
+		"serialization must replace only each leading React useId prefix, tcw-r[0-9a-v]+-",
+	);
+	assert.deepEqual(
+		[...restored.querySelectorAll("[aria-labelledby]")].map((element) => element.getAttribute("aria-labelledby")),
+		Array(2).fill(`tcw-#-${task}-text tcw-#-${task}-summary todo`),
+		"every aria-labelledby token must use the same canonical prefix as its target",
+	);
+});
