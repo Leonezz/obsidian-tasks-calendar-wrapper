@@ -33,11 +33,11 @@
       <div>
       </div>
       <div>
-        <div aria-label="Focus today" class="todayHeader">
+        <div aria-label="Focus today" aria-pressed="false" class="todayHeader" role="button" tabindex="0">
           Focus On Today
         </div>
         <div class="counters">
-          <div aria-label="Todo Tasks" class="counter" id="todo">
+          <div aria-label="Todo Tasks" aria-pressed="false" class="counter" id="todo" role="button" tabindex="0">
             <div class="count">
               65
             </div>
@@ -45,7 +45,7 @@
               Todo
             </div>
           </div>
-          <div aria-label="Overdue Tasks" class="counter" id="overdue">
+          <div aria-label="Overdue Tasks" aria-pressed="false" class="counter" id="overdue" role="button" tabindex="0">
             <div class="count">
               19
             </div>
@@ -53,7 +53,7 @@
               Overdue
             </div>
           </div>
-          <div aria-label="Unplanned Tasks" class="counter" id="unplanned">
+          <div aria-label="Unplanned Tasks" aria-pressed="true" class="counter" id="unplanned" role="button" tabindex="0">
             <div class="count">
               85
             </div>
@@ -68,7 +68,7 @@
         <div class="quickEntryPanel">
           <div class="left">
             <div class="actionSelect">
-              <select class="actionName" name="Action">
+              <select aria-label="Quick entry action" class="actionName" name="Action">
                 <option value="append">
                   New Task
                 </option>
@@ -109,10 +109,10 @@
             </div>
           </div>
           <div class="details today" data-types="overdue due scheduled start process unplanned" data-year="2026">
-            <div class="content">
-              <div aria-label="CRLF note" class="task unplanned" data-col="38" data-dailynote="false" data-line="1" data-link="CRLF note.md" data-task=" " style="--task-color: var(--text-muted);">
+            <div class="content" role="list">
+              <div aria-labelledby="tcw-#-2026-01-15-CRLF%20note.md%3A1-text tcw-#-2026-01-15-CRLF%20note.md%3A1-summary" class="task unplanned" data-col="38" data-dailynote="false" data-line="1" data-link="CRLF note.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="0">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -131,7 +131,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-CRLF%20note.md%3A1-text">
                     <a>
                       second task in a CRLF note
                     </a>
@@ -158,7 +158,7 @@
                       <span class="header">
                       </span>
                     </a>
-                    <a aria-label="#work" class="tag" href="#work" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#work" class="tag" href="#work" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="0" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -173,10 +173,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-CRLF%20note.md%3A1-summary">
+                  Unplanned, CRLF note
+                </span>
               </div>
-              <div aria-label="Comments" class="task unplanned" data-col="27" data-dailynote="false" data-line="4" data-link="Comments.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Comments.md%3A4-text tcw-#-2026-01-15-Comments.md%3A4-summary" class="task unplanned" data-col="27" data-dailynote="false" data-line="4" data-link="Comments.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -195,7 +198,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Comments.md%3A4-text">
                     <a>
                       test1
                     </a>
@@ -225,10 +228,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Comments.md%3A4-summary">
+                  Unplanned, Comments
+                </span>
               </div>
-              <div aria-label="Comments" class="task unplanned" data-col="37" data-dailynote="false" data-line="5" data-link="Comments.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Comments.md%3A5-text tcw-#-2026-01-15-Comments.md%3A5-summary" class="task unplanned" data-col="37" data-dailynote="false" data-line="5" data-link="Comments.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -247,7 +253,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Comments.md%3A5-text">
                     <a>
                       test2
                     </a>
@@ -277,10 +283,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Comments.md%3A5-summary">
+                  Unplanned, Comments
+                </span>
               </div>
-              <div aria-label="Comments" class="task unplanned" data-col="68" data-dailynote="false" data-line="6" data-link="Comments.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Comments.md%3A6-text tcw-#-2026-01-15-Comments.md%3A6-summary" class="task unplanned" data-col="68" data-dailynote="false" data-line="6" data-link="Comments.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -299,7 +308,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Comments.md%3A6-text">
                     <a>
                       TickTickSync task
                     </a>
@@ -329,10 +338,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Comments.md%3A6-summary">
+                  Unplanned, Comments
+                </span>
               </div>
-              <div aria-label="Comments" class="task unplanned" data-col="38" data-dailynote="false" data-line="7" data-link="Comments.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Comments.md%3A7-text tcw-#-2026-01-15-Comments.md%3A7-summary" class="task unplanned" data-col="38" data-dailynote="false" data-line="7" data-link="Comments.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -351,7 +363,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Comments.md%3A7-text">
                     <a>
                       commented date
                     </a>
@@ -381,10 +393,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Comments.md%3A7-summary">
+                  Unplanned, Comments
+                </span>
               </div>
-              <div aria-label="Comments" class="task unplanned" data-col="54" data-dailynote="false" data-line="9" data-link="Comments.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Comments.md%3A9-text tcw-#-2026-01-15-Comments.md%3A9-summary" class="task unplanned" data-col="54" data-dailynote="false" data-line="9" data-link="Comments.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -403,7 +418,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Comments.md%3A9-text">
                     <a>
                       two comments  around visible text
                     </a>
@@ -433,10 +448,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Comments.md%3A9-summary">
+                  Unplanned, Comments
+                </span>
               </div>
-              <div aria-label="2023-05-28" class="task unplanned" data-col="32" data-dailynote="false" data-line="0" data-link="Daily/2023-05-28.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Daily%2F2023-05-28.md%3A0-text tcw-#-2026-01-15-Daily%2F2023-05-28.md%3A0-summary" class="task unplanned" data-col="32" data-dailynote="false" data-line="0" data-link="Daily/2023-05-28.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -455,7 +473,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Daily%2F2023-05-28.md%3A0-text">
                     <a>
                       All men are created equal.
                     </a>
@@ -484,10 +502,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Daily%2F2023-05-28.md%3A0-summary">
+                  Unplanned, 2023-05-28
+                </span>
               </div>
-              <div aria-label="2026, 一月 14 - 星期三" class="task unplanned" data-col="14" data-dailynote="false" data-line="2" data-link="Daily/2026, 一月 14 - 星期三.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Daily%2F2026%2C%20%E4%B8%80%E6%9C%88%2014%20-%20%E6%98%9F%E6%9C%9F%E4%B8%89.md%3A2-text tcw-#-2026-01-15-Daily%2F2026%2C%20%E4%B8%80%E6%9C%88%2014%20-%20%E6%98%9F%E6%9C%9F%E4%B8%89.md%3A2-summary" class="task unplanned" data-col="14" data-dailynote="false" data-line="2" data-link="Daily/2026, 一月 14 - 星期三.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -506,7 +527,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Daily%2F2026%2C%20%E4%B8%80%E6%9C%88%2014%20-%20%E6%98%9F%E6%9C%9F%E4%B8%89.md%3A2-text">
                     <a>
                       中文日记里的任务
                     </a>
@@ -535,10 +556,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Daily%2F2026%2C%20%E4%B8%80%E6%9C%88%2014%20-%20%E6%98%9F%E6%9C%9F%E4%B8%89.md%3A2-summary">
+                  Unplanned, 2026, 一月 14 - 星期三
+                </span>
               </div>
-              <div aria-label="2026-01-15" class="task unplanned" data-col="30" data-dailynote="false" data-line="0" data-link="Daily/2026-01-15.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Daily%2F2026-01-15.md%3A0-text tcw-#-2026-01-15-Daily%2F2026-01-15.md%3A0-summary" class="task unplanned" data-col="30" data-dailynote="false" data-line="0" data-link="Daily/2026-01-15.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -557,7 +581,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Daily%2F2026-01-15.md%3A0-text">
                     <a>
                       parent on the first line
                     </a>
@@ -586,10 +610,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Daily%2F2026-01-15.md%3A0-summary">
+                  Unplanned, 2026-01-15
+                </span>
               </div>
-              <div aria-label="2026-01-15" class="task unplanned" data-col="33" data-dailynote="false" data-line="1" data-link="Daily/2026-01-15.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Daily%2F2026-01-15.md%3A1-text tcw-#-2026-01-15-Daily%2F2026-01-15.md%3A1-summary" class="task unplanned" data-col="33" data-dailynote="false" data-line="1" data-link="Daily/2026-01-15.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -608,7 +635,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Daily%2F2026-01-15.md%3A1-text">
                     <a>
                       child of the first line
                     </a>
@@ -637,10 +664,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Daily%2F2026-01-15.md%3A1-summary">
+                  Unplanned, 2026-01-15
+                </span>
               </div>
-              <div aria-label="2026-01-15" class="task unplanned" data-col="44" data-dailynote="false" data-line="2" data-link="Daily/2026-01-15.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Daily%2F2026-01-15.md%3A2-text tcw-#-2026-01-15-Daily%2F2026-01-15.md%3A2-summary" class="task unplanned" data-col="44" data-dailynote="false" data-line="2" data-link="Daily/2026-01-15.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -659,7 +689,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Daily%2F2026-01-15.md%3A2-text">
                     <a>
                       undated task in today's ISO daily note
                     </a>
@@ -688,10 +718,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Daily%2F2026-01-15.md%3A2-summary">
+                  Unplanned, 2026-01-15
+                </span>
               </div>
-              <div aria-label="Wed" class="task unplanned" data-col="38" data-dailynote="false" data-line="0" data-link="Daily/2026/Jan/3rd/Wed.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Daily%2F2026%2FJan%2F3rd%2FWed.md%3A0-text tcw-#-2026-01-15-Daily%2F2026%2FJan%2F3rd%2FWed.md%3A0-summary" class="task unplanned" data-col="38" data-dailynote="false" data-line="0" data-link="Daily/2026/Jan/3rd/Wed.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -710,7 +743,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Daily%2F2026%2FJan%2F3rd%2FWed.md%3A0-text">
                     <a>
                       task in a week-format daily note
                     </a>
@@ -739,10 +772,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Daily%2F2026%2FJan%2F3rd%2FWed.md%3A0-summary">
+                  Unplanned, Wed
+                </span>
               </div>
-              <div aria-label="Dataview fields" class="task unplanned" data-col="42" data-dailynote="false" data-line="8" data-link="Dataview fields.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Dataview%20fields.md%3A8-text tcw-#-2026-01-15-Dataview%20fields.md%3A8-summary" class="task unplanned" data-col="42" data-dailynote="false" data-line="8" data-link="Dataview fields.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -761,7 +797,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Dataview%20fields.md%3A8-text">
                     <a>
                       created field
                     </a>
@@ -791,10 +827,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Dataview%20fields.md%3A8-summary">
+                  Unplanned, Dataview fields
+                </span>
               </div>
-              <div aria-label="Dataview fields" class="task unplanned" data-col="37" data-dailynote="false" data-line="10" data-link="Dataview fields.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Dataview%20fields.md%3A10-text tcw-#-2026-01-15-Dataview%20fields.md%3A10-summary" class="task unplanned" data-col="37" data-dailynote="false" data-line="10" data-link="Dataview fields.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -813,7 +852,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Dataview%20fields.md%3A10-text">
                     <a>
                       unknown field
                     </a>
@@ -843,10 +882,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Dataview%20fields.md%3A10-summary">
+                  Unplanned, Dataview fields
+                </span>
               </div>
-              <div aria-label="Dataview fields" class="task unplanned" data-col="43" data-dailynote="false" data-line="11" data-link="Dataview fields.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Dataview%20fields.md%3A11-text tcw-#-2026-01-15-Dataview%20fields.md%3A11-summary" class="task unplanned" data-col="43" data-dailynote="false" data-line="11" data-link="Dataview fields.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -865,7 +907,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Dataview%20fields.md%3A11-text">
                     <a>
                       invalid field date
                     </a>
@@ -895,10 +937,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Dataview%20fields.md%3A11-summary">
+                  Unplanned, Dataview fields
+                </span>
               </div>
-              <div aria-label="Dataview fields" class="task unplanned" data-col="42" data-dailynote="false" data-line="17" data-link="Dataview fields.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Dataview%20fields.md%3A17-text tcw-#-2026-01-15-Dataview%20fields.md%3A17-summary" class="task unplanned" data-col="42" data-dailynote="false" data-line="17" data-link="Dataview fields.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -917,7 +962,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Dataview%20fields.md%3A17-text">
                     <a>
                       capitalised field
                     </a>
@@ -947,10 +992,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Dataview%20fields.md%3A17-summary">
+                  Unplanned, Dataview fields
+                </span>
               </div>
-              <div aria-label="Dataview fields" class="task unplanned" data-col="46" data-dailynote="false" data-line="18" data-link="Dataview fields.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Dataview%20fields.md%3A18-text tcw-#-2026-01-15-Dataview%20fields.md%3A18-summary" class="task unplanned" data-col="46" data-dailynote="false" data-line="18" data-link="Dataview fields.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -969,7 +1017,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Dataview%20fields.md%3A18-text">
                     <a>
                       key with a space
                     </a>
@@ -999,10 +1047,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Dataview%20fields.md%3A18-summary">
+                  Unplanned, Dataview fields
+                </span>
               </div>
-              <div aria-label="Dataview fields" class="task unplanned" data-col="42" data-dailynote="false" data-line="20" data-link="Dataview fields.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Dataview%20fields.md%3A20-text tcw-#-2026-01-15-Dataview%20fields.md%3A20-summary" class="task unplanned" data-col="42" data-dailynote="false" data-line="20" data-link="Dataview fields.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1021,7 +1072,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Dataview%20fields.md%3A20-text">
                     <a>
                       parenthesis field (due:: 2026-01-20)
                     </a>
@@ -1051,10 +1102,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Dataview%20fields.md%3A20-summary">
+                  Unplanned, Dataview fields
+                </span>
               </div>
-              <div aria-label="Dataview fields" class="task unplanned" data-col="39" data-dailynote="false" data-line="21" data-link="Dataview fields.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Dataview%20fields.md%3A21-text tcw-#-2026-01-15-Dataview%20fields.md%3A21-summary" class="task unplanned" data-col="39" data-dailynote="false" data-line="21" data-link="Dataview fields.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1073,7 +1127,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Dataview%20fields.md%3A21-text">
                     <a>
                       link value ]]
                     </a>
@@ -1103,10 +1157,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Dataview%20fields.md%3A21-summary">
+                  Unplanned, Dataview fields
+                </span>
               </div>
-              <div aria-label="Emoji dates" class="task unplanned" data-col="36" data-dailynote="false" data-line="17" data-link="Emoji dates.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Emoji%20dates.md%3A17-text tcw-#-2026-01-15-Emoji%20dates.md%3A17-summary" class="task unplanned" data-col="36" data-dailynote="false" data-line="17" data-link="Emoji dates.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1125,7 +1182,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Emoji%20dates.md%3A17-text">
                     <a>
                       created date only
                     </a>
@@ -1155,10 +1212,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Emoji%20dates.md%3A17-summary">
+                  Unplanned, Emoji dates
+                </span>
               </div>
-              <div aria-label="Emoji dates" class="task unplanned" data-col="35" data-dailynote="false" data-line="19" data-link="Emoji dates.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Emoji%20dates.md%3A19-text tcw-#-2026-01-15-Emoji%20dates.md%3A19-summary" class="task unplanned" data-col="35" data-dailynote="false" data-line="19" data-link="Emoji dates.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1177,7 +1237,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Emoji%20dates.md%3A19-text">
                     <a>
                       broken due date
                     </a>
@@ -1207,10 +1267,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Emoji%20dates.md%3A19-summary">
+                  Unplanned, Emoji dates
+                </span>
               </div>
-              <div aria-label="Emoji dates" class="task unplanned" data-col="33" data-dailynote="false" data-line="25" data-link="Emoji dates.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Emoji%20dates.md%3A25-text tcw-#-2026-01-15-Emoji%20dates.md%3A25-summary" class="task unplanned" data-col="33" data-dailynote="false" data-line="25" data-link="Emoji dates.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1229,7 +1292,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Emoji%20dates.md%3A25-text">
                     <a>
                       reminder ⏰ 2026-01-16 10:00
                     </a>
@@ -1259,10 +1322,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Emoji%20dates.md%3A25-summary">
+                  Unplanned, Emoji dates
+                </span>
               </div>
-              <div aria-label="Emoji dates" class="task unplanned" data-col="37" data-dailynote="false" data-line="26" data-link="Emoji dates.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Emoji%20dates.md%3A26-text tcw-#-2026-01-15-Emoji%20dates.md%3A26-summary" class="task unplanned" data-col="37" data-dailynote="false" data-line="26" data-link="Emoji dates.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1281,7 +1347,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Emoji%20dates.md%3A26-text">
                     <a>
                       reminder at (@2026-01-17 09:30)
                     </a>
@@ -1311,10 +1377,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Emoji%20dates.md%3A26-summary">
+                  Unplanned, Emoji dates
+                </span>
               </div>
-              <div aria-label="Emoji dates" class="task unplanned" data-col="37" data-dailynote="false" data-line="27" data-link="Emoji dates.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Emoji%20dates.md%3A27-text tcw-#-2026-01-15-Emoji%20dates.md%3A27-summary" class="task unplanned" data-col="37" data-dailynote="false" data-line="27" data-link="Emoji dates.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1333,7 +1402,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Emoji%20dates.md%3A27-text">
                     <a>
                       reminder on a day (@2026-01-18)
                     </a>
@@ -1363,10 +1432,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Emoji%20dates.md%3A27-summary">
+                  Unplanned, Emoji dates
+                </span>
               </div>
-              <div aria-label="Inbox" class="task unplanned" data-col="39" data-dailynote="false" data-line="3" data-link="Inbox.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Inbox.md%3A3-text tcw-#-2026-01-15-Inbox.md%3A3-summary" class="task unplanned" data-col="39" data-dailynote="false" data-line="3" data-link="Inbox.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1385,7 +1457,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Inbox.md%3A3-text">
                     <a>
                       Ground Control to Major Tom
                     </a>
@@ -1412,7 +1484,7 @@
                       <span class="header">
                       </span>
                     </a>
-                    <a aria-label="#TODO" class="tag" href="#TODO" rel="noopener" style="--tag-color: #339988; --tag-background: #3399881a; z-index: 9999;" target="_blank">
+                    <a aria-label="#TODO" class="tag" href="#TODO" rel="noopener" style="--tag-color: #339988; --tag-background: #3399881a; z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -1427,10 +1499,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Inbox.md%3A3-summary">
+                  Unplanned, Inbox
+                </span>
               </div>
-              <div aria-label="Inbox" class="task unplanned" data-col="34" data-dailynote="false" data-line="4" data-link="Inbox.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Inbox.md%3A4-text tcw-#-2026-01-15-Inbox.md%3A4-summary" class="task unplanned" data-col="34" data-dailynote="false" data-line="4" data-link="Inbox.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1449,7 +1524,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Inbox.md%3A4-text">
                     <a>
                       Ground Control to Major Tom
                     </a>
@@ -1478,10 +1553,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Inbox.md%3A4-summary">
+                  Unplanned, Inbox
+                </span>
               </div>
-              <div aria-label="Inbox" class="task unplanned" data-col="0" data-dailynote="false" data-line="5" data-link="Inbox.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Inbox.md%3A5-text tcw-#-2026-01-15-Inbox.md%3A5-summary" class="task unplanned" data-col="0" data-dailynote="false" data-line="5" data-link="Inbox.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1500,7 +1578,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Inbox.md%3A5-text">
                     <a>
                       Take your protein pills and put your helmet on
                     </a>
@@ -1529,10 +1607,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Inbox.md%3A5-summary">
+                  Unplanned, Inbox
+                </span>
               </div>
-              <div aria-label="Inbox" class="task unplanned" data-col="33" data-dailynote="false" data-line="7" data-link="Inbox.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Inbox.md%3A7-text tcw-#-2026-01-15-Inbox.md%3A7-summary" class="task unplanned" data-col="33" data-dailynote="false" data-line="7" data-link="Inbox.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1551,7 +1632,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Inbox.md%3A7-text">
                     <a>
                       Ground Control to Major Tom
                     </a>
@@ -1580,10 +1661,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Inbox.md%3A7-summary">
+                  Unplanned, Inbox
+                </span>
               </div>
-              <div aria-label="Inbox" class="task unplanned" data-col="41" data-dailynote="false" data-line="8" data-link="Inbox.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Inbox.md%3A8-text tcw-#-2026-01-15-Inbox.md%3A8-summary" class="task unplanned" data-col="41" data-dailynote="false" data-line="8" data-link="Inbox.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1602,7 +1686,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Inbox.md%3A8-text">
                     <a>
                       Commencing countdown, engines on
                     </a>
@@ -1631,10 +1715,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Inbox.md%3A8-summary">
+                  Unplanned, Inbox
+                </span>
               </div>
-              <div aria-label="Inbox" class="task unplanned" data-col="2" data-dailynote="false" data-line="9" data-link="Inbox.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Inbox.md%3A9-text tcw-#-2026-01-15-Inbox.md%3A9-summary" class="task unplanned" data-col="2" data-dailynote="false" data-line="9" data-link="Inbox.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1653,7 +1740,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Inbox.md%3A9-text">
                     <a>
                       Check ignition and may God's love be with you
                     </a>
@@ -1682,10 +1769,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Inbox.md%3A9-summary">
+                  Unplanned, Inbox
+                </span>
               </div>
-              <div aria-label="13" class="task unplanned" data-col="40" data-dailynote="false" data-line="2" data-link="Journal/2026/01/13.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Journal%2F2026%2F01%2F13.md%3A2-text tcw-#-2026-01-15-Journal%2F2026%2F01%2F13.md%3A2-summary" class="task unplanned" data-col="40" data-dailynote="false" data-line="2" data-link="Journal/2026/01/13.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1704,7 +1794,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Journal%2F2026%2F01%2F13.md%3A2-text">
                     <a>
                       task in a folder-format daily note
                     </a>
@@ -1733,10 +1823,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Journal%2F2026%2F01%2F13.md%3A2-summary">
+                  Unplanned, 13
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="15" data-dailynote="false" data-line="1" data-link="Markers.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A1-text tcw-#-2026-01-15-Markers.md%3A1-summary" class="task unplanned" data-col="15" data-dailynote="false" data-line="1" data-link="Markers.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1755,7 +1848,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A1-text">
                     <a>
                       Unchecked
                     </a>
@@ -1784,10 +1877,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A1-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="15" data-dailynote="false" data-line="5" data-link="Markers.md" data-task="!" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A5-text tcw-#-2026-01-15-Markers.md%3A5-summary" class="task unplanned" data-col="15" data-dailynote="false" data-line="5" data-link="Markers.md" data-task="!" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="!" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="!" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1806,7 +1902,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A5-text">
                     <a>
                       Important
                     </a>
@@ -1835,10 +1931,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A5-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="14" data-dailynote="false" data-line="8" data-link="Markers.md" data-task="?" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A8-text tcw-#-2026-01-15-Markers.md%3A8-summary" class="task unplanned" data-col="14" data-dailynote="false" data-line="8" data-link="Markers.md" data-task="?" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="?" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="?" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1857,7 +1956,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A8-text">
                     <a>
                       Question
                     </a>
@@ -1886,10 +1985,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A8-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="10" data-dailynote="false" data-line="9" data-link="Markers.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A9-text tcw-#-2026-01-15-Markers.md%3A9-summary" class="task unplanned" data-col="10" data-dailynote="false" data-line="9" data-link="Markers.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1908,7 +2010,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A9-text">
                     <a>
                       Star
                     </a>
@@ -1937,10 +2039,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A9-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="14" data-dailynote="false" data-line="11" data-link="Markers.md" data-task="l" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A11-text tcw-#-2026-01-15-Markers.md%3A11-summary" class="task unplanned" data-col="14" data-dailynote="false" data-line="11" data-link="Markers.md" data-task="l" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="l" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="l" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -1959,7 +2064,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A11-text">
                     <a>
                       Location
                     </a>
@@ -1988,10 +2093,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A11-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="17" data-dailynote="false" data-line="12" data-link="Markers.md" data-task="i" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A12-text tcw-#-2026-01-15-Markers.md%3A12-summary" class="task unplanned" data-col="17" data-dailynote="false" data-line="12" data-link="Markers.md" data-task="i" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="i" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="i" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2010,7 +2118,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A12-text">
                     <a>
                       Information
                     </a>
@@ -2039,10 +2147,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A12-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="10" data-dailynote="false" data-line="13" data-link="Markers.md" data-task="I" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A13-text tcw-#-2026-01-15-Markers.md%3A13-summary" class="task unplanned" data-col="10" data-dailynote="false" data-line="13" data-link="Markers.md" data-task="I" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="I" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="I" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2061,7 +2172,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A13-text">
                     <a>
                       Idea
                     </a>
@@ -2090,10 +2201,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A13-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="12" data-dailynote="false" data-line="14" data-link="Markers.md" data-task="S" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A14-text tcw-#-2026-01-15-Markers.md%3A14-summary" class="task unplanned" data-col="12" data-dailynote="false" data-line="14" data-link="Markers.md" data-task="S" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="S" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="S" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2112,7 +2226,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A14-text">
                     <a>
                       Amount
                     </a>
@@ -2141,10 +2255,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A14-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="9" data-dailynote="false" data-line="15" data-link="Markers.md" data-task="p" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A15-text tcw-#-2026-01-15-Markers.md%3A15-summary" class="task unplanned" data-col="9" data-dailynote="false" data-line="15" data-link="Markers.md" data-task="p" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="p" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="p" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2163,7 +2280,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A15-text">
                     <a>
                       Pro
                     </a>
@@ -2192,10 +2309,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A15-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="9" data-dailynote="false" data-line="16" data-link="Markers.md" data-task="c" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A16-text tcw-#-2026-01-15-Markers.md%3A16-summary" class="task unplanned" data-col="9" data-dailynote="false" data-line="16" data-link="Markers.md" data-task="c" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="c" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="c" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2214,7 +2334,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A16-text">
                     <a>
                       Con
                     </a>
@@ -2243,10 +2363,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A16-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="14" data-dailynote="false" data-line="17" data-link="Markers.md" data-task="b" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A17-text tcw-#-2026-01-15-Markers.md%3A17-summary" class="task unplanned" data-col="14" data-dailynote="false" data-line="17" data-link="Markers.md" data-task="b" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="b" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="b" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2265,7 +2388,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A17-text">
                     <a>
                       Bookmark
                     </a>
@@ -2294,10 +2417,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A17-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="11" data-dailynote="false" data-line="18" data-link="Markers.md" data-task="&quot;" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A18-text tcw-#-2026-01-15-Markers.md%3A18-summary" class="task unplanned" data-col="11" data-dailynote="false" data-line="18" data-link="Markers.md" data-task="&quot;" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="&quot;" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="&quot;" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2316,7 +2442,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A18-text">
                     <a>
                       Quote
                     </a>
@@ -2345,10 +2471,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A18-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="21" data-dailynote="false" data-line="19" data-link="Markers.md" data-task="0" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A19-text tcw-#-2026-01-15-Markers.md%3A19-summary" class="task unplanned" data-col="21" data-dailynote="false" data-line="19" data-link="Markers.md" data-task="0" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="0" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="0" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2367,7 +2496,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A19-text">
                     <a>
                       Speech bubble 0
                     </a>
@@ -2396,10 +2525,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A19-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="21" data-dailynote="false" data-line="20" data-link="Markers.md" data-task="1" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A20-text tcw-#-2026-01-15-Markers.md%3A20-summary" class="task unplanned" data-col="21" data-dailynote="false" data-line="20" data-link="Markers.md" data-task="1" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="1" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="1" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2418,7 +2550,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A20-text">
                     <a>
                       Speech bubble 1
                     </a>
@@ -2447,10 +2579,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A20-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="21" data-dailynote="false" data-line="21" data-link="Markers.md" data-task="2" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A21-text tcw-#-2026-01-15-Markers.md%3A21-summary" class="task unplanned" data-col="21" data-dailynote="false" data-line="21" data-link="Markers.md" data-task="2" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="2" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="2" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2469,7 +2604,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A21-text">
                     <a>
                       Speech bubble 2
                     </a>
@@ -2498,10 +2633,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A21-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="21" data-dailynote="false" data-line="22" data-link="Markers.md" data-task="3" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A22-text tcw-#-2026-01-15-Markers.md%3A22-summary" class="task unplanned" data-col="21" data-dailynote="false" data-line="22" data-link="Markers.md" data-task="3" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="3" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="3" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2520,7 +2658,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A22-text">
                     <a>
                       Speech bubble 3
                     </a>
@@ -2549,10 +2687,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A22-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="21" data-dailynote="false" data-line="23" data-link="Markers.md" data-task="4" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A23-text tcw-#-2026-01-15-Markers.md%3A23-summary" class="task unplanned" data-col="21" data-dailynote="false" data-line="23" data-link="Markers.md" data-task="4" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="4" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="4" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2571,7 +2712,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A23-text">
                     <a>
                       Speech bubble 4
                     </a>
@@ -2600,10 +2741,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A23-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="21" data-dailynote="false" data-line="24" data-link="Markers.md" data-task="5" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A24-text tcw-#-2026-01-15-Markers.md%3A24-summary" class="task unplanned" data-col="21" data-dailynote="false" data-line="24" data-link="Markers.md" data-task="5" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="5" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="5" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2622,7 +2766,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A24-text">
                     <a>
                       Speech bubble 5
                     </a>
@@ -2651,10 +2795,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A24-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="21" data-dailynote="false" data-line="25" data-link="Markers.md" data-task="6" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A25-text tcw-#-2026-01-15-Markers.md%3A25-summary" class="task unplanned" data-col="21" data-dailynote="false" data-line="25" data-link="Markers.md" data-task="6" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="6" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="6" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2673,7 +2820,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A25-text">
                     <a>
                       Speech bubble 6
                     </a>
@@ -2702,10 +2849,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A25-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="21" data-dailynote="false" data-line="26" data-link="Markers.md" data-task="7" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A26-text tcw-#-2026-01-15-Markers.md%3A26-summary" class="task unplanned" data-col="21" data-dailynote="false" data-line="26" data-link="Markers.md" data-task="7" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="7" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="7" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2724,7 +2874,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A26-text">
                     <a>
                       Speech bubble 7
                     </a>
@@ -2753,10 +2903,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A26-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="21" data-dailynote="false" data-line="27" data-link="Markers.md" data-task="8" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A27-text tcw-#-2026-01-15-Markers.md%3A27-summary" class="task unplanned" data-col="21" data-dailynote="false" data-line="27" data-link="Markers.md" data-task="8" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="8" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="8" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2775,7 +2928,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A27-text">
                     <a>
                       Speech bubble 8
                     </a>
@@ -2804,10 +2957,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A27-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Markers" class="task unplanned" data-col="21" data-dailynote="false" data-line="28" data-link="Markers.md" data-task="9" style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Markers.md%3A28-text tcw-#-2026-01-15-Markers.md%3A28-summary" class="task unplanned" data-col="21" data-dailynote="false" data-line="28" data-link="Markers.md" data-task="9" role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input checked="" class="icon" data-task="9" type="checkbox">
+                  <input aria-label="Complete task" checked="" class="icon" data-task="9" tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2826,7 +2982,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Markers.md%3A28-text">
                     <a>
                       Speech bubble 9
                     </a>
@@ -2855,10 +3011,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Markers.md%3A28-summary">
+                  Unplanned, Markers
+                </span>
               </div>
-              <div aria-label="Priorities" class="task unplanned" data-col="16" data-dailynote="false" data-line="2" data-link="Priorities.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Priorities.md%3A2-text tcw-#-2026-01-15-Priorities.md%3A2-summary" class="task unplanned" data-col="16" data-dailynote="false" data-line="2" data-link="Priorities.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2877,7 +3036,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Priorities.md%3A2-text">
                     <a>
                       highest
                     </a>
@@ -2922,10 +3081,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Priorities.md%3A2-summary">
+                  Unplanned, Priorities
+                </span>
               </div>
-              <div aria-label="Priorities" class="task unplanned" data-col="12" data-dailynote="false" data-line="3" data-link="Priorities.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Priorities.md%3A3-text tcw-#-2026-01-15-Priorities.md%3A3-summary" class="task unplanned" data-col="12" data-dailynote="false" data-line="3" data-link="Priorities.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -2944,7 +3106,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Priorities.md%3A3-text">
                     <a>
                       high
                     </a>
@@ -2989,10 +3151,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Priorities.md%3A3-summary">
+                  Unplanned, Priorities
+                </span>
               </div>
-              <div aria-label="Priorities" class="task unplanned" data-col="15" data-dailynote="false" data-line="4" data-link="Priorities.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Priorities.md%3A4-text tcw-#-2026-01-15-Priorities.md%3A4-summary" class="task unplanned" data-col="15" data-dailynote="false" data-line="4" data-link="Priorities.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3011,7 +3176,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Priorities.md%3A4-text">
                     <a>
                       medium
                     </a>
@@ -3056,10 +3221,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Priorities.md%3A4-summary">
+                  Unplanned, Priorities
+                </span>
               </div>
-              <div aria-label="Priorities" class="task unplanned" data-col="12" data-dailynote="false" data-line="5" data-link="Priorities.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Priorities.md%3A5-text tcw-#-2026-01-15-Priorities.md%3A5-summary" class="task unplanned" data-col="12" data-dailynote="false" data-line="5" data-link="Priorities.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3078,7 +3246,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Priorities.md%3A5-text">
                     <a>
                       low
                     </a>
@@ -3123,10 +3291,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Priorities.md%3A5-summary">
+                  Unplanned, Priorities
+                </span>
               </div>
-              <div aria-label="Priorities" class="task unplanned" data-col="14" data-dailynote="false" data-line="6" data-link="Priorities.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Priorities.md%3A6-text tcw-#-2026-01-15-Priorities.md%3A6-summary" class="task unplanned" data-col="14" data-dailynote="false" data-line="6" data-link="Priorities.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3145,7 +3316,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Priorities.md%3A6-text">
                     <a>
                       lowest
                     </a>
@@ -3190,10 +3361,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Priorities.md%3A6-summary">
+                  Unplanned, Priorities
+                </span>
               </div>
-              <div aria-label="Priorities" class="task unplanned" data-col="17" data-dailynote="false" data-line="7" data-link="Priorities.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Priorities.md%3A7-text tcw-#-2026-01-15-Priorities.md%3A7-summary" class="task unplanned" data-col="17" data-dailynote="false" data-line="7" data-link="Priorities.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3212,7 +3386,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Priorities.md%3A7-text">
                     <a>
                       no priority
                     </a>
@@ -3242,10 +3416,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Priorities.md%3A7-summary">
+                  Unplanned, Priorities
+                </span>
               </div>
-              <div aria-label="Priorities" class="task unplanned" data-col="41" data-dailynote="false" data-line="8" data-link="Priorities.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Priorities.md%3A8-text tcw-#-2026-01-15-Priorities.md%3A8-summary" class="task unplanned" data-col="41" data-dailynote="false" data-line="8" data-link="Priorities.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3264,7 +3441,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Priorities.md%3A8-text">
                     <a>
                       dataview priority
                     </a>
@@ -3309,10 +3486,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Priorities.md%3A8-summary">
+                  Unplanned, Priorities
+                </span>
               </div>
-              <div aria-label="Priorities" class="task unplanned" data-col="64" data-dailynote="false" data-line="9" data-link="Priorities.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Priorities.md%3A9-text tcw-#-2026-01-15-Priorities.md%3A9-summary" class="task unplanned" data-col="64" data-dailynote="false" data-line="9" data-link="Priorities.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3331,7 +3511,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Priorities.md%3A9-text">
                     <a>
                       dataview priority with an unknown name
                     </a>
@@ -3361,10 +3541,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Priorities.md%3A9-summary">
+                  Unplanned, Priorities
+                </span>
               </div>
-              <div aria-label="Priorities" class="task unplanned" data-col="52" data-dailynote="false" data-line="10" data-link="Priorities.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Priorities.md%3A10-text tcw-#-2026-01-15-Priorities.md%3A10-summary" class="task unplanned" data-col="52" data-dailynote="false" data-line="10" data-link="Priorities.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3383,7 +3566,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Priorities.md%3A10-text">
                     <a>
                       unknown text after the priority
                     </a>
@@ -3428,10 +3611,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Priorities.md%3A10-summary">
+                  Unplanned, Priorities
+                </span>
               </div>
-              <div aria-label="Priorities" class="task unplanned" data-col="29" data-dailynote="false" data-line="13" data-link="Priorities.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Priorities.md%3A13-text tcw-#-2026-01-15-Priorities.md%3A13-summary" class="task unplanned" data-col="29" data-dailynote="false" data-line="13" data-link="Priorities.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3450,7 +3636,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Priorities.md%3A13-text">
                     <a>
                       priority at the start
                     </a>
@@ -3495,10 +3681,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Priorities.md%3A13-summary">
+                  Unplanned, Priorities
+                </span>
               </div>
-              <div aria-label="Priorities" class="task unplanned" data-col="25" data-dailynote="false" data-line="15" data-link="Priorities.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Priorities.md%3A15-text tcw-#-2026-01-15-Priorities.md%3A15-summary" class="task unplanned" data-col="25" data-dailynote="false" data-line="15" data-link="Priorities.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3517,7 +3706,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Priorities.md%3A15-text">
                     <a>
                       two priorities
                     </a>
@@ -3562,10 +3751,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Priorities.md%3A15-summary">
+                  Unplanned, Priorities
+                </span>
               </div>
-              <div aria-label="Priorities" class="task unplanned" data-col="30" data-dailynote="false" data-line="16" data-link="Priorities.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Priorities.md%3A16-text tcw-#-2026-01-15-Priorities.md%3A16-summary" class="task unplanned" data-col="30" data-dailynote="false" data-line="16" data-link="Priorities.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3584,7 +3776,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Priorities.md%3A16-text">
                     <a>
                       medium without a space
                     </a>
@@ -3629,10 +3821,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Priorities.md%3A16-summary">
+                  Unplanned, Priorities
+                </span>
               </div>
-              <div aria-label="Priorities" class="task unplanned" data-col="25" data-dailynote="false" data-line="17" data-link="Priorities.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Priorities.md%3A17-text tcw-#-2026-01-15-Priorities.md%3A17-summary" class="task unplanned" data-col="25" data-dailynote="false" data-line="17" data-link="Priorities.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3651,7 +3846,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Priorities.md%3A17-text">
                     <a>
                       see [[ Plan]] note
                     </a>
@@ -3696,10 +3891,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Priorities.md%3A17-summary">
+                  Unplanned, Priorities
+                </span>
               </div>
-              <div aria-label="Status" class="task unplanned" data-col="25" data-dailynote="false" data-line="4" data-link="Status.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Status.md%3A4-text tcw-#-2026-01-15-Status.md%3A4-summary" class="task unplanned" data-col="25" data-dailynote="false" data-line="4" data-link="Status.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3718,7 +3916,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Status.md%3A4-text">
                     <a>
                       open without a date
                     </a>
@@ -3748,10 +3946,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Status.md%3A4-summary">
+                  Unplanned, Status
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="15" data-dailynote="false" data-line="12" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A12-text tcw-#-2026-01-15-Structure.md%3A12-summary" class="task unplanned" data-col="15" data-dailynote="false" data-line="12" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3770,7 +3971,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A12-text">
                     <a>
                       top level
                     </a>
@@ -3798,7 +3999,7 @@
                           &gt;  Lists
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -3811,7 +4012,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -3824,7 +4025,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -3838,10 +4039,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A12-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="34" data-dailynote="false" data-line="13" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A13-text tcw-#-2026-01-15-Structure.md%3A13-summary" class="task unplanned" data-col="34" data-dailynote="false" data-line="13" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3860,7 +4064,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A13-text">
                     <a>
                       subtask with four spaces
                     </a>
@@ -3887,7 +4091,7 @@
                       <span class="header">
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -3900,7 +4104,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -3913,7 +4117,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -3927,10 +4131,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A13-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="25" data-dailynote="false" data-line="14" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A14-text tcw-#-2026-01-15-Structure.md%3A14-summary" class="task unplanned" data-col="25" data-dailynote="false" data-line="14" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -3949,7 +4156,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A14-text">
                     <a>
                       sub-subtask
                     </a>
@@ -3976,7 +4183,7 @@
                       <span class="header">
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -3989,7 +4196,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4002,7 +4209,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4016,10 +4223,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A14-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="31" data-dailynote="false" data-line="15" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A15-text tcw-#-2026-01-15-Structure.md%3A15-summary" class="task unplanned" data-col="31" data-dailynote="false" data-line="15" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -4038,7 +4248,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A15-text">
                     <a>
                       subtask with two spaces
                     </a>
@@ -4065,7 +4275,7 @@
                       <span class="header">
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4078,7 +4288,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4091,7 +4301,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4105,10 +4315,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A15-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="25" data-dailynote="false" data-line="16" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A16-text tcw-#-2026-01-15-Structure.md%3A16-summary" class="task unplanned" data-col="25" data-dailynote="false" data-line="16" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -4127,7 +4340,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A16-text">
                     <a>
                       subtask with a tab
                     </a>
@@ -4154,7 +4367,7 @@
                       <span class="header">
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4167,7 +4380,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4180,7 +4393,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4194,10 +4407,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A16-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="33" data-dailynote="false" data-line="18" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A18-text tcw-#-2026-01-15-Structure.md%3A18-summary" class="task unplanned" data-col="33" data-dailynote="false" data-line="18" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -4216,7 +4432,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A18-text">
                     <a>
                       task under a plain item
                     </a>
@@ -4243,7 +4459,7 @@
                       <span class="header">
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4256,7 +4472,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4269,7 +4485,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4283,10 +4499,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A18-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="20" data-dailynote="false" data-line="20" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A20-text tcw-#-2026-01-15-Structure.md%3A20-summary" class="task unplanned" data-col="20" data-dailynote="false" data-line="20" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -4305,7 +4524,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A20-text">
                     <a>
                       numbered task
                     </a>
@@ -4333,7 +4552,7 @@
                           &gt;  Lists
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4346,7 +4565,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4359,7 +4578,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4373,10 +4592,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A20-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="15" data-dailynote="false" data-line="22" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A22-text tcw-#-2026-01-15-Structure.md%3A22-summary" class="task unplanned" data-col="15" data-dailynote="false" data-line="22" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -4395,7 +4617,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A22-text">
                     <a>
                       star task
                     </a>
@@ -4423,7 +4645,7 @@
                           &gt;  Lists
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4436,7 +4658,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4449,7 +4671,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4463,10 +4685,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A22-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="65" data-dailynote="false" data-line="27" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A27-text tcw-#-2026-01-15-Structure.md%3A27-summary" class="task unplanned" data-col="65" data-dailynote="false" data-line="27" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -4485,7 +4710,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A27-text">
                     <a>
                       task with a [[Inbox]] link and [a url](https://example.com)
                     </a>
@@ -4513,7 +4738,7 @@
                           &gt;  Text
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4526,7 +4751,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4539,7 +4764,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4553,10 +4778,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A27-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="33" data-dailynote="false" data-line="29" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A29-text tcw-#-2026-01-15-Structure.md%3A29-summary" class="task unplanned" data-col="33" data-dailynote="false" data-line="29" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -4575,7 +4803,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A29-text">
                     <a>
                       multi-line task
                     </a>
@@ -4603,7 +4831,7 @@
                           &gt;  Text
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4616,7 +4844,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4629,7 +4857,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4643,10 +4871,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A29-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="28" data-dailynote="false" data-line="43" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A43-text tcw-#-2026-01-15-Structure.md%3A43-summary" class="task unplanned" data-col="28" data-dailynote="false" data-line="43" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -4665,7 +4896,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A43-text">
                     <a>
                       under an emoji heading
                     </a>
@@ -4693,7 +4924,7 @@
                           &gt;  👩‍💻 Work 🇨🇳 Trip
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4706,7 +4937,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4719,7 +4950,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4733,10 +4964,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A43-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="19" data-dailynote="false" data-line="45" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A45-text tcw-#-2026-01-15-Structure.md%3A45-summary" class="task unplanned" data-col="19" data-dailynote="false" data-line="45" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -4755,7 +4989,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A45-text">
                     <a>
                       quoted task
                     </a>
@@ -4783,7 +5017,7 @@
                           &gt;  👩‍💻 Work 🇨🇳 Trip
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4796,7 +5030,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4809,7 +5043,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4823,10 +5057,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A45-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="24" data-dailynote="false" data-line="46" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A46-text tcw-#-2026-01-15-Structure.md%3A46-summary" class="task unplanned" data-col="24" data-dailynote="false" data-line="46" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -4845,7 +5082,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A46-text">
                     <a>
                       quoted child
                     </a>
@@ -4872,7 +5109,7 @@
                       <span class="header">
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4885,7 +5122,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4898,7 +5135,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4912,10 +5149,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A46-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="27" data-dailynote="false" data-line="52" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A52-text tcw-#-2026-01-15-Structure.md%3A52-summary" class="task unplanned" data-col="27" data-dailynote="false" data-line="52" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -4934,7 +5174,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A52-text">
                     <a>
                       right under a heading
                     </a>
@@ -4962,7 +5202,7 @@
                           &gt;  Deep heading
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4975,7 +5215,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -4988,7 +5228,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -5002,10 +5242,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A52-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="45" data-dailynote="false" data-line="62" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A62-text tcw-#-2026-01-15-Structure.md%3A62-summary" class="task unplanned" data-col="45" data-dailynote="false" data-line="62" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -5024,7 +5267,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A62-text">
                     <a>
                       task inside a footnote definition
                     </a>
@@ -5052,7 +5295,7 @@
                           &gt;  More syntax
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -5065,7 +5308,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -5078,7 +5321,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -5092,10 +5335,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A62-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="33" data-dailynote="false" data-line="65" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A65-text tcw-#-2026-01-15-Structure.md%3A65-summary" class="task unplanned" data-col="33" data-dailynote="false" data-line="65" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -5114,7 +5360,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A65-text">
                     <a>
                       under a heading with a link
                     </a>
@@ -5142,7 +5388,7 @@
                           &gt;  Tasks for Inbox
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -5155,7 +5401,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -5168,7 +5414,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -5182,10 +5428,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A65-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Structure" class="task unplanned" data-col="42" data-dailynote="false" data-line="68" data-link="Structure.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Structure.md%3A68-text tcw-#-2026-01-15-Structure.md%3A68-summary" class="task unplanned" data-col="42" data-dailynote="false" data-line="68" data-link="Structure.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -5204,7 +5453,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Structure.md%3A68-text">
                     <a>
                       under a heading with an aliased link
                     </a>
@@ -5232,7 +5481,7 @@
                           &gt;  Inbox Alias heading
                       </span>
                     </a>
-                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#single" class="tag" href="#single" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -5245,7 +5494,7 @@
                         single
                       </div>
                     </a>
-                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#project" class="tag" href="#project" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -5258,7 +5507,7 @@
                         project
                       </div>
                     </a>
-                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="" class="tag" href="" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -5272,10 +5521,13 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Structure.md%3A68-summary">
+                  Unplanned, Structure
+                </span>
               </div>
-              <div aria-label="Project note" class="task unplanned" data-col="43" data-dailynote="false" data-line="3" data-link="Tagged/Project note.md" data-task=" " style="--task-color: var(--text-muted);">
+              <div aria-labelledby="tcw-#-2026-01-15-Tagged%2FProject%20note.md%3A3-text tcw-#-2026-01-15-Tagged%2FProject%20note.md%3A3-summary" class="task unplanned" data-col="43" data-dailynote="false" data-line="3" data-link="Tagged/Project note.md" data-task=" " role="listitem" style="--task-color: var(--text-muted);" tabindex="-1">
                 <div class="timeline">
-                  <input class="icon" data-task=" " type="checkbox">
+                  <input aria-label="Complete task" class="icon" data-task=" " tabindex="-1" type="checkbox">
                   <label class="icon">
                     <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                       <path d="M4.18 4.18A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18">
@@ -5294,7 +5546,7 @@
                   </label>
                 </div>
                 <div class="lines">
-                  <div class="content">
+                  <div class="content" id="tcw-#-2026-01-15-Tagged%2FProject%20note.md%3A3-text">
                     <a>
                       another task in the tagged note
                     </a>
@@ -5321,7 +5573,7 @@
                       <span class="header">
                       </span>
                     </a>
-                    <a aria-label="#work" class="tag" href="#work" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" target="_blank">
+                    <a aria-label="#work" class="tag" href="#work" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" tabindex="-1" target="_blank">
                       <div class="icon">
                         <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z">
@@ -5336,6 +5588,9 @@
                     </a>
                   </div>
                 </div>
+                <span class="tcw-sr-only" id="tcw-#-2026-01-15-Tagged%2FProject%20note.md%3A3-summary">
+                  Unplanned, Project note
+                </span>
               </div>
             </div>
           </div>
