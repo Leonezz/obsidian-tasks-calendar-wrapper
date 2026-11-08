@@ -1,3 +1,4 @@
+import { copy } from "./copy";
 import type { DateValue } from "./dates";
 import { PriorityLabel, TasksPriorityRank } from "./syntax";
 
@@ -46,18 +47,18 @@ const comparators: Record<string, TaskComparator> = {
 
 /** Labels for the "Sort By" dropdown, keyed by the value stored in the settings. */
 export const sortOptionLabels: Record<string, string> = {
-	"status-asc": "status (ascending)",
-	"status-desc": "status (descending)",
-	"text-asc": "text (ascending)",
-	"text-desc": "text (descending)",
-	"start-asc": "start time (ascending)",
-	"start-desc": "start time (descending)",
-	"due-asc": "due time (ascending)",
-	"due-desc": "due time (descending)",
-	"priority-desc": "priority (highest first)",
-	"priority-asc": "priority (lowest first)",
-	"tags-asc": "tags (ascending)",
-	"tags-desc": "tags (descending)",
+	"status-asc": copy.settings.sort.options.statusAsc,
+	"status-desc": copy.settings.sort.options.statusDesc,
+	"text-asc": copy.settings.sort.options.textAsc,
+	"text-desc": copy.settings.sort.options.textDesc,
+	"start-asc": copy.settings.sort.options.startAsc,
+	"start-desc": copy.settings.sort.options.startDesc,
+	"due-asc": copy.settings.sort.options.dueAsc,
+	"due-desc": copy.settings.sort.options.dueDesc,
+	"priority-desc": copy.settings.sort.options.priorityDesc,
+	"priority-asc": copy.settings.sort.options.priorityAsc,
+	"tags-asc": copy.settings.sort.options.tagsAsc,
+	"tags-desc": copy.settings.sort.options.tagsDesc,
 };
 
 export const defaultSortKey = "status-asc";

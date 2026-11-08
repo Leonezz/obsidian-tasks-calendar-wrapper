@@ -41,7 +41,11 @@ describe("Settings", () => {
 	// Phase 4 step 14, open question 2: explain delayed application beside the control.
 	it.todo("pluginLoad settings say that they apply when the plugin loads");
 	// Phase 4 step 12: settings copy comes from the shared copy table.
-	it.todo("settings copy comes from the string table");
+	it("settings copy comes from the string table", () => {
+		coveredBy("tests/settingsschema.test.ts", "every spec except control none has copy");
+		coveredBy("tests/settingsschema.test.ts", "every dropdown option value is a value of the codec or type");
+		coveredBy("tests/copy.test.ts", "no user-visible string literal is written outside copy.ts");
+	});
 	it("push settings reach open views within 200 ms", () => {
 		assert.ok(OPTIONS_DELAY_MS <= 200);
 		coveredBy(
@@ -106,7 +110,7 @@ describe("Feedback and confirmation", () => {
 	it("errors use one report function", () => {
 		coveredBy("tests/copy.test.ts", "new Notice( appears only in notices.ts");
 	});
-	// Settings follow in steps 12 and 14.
+	// The settings tab's Notices follow in step 14.
 	it("user-facing copy comes from one string table", () => {
 		coveredBy("tests/copy.test.ts", "no user-visible string literal is written outside copy.ts");
 		coveredBy("tests/copy.test.ts", "the copy table matches fixtures/copy/en.json");
