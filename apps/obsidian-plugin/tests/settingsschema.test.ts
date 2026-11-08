@@ -5,19 +5,28 @@ import "./setup";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { settingIssues, type SettingControl, type SettingSpec } from "@tasks-calendar-wrapper/core";
+import {
+	copy,
+	type CounterFilter,
+	migrateSortOption,
+	type NewDateStyle,
+	settingIssues,
+	type SettingControl,
+	type SettingSpec,
+	sortOptionLabels,
+} from "@tasks-calendar-wrapper/core";
 import type { TasksCalendarSettingTab } from "../src/settings";
 import { settingsSchema } from "../src/settings-schema";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { FIXTURE_NAMES, readFixture, rowsOf, startPlugin, type Control, type Row } from "./settings-fixtures";
 import type { FakeElement } from "./stubs/obsidian";
 
-// The plugin's settings schema: one entry for each option. The settings tab is not drawn from it yet, so these tests
-// hold it to what the tab does, as step 4 recorded it in fixtures/settings/tab.
+// The plugin's settings schema: one entry for each option. The tab reads its texts through the schema, but its rows
+// stay hand-written until step 13. These tests hold it to what step 4 recorded in fixtures/settings/tab.
 
 type Key = keyof UserOption;
 
-const specOf = (key: string): SettingSpec<Key> => {
+const specOf = (key: string): (typeof settingsSchema)[number] => {
 	const spec = settingsSchema.find((found) => found.key === key);
 	assert.ok(spec, `the schema has ${key}`);
 	return spec;
@@ -70,6 +79,7 @@ test("openNoteInsteadOfInPlace defaults to false and is a taskItems toggle read 
 		key: "openNoteInsteadOfInPlace",
 		type: "boolean",
 		control: "toggle",
+		copy: "openNoteInsteadOfInPlace",
 		group: "taskItems",
 		redrawsTab: false,
 		readWhen: "push",
@@ -82,6 +92,8 @@ test("newDateStyle defaults to emoji and follows the open-note toggle as a taskI
 		key: "newDateStyle",
 		type: "string",
 		control: "dropdown",
+		copy: "newDateStyle",
+		options: { emoji: "emoji", dataview: "dataview" },
 		group: "taskItems",
 		redrawsTab: false,
 		readWhen: "push",
@@ -141,6 +153,61 @@ test("options the plugin manages itself have no control, no group and no codec",
 test("exactly the options typed into a box have a codec", () => {
 	const typed: SettingControl[] = ["text", "textArea", "momentFormat"];
 	for (const spec of settingsSchema) assert.equal(spec.codec !== undefined, typed.includes(spec.control), spec.key);
+});
+
+test("every spec except control none has copy", () => {
+	for (const spec of settingsSchema) {
+		assert.equal(spec.copy !== undefined, spec.control !== "none", spec.key);
+		assert.equal(spec.options !== undefined, spec.control === "dropdown", spec.key);
+		if (spec.copy === undefined) continue;
+		assert.equal(spec.copy, spec.key, spec.key);
+		const texts = copy.settings[spec.copy];
+		assert.ok(texts, spec.key);
+		assert.equal(typeof texts.name, "string", spec.key);
+		assert.equal(typeof texts.desc, "string", spec.key);
+	}
+});
+
+test("every dropdown option value is a value of the codec or type", () => {
+	type DropdownValue = {
+		counterBehavior: UserOption["counterBehavior"];
+		entryPosition: UserOption["entryPosition"];
+		newDateStyle: NewDateStyle;
+		defaultFilters: CounterFilter;
+	};
+	const values = {
+		counterBehavior: ["Filter", "Focus"],
+		entryPosition: ["today", "top", "bottom"],
+		newDateStyle: ["emoji", "dataview"],
+		defaultFilters: ["", "todoFilter", "overdueFilter", "unplannedFilter"],
+		sort: Object.keys(sortOptionLabels),
+	} as const satisfies { [K in keyof DropdownValue]: readonly DropdownValue[K][] } & { sort: readonly string[] };
+	// The lists must cover their unions as well as contain only values of them.
+	const exhaustive: {
+		[K in keyof DropdownValue]: Exclude<DropdownValue[K], (typeof values)[K][number]> extends never ? true : false;
+	} = { counterBehavior: true, entryPosition: true, newDateStyle: true, defaultFilters: true };
+	void exhaustive;
+	const dropdowns = settingsSchema.filter((spec) => spec.control === "dropdown");
+	assert.deepEqual(dropdowns.map((spec) => spec.key).sort(), Object.keys(values).sort());
+	for (const [key, expected] of Object.entries(values)) {
+		const spec = specOf(key);
+		// The codec branch is vacuous today: no dropdown has a codec.
+		assert.equal(spec.codec, undefined, key);
+		assert.ok(spec.options && Object.isFrozen(spec.options), key);
+		assert.deepEqual(Object.keys(spec.options), expected, key);
+		assert.ok(spec.copy, key);
+		const texts = copy.settings[spec.copy];
+		assert.ok("options" in texts, key);
+		for (const option of Object.values(spec.options)) {
+			assert.ok(Object.prototype.hasOwnProperty.call(texts.options, option), `${key}: ${option}`);
+		}
+		assert.deepEqual(
+			[...new Set(Object.values(spec.options))].sort(),
+			Object.keys(texts.options).sort(),
+			`${key}: every option copy key is used`,
+		);
+	}
+	for (const value of values.sort) assert.equal(migrateSortOption(value), value, value);
 });
 
 test("each control of the tab is the one the schema names, and draws the tab again exactly when it says", () => {

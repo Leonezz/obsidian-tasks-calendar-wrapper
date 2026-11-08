@@ -24,10 +24,19 @@ export interface TextCodec<T> {
 	format(value: T): string;
 }
 
-export interface SettingSpec<K extends string = string, G extends string = string> {
+export interface SettingSpec<
+	K extends string = string,
+	G extends string = string,
+	C extends string = string,
+	O extends string = string,
+> {
 	readonly key: K;
 	readonly type: SettingType;
 	readonly control: SettingControl;
+	/** The key of the setting's texts in copy.settings; every setting with a control has one. */
+	readonly copy?: C;
+	/** Each stored dropdown value maps to its label's copy key, in the order the dropdown lists them. */
+	readonly options?: Readonly<Record<string, O>>;
 	/** How the box of a text, text area or moment format control reads and writes the value. */
 	readonly codec?: TextCodec<unknown>;
 	/** The heading the setting shows under; none for a setting without a control. */

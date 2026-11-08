@@ -4,7 +4,7 @@
  * Use the fixed nouns timeline (view), note (file), task, quick entry, and Focus on today.
  * An aria-label describes the action ("Complete task", not "✓"). Use emoji only for task syntax (📅 ⏫ 🔁),
  * never as a button's only label.
- * Enforced from step 24 (timeline) and step 14 (settings); step 11 only moves text byte for byte.
+ * Enforced from step 24 (timeline) and step 14 (settings); steps 11 and 12 only move text byte for byte.
  */
 
 /** Freeze every group, array and function once when the table loads. */
@@ -183,6 +183,250 @@ export const copy = freezeCopy({
 		dueTomorrow: "Due tomorrow",
 		pickDate: (p: { field: string }) => `Pick ${p.field} date…`,
 		removeDate: (p: { field: string }) => `Remove ${p.field} date`,
+	},
+	settings: {
+		groups: {
+			interface: "Interface",
+			taskItems: "Task items",
+			formatsAndFilters: "Formats and filters",
+		},
+		openViewOnStartup: {
+			name: "Open View On Startup",
+			desc: "Open the view on startup or not.",
+		},
+		showWhatsNewOnUpdate: {
+			name: "Show What's New After Updates",
+			desc: 'Show the release notes once after the plugin is updated. They can always be opened with the "Show what\'s new" command.',
+		},
+		filterEmpty: {
+			name: "Filter Empty",
+			desc: "Filter empty items out or not. If not, the raw text will be displayed.",
+		},
+		excludePaths: {
+			name: "Exclude Paths",
+			desc: "Exclude tasks match specific paths (folders, files).",
+			placeholder: "comma separated file paths, e.g.: path1,path2/path3,path4.md",
+		},
+		includePaths: {
+			name: "Include Paths",
+			desc: "Include tasks match specific paths (folders, files).",
+			placeholder: "comma separated file paths, e.g.: path1,path2/path3,path4.md",
+		},
+		useIncludeTags: {
+			name: "Use Include Tags",
+			desc: "Use tags filters to filter tasks without specific tags out or not.",
+		},
+		taskIncludeTags: {
+			name: "Task Include Filters",
+			desc: "Filter tasks with specific tags, only tasks with one or more of these tags are displayed.",
+		},
+		fileIncludeTags: {
+			name: "File Include Tags",
+			desc: "Filter tasks in specific files which contains one or more of these tags to be displayed.",
+		},
+		useExcludeTags: {
+			name: "Use Exclude Tags",
+			desc: "Use tags filters to filters tasks with specific tags out or not.",
+		},
+		taskExcludeTags: {
+			name: "Task Exclude Filters",
+			desc: "Filter tasks without specific tags, only tasks **without any** if these tags are displayed.",
+		},
+		fileExcludeTags: {
+			name: "File Exclude Tags",
+			desc: "Filter tasks in specific files which **does not** contains any of these tags to be displayed.",
+		},
+		excludeProperties: {
+			name: "Exclude Properties",
+			desc: "Exclude tasks of files whose frontmatter property has one of these values. One property per line, values separated by commas.",
+			placeholder: "status: archived, done",
+		},
+		dailyNoteFolder: {
+			name: "Daily Note Folder",
+			desc: "Specify the folder where the daily notes are saved.",
+		},
+		dailyNoteFormat: {
+			name: "Daily Note Format",
+			desc: "Daily note file format. The format sould be of moment format, see ",
+			descAfterLink: " for more details.",
+		},
+		sectionForNewTasks: {
+			name: "Section For New Tasks",
+			desc: "Specify under which section the new task items should be appended.",
+		},
+		hideTags: {
+			name: "Hide Tags",
+			desc: "Specify which tags are not necessary to display with a tag badge,            note that all tag texts are remove from the displayed item text by default.            Also note that the tags are just hided, not removed from the item.",
+		},
+		forward: {
+			name: "Forward Tasks From Past",
+			desc: "Forward overdue tasks from the past and all unplanned tasks to display them on the today panel or not.",
+		},
+		forwardPastStartAndScheduled: {
+			name: "Forward Started And Scheduled Tasks",
+			desc: "Also show tasks that have started or were scheduled before today on the today panel. They are shown there instead of on their own date.",
+		},
+		forwardUndatedDone: {
+			name: "Forward Undated Done Tasks",
+			desc: "Show done tasks that have no date at all on the today panel. Turn it off to keep them out of the timeline.",
+		},
+		sort: {
+			name: "Sort By",
+			desc: "Specify how you would like the taks item to be sorted inside a date.",
+			options: {
+				statusAsc: "status (ascending)",
+				statusDesc: "status (descending)",
+				textAsc: "text (ascending)",
+				textDesc: "text (descending)",
+				startAsc: "start time (ascending)",
+				startDesc: "start time (descending)",
+				dueAsc: "due time (ascending)",
+				dueDesc: "due time (descending)",
+				priorityDesc: "priority (highest first)",
+				priorityAsc: "priority (lowest first)",
+				tagsAsc: "tags (ascending)",
+				tagsDesc: "tags (descending)",
+			},
+		},
+		dateFormat: {
+			name: "Date Format",
+			desc: "Specify format you would like to use for dates. Note that the format should be of moment format. See ",
+			descAfterLink: " for more details.",
+			placeholder: "e.g.: YYYY-MM-DD",
+		},
+		inbox: {
+			name: "Inbox",
+			desc: "Set a file as an 'Inbox' for task items from the quick entry panel.                    This file will be displayed on top of the file list.",
+		},
+		taskFiles: {
+			name: "Tasks Files",
+			desc: "Task Files you would like to specify explicitly for quick entry panel.                    make sure paths are separated by , .",
+			placeholder: "comma separated file paths, e.g.: path1,path2",
+		},
+		tagColorPalette: {
+			addTooltip: "Add a palette",
+			name: "Tag and color",
+			desc: "Enter tag text (# included) in the text input and select color in the color selector.",
+		},
+		useCounters: {
+			name: "Enable Counters and Filters Panel",
+			desc: "Use counters and filters on the quick entry panel or not.",
+		},
+		counterBehavior: {
+			name: "Behavior of Counters and Filters Panel",
+			desc: "Set the default behavior of the counter and filter buttons.                Available choices are: *Filter* to filter other items out,                or *Focus* to make selected items more clear.",
+			options: {
+				filter: "Filter",
+				focus: "Focus",
+			},
+		},
+		useQuickEntry: {
+			name: "Enable Quick Entry Panel",
+			desc: "Use quick entry panel or not.",
+		},
+		entryPosition: {
+			name: "Quick Entry Panel Position",
+			desc: "Where you like the entry panel to be,                * Top means on top of the view,                * Bottom means on bottom of the view,                * Today means in today's view.",
+			options: {
+				today: "today",
+				top: "top",
+				bottom: "bottom",
+			},
+		},
+		useYearHeader: {
+			name: "Enable Year Header",
+			desc: "Display the year on top of tasks of that year or not.",
+		},
+		newestFirst: {
+			name: "Newest First",
+			desc: "Show the latest dates on top instead of the earliest.",
+		},
+		useRelative: {
+			name: "Use Relative Date",
+			desc: "Use relative date to describe the task dates or not.",
+		},
+		useRecurrence: {
+			name: "Use Recurrence",
+			desc: "Display the recurrence information of tasks or not.",
+		},
+		usePriority: {
+			name: "Use Priority",
+			desc: "Display the priority information of tasks or not.",
+		},
+		useTags: {
+			name: "Use Tags",
+			desc: "Display the tags of tasks or not. Color palette can be defined for tags!",
+		},
+		useFileBadge: {
+			name: "Use Filename",
+			desc: "Display which file the task is from or not.",
+		},
+		useSection: {
+			name: "Use Section",
+			desc: "Display which section the task is from or not.",
+		},
+		useModifyBadge: {
+			name: "Use Modify Badge",
+			desc: "Display the badge that opens a task in the Tasks plugin dialog or not.",
+		},
+		openNoteInsteadOfInPlace: {
+			name: "Open the note instead of changing tasks in place",
+			desc: "The checkbox and ✏️ open the note at the task instead of changing it from the timeline. While this is on, ✏️ does not open Tasks' edit dialog. While it is off, the timeline tells you when another save changes its edit back within a few seconds, but it cannot notice every such change, for example a note replaced by an old synced copy.",
+		},
+		newDateStyle: {
+			name: "Style for new dates",
+			desc: "Used when the timeline adds a date to a task line that has no task fields yet (no dates, priority, recurrence or other Tasks fields). Lines that already use one style keep it. If the Tasks plugin is set to the Dataview format, choose Dataview fields.",
+			options: {
+				emoji: "Emoji (📅 2026-10-25)",
+				dataview: "Dataview fields ([due:: 2026-10-25])",
+			},
+		},
+		hideStatusTasks: {
+			name: "Hide tasks of specific status.",
+			desc: "Provide comma split status markers, e.g.,: x, - \n                Use [ ] if you would like to hide all tasks with marker [ ] or status todo.",
+			placeholder: "Status markers split by comma. e.g.,: x, -.",
+		},
+		hideSubTasks: {
+			name: "Hide Subtasks",
+			desc: "Hide task items that are nested under another list item.",
+		},
+		defaultTodayFocus: {
+			name: "Today Focus On Load",
+			desc: "Activate today focus on load or not.",
+		},
+		defaultFilters: {
+			name: "Activate Filter On Load",
+			desc: "Activate a filter or not",
+			options: {
+				none: "No filters",
+				todo: "todo",
+				overdue: "overdue",
+				unplanned: "unplanned",
+			},
+		},
+		useBuiltinStyle: {
+			name: "Use Builtin Style",
+			desc: "Use builtin styles (the marker icons for task status) or not.\n                If disabled, styles defined by the theme you are using will be used.",
+		},
+		convert24HourTimePrefix: {
+			name: "Convert Time Prefix",
+			desc: "Convert 24 hour time prefix to 12 hour time with am/pm. \n\t\t\t    For example, 15:30 at the beginning of a task will become 3:30 pm.\n\t\t\t    This is applied after sorting, enabling a chronological ordering.",
+		},
+		tab: {
+			deleteTooltip: "Delete",
+			editTooltip: "Edit",
+			pathFilterWarning:
+				"NOTE that no prefix or trailing '/' needed, unless you want to filter the entire vault out.",
+			momentDocsLink: "docs of moment.js",
+			saveFailed: "Failed to save the timeline settings. See the developer console for details.",
+			saveTooltip: "Save",
+			emptyColor: "The color seems to be empty, maybe you forget to click the color picker.",
+			cancelTooltip: "Cancel",
+			tagModalName: "Tag",
+			tagModalDesc: "Enter tag text (# included) in the text input and select color in the color selector.",
+			tagExists: (p: { tag: string }) => `Tag ${p.tag} already exists.`,
+			invalidTag: (p: { tag: string }) => `${p.tag} seems not a valid tag.`,
+		},
 	},
 } as const);
 

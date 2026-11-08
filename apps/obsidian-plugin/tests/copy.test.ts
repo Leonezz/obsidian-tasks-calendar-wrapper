@@ -4,10 +4,11 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import path from "node:path";
 import ts from "typescript";
 import { copy, type Copy } from "@tasks-calendar-wrapper/core";
+import { settingsSchema } from "../src/settings-schema";
 
 const roots = ["src", "timeline/src", "utils", "../../packages/ui/src", "../../packages/core/src"];
 const copyFile = path.normalize("../../packages/core/src/copy.ts");
-const literalWhitelist = new Set(["src/settings.ts", "src/settings-schema.ts", "utils/whatsnew.ts"]);
+const literalWhitelist = new Set(["utils/whatsnew.ts"]);
 const taskSyntax = /^(?:(?:📅|📆|🗓|⏳|⌛|🛫|➕|✅|❌|🔁|⏫|🔼|🔽|⏬|🔺)\uFE0F?)+$/u;
 
 /** Like ux-consistency, these paths are relative to the runner's apps/obsidian-plugin cwd. */
@@ -103,6 +104,22 @@ function visibleLiterals(source: ts.SourceFile): string[] {
 				literalsIn(node.arguments[0], `${method} argument`);
 			}
 			// Brief-derived extension: Obsidian's text options, commands and modal titles.
+			if (method && ["setName", "setDesc", "setPlaceholder"].includes(method)) {
+				const argument = node.arguments[0];
+				if (
+					argument &&
+					(ts.isStringLiteral(argument) ||
+						ts.isNoSubstitutionTemplateLiteral(argument) ||
+						ts.isTemplateExpression(argument))
+				) {
+					literalsIn(argument, `${method} argument`);
+				}
+			}
+			if (method === "addOptions" && node.arguments[0] && ts.isObjectLiteralExpression(node.arguments[0])) {
+				for (const property of node.arguments[0].properties) {
+					if (ts.isPropertyAssignment(property)) literalsIn(property.initializer, "addOptions label");
+				}
+			}
 			if (method === "createEl") objectCopy(node.arguments[1], ["text"], "createEl text");
 			if (method === "addCommand") objectCopy(node.arguments[0], ["name"], "addCommand name");
 			if (method === "confirm") {
@@ -209,6 +226,14 @@ test("every copy key is used", () => {
 			ts.forEachChild(node, visit);
 		};
 		visit(source);
+	}
+	// Brief-derived extension: the schema routes only names, descriptions and dropdown labels.
+	for (const spec of settingsSchema) {
+		if (spec.copy === undefined) continue;
+		const prefix = `copy.settings.${spec.copy}`;
+		used.add(`${prefix}.name`);
+		used.add(`${prefix}.desc`);
+		for (const key of Object.values(spec.options ?? {})) used.add(`${prefix}.options.${key}`);
 	}
 	const unused = leaves(copy)
 		.map(([name]) => name)
