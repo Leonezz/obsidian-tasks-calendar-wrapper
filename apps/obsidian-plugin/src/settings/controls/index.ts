@@ -1,6 +1,6 @@
 import type { Setting } from "obsidian";
 import type { SettingControl } from "@tasks-calendar-wrapper/core";
-import type { SettingsTabActions } from "../generate";
+import type { SettingsControlActions } from "../generate";
 import type { SettingRowOf } from "../rows";
 import { renderToggle } from "./toggle";
 import { renderDropdown } from "./dropdown";
@@ -11,7 +11,7 @@ import { renderTagList } from "./tagList";
 import { renderTagPalette } from "./tagPalette";
 
 /** Draws a row's control into its Setting, reading values when the control needs them. */
-export type RenderControl = (setting: Setting, row: SettingRowOf<"setting">, tab: SettingsTabActions) => void;
+export type RenderControl = (setting: Setting, row: SettingRowOf<"setting">, tab: SettingsControlActions) => void;
 
 /** One renderer for every control the schema can name. */
 export const renderers: { readonly [C in Exclude<SettingControl, "none">]: RenderControl } = {

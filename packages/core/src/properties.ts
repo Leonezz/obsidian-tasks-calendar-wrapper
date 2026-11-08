@@ -53,6 +53,20 @@ export function parsePropertyRules(text: string): PropertyRules {
 	return rules;
 }
 
+/** The non-blank lines parsePropertyRules skips, numbered from one. */
+export function propertyRuleProblems(text: string): readonly { line: number }[] {
+	return text.split("\n").flatMap((line, index) => {
+		if (!line.trim()) return [];
+		const colon = line.indexOf(":");
+		const property = line.slice(0, colon).trim();
+		const hasValue = line
+			.slice(colon + 1)
+			.split(",")
+			.some((value) => value.trim().length > 0);
+		return colon < 0 || !property || !hasValue ? [{ line: index + 1 }] : [];
+	});
+}
+
 /** The settings text for the rules, the reverse of parsePropertyRules. */
 export function formatPropertyRules(rules: PropertyRules): string {
 	return Object.entries(rules)

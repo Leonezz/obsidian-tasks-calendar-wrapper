@@ -4,7 +4,7 @@
  * Use the fixed nouns timeline (view), note (file), task, quick entry, and Focus on today.
  * An aria-label describes the action ("Complete task", not "✓"). Use emoji only for task syntax (📅 ⏫ 🔁),
  * never as a button's only label.
- * Enforced from step 24 (timeline) and step 14 (settings); steps 11 and 12 only move text byte for byte.
+ * Enforced for settings from step 14; timeline enforcement follows in step 24.
  */
 
 /** Freeze every group, array and function once when the table loads. */
@@ -186,92 +186,93 @@ export const copy = freezeCopy({
 	},
 	settings: {
 		groups: {
-			interface: "Interface",
-			taskItems: "Task items",
-			formatsAndFilters: "Formats and filters",
+			sources: "Sources",
+			display: "Display",
+			newTasks: "New tasks",
+			advanced: "Advanced",
 		},
 		openViewOnStartup: {
-			name: "Open View On Startup",
+			name: "Open view on startup",
 			desc: "Open the view on startup or not.",
 		},
 		showWhatsNewOnUpdate: {
-			name: "Show What's New After Updates",
+			name: "Show what's new after updates",
 			desc: 'Show the release notes once after the plugin is updated. They can always be opened with the "Show what\'s new" command.',
 		},
 		filterEmpty: {
-			name: "Filter Empty",
+			name: "Filter empty",
 			desc: "Filter empty items out or not. If not, the raw text will be displayed.",
 		},
 		excludePaths: {
-			name: "Exclude Paths",
+			name: "Exclude paths",
 			desc: "Exclude tasks match specific paths (folders, files).",
 			placeholder: "comma separated file paths, e.g.: path1,path2/path3,path4.md",
 		},
 		includePaths: {
-			name: "Include Paths",
+			name: "Include paths",
 			desc: "Include tasks match specific paths (folders, files).",
 			placeholder: "comma separated file paths, e.g.: path1,path2/path3,path4.md",
 		},
 		useIncludeTags: {
-			name: "Use Include Tags",
+			name: "Use include tags",
 			desc: "Use tags filters to filter tasks without specific tags out or not.",
 		},
 		taskIncludeTags: {
-			name: "Task Include Filters",
+			name: "Task include filters",
 			desc: "Filter tasks with specific tags, only tasks with one or more of these tags are displayed.",
 		},
 		fileIncludeTags: {
-			name: "File Include Tags",
+			name: "File include tags",
 			desc: "Filter tasks in specific files which contains one or more of these tags to be displayed.",
 		},
 		useExcludeTags: {
-			name: "Use Exclude Tags",
+			name: "Use exclude tags",
 			desc: "Use tags filters to filters tasks with specific tags out or not.",
 		},
 		taskExcludeTags: {
-			name: "Task Exclude Filters",
+			name: "Task exclude filters",
 			desc: "Filter tasks without specific tags, only tasks **without any** if these tags are displayed.",
 		},
 		fileExcludeTags: {
-			name: "File Exclude Tags",
+			name: "File exclude tags",
 			desc: "Filter tasks in specific files which **does not** contains any of these tags to be displayed.",
 		},
 		excludeProperties: {
-			name: "Exclude Properties",
+			name: "Exclude properties",
 			desc: "Exclude tasks of files whose frontmatter property has one of these values. One property per line, values separated by commas.",
 			placeholder: "status: archived, done",
 		},
 		dailyNoteFolder: {
-			name: "Daily Note Folder",
+			name: "Daily note folder",
 			desc: "Specify the folder where the daily notes are saved.",
 		},
 		dailyNoteFormat: {
-			name: "Daily Note Format",
+			name: "Daily note format",
 			desc: "Daily note file format. The format sould be of moment format, see ",
 			descAfterLink: " for more details.",
 		},
 		sectionForNewTasks: {
-			name: "Section For New Tasks",
+			name: "Section for new tasks",
 			desc: "Specify under which section the new task items should be appended.",
 		},
 		hideTags: {
-			name: "Hide Tags",
-			desc: "Specify which tags are not necessary to display with a tag badge,            note that all tag texts are remove from the displayed item text by default.            Also note that the tags are just hided, not removed from the item.",
+			name: "Hide tags",
+			desc: "Specify which tags are not necessary to display with a tag badge, note that all tag texts are remove from the displayed item text by default. Also note that the tags are just hided, not removed from the item.",
 		},
 		forward: {
-			name: "Forward Tasks From Past",
+			name: "Forward tasks from past",
 			desc: "Forward overdue tasks from the past and all unplanned tasks to display them on the today panel or not.",
 		},
 		forwardPastStartAndScheduled: {
-			name: "Forward Started And Scheduled Tasks",
+			name: "Forward started and scheduled tasks",
 			desc: "Also show tasks that have started or were scheduled before today on the today panel. They are shown there instead of on their own date.",
 		},
 		forwardUndatedDone: {
-			name: "Forward Undated Done Tasks",
+			name: "Forward undated done tasks",
 			desc: "Show done tasks that have no date at all on the today panel. Turn it off to keep them out of the timeline.",
 		},
 		sort: {
-			name: "Sort By",
+			name: "Sort by",
 			desc: "Specify how you would like the taks item to be sorted inside a date.",
 			options: {
 				statusAsc: "status (ascending)",
@@ -289,18 +290,18 @@ export const copy = freezeCopy({
 			},
 		},
 		dateFormat: {
-			name: "Date Format",
+			name: "Date format",
 			desc: "Specify format you would like to use for dates. Note that the format should be of moment format. See ",
 			descAfterLink: " for more details.",
 			placeholder: "e.g.: YYYY-MM-DD",
 		},
 		inbox: {
 			name: "Inbox",
-			desc: "Set a file as an 'Inbox' for task items from the quick entry panel.                    This file will be displayed on top of the file list.",
+			desc: "Set a file as an 'Inbox' for task items from the quick entry panel. This file will be displayed on top of the file list.",
 		},
 		taskFiles: {
-			name: "Tasks Files",
-			desc: "Task Files you would like to specify explicitly for quick entry panel.                    make sure paths are separated by , .",
+			name: "Tasks files",
+			desc: "Task Files you would like to specify explicitly for quick entry panel. make sure paths are separated by , .",
 			placeholder: "comma separated file paths, e.g.: path1,path2",
 		},
 		tagColorPalette: {
@@ -309,24 +310,24 @@ export const copy = freezeCopy({
 			desc: "Enter tag text (# included) in the text input and select color in the color selector.",
 		},
 		useCounters: {
-			name: "Enable Counters and Filters Panel",
+			name: "Enable counters and filters panel",
 			desc: "Use counters and filters on the quick entry panel or not.",
 		},
 		counterBehavior: {
-			name: "Behavior of Counters and Filters Panel",
-			desc: "Set the default behavior of the counter and filter buttons.                Available choices are: *Filter* to filter other items out,                or *Focus* to make selected items more clear.",
+			name: "Behavior of counters and filters panel",
+			desc: "Set the default behavior of the counter and filter buttons. Available choices are: *Filter* to filter other items out, or *Focus* to make selected items more clear.",
 			options: {
 				filter: "Filter",
 				focus: "Focus",
 			},
 		},
 		useQuickEntry: {
-			name: "Enable Quick Entry Panel",
+			name: "Enable quick entry panel",
 			desc: "Use quick entry panel or not.",
 		},
 		entryPosition: {
-			name: "Quick Entry Panel Position",
-			desc: "Where you like the entry panel to be,                * Top means on top of the view,                * Bottom means on bottom of the view,                * Today means in today's view.",
+			name: "Quick entry panel position",
+			desc: "Where you like the entry panel to be, * Top means on top of the view, * Bottom means on bottom of the view, * Today means in today's view.",
 			options: {
 				today: "today",
 				top: "top",
@@ -334,39 +335,39 @@ export const copy = freezeCopy({
 			},
 		},
 		useYearHeader: {
-			name: "Enable Year Header",
+			name: "Enable year header",
 			desc: "Display the year on top of tasks of that year or not.",
 		},
 		newestFirst: {
-			name: "Newest First",
+			name: "Newest first",
 			desc: "Show the latest dates on top instead of the earliest.",
 		},
 		useRelative: {
-			name: "Use Relative Date",
+			name: "Use relative date",
 			desc: "Use relative date to describe the task dates or not.",
 		},
 		useRecurrence: {
-			name: "Use Recurrence",
+			name: "Use recurrence",
 			desc: "Display the recurrence information of tasks or not.",
 		},
 		usePriority: {
-			name: "Use Priority",
+			name: "Use priority",
 			desc: "Display the priority information of tasks or not.",
 		},
 		useTags: {
-			name: "Use Tags",
+			name: "Use tags",
 			desc: "Display the tags of tasks or not. Color palette can be defined for tags!",
 		},
 		useFileBadge: {
-			name: "Use Filename",
+			name: "Use filename",
 			desc: "Display which file the task is from or not.",
 		},
 		useSection: {
-			name: "Use Section",
+			name: "Use section",
 			desc: "Display which section the task is from or not.",
 		},
 		useModifyBadge: {
-			name: "Use Modify Badge",
+			name: "Use modify badge",
 			desc: "Display the badge that opens a task in the Tasks plugin dialog or not.",
 		},
 		openNoteInsteadOfInPlace: {
@@ -382,21 +383,21 @@ export const copy = freezeCopy({
 			},
 		},
 		hideStatusTasks: {
-			name: "Hide tasks of specific status.",
-			desc: "Provide comma split status markers, e.g.,: x, - \n                Use [ ] if you would like to hide all tasks with marker [ ] or status todo.",
+			name: "Hide tasks of specific status",
+			desc: "Provide comma split status markers, e.g.,: x, - Use [ ] if you would like to hide all tasks with marker [ ] or status todo.",
 			placeholder: "Status markers split by comma. e.g.,: x, -.",
 		},
 		hideSubTasks: {
-			name: "Hide Subtasks",
+			name: "Hide subtasks",
 			desc: "Hide task items that are nested under another list item.",
 		},
 		defaultTodayFocus: {
-			name: "Today Focus On Load",
+			name: "Today focus on load",
 			desc: "Activate today focus on load or not.",
 		},
 		defaultFilters: {
-			name: "Activate Filter On Load",
-			desc: "Activate a filter or not",
+			name: "Activate filter on load",
+			desc: "Activate a filter or not.",
 			options: {
 				none: "No filters",
 				todo: "todo",
@@ -405,14 +406,32 @@ export const copy = freezeCopy({
 			},
 		},
 		useBuiltinStyle: {
-			name: "Use Builtin Style",
-			desc: "Use builtin styles (the marker icons for task status) or not.\n                If disabled, styles defined by the theme you are using will be used.",
+			name: "Use builtin style",
+			desc: "Use builtin styles (the marker icons for task status) or not. If disabled, styles defined by the theme you are using will be used.",
 		},
 		convert24HourTimePrefix: {
-			name: "Convert Time Prefix",
-			desc: "Convert 24 hour time prefix to 12 hour time with am/pm. \n\t\t\t    For example, 15:30 at the beginning of a task will become 3:30 pm.\n\t\t\t    This is applied after sorting, enabling a chronological ordering.",
+			name: "Convert time prefix",
+			desc: "Convert 24 hour time prefix to 12 hour time with am/pm. For example, 15:30 at the beginning of a task will become 3:30 pm. This is applied after sorting, enabling a chronological ordering.",
 		},
 		tab: {
+			addTagTooltip: "Add a tag",
+			resetToDefault: "Reset to default",
+			wrongType: (p: { actual: string; expected: string }) =>
+				`Saved value is ${p.actual}, expected ${p.expected}. It is used as is.`,
+			expectedType: {
+				boolean: "true or false",
+				string: "text",
+				stringList: "a list of texts",
+				stringMap: "a map of texts",
+				stringListMap: "a map of lists of texts",
+			},
+			appliesWhen: {
+				viewOpen: "Applies when a timeline opens.",
+				pluginLoad: "Applies when Obsidian starts.",
+			},
+			momentPreview: (p: { sample: string }) => `Today in this format: ${p.sample}`,
+			propertyRuleSkipped: (p: { line: number }) =>
+				`Line ${p.line} is skipped: it needs a property, a colon and a value.`,
 			deleteTooltip: "Delete",
 			editTooltip: "Edit",
 			pathFilterWarning:

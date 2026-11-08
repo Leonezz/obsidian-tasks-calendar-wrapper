@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
-import { copy, type Copy } from "@tasks-calendar-wrapper/core";
+import { copy, type Copy, type SettingType } from "@tasks-calendar-wrapper/core";
 import { settingsSchema } from "../src/settings-schema";
 
 const roots = ["src", "timeline/src", "utils", "../../packages/ui/src", "../../packages/core/src"];
@@ -155,7 +155,6 @@ test("new Notice( appears only in notices.ts", () => {
 	const notices: string[] = [];
 	const failures: string[] = [];
 	for (const source of sources()) {
-		if (source.fileName.startsWith(`src${path.sep}settings${path.sep}`)) continue;
 		const visit = (node: ts.Node): void => {
 			if (isNotice(node)) {
 				const site = location(source, node);
@@ -227,10 +226,21 @@ test("every copy key is used", () => {
 		};
 		visit(source);
 	}
-	// Brief-derived extension: the schema routes the texts used by each control and its heading.
+	// Brief-derived extension: the schema routes control, heading, type and application-time copy.
+	const types = [
+		"boolean",
+		"string",
+		"stringList",
+		"stringMap",
+		"stringListMap",
+	] as const satisfies readonly SettingType[];
+	for (const type of types) used.add(`copy.settings.tab.expectedType.${type}`);
 	for (const spec of settingsSchema) {
 		if (spec.control !== "none" && spec.group !== undefined && spec.group in copy.settings.groups) {
 			used.add(`copy.settings.groups.${spec.group}`);
+		}
+		if (spec.control !== "none" && spec.readWhen in copy.settings.tab.appliesWhen) {
+			used.add(`copy.settings.tab.appliesWhen.${spec.readWhen}`);
 		}
 		if (spec.copy === undefined) continue;
 		const prefix = `copy.settings.${spec.copy}`;
@@ -299,4 +309,54 @@ test("parameterised copy are typed functions", () => {
 		}
 	};
 	frozen(copy, "copy");
+});
+
+test("settings copy follows the style guide", () => {
+	const sentenceCase = (text: string, name: string): void => {
+		assert.match(text, /^\p{Lu}/u, `${name}: starts with an upper-case letter`);
+		assert.doesNotMatch(text, /\.$/u, `${name}: no final full stop`);
+		const unquoted = text
+			.replace(/"[^"]*"|“[^”]*”|(?<!\p{L})'[^']*'|‘[^’]*’|\[[^\]]*\]|\([^)]*\)/gu, "")
+			.replace(/\b(?:Tasks Timeline|Tasks|Obsidian|Dataview)\b/gu, (product) => product.toLowerCase())
+			.replace(/^\p{Lu}/u, (first) => first.toLowerCase());
+		assert.doesNotMatch(unquoted, /(?:^|[^\p{L}\p{N}])\p{Lu}/u, `${name}: sentence case (${text})`);
+	};
+	const emoji = (text: string, name: string, description: boolean, tooltip: boolean): void => {
+		for (const [symbol] of text.matchAll(/(?:\p{Extended_Pictographic}|\p{Emoji_Presentation})\uFE0F?/gu)) {
+			assert.ok(
+				!tooltip && (taskSyntax.test(symbol) || (description && symbol === "✏️")),
+				`${name}: unexpected emoji ${symbol}`,
+			);
+		}
+	};
+	const walk = (value: unknown, prefix: string): void => {
+		assert.ok(value && typeof value === "object" && !Array.isArray(value), prefix);
+		const entries = value as Record<string, unknown>;
+		for (const [key, child] of Object.entries(entries)) {
+			if (key === "options") continue;
+			const name = `${prefix}.${key}`;
+			if (child && typeof child === "object") {
+				walk(child, name);
+				continue;
+			}
+			const text = snapshot(child);
+			assert.equal(typeof text, "string", name);
+			if (typeof text !== "string") continue;
+			const description = key === "desc" || key.endsWith("Desc") || key === "descAfterLink";
+			const tooltip = key.endsWith("Tooltip") || key === "resetToDefault";
+			if (key === "name" || key.endsWith("Name") || prefix.endsWith(".groups") || tooltip) {
+				sentenceCase(text, name);
+			}
+			if (description && key !== "descAfterLink") {
+				const complete =
+					typeof entries.descAfterLink === "string"
+						? text + copy.settings.tab.momentDocsLink + entries.descAfterLink
+						: text;
+				assert.doesNotMatch(complete, / {2,}|[\n\t]/u, `${name}: no continuation whitespace`);
+				assert.match(complete, /[.!?]$/u, `${name}: ends with a sentence-ending mark`);
+			}
+			emoji(text, name, description, tooltip);
+		}
+	};
+	walk(copy.settings, "copy.settings");
 });

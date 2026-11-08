@@ -43,11 +43,13 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 		this.shown = true;
 		const { containerEl } = this;
 
+		containerEl.addClass("tasks-calendar-wrapper-settings");
 		containerEl.empty();
 		const options = this.plugin.userOptions;
 		renderSettings(containerEl, settingRows(settingsSchema, options, settingIssues(options, settingsSchema)), {
 			plugin: this.plugin,
 			options: () => this.plugin.userOptions,
+			isShown: () => this.shown,
 			save: (update, redraw) => this.onOptionUpdate(update, redraw),
 			saveInBackground: (update, redraw) => this.saveOptionsInBackground(update, redraw),
 		});

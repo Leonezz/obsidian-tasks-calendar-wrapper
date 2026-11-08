@@ -635,6 +635,10 @@
 	background: var(--background-modifier-hover);
 }
 
+.tasks-calendar-wrapper-settings [hidden] {
+	display: none;
+}
+
 /* Warning note in setting descriptions, e.g. the path filters. */
 .tasks-calendar-wrapper-setting-warning {
 	color: var(--text-error);

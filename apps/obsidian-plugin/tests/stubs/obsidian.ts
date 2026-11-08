@@ -182,6 +182,7 @@ export class FakeElement {
 	text = "";
 	value = "";
 	readOnly = false;
+	hidden = false;
 	isConnected = true;
 	cls: string;
 	children: (FakeElement | ButtonComponent)[] = [];
@@ -232,7 +233,7 @@ export class FakeElement {
 	}
 
 	addClass(cls: string): void {
-		this.cls = this.cls ? `${this.cls} ${cls}` : cls;
+		this.cls = [...new Set([...this.cls.split(/\s+/), cls].filter(Boolean))].join(" ");
 	}
 
 	setText(text: string): void {

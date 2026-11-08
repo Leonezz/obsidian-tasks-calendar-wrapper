@@ -57,27 +57,7 @@ function withNewDateStyle(name: string, text: string): string {
 		if (text.includes('"newDateStyle":')) return text;
 		return text.replace(/^(\s*)"openNoteInsteadOfInPlace": (true|false),$/m, '$&\n$1"newDateStyle": "emoji",');
 	}
-	if (!name.startsWith("tab/")) return text;
-	const rows = JSON.parse(text) as Record<string, unknown>[];
-	const isChanges = name === "tab/changes.json";
-	const key = isChanges ? "row" : "name";
-	if (rows.some((row) => row[key] === "Style for new dates")) return text;
-	const index = rows.findIndex((row) => row[key] === "Open the note instead of changing tasks in place");
-	assert.ok(index >= 0, `${name} has the open-note toggle`);
-	const added = isChanges
-		? {
-				row: "Style for new dates",
-				type: "dropdown",
-				input: "dataview",
-				writes: [{ newDateStyle: "dataview" }],
-				redrawn: false,
-			}
-		: {
-				name: "Style for new dates",
-				desc: "Used when the timeline adds a date to a task line that has no task fields yet (no dates, priority, recurrence or other Tasks fields). Lines that already use one style keep it. If the Tasks plugin is set to the Dataview format, choose Dataview fields.",
-				controls: [{ type: "dropdown", value: "emoji", options: ["emoji", "dataview"] }],
-			};
-	return JSON.stringify([...rows.slice(0, index + 1), added, ...rows.slice(index + 1)], null, 2) + "\n";
+	return text;
 }
 
 /** The plugin's manifest; the version is pinned, as which release notes show depends on it. */
@@ -111,17 +91,19 @@ export async function startPlugin(dataJson: string | null, { layoutReady = false
 }
 
 /** A control of a settings row, as the tab shows it. */
-export type Control =
+export type Control = (
 	| { type: string; value: unknown; placeholder?: string; options?: string[] }
 	| { type: "extra-button" | "button"; icon: string; tooltip: string }
 	| { type: "tag"; text: string; style?: unknown }
-	| { type: "rows"; rows: Row[] };
+	| { type: "rows"; rows: Row[] }
+) & { hidden?: true };
 
 /** A settings row: its name and description as text, whether it is a heading, and its controls in order. */
 export interface Row {
 	name: string;
 	desc: string;
 	heading?: true;
+	hidden?: true;
 	controls: Control[];
 }
 
@@ -147,18 +129,22 @@ function rowOf(setting: Setting): Row {
 		name: markup(setting.name),
 		desc: markup(setting.desc),
 		...(setting.heading ? { heading: true as const } : {}),
+		...(setting.settingEl.hidden ? { hidden: true as const } : {}),
 		controls: setting.controlEl.children.map(controlOf),
 	};
 }
 
 function controlOf(child: FakeElement | ButtonComponent): Control {
-	if (child instanceof ButtonComponent) return { type: "button", icon: child.icon, tooltip: child.tooltip };
+	const hidden = (child instanceof ButtonComponent ? child.buttonEl : child).hidden ? { hidden: true as const } : {};
+	if (child instanceof ButtonComponent)
+		return { type: "button", icon: child.icon, tooltip: child.tooltip, ...hidden };
 	if (child instanceof ControlElement) {
 		const control = child.component;
 		if (control instanceof ExtraButtonComponent)
-			return { type: control.type, icon: control.icon, tooltip: control.tooltip };
+			return { type: control.type, icon: control.icon, tooltip: control.tooltip, ...hidden };
 		return {
 			type: control.type,
+			...hidden,
 			value: control.value,
 			...(control.placeholder === undefined ? {} : { placeholder: control.placeholder }),
 			...(control instanceof DropdownComponent ? { options: Object.keys(control.options) } : {}),
@@ -167,10 +153,11 @@ function controlOf(child: FakeElement | ButtonComponent): Control {
 	if (child.cls === "tag")
 		return {
 			type: "tag",
+			...hidden,
 			text: child.text,
 			...(child.attr.style === undefined ? {} : { style: child.attr.style }),
 		};
-	return { type: "rows", rows: rowsOf(child) };
+	return { type: "rows", ...hidden, rows: rowsOf(child) };
 }
 
 const UPDATE = process.env.UPDATE_GOLDEN === "1";

@@ -1,12 +1,11 @@
-// Pin verbatim settings-tab texts no snapshot pins, so the move into copy.settings (phase 4 step 12)
-// is checked byte for byte. These tests must stay green, unchanged.
+// Pin settings-tab option labels, dialog copy and messages beyond the layout snapshots.
 import "./golden-clock";
 import "./setup";
 
 import { beforeEach, test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 
-import { rowsOf, startPlugin } from "./settings-fixtures";
+import { markup, rowsOf, startPlugin } from "./settings-fixtures";
 import {
 	ButtonComponent,
 	DropdownComponent,
@@ -57,11 +56,11 @@ function valueControl(setting: Setting, type: string): SettingControl {
 }
 
 /** Opens the real dialog through the tab; the spy keeps the instance and still calls open. */
-async function openDialog(t: TestContext, container: FakeElement, row: "Use Tags" | "Hide Tags") {
+async function openDialog(t: TestContext, container: FakeElement, row: "Use tags" | "Hide tags") {
 	const add = settingNamed(container, row).components.find(
 		(component) =>
 			component instanceof ExtraButtonComponent &&
-			(row === "Use Tags" ? component.tooltip === "Add a palette" : component.icon === "plus-with-circle"),
+			(row === "Use tags" ? component.tooltip === "Add a palette" : component.icon === "plus-with-circle"),
 	);
 	assert.ok(add instanceof ExtraButtonComponent);
 	const opened = t.mock.method(Modal.prototype, "open");
@@ -91,9 +90,9 @@ function assertNotice(expected: string): void {
 test("the five settings dropdowns pin every option value and label in order", async (t) => {
 	const { container } = await drawnTab(t);
 	const expected = {
-		"Behavior of Counters and Filters Panel": { Filter: "Filter", Focus: "Focus" },
-		"Quick Entry Panel Position": { today: "today", top: "top", bottom: "bottom" },
-		"Activate Filter On Load": {
+		"Behavior of counters and filters panel": { Filter: "Filter", Focus: "Focus" },
+		"Quick entry panel position": { today: "today", top: "top", bottom: "bottom" },
+		"Activate filter on load": {
 			"": "No filters",
 			todoFilter: "todo",
 			overdueFilter: "overdue",
@@ -103,7 +102,7 @@ test("the five settings dropdowns pin every option value and label in order", as
 			emoji: "Emoji (📅 2026-10-25)",
 			dataview: "Dataview fields ([due:: 2026-10-25])",
 		},
-		"Sort By": {
+		"Sort by": {
 			"status-asc": "status (ascending)",
 			"status-desc": "status (descending)",
 			"text-asc": "text (ascending)",
@@ -127,7 +126,7 @@ test("the five settings dropdowns pin every option value and label in order", as
 
 test("the tag colour palette dialog pins its name, description and Save and Cancel tooltips", async (t) => {
 	const { container } = await drawnTab(t);
-	const { input, buttons } = await openDialog(t, container, "Use Tags");
+	const { input, buttons } = await openDialog(t, container, "Use tags");
 	const [row] = rowsOf(input);
 	assert.equal(row.name, "Tag and color");
 	assert.equal(row.desc, "Enter tag text (# included) in the text input and select color in the color selector.");
@@ -139,7 +138,7 @@ test("the tag colour palette dialog pins its name, description and Save and Canc
 
 test("the tag dialog pins its name, description and Save and Cancel tooltips", async (t) => {
 	const { container } = await drawnTab(t);
-	const { input, buttons } = await openDialog(t, container, "Hide Tags");
+	const { input, buttons } = await openDialog(t, container, "Hide tags");
 	const [row] = rowsOf(input);
 	assert.equal(row.name, "Tag");
 	assert.equal(row.desc, "Enter tag text (# included) in the text input and select color in the color selector.");
@@ -149,34 +148,49 @@ test("the tag dialog pins its name, description and Save and Cancel tooltips", a
 	);
 });
 
-test("adding a duplicate hidden tag pins the notice text and its five second duration", async (t) => {
+test("adding a duplicate hidden tag pins the inline text", async (t) => {
 	const { container } = await drawnTab(t, { hideTags: ["#existing"] });
-	const { setting, buttons } = await openDialog(t, container, "Hide Tags");
+	const { setting, buttons } = await openDialog(t, container, "Hide tags");
 	await valueControl(setting, "text").change("#existing");
 	await buttons[0].click();
 	await settle();
-	assertNotice("Tag #existing already exists.");
+	assert.ok(
+		markup(settingNamed(container, "Hide tags").desc).includes(
+			'<p class="tasks-calendar-wrapper-setting-warning">Tag #existing already exists.</p>',
+		),
+	);
+	assert.deepEqual(Notice.shown, []);
 });
 
-test("an invalid palette tag pins the notice text and its five second duration", async (t) => {
+test("an invalid palette tag pins the inline text", async (t) => {
 	const { container } = await drawnTab(t);
-	const { setting, buttons } = await openDialog(t, container, "Use Tags");
+	const { setting, buttons } = await openDialog(t, container, "Use tags");
 	await valueControl(setting, "text").change("invalid");
 	await buttons[0].click();
-	assertNotice("invalid seems not a valid tag.");
+	assert.ok(
+		markup(setting.desc).includes(
+			'<p class="tasks-calendar-wrapper-setting-warning">invalid seems not a valid tag.</p>',
+		),
+	);
+	assert.deepEqual(Notice.shown, []);
 });
 
-test("an invalid tag in the tag dialog pins the notice text and its five second duration", async (t) => {
+test("an invalid tag in the tag dialog pins the inline text", async (t) => {
 	const { container } = await drawnTab(t);
-	const { setting, buttons } = await openDialog(t, container, "Hide Tags");
+	const { setting, buttons } = await openDialog(t, container, "Hide tags");
 	await valueControl(setting, "text").change("invalid");
 	await buttons[0].click();
-	assertNotice("invalid seems not a valid tag.");
+	assert.ok(
+		markup(settingNamed(container, "Hide tags").desc).includes(
+			'<p class="tasks-calendar-wrapper-setting-warning">invalid seems not a valid tag.</p>',
+		),
+	);
+	assert.deepEqual(Notice.shown, []);
 });
 
 test("an empty palette colour pins the notice text and its five second duration", async (t) => {
 	const { container } = await drawnTab(t);
-	const { setting, buttons } = await openDialog(t, container, "Use Tags");
+	const { setting, buttons } = await openDialog(t, container, "Use tags");
 	await valueControl(setting, "text").change("#new-tag");
 	await buttons[0].click();
 	assertNotice("The color seems to be empty, maybe you forget to click the color picker.");
@@ -188,7 +202,7 @@ test("a failed settings save pins the notice text and its five second duration",
 	t.mock.method(plugin, "saveData", async () => {
 		throw new Error("disk full");
 	});
-	const { setting, buttons } = await openDialog(t, container, "Hide Tags");
+	const { setting, buttons } = await openDialog(t, container, "Hide tags");
 	await valueControl(setting, "text").change("#new-tag");
 	await buttons[0].click();
 	await settle();

@@ -1,23 +1,49 @@
 import { Setting } from "obsidian";
 import { copy } from "@tasks-calendar-wrapper/core";
 import { TagColorPaletteModal } from "../modals";
-import type { RenderControl } from "./index";
+import type { SettingsControlActions } from "../generate";
+import type { SettingRowOf } from "../rows";
 
-/** Draws the palette before its parent toggle, keeping an empty nested row when it is off. */
-export const renderTagPalette: RenderControl = (tagSettings, row, tab) => {
+/** Keeps the palette's container and add button in place, drawing tags on first show. */
+export function renderTagPalette(
+	tagSettings: Setting,
+	row: SettingRowOf<"setting">,
+	tab: SettingsControlActions,
+): (shown: boolean) => void {
 	const key = row.key;
-	tagSettings.controlEl.empty();
-	tagSettings.controlEl.appendChild(createDiv());
-	let tagBadgeSetting = new Setting(tagSettings.controlEl.firstChild as HTMLElement);
-	if (row.shown) {
+	const container = tagSettings.controlEl.createDiv();
+	let drawn = false;
+	const addTooltip = row.texts.addTooltip;
+	if (addTooltip === undefined) throw new Error(`Missing setting addTooltip: ${key}`);
+	tagSettings.addExtraButton((btn) => {
+		btn.setIcon("plus-with-circle")
+			.setTooltip(addTooltip)
+			.onClick(() => {
+				const modal = new TagColorPaletteModal(tab.plugin);
+				modal.onClose = () => {
+					if (!modal.valid) return;
+					tab.saveInBackground(
+						{ [key]: { ...(tab.options()[key] as Record<string, string>), [modal.tagText]: modal.color } },
+						row.redrawsTab,
+					);
+				};
+				modal.open();
+			});
+	});
+	const addButton = tagSettings.controlEl.children[tagSettings.controlEl.children.length - 1] as HTMLElement;
+	const show = (shown: boolean) => {
+		container.hidden = !shown;
+		addButton.hidden = !shown;
+		if (!shown || drawn) return;
+		drawn = true;
+		let tagBadgeSetting = new Setting(container);
 		Object.entries(tab.options()[key] as Record<string, string>).forEach(([tag, color], index) => {
-			if (index !== 0 && !(index & 0x01))
-				tagBadgeSetting = new Setting(tagSettings.controlEl.firstChild as HTMLElement);
+			if (index !== 0 && !(index & 0x01)) tagBadgeSetting = new Setting(container);
 			tagBadgeSetting.controlEl.appendChild(
 				createDiv({ cls: "tag", text: tag, attr: { style: `color: ${color}` } }),
 			);
 			tagBadgeSetting
-				.addExtraButton(async (btn) => {
+				.addExtraButton((btn) => {
 					btn.setIcon("cross")
 						.setTooltip(copy.settings.tab.deleteTooltip)
 						.onClick(async () => {
@@ -27,10 +53,10 @@ export const renderTagPalette: RenderControl = (tagSettings, row, tab) => {
 							);
 						});
 				})
-				.addExtraButton(async (btn) => {
+				.addExtraButton((btn) => {
 					btn.setIcon("pencil")
 						.setTooltip(copy.settings.tab.editTooltip)
-						.onClick(async () => {
+						.onClick(() => {
 							const modal = new TagColorPaletteModal(tab.plugin, tag, color);
 							modal.onClose = () => {
 								if (!modal.valid) return;
@@ -48,31 +74,10 @@ export const renderTagPalette: RenderControl = (tagSettings, row, tab) => {
 						});
 				});
 		});
-
-		const addTooltip = row.texts.addTooltip;
-		if (addTooltip === undefined) throw new Error(`Missing setting addTooltip: ${key}`);
-		tagSettings.addExtraButton(async (btn) => {
-			btn.setIcon("plus-with-circle")
-				.setTooltip(addTooltip)
-				.onClick(async () => {
-					const modal = new TagColorPaletteModal(tab.plugin);
-					modal.onClose = () => {
-						if (!modal.valid) return;
-						tab.saveInBackground(
-							{
-								[key]: {
-									...(tab.options()[key] as Record<string, string>),
-									[modal.tagText]: modal.color,
-								},
-							},
-							row.redrawsTab,
-						);
-					};
-					modal.open();
-				});
-		});
-	}
-};
+	};
+	show(row.shown);
+	return show;
+}
 
 function withoutTag(palette: Record<string, string>, tag: string): Record<string, string> {
 	return Object.fromEntries(Object.entries(palette).filter(([key]) => key !== tag));

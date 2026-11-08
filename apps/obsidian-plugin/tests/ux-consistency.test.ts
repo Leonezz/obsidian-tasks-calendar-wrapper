@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import { copy } from "@tasks-calendar-wrapper/core";
+import { settingGroups } from "../src/settings-schema";
 import { OPTIONS_DELAY_MS } from "../utils/refresh";
 
 /** The runner starts in apps/obsidian-plugin, including when invoked from the monorepo root. */
@@ -26,20 +28,47 @@ function filesIn(directory: string): string[] {
 
 // 设置 (l.223–225) | 884 行手写 UI，标题大小写不一，约 40 项平铺在 3 个标题下 | 一份带类型的设置 schema（key、默认值、文案、控件类型、分组）生成设置页；按“数据来源 / 显示 / 新建任务 / 高级”分组；句子式大小写；修改即时生效
 describe("Settings", () => {
-	// Phase 4 steps 13 and 14: the schema drives the settings generator.
-	it.todo("the typed settings schema generates the settings page");
-	// Phase 4 step 14: only the generator constructs settings controls.
-	it.todo("no new Setting is constructed outside the settings generator");
-	// Phase 4 step 14: render the four schema groups.
-	it.todo("settings are grouped into Sources, Display, New tasks and Advanced");
-	// Phase 4 step 14: use sentence case for the generated settings page.
-	it.todo("settings headings and labels use sentence case");
-	// Phase 4 step 14: display schema validation beside the affected control.
-	it.todo("a wrong-typed setting is shown in place");
-	// Phase 4 step 14, open question 2: explain delayed application beside the control.
-	it.todo("viewOpen settings say that they apply when the view opens");
-	// Phase 4 step 14, open question 2: explain delayed application beside the control.
-	it.todo("pluginLoad settings say that they apply when the plugin loads");
+	it("the typed settings schema generates the settings page", () => {
+		coveredBy(
+			"tests/settingrows.test.ts",
+			"the row model of each data.json shape lists the rows the tab shows, in order",
+		);
+	});
+	it("no new Setting is constructed outside the settings generator", () => {
+		for (const file of ["src", "timeline", "utils", "../../packages/ui/src", "../../packages/core/src"]
+			.flatMap(filesIn)
+			.filter((file) => /\.tsx?$/.test(file))) {
+			const source = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/g, "");
+			if (/\bnew\s+Setting\s*\(/.test(source))
+				assert.ok(file.startsWith(`src${path.sep}settings${path.sep}`), file);
+		}
+	});
+	it("settings are grouped into Sources, Display, New tasks and Advanced", () => {
+		assert.deepEqual(Object.values(copy.settings.groups), ["Sources", "Display", "New tasks", "Advanced"]);
+		assert.deepEqual(settingGroups, ["sources", "display", "newTasks", "advanced"]);
+		coveredBy("tests/settingrows.test.ts", "the rows sit in the four approved groups, in the approved order");
+	});
+	it("settings headings and labels use sentence case", () => {
+		coveredBy("tests/copy.test.ts", "settings copy follows the style guide");
+	});
+	it("a wrong-typed setting is shown in place", () => {
+		coveredBy(
+			"tests/settingrows.test.ts",
+			"every data.json shape with a value of the wrong type shows the warning and Reset in that row",
+		);
+	});
+	it("viewOpen settings say that they apply when the view opens", () => {
+		coveredBy(
+			"tests/settingrows.test.ts",
+			"each setting read when a timeline opens or Obsidian starts says so in its description",
+		);
+	});
+	it("pluginLoad settings say that they apply when the plugin loads", () => {
+		coveredBy(
+			"tests/settingrows.test.ts",
+			"each setting read when a timeline opens or Obsidian starts says so in its description",
+		);
+	});
 	// Phase 4 step 12: settings copy comes from the shared copy table.
 	it("settings copy comes from the string table", () => {
 		coveredBy("tests/settingsschema.test.ts", "every spec except control none has copy");
@@ -110,7 +139,6 @@ describe("Feedback and confirmation", () => {
 	it("errors use one report function", () => {
 		coveredBy("tests/copy.test.ts", "new Notice( appears only in notices.ts");
 	});
-	// The settings tab's Notices follow in step 14.
 	it("user-facing copy comes from one string table", () => {
 		coveredBy("tests/copy.test.ts", "no user-visible string literal is written outside copy.ts");
 		coveredBy("tests/copy.test.ts", "the copy table matches fixtures/copy/en.json");

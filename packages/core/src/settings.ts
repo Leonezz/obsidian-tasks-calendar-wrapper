@@ -1,4 +1,4 @@
-import { formatPropertyRules, parsePropertyRules, type PropertyRules } from "./properties";
+import { formatPropertyRules, parsePropertyRules, propertyRuleProblems, type PropertyRules } from "./properties";
 
 /**
  * The generic part of a settings schema: what a setting's value is, how the settings tab shows it, and how its text
@@ -22,6 +22,7 @@ export type ReadWhen = "push" | "viewOpen" | "pluginLoad" | "never";
 export interface TextCodec<T> {
 	parse(text: string): T;
 	format(value: T): string;
+	problems?(text: string): readonly { line: number }[];
 }
 
 export interface SettingSpec<
@@ -48,7 +49,7 @@ export interface SettingSpec<
 	readonly order?: number;
 	/** The setting shows only while this one is on. */
 	readonly shownWhen?: K;
-	/** Changing the setting draws the tab again: it shows or hides other settings, or its own tags change. */
+	/** Changing the setting changes what the tab shows: it shows or hides other rows, or its own tags change. */
 	readonly redrawsTab: boolean;
 	readonly readWhen: ReadWhen;
 }
@@ -89,6 +90,7 @@ export const plainTextCodec: TextCodec<string> = Object.freeze({
 export const propertyRulesCodec: TextCodec<PropertyRules> = Object.freeze({
 	parse: parsePropertyRules,
 	format: formatPropertyRules,
+	problems: propertyRuleProblems,
 });
 
 /** A setting whose value is not of the type its spec gives, and what was found instead. */

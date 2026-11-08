@@ -42,8 +42,6 @@ async function drawnTab(t: TestContext, dataJson: string | null) {
 	return { plugin, tab, container: tab.containerEl as unknown as FakeElement };
 }
 
-const names = (rows: Row[]) => rows.map((row) => row.name);
-
 /** The stub's settings window opening and closing at the tab; Obsidian's typings know nothing of it. */
 const settingsWindow = (tab: TasksCalendarSettingTab) =>
 	tab as unknown as { openSettings(): void; closeSettings(): void };
@@ -120,18 +118,18 @@ for (const fixture of FIXTURE_NAMES) {
 	test(`the settings tab on ${fixture}`, async (t) => {
 		t.mock.timers.enable({ apis: ["setTimeout"] });
 		const { container } = await drawnTab(t, readFixture(fixture));
-		snapshots.match(fixture, JSON.stringify(rowsOf(container), null, 2) + "\n");
+		snapshots.match(fixture, JSON.stringify([{ container: container.cls }, ...rowsOf(container)], null, 2) + "\n");
 	});
 }
 
-test("the tab with the defaults has 43 rows, three of them headings", async (t) => {
+test("the tab with the defaults has 48 rows, four of them headings", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const { tab, container } = await drawnTab(t, null);
 	const rows = rowsOf(container);
-	assert.equal(rows.length, 43);
+	assert.equal(rows.length, 48);
 	assert.deepEqual(
 		rows.filter((row) => row.heading).map((row) => row.name),
-		["Interface", "Task items", "Formats and filters"],
+		["Sources", "Display", "New tasks", "Advanced"],
 	);
 	// Drawing the tab again replaces what it drew.
 	tab.display();
@@ -149,7 +147,7 @@ test("the tab shows the open-note toggle with the exact label and description", 
 			.slice(0, index)
 			.reverse()
 			.find((row) => row.heading)?.name,
-		"Task items",
+		"Advanced",
 	);
 	assert.deepEqual(rows[index], {
 		name: label,
@@ -203,31 +201,47 @@ test("the rows for the quick entry, the tag palette and the tag filters show onl
 		(await drawnTab(t, JSON.stringify({ useIncludeTags: true, useExcludeTags: true, hideTags: ["#a", "#b"] })))
 			.container,
 	);
-	for (const name of ["Tasks Files", "Inbox", "Section For New Tasks"]) {
-		assert.ok(!names(offRows).includes(name), name);
-		assert.ok(names(onRows).includes(name), name);
+	for (const name of ["Tasks files", "Inbox", "Section for new tasks"]) {
+		assert.equal(offRows.find((row) => row.name === name)?.hidden, true, name);
+		assert.ok(
+			onRows.some((row) => row.name === name && !row.hidden),
+			name,
+		);
 	}
-	for (const name of ["Task Include Filters", "File Include Tags", "Task Exclude Filters", "File Exclude Tags"]) {
-		assert.ok(names(onRows).includes(name), name);
-		assert.ok(!names(offRows).includes(name), name);
+	for (const name of ["Task include filters", "File include tags", "Task exclude filters", "File exclude tags"]) {
+		assert.ok(
+			onRows.some((row) => row.name === name && !row.hidden),
+			name,
+		);
+		assert.equal(offRows.find((row) => row.name === name)?.hidden, true, name);
 	}
-	// With tags off, the palette's row shows its switch alone.
-	const tags = (rows: Row[]) => rows.find((row) => row.name === "Use Tags")?.controls.map((control) => control.type);
-	assert.deepEqual(tags(offRows), ["rows", "toggle"]);
+	// With tags off, the palette container and add button stay drawn but hidden.
+	const tags = (rows: Row[]) => rows.find((row) => row.name === "Use tags")?.controls.map((control) => control.type);
+	assert.deepEqual(tags(offRows), ["rows", "extra-button", "toggle"]);
+	assert.deepEqual(
+		offRows.find((row) => row.name === "Use tags")?.controls.map((control) => control.hidden),
+		[true, true, undefined],
+	);
+	assert.deepEqual(
+		onRows.find((row) => row.name === "Use tags")?.controls.map((control) => control.hidden),
+		[undefined, undefined, undefined],
+	);
 	assert.deepEqual(tags(onRows), ["rows", "extra-button", "toggle"]);
 });
 
 test("the statuses to hide show as saved, a typed [ ] too, and a palette that is a list shows no tags", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const hidden = rowsOf((await drawnTab(t, readFixture("0.3.1-hide-literal-todo.json"))).container);
-	const status = hidden.find((row) => row.name === "Hide tasks of specific status.");
+	const status = hidden.find((row) => row.name === "Hide tasks of specific status");
 	assert.deepEqual(status?.controls[0], {
 		type: "text",
 		value: "x,-,[ ]",
 		placeholder: "Status markers split by comma. e.g.,: x, -.",
 	});
 	const listPalette = rowsOf((await drawnTab(t, readFixture("0.0.4-array-palette.json"))).container);
-	const palette = listPalette.find((row) => row.name === "Use Tags")?.controls[0];
+	const palette = listPalette
+		.find((row) => row.name === "Use tags")
+		?.controls.find((control) => control.type === "rows");
 	assert.deepEqual(palette, { type: "rows", rows: [{ name: "", desc: "", controls: [] }] });
 });
 
@@ -248,11 +262,11 @@ test("the text boxes show the saved lists and rules as text", async (t) => {
 	};
 	assert.deepEqual(
 		{
-			taskFiles: shown("Tasks Files"),
-			includePaths: shown("Include Paths"),
-			excludePaths: shown("Exclude Paths"),
-			excludeProperties: shown("Exclude Properties"),
-			hideStatusTasks: shown("Hide tasks of specific status."),
+			taskFiles: shown("Tasks files"),
+			includePaths: shown("Include paths"),
+			excludePaths: shown("Exclude paths"),
+			excludeProperties: shown("Exclude properties"),
+			hideStatusTasks: shown("Hide tasks of specific status"),
 			inbox: shown("Inbox"),
 		},
 		{
@@ -278,15 +292,15 @@ test("a tag list shows three tags a row, and the palette two", async (t) => {
 		assert.ok(nested && nested.type === "rows" && "rows" in nested, name);
 		return nested.rows.map((row) => row.controls.flatMap((control) => ("text" in control ? [control.text] : [])));
 	};
-	assert.deepEqual(tagsByRow("Hide Tags"), [["#a", "#b", "#c"], ["#d"]]);
-	assert.deepEqual(tagsByRow("Use Tags"), [["#a", "#b"], ["#c"]]);
+	assert.deepEqual(tagsByRow("Hide tags"), [["#a", "#b", "#c"], ["#d"]]);
+	assert.deepEqual(tagsByRow("Use tags"), [["#a", "#b"], ["#c"]]);
 });
 
 test("a lambda sort shows as the sort it is read as", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const sortOf = async (fixture: string) => {
 		const rows = rowsOf((await drawnTab(t, readFixture(fixture))).container);
-		const dropdown = rows.find((row) => row.name === "Sort By")?.controls[0];
+		const dropdown = rows.find((row) => row.name === "Sort by")?.controls[0];
 		return dropdown && "value" in dropdown ? dropdown.value : undefined;
 	};
 	assert.equal(await sortOf("0.2.9-dropdown-sort.json"), "due-asc");
@@ -302,9 +316,9 @@ test("options the tab cannot draw stop it where they are, as today", async (t) =
 		assert.throws(() => tab.display(), message);
 		return rowsOf(tab.containerEl as unknown as FakeElement).length;
 	};
-	assert.equal(await throwsAt({ tagColorPalette: null }, /Cannot convert undefined or null to object/), 27);
-	assert.equal(await throwsAt({ excludeProperties: null }, /Cannot convert undefined or null to object/), 41);
-	assert.equal(await throwsAt({ excludePaths: "Archive" }, /join is not a function/), 40);
+	assert.equal(await throwsAt({ tagColorPalette: null }, /Cannot convert undefined or null to object/), 31);
+	assert.equal(await throwsAt({ excludeProperties: null }, /Cannot convert undefined or null to object/), 4);
+	assert.equal(await throwsAt({ excludePaths: "Archive" }, /join is not a function/), 3);
 });
 
 /** The controls of the top rows that hold a value, with their row's name, as drawn now. */
@@ -344,7 +358,7 @@ async function change(t: TestContext, dataJson: string | null, row: string, inde
 	return { writes: writes.mock.calls.map((call) => call.arguments[0]), redrawn: draws.mock.callCount() > 0 };
 }
 
-test("what each control saves when it changes, and which ones draw the tab again", async (t) => {
+test("what each control saves when it changes, without drawing the tab again", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const dataJson = JSON.stringify({ useIncludeTags: true, useExcludeTags: true });
 	const changes = [];
@@ -359,7 +373,7 @@ test("what each control saves when it changes, and which ones draw the tab again
 	snapshots.match("changes.json", JSON.stringify(changes, null, 2) + "\n");
 });
 
-test("deleting a tag of the palette or of a tag list saves the rest and draws the tab again", async (t) => {
+test("deleting a tag of the palette or of a tag list saves the rest and redraws its row", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const dataJson = JSON.stringify({ hideTags: ["#a", "#b", "#c", "#d"] });
 	const deletes = async (rowName: string, button: number) => {
@@ -378,17 +392,21 @@ test("deleting a tag of the palette or of a tag list saves the rest and draws th
 						? buttons(child)
 						: [],
 			);
-		const deleting = buttons(row?.setting.controlEl as FakeElement).filter((found) => found.tooltip === "Delete");
+		assert.ok(row);
+		const previousControls = [...row.setting.controlEl.children];
+		const deleting = buttons(row.setting.controlEl).filter((found) => found.tooltip === "Delete");
 		await deleting[button].click();
 		await settle();
+		assert.ok(container.children.includes(row), "the row stays in place");
+		assert.notDeepEqual(row.setting.controlEl.children, previousControls, "the row controls are redrawn");
 		return { writes: writes.mock.calls.map((call) => call.arguments[0]), draws: draws.mock.callCount() };
 	};
-	assert.deepEqual(await deletes("Use Tags", 0), {
+	assert.deepEqual(await deletes("Use tags", 0), {
 		writes: [{ tagColorPalette: { "#TEST": "#998877" } }],
-		draws: 1,
+		draws: 0,
 	});
 	// The fourth tag is in the list's second row of three.
-	assert.deepEqual(await deletes("Hide Tags", 3), { writes: [{ hideTags: ["#a", "#b", "#c"] }], draws: 1 });
+	assert.deepEqual(await deletes("Hide tags", 3), { writes: [{ hideTags: ["#a", "#b", "#c"] }], draws: 0 });
 });
 
 // Declared last, so it runs after every test that produces a snapshot.

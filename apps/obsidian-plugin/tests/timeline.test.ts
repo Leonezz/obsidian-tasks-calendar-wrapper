@@ -364,6 +364,8 @@ test("timeline: the stylesheet hides nothing the markup reader does not know of"
 			".taskido.noRelative .relative",
 			".taskido.noRepeat .repeat",
 			".taskido.noTag .tag",
+			// Settings are outside the timeline's markup.
+			".tasks-calendar-wrapper-settings [hidden]",
 		].sort(),
 	);
 });

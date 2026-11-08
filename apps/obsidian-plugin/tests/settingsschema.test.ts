@@ -53,11 +53,11 @@ const CONTROL_OF_RECORDED: Readonly<Record<string, SettingControl>> = {
 
 /** The rows of tags, which the recording leaves out: their tags are added and deleted through dialogs. */
 const TAG_ROWS: Readonly<Record<string, Key>> = {
-	"Hide Tags": "hideTags",
-	"Task Include Filters": "taskIncludeTags",
-	"File Include Tags": "fileIncludeTags",
-	"Task Exclude Filters": "taskExcludeTags",
-	"File Exclude Tags": "fileExcludeTags",
+	"Hide tags": "hideTags",
+	"Task include filters": "taskIncludeTags",
+	"File include tags": "fileIncludeTags",
+	"Task exclude filters": "taskExcludeTags",
+	"File exclude tags": "fileExcludeTags",
 };
 
 /** The option each row of the tab sets: the one its control saves, or the tags it lists. */
@@ -73,20 +73,20 @@ test("the schema has one entry for each option, in the defaults' order", () => {
 	assert.ok(Object.isFrozen(settingsSchema) && settingsSchema.every((spec) => Object.isFrozen(spec)));
 });
 
-test("openNoteInsteadOfInPlace defaults to false and is a taskItems toggle read on push", () => {
+test("openNoteInsteadOfInPlace defaults to false and is an advanced toggle read on push", () => {
 	assert.equal(defaultUserOptions.openNoteInsteadOfInPlace, false);
 	assert.deepEqual(specOf("openNoteInsteadOfInPlace"), {
 		key: "openNoteInsteadOfInPlace",
 		type: "boolean",
 		control: "toggle",
 		copy: "openNoteInsteadOfInPlace",
-		group: "taskItems",
+		group: "advanced",
 		redrawsTab: false,
 		readWhen: "push",
 	});
 });
 
-test("newDateStyle defaults to emoji and follows the open-note toggle as a taskItems dropdown read on push", () => {
+test("newDateStyle defaults to emoji and follows the open-note toggle as an advanced dropdown read on push", () => {
 	assert.equal(defaultUserOptions.newDateStyle, "emoji");
 	assert.deepEqual(specOf("newDateStyle"), {
 		key: "newDateStyle",
@@ -94,7 +94,7 @@ test("newDateStyle defaults to emoji and follows the open-note toggle as a taskI
 		control: "dropdown",
 		copy: "newDateStyle",
 		options: { emoji: "emoji", dataview: "dataview" },
-		group: "taskItems",
+		group: "advanced",
 		redrawsTab: false,
 		readWhen: "push",
 	});
@@ -210,14 +210,14 @@ test("every dropdown option value is a value of the codec or type", () => {
 	for (const value of values.sort) assert.equal(migrateSortOption(value), value, value);
 });
 
-test("each control of the tab is the one the schema names, and draws the tab again exactly when it says", () => {
+test("each control of the tab is the one the schema names, and never draws the tab again", () => {
 	const seen = new Set<string>();
 	for (const change of recorded) {
 		assert.equal(change.writes.length, 1, change.row);
 		const [key] = Object.keys(change.writes[0]);
 		const spec = specOf(key);
 		assert.equal(spec.control, CONTROL_OF_RECORDED[change.type], key);
-		assert.equal(spec.redrawsTab, change.redrawn, key);
+		assert.equal(change.redrawn, false, key);
 		seen.add(key);
 	}
 	// Every option shown with one of these controls was recorded.
@@ -226,7 +226,7 @@ test("each control of the tab is the one the schema names, and draws the tab aga
 		recordable.map((spec) => spec.key).filter((key) => !seen.has(key)),
 		[],
 	);
-	// Tags are added and deleted through dialogs, and each change draws the tab again, see settingstab.test.ts.
+	// Tags are added and deleted through dialogs, and each change redraws its row, see settingstab.test.ts.
 	for (const key of Object.values(TAG_ROWS))
 		assert.deepEqual([specOf(key).control, specOf(key).redrawsTab], ["tagList", true]);
 	assert.deepEqual([specOf("tagColorPalette").control, specOf("tagColorPalette").redrawsTab], ["tagPalette", true]);
@@ -253,7 +253,7 @@ test("the boxes of the tab show the codec's text of the options saved", async (t
 		for (const row of rows) {
 			const key = keyOfRow(row.name);
 			const codec = key && specOf(key).codec;
-			if (!key || !codec) continue;
+			if (!key || !codec || row.hidden) continue;
 			const control = row.controls.find((found) => "value" in found);
 			assert.ok(control && "value" in control, row.name);
 			assert.equal(control.value, codec.format(plugin.userOptions[key]), `${fixture}: ${row.name}`);
@@ -269,12 +269,14 @@ test("a row shows only while the option the schema names for it is on", async (t
 	assert.deepEqual(parents.sort(), ["useExcludeTags", "useIncludeTags", "useQuickEntry", "useTags"]);
 	const allOn = Object.fromEntries(parents.map((parent) => [parent, true]));
 	const shownKeys = async (options: object) =>
-		(await drawnTab(JSON.stringify(options))).rows.flatMap((row) => keyOfRow(row.name) ?? []);
+		(await drawnTab(JSON.stringify(options))).rows
+			.filter((row) => !row.hidden)
+			.flatMap((row) => keyOfRow(row.name) ?? []);
 	const withAll = await shownKeys(allOn);
 	for (const parent of parents) {
 		const without = await shownKeys({ ...allOn, [parent]: false });
 		const hidden = withAll.filter((key) => !without.includes(key));
-		// The palette has no row of its own: its tags and buttons are in the row of Use Tags.
+		// The palette has no row of its own: its tags and buttons are in the row of Use tags.
 		const expected = settingsSchema
 			.filter((spec) => spec.shownWhen === parent && spec.control !== "tagPalette")
 			.map((spec) => spec.key);
@@ -282,7 +284,7 @@ test("a row shows only while the option the schema names for it is on", async (t
 	}
 	const paletteShown = async (useTags: boolean) =>
 		(await drawnTab(JSON.stringify({ useTags }))).rows
-			.find((row) => row.name === "Use Tags")
+			.find((row) => row.name === "Use tags")
 			?.controls.some(holdsTag);
 	assert.deepEqual([await paletteShown(true), await paletteShown(false)], [true, false]);
 	assert.equal(specOf("tagColorPalette").shownWhen, "useTags");
@@ -291,9 +293,10 @@ test("a row shows only while the option the schema names for it is on", async (t
 test("each row shows under the heading of its option's group", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const GROUP_OF_HEADING: Readonly<Record<string, string>> = {
-		Interface: "interface",
-		"Task items": "taskItems",
-		"Formats and filters": "formatsAndFilters",
+		Sources: "sources",
+		Display: "display",
+		"New tasks": "newTasks",
+		Advanced: "advanced",
 	};
 	const { rows } = await drawnTab(JSON.stringify({ useIncludeTags: true, useExcludeTags: true }));
 	let group: string | undefined;
@@ -313,7 +316,7 @@ test("each row shows under the heading of its option's group", async (t) => {
 		placed,
 		settingsSchema.filter((spec) => spec.control !== "none" && spec.control !== "tagPalette").length,
 	);
-	// The palette is in the row of Use Tags.
+	// The palette is in the row of Use tags.
 	assert.equal(specOf("tagColorPalette").group, specOf("useTags").group);
 });
 
@@ -328,7 +331,7 @@ test("the schema records the options read only when the plugin loads or a timeli
 	assert.deepEqual(readAt("never"), ["styles"]);
 });
 
-/** Whether a control is a tag, or holds rows with one, as the palette's rows in the row of Use Tags. */
+/** Whether a control is a tag, or holds rows with one, as the palette's rows in the row of Use tags. */
 const holdsTag = (control: Control): boolean =>
 	control.type === "tag" ||
 	(control.type === "rows" && "rows" in control && control.rows.some((row) => row.controls.some(holdsTag)));
