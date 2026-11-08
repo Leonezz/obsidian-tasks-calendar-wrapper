@@ -26,7 +26,11 @@ export class TagColorPaletteModal extends Modal {
 			.setDesc(textsOf("tagColorPalette").desc)
 			.addText((t) => {
 				t.setValue(this.tagText);
-				t.onChange((v) => (this.tagText = v));
+				t.onChange((v) => {
+					this.tagText = v;
+					// A message about the previous text no longer applies.
+					input.setDesc(textsOf("tagColorPalette").desc);
+				});
 			})
 			.addColorPicker((cp) => {
 				cp.setValue(this.color);

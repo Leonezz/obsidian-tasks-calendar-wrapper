@@ -944,6 +944,32 @@ test("an invalid palette tag shows inline in its dialog, which stays open", asyn
 	}
 });
 
+test("a Reset whose save fails says so, as the tab's other saves do", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin, container } = await drawnTab(t, { useTags: "yes" });
+	const reset = resetButton(settingForIssue(container, "useTags"), "useTags");
+	t.mock.method(plugin, "saveData", async () => {
+		throw new Error("disk full");
+	});
+	const logged = t.mock.method(console, "error", () => {});
+	await reset.click();
+	await settle();
+	assert.deepEqual(Notice.shown, [copy.settings.tab.saveFailed]);
+	assert.equal(logged.mock.callCount(), 1);
+});
+
+test("the palette dialog's invalid-tag message clears once the tag is edited", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { container } = await drawnTab(t, { useTags: true, tagColorPalette: { "#x": "#123456" } });
+	const palette = settingNamed(container, copy.settings.useTags.name);
+	const { setting, save } = await openDialog(t, addButton(palette));
+	await valueControl(setting, "text").change("nohash");
+	await save.click();
+	assert.ok(markup(setting.desc).includes(warningParagraph("nohash seems not a valid tag.")));
+	await valueControl(setting, "text").change("#fixed");
+	assert.equal(markup(setting.desc), markup(copy.settings.tagColorPalette.desc));
+});
+
 test("the add button of each tag list says Add a tag", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const { container } = await drawnTab(t, allParentsOn);

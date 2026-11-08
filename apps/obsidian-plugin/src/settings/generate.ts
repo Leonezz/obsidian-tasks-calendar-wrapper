@@ -71,7 +71,9 @@ export function renderSettings(containerEl: HTMLElement, rows: readonly SettingR
 				button
 					.setIcon("reset")
 					.setTooltip(copy.settings.tab.resetToDefault)
-					.onClick(async () => await save({ [key]: defaultUserOptions[key] }, state.row.key));
+					.onClick(() => {
+						save({ [key]: defaultUserOptions[key] }, state.row.key).catch(reportSaveError);
+					});
 			});
 			state.resets.push({
 				key,
