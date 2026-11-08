@@ -108,11 +108,13 @@ export const TaskRow = React.memo(function TaskRow(props: TaskRowProps) {
 				rowWrites.moveFocus(instanceId, evt.key);
 			} else if (evt.key === " ") {
 				evt.preventDefault();
-				onToggleTask(evt);
+				// Holding Space repeats the keydown; only the first press toggles.
+				if (!evt.repeat) onToggleTask(evt);
 			} else if (evt.key === "Enter") {
 				evt.preventDefault();
 				openTaskFile(evt);
-			} else if ((evt.key === "F10" && evt.shiftKey) || evt.key === "ContextMenu") {
+			} else if (evt.key === "F10" && evt.shiftKey) {
+				// The ContextMenu key also fires a native contextmenu event, which onContextMenu handles.
 				evt.preventDefault();
 				openKeyboardMenu(evt);
 			}

@@ -48,7 +48,7 @@
 			"process": "In progress",
 			"cancelled": "Cancelled"
 		},
-		"summary": "{status}, {, d, a, t, e, s, }, {note}",
+		"summary": "{status}, {dates}, {note}",
 		"menuAria": "Task menu",
 		"menuGlyph": "⋯",
 		"modifyAria": "Modify Task",

@@ -56,8 +56,14 @@ async function focus(element: HTMLElement) {
 	await act(() => element.focus());
 }
 
-async function key(element: HTMLElement, value: string, timeStamp = 2000, shiftKey = false) {
-	const event = new window.KeyboardEvent("keydown", { key: value, shiftKey, bubbles: true, cancelable: true });
+async function key(element: HTMLElement, value: string, timeStamp = 2000, shiftKey = false, repeat = false) {
+	const event = new window.KeyboardEvent("keydown", {
+		key: value,
+		shiftKey,
+		repeat,
+		bubbles: true,
+		cancelable: true,
+	});
 	Object.defineProperty(event, "timeStamp", { value: timeStamp });
 	await focus(element);
 	await act(async () => {
@@ -67,13 +73,14 @@ async function key(element: HTMLElement, value: string, timeStamp = 2000, shiftK
 	return event;
 }
 
-async function click(element: HTMLElement, timeStamp = 2000) {
-	const event = new window.MouseEvent("click", { bubbles: true, cancelable: true, view: window });
+async function click(element: HTMLElement, timeStamp = 2000, type = "click") {
+	const event = new window.MouseEvent(type, { bubbles: true, cancelable: true, view: window });
 	Object.defineProperty(event, "timeStamp", { value: timeStamp });
 	await act(async () => {
 		element.dispatchEvent(event);
 		await flush();
 	});
+	return event;
 }
 
 function cleanupScope(t: TestContext): TestContext {
@@ -177,7 +184,7 @@ async function assertFocusable(root: HTMLElement, name: string) {
 	}
 }
 
-async function mountWritingTimeline(t: TestContext, text: string) {
+async function mountWritingTimeline(t: TestContext, text: string, options: Partial<typeof defaultUserOptions> = {}) {
 	const h = writerHarness({ "Note.md": text });
 	Object.assign(h.app, { plugins: { plugins: tasksPlugin } });
 	const index = timelineTaskIndex(h.app as never);
@@ -202,6 +209,7 @@ async function mountWritingTimeline(t: TestContext, text: string) {
 		hideStatusTasks: [],
 		openNoteInsteadOfInPlace: false,
 		useBuiltinStyle: false,
+		...options,
 	});
 	const container = document.body.appendChild(document.createElement("div"));
 	const root = createRoot(container);
@@ -278,6 +286,85 @@ test("Space on a focused row writes the same edit as a click", async (t) => {
 	assert.equal(event.defaultPrevented, true, "Space prevents page scrolling");
 });
 
+test("holding Space on a row toggles it once: repeated keydowns write nothing", async (t) => {
+	freezeEventClock(t);
+	const fixture = await mountWritingTimeline(t, "- [ ] Pay\n");
+	const event = await key(get(fixture.container, ".task"), " ", 2000, false, true);
+	assert.equal(event.defaultPrevented, true, "a repeated Space still does not scroll the page");
+	assert.equal(fixture.write.mock.callCount(), 0, "a repeated Space writes nothing");
+	assert.deepEqual(fixture.h.events, []);
+	assert.equal(fixture.h.text("Note.md"), "- [ ] Pay\n");
+});
+
+async function reloadNote(fixture: Awaited<ReturnType<typeof mountWritingTimeline>>, text?: string) {
+	await act(async () => {
+		if (text !== undefined) fixture.h.put("Note.md", text);
+		fixture.h.changed("Note.md");
+		await fixture.view.onReloadTasks();
+		await flush();
+	});
+}
+
+const rowNamed = (root: ParentNode, text: string) => {
+	const row = rows(root).find((row) => get(row, ".lines > .content").textContent?.trim() === text);
+	assert.ok(row, `the row of ${text}`);
+	return row;
+};
+
+test("completing the focused row with Space keeps focus on the next row", async (t) => {
+	freezeEventClock(t);
+	const fixture = await mountWritingTimeline(t, "- [ ] One\n- [ ] Two\n- [ ] Three\n", {
+		hideStatusTasks: defaultUserOptions.hideStatusTasks,
+	});
+	assert.deepEqual(defaultUserOptions.hideStatusTasks, ["x", "-"]);
+	await key(rowNamed(fixture.container, "Two"), " ");
+	assert.equal(fixture.write.mock.callCount(), 1);
+	assert.equal(fixture.h.text("Note.md"), "- [ ] One\n- [x] Two\n- [ ] Three\n");
+	await reloadNote(fixture);
+	assert.deepEqual(
+		rows(fixture.container).map((row) => get(row, ".lines > .content").textContent?.trim()),
+		["One", "Three"],
+		"the completed row leaves the list",
+	);
+	const three = rowNamed(fixture.container, "Three");
+	assert.ok(document.activeElement === three, "focus moves to the row after the completed one");
+	assertRoving(fixture.container, three, "completed stop");
+});
+
+test("a row leaving the list does not move focus that was outside the timeline", async (t) => {
+	freezeEventClock(t);
+	const fixture = await mountWritingTimeline(t, "- [ ] One\n- [ ] Two\n- [ ] Three\n- [ ] Four\n", {
+		hideStatusTasks: defaultUserOptions.hideStatusTasks,
+	});
+	const input = get(fixture.container, "input.newTask");
+	await focus(rowNamed(fixture.container, "Two"));
+	await focus(input);
+	await click(get(rowNamed(fixture.container, "Two"), 'input[type="checkbox"]'));
+	assert.equal(fixture.write.mock.callCount(), 1);
+	await reloadNote(fixture);
+	assert.ok(document.activeElement === input, "focus stays on the quick entry");
+	assertRoving(fixture.container, defaultStop(fixture.container), "stop after Two left");
+	await focus(rowNamed(fixture.container, "Three"));
+	await act(() => rowNamed(fixture.container, "Three").blur());
+	assert.ok(document.activeElement === document.body);
+	await click(get(rowNamed(fixture.container, "Three"), 'input[type="checkbox"]'));
+	assert.equal(fixture.write.mock.callCount(), 2);
+	await reloadNote(fixture);
+	assert.ok(document.activeElement === document.body, "focus stays on the body");
+	assertRoving(fixture.container, defaultStop(fixture.container), "stop after Three left");
+});
+
+test("a control mounted later in the stop row joins the Tab order", async (t) => {
+	const fixture = await mountWritingTimeline(t, "- [ ] One\n- [ ] Two\n");
+	const two = rowNamed(fixture.container, "Two");
+	await focus(two);
+	assert.equal(all(two, "a.tag").length, 0);
+	await reloadNote(fixture, "- [ ] One\n- [ ] Two #later\n");
+	assert.ok(get(fixture.container, '.task[data-line="1"]') === two, "the edit keeps the row element");
+	assert.equal(all(two, "a.tag").length, 1, "the edit mounts a tag in the stop row");
+	assertRoving(fixture.container, two, "tag added to the stop row");
+});
+
 test("Enter on a counter toggles it and aria-pressed", async (t) => {
 	const fixture = await mountState(t);
 	for (const keyName of ["Enter", " "])
@@ -327,6 +414,12 @@ test("ArrowDown moves focus to the next row and Tab enters its controls", async 
 	assert.ok(document.activeElement === stop);
 });
 
+// The ContextMenu key is a keydown followed by the native contextmenu event (on Windows, on keyup).
+async function contextMenuKey(row: HTMLElement) {
+	await key(row, "ContextMenu");
+	return click(row, 2000, "contextmenu");
+}
+
 test("Shift+F10 opens the row menu", async (t) => {
 	freezeEventClock(t);
 	const show = t.mock.method(Menu.prototype, "showAtMouseEvent");
@@ -334,7 +427,8 @@ test("Shift+F10 opens the row menu", async (t) => {
 	await fixture.pushOptions({ ...fixture.options(), openNoteInsteadOfInPlace: false });
 	for (const value of ["F10", "ContextMenu"]) {
 		const before = show.mock.callCount();
-		const event = await key(defaultStop(fixture.root())!, value, 2000, value === "F10");
+		const row = defaultStop(fixture.root())!;
+		const event = value === "F10" ? await key(row, value, 2000, true) : await contextMenuKey(row);
 		assert.equal(show.mock.callCount(), before + 1, `${value} opens the row menu exactly once`);
 		const mouse = show.mock.calls.at(-1)!.arguments[0];
 		assert.ok(mouse instanceof window.MouseEvent, "the menu receives the view's MouseEvent");
@@ -344,8 +438,21 @@ test("Shift+F10 opens the row menu", async (t) => {
 	}
 	await fixture.pushOptions({ ...fixture.options(), openNoteInsteadOfInPlace: true });
 	const before = show.mock.callCount();
-	for (const value of ["F10", "ContextMenu"]) await key(defaultStop(fixture.root())!, value, 2000, value === "F10");
+	for (const value of ["F10", "ContextMenu"])
+		if (value === "F10") await key(defaultStop(fixture.root())!, value, 2000, true);
+		else await contextMenuKey(defaultStop(fixture.root())!);
 	assert.equal(show.mock.callCount(), before, "in-place changes off disables the row menu");
+});
+
+test("the ContextMenu keydown alone opens no menu; the native contextmenu event does", async (t) => {
+	freezeEventClock(t);
+	const show = t.mock.method(Menu.prototype, "showAtMouseEvent");
+	const fixture = await mountState(t);
+	await fixture.pushOptions({ ...fixture.options(), openNoteInsteadOfInPlace: false });
+	await key(defaultStop(fixture.root())!, "ContextMenu");
+	assert.equal(show.mock.callCount(), 0, "the keydown leaves the menu to the contextmenu event that follows");
+	await click(defaultStop(fixture.root())!, 2000, "contextmenu");
+	assert.equal(show.mock.callCount(), 1, "the native contextmenu event opens it once");
 });
 
 test("Tab order follows the DOM: Focus on today, counters, the quick entry, then the list", async (t) => {

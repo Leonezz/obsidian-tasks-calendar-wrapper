@@ -93,6 +93,8 @@ interface TimelineMemo {
 	committedTodayFocus?: boolean;
 	focusId?: string;
 	focusElement?: HTMLElement;
+	/** Whether the stop row held DOM focus when this render began, before its commit could detach it. */
+	stopHadFocus: boolean;
 	eligibleIds: readonly string[];
 	rowElements: ReadonlyMap<string, HTMLElement>;
 	/** Remembers the last layout, so a click on a counter or on Focus on today resolves no task again. */
@@ -129,6 +131,20 @@ function focusRow(memo: TimelineMemo, id: string | undefined, refresh = false) {
 	memo.focusId = id;
 	memo.focusElement = row;
 	if (row) setRowTabIndex(row, 0);
+}
+
+/** The nearest row that is still listed: after the old stop in the previous list, else before it. */
+function survivingNeighbour(previous: readonly string[], id: string, eligible: readonly string[]): string | undefined {
+	const listed = new Set(eligible);
+	const index = previous.indexOf(id);
+	if (index < 0) return undefined;
+	return (
+		previous.slice(index + 1).find((id) => listed.has(id)) ??
+		previous
+			.slice(0, index)
+			.reverse()
+			.find((id) => listed.has(id))
+	);
 }
 
 function moveFocus(memo: TimelineMemo, id: string, key: string) {
@@ -274,6 +290,7 @@ export function Timeline(props: TimelineProps) {
 		committedIds: [],
 		committedInstanceIds: [],
 		committed: false,
+		stopHadFocus: false,
 		eligibleIds: [],
 		rowElements: new Map(),
 		rowWrites: {
@@ -304,6 +321,8 @@ export function Timeline(props: TimelineProps) {
 	const renderedIds = years.flatMap((year) => year.days.flatMap((day) => day.tasks.map(({ task }) => task.id)));
 	const days = years.flatMap((year) => year.days);
 	const instanceIds = days.flatMap((day) => day.tasks.map(({ task }) => rowInstanceKey(day.key, task.id)));
+	const active = memo.focusElement?.ownerDocument.activeElement;
+	memo.stopHadFocus = !!active && !!memo.focusElement?.contains(active);
 
 	useClientLayoutEffect(() => {
 		const listChanged =
@@ -329,10 +348,12 @@ export function Timeline(props: TimelineProps) {
 		// Markdown can render again without a list change; initialize only its new links.
 		for (const link of root.current.querySelectorAll<HTMLElement>(".task .content a[href]:not([tabindex])"))
 			link.tabIndex = link.closest(".task") === memo.focusElement ? 0 : -1;
-		if (!focusChanged) return;
+		// A control mounted since the last commit, such as a new tag, follows the stop row.
+		if (!focusChanged) return focusRow(memo, memo.focusId, true);
 		const elements = root.current.querySelectorAll<HTMLElement>(".task");
 		memo.rowElements = new Map(instanceIds.map((id, index) => [id, elements[index]]));
 		const eligible = days.filter((day) => !todayFocus || day.isToday);
+		const previousEligible = memo.eligibleIds;
 		memo.eligibleIds = eligible.flatMap((day) => day.tasks.map(({ task }) => rowInstanceKey(day.key, task.id)));
 		const afterEntry = days
 			.slice(
@@ -343,12 +364,18 @@ export function Timeline(props: TimelineProps) {
 			)
 			.filter((day) => !todayFocus || day.isToday)
 			.flatMap((day) => day.tasks.map(({ task }) => rowInstanceKey(day.key, task.id)));
-		focusRow(
-			memo,
-			memo.focusId !== undefined && memo.eligibleIds.includes(memo.focusId)
-				? memo.focusId
-				: (afterEntry[0] ?? memo.eligibleIds[0]),
-		);
+		const stop = memo.focusId;
+		if (stop !== undefined && memo.eligibleIds.includes(stop)) return focusRow(memo, stop, true);
+		// A focused stop row that leaves (completed, filtered, moved) hands focus to its nearest listed neighbour;
+		// a stop without focus goes back to the default, as the markup goldens record.
+		const neighbour =
+			stop === undefined || !memo.stopHadFocus
+				? undefined
+				: survivingNeighbour(previousEligible, stop, memo.eligibleIds);
+		focusRow(memo, neighbour ?? afterEntry[0] ?? memo.eligibleIds[0], true);
+		// Focus fell to the body with the detached stop row; never take it from anywhere else.
+		const active = root.current.ownerDocument.activeElement;
+		if (memo.stopHadFocus && (!active || active === root.current.ownerDocument.body)) memo.focusElement?.focus();
 	});
 
 	const styles = new Array<string>();
