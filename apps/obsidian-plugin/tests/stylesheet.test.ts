@@ -124,6 +124,16 @@ test("info-line touch targets keep their 44 px boxes inside the line on mobile",
 	);
 });
 
+test("a mobile row is at least one touch target tall, so neighbouring checkbox targets do not overlap", () => {
+	const rows = cssRules(readFileSync("styles.css", "utf8")).filter(({ selectors }) =>
+		selectors.flatMap(expandedSelectors).includes(".is-mobile .taskido .task"),
+	);
+	assert.ok(
+		rows.some(({ body }) => /(?:^|[;\s])min-height\s*:\s*var\(--tcw-touch-target\)\s*(?:;|$)/.test(body)),
+		"a one-line row (noInfo) must be as tall as the strip checkbox's target",
+	);
+});
+
 test("mobile rules do not change glyph sizes or the strip width", () => {
 	const rules = cssRules(readFileSync("styles.css", "utf8"));
 	for (const { selectors, body } of rules) {

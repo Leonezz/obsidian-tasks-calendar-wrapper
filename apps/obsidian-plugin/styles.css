@@ -599,6 +599,11 @@
 	display: inline-flex;
 }
 
+.is-mobile .taskido .task {
+	/* A one-line row (noInfo) is as tall as the checkbox's target, so neighbouring targets do not overlap. */
+	min-height: var(--tcw-touch-target);
+}
+
 .is-mobile .taskido .task .timeline label.icon {
 	margin-block: calc((var(--checkbox-size) - var(--tcw-touch-target)) / 2);
 	position: relative;
