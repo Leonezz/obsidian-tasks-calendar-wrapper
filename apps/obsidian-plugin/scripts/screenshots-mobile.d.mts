@@ -30,8 +30,14 @@ export type TouchTargetMeasurement = {
 
 /**
  * Standalone window function with only document as an external reference. Inside container's .taskido,
- * measure every match passing checkVisibility({ checkVisibilityCSS: true }); hit means the centre's
- * elementFromPoint result is the element or a descendant. Preserve target and selector-match order.
+ * measure every match passing checkVisibility({ checkVisibilityCSS: true }), preserving target order
+ * and one-based selector-match indices, including skipped hidden matches. Intersect its bounding rect
+ * with every ancestor's padding box up to and including document.documentElement, independently on
+ * each axis whose computed overflow is not visible (using document.defaultView.getComputedStyle).
+ * The padding box starts at rect.left/top + clientLeft/Top and spans clientWidth/Height; reported
+ * dimensions are clamped to zero. For a non-empty rect, hit requires elementFromPoint to return the
+ * element or a descendant at its centre, then top, right, bottom and left edge midpoints inset by 1 px.
+ * Stop at the first miss; an empty rect has hit false and makes no elementFromPoint calls.
  */
 export function collectTouchTargets(arg: {
 	container: string;
@@ -59,7 +65,10 @@ export function touchTargetProblems(
 	minimum?: number,
 ): TouchTargetProblem[];
 
-/** One line per problem and a final "Mobile touch targets: N problem(s)." summary; exitCode is 1 iff any. */
+/**
+ * One line per problem and a final "Mobile touch targets: N problem(s)." summary; exitCode is 1 iff any.
+ * Covered: "<state>: <target> #<index> is covered by another element at its centre or an edge".
+ */
 export function formatTouchTargetReport(
 	problems: readonly TouchTargetProblem[],
 	minimum?: number,

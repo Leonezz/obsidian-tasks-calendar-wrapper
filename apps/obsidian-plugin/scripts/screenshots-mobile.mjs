@@ -54,9 +54,37 @@ export function collectTouchTargets({ container, targets }) {
 	return targets.flatMap(({ name, selector }) =>
 		[...root.querySelectorAll(selector)].flatMap((element, index) => {
 			if (!element.checkVisibility({ checkVisibilityCSS: true })) return [];
-			const { left, top, width, height } = element.getBoundingClientRect();
-			const hit = document.elementFromPoint(left + width / 2, top + height / 2);
-			return [{ target: name, index: index + 1, width, height, hit: element.contains(hit) }];
+			let { left, top, right, bottom } = element.getBoundingClientRect();
+			for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+				const style = document.defaultView.getComputedStyle(ancestor);
+				if (style.overflowX === "visible" && style.overflowY === "visible") continue;
+				const rect = ancestor.getBoundingClientRect();
+				if (style.overflowX !== "visible") {
+					const paddingLeft = rect.left + ancestor.clientLeft;
+					left = Math.max(left, paddingLeft);
+					right = Math.min(right, paddingLeft + ancestor.clientWidth);
+				}
+				if (style.overflowY !== "visible") {
+					const paddingTop = rect.top + ancestor.clientTop;
+					top = Math.max(top, paddingTop);
+					bottom = Math.min(bottom, paddingTop + ancestor.clientHeight);
+				}
+			}
+			const width = Math.max(0, right - left);
+			const height = Math.max(0, bottom - top);
+			const x = left + width / 2;
+			const y = top + height / 2;
+			const hit =
+				width > 0 &&
+				height > 0 &&
+				[
+					[x, y],
+					[x, top + 1],
+					[right - 1, y],
+					[x, bottom - 1],
+					[left + 1, y],
+				].every(([x, y]) => element.contains(document.elementFromPoint(x, y)));
+			return [{ target: name, index: index + 1, width, height, hit }];
 		}),
 	);
 }
@@ -81,7 +109,7 @@ export function formatTouchTargetReport(problems, minimum = 44) {
 		const label = `${state}: ${target} #${index}`;
 		return reason === "size"
 			? `${label} is ${width}×${height} px, below ${minimum}`
-			: `${label} is covered by another element at its centre`;
+			: `${label} is covered by another element at its centre or an edge`;
 	});
 	lines.push(`Mobile touch targets: ${problems.length} problem${problems.length === 1 ? "" : "s"}.`);
 	return { lines, exitCode: problems.length ? 1 : 0 };

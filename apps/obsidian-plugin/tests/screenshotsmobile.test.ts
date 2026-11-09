@@ -248,7 +248,7 @@ test("the problem report names the state, target, index and size", () => {
 	assert.deepEqual(formatTouchTargetReport(problems), {
 		lines: [
 			`${stateName}: row menu #2 is 43×60 px, below 44`,
-			`${states[1]}: badge #3 is covered by another element at its centre`,
+			`${states[1]}: badge #3 is covered by another element at its centre or an edge`,
 			`${states[2]}: counter has no rendered element (required)`,
 			"Mobile touch targets: 3 problems.",
 		],

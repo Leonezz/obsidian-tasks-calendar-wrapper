@@ -93,6 +93,37 @@ test("every touch target gets --tcw-touch-target only under .is-mobile", () => {
 	}
 });
 
+test("info-line touch targets keep their 44 px boxes inside the line on mobile", () => {
+	const rules = cssRules(readFileSync("styles.css", "utf8"));
+	const problems: string[] = [];
+	for (const { selectors, body } of rules) {
+		for (const selector of selectors.flatMap(expandedSelectors)) {
+			if (
+				!selector.startsWith(".is-mobile ") ||
+				!/(?:a\.(?:menu|modify)\b|\.info > \.(?:tag|relative|repeat|priority|file)\b)/.test(selector)
+			)
+				continue;
+			for (const declaration of body.split(";")) {
+				const [name, value] = declaration.split(":").map((part) => part.trim());
+				if (name.startsWith("margin") && !/^0(?:\s+0){0,3}$/.test(value))
+					problems.push(`${selector}: ${name}: ${value} must use only zero margins`);
+			}
+		}
+	}
+	const strip = rules.filter(({ selectors }) =>
+		selectors.flatMap(expandedSelectors).includes(".is-mobile .taskido .task .timeline label.icon"),
+	);
+	if (!strip.some(({ body }) => /(?:^|[;\s])position\s*:\s*relative\s*(?:;|$)/.test(body)))
+		problems.push("the mobile strip label.icon must declare position: relative");
+	if (!strip.some(({ body }) => /(?:^|[;\s])z-index\s*:\s*[1-9]\d*\s*(?:;|$)/.test(body)))
+		problems.push("the mobile strip label.icon must declare a positive z-index");
+	assert.deepEqual(
+		problems,
+		[],
+		"mobile info targets must retain their boxes and the strip must stay above its line",
+	);
+});
+
 test("mobile rules do not change glyph sizes or the strip width", () => {
 	const rules = cssRules(readFileSync("styles.css", "utf8"));
 	for (const { selectors, body } of rules) {

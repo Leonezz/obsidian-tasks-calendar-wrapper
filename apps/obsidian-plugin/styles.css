@@ -568,7 +568,7 @@
 	transition: none;
 }
 
-/* Enlarge the controls themselves; matching margins retain the compact row spacing. */
+/* The info line grows on mobile; the other targets keep their layout box. */
 .is-mobile .taskido .task .timeline label.icon,
 .is-mobile .taskido .task a.menu,
 .is-mobile .taskido .task a.modify,
@@ -601,20 +601,12 @@
 
 .is-mobile .taskido .task .timeline label.icon {
 	margin-block: calc((var(--checkbox-size) - var(--tcw-touch-target)) / 2);
-}
-
-.is-mobile .taskido .task a.menu,
-.is-mobile .taskido .task a.modify {
-	margin-block: calc((1lh - var(--tcw-touch-target)) / 2);
-	margin-inline: calc((1em - var(--tcw-touch-target)) / 2);
+	position: relative;
+	z-index: 1;
 }
 
 .is-mobile .taskido .task .info > :is(.tag, .relative, .repeat, .priority, .file) {
-	padding-block: calc((var(--tcw-touch-target) - 15px) / 2);
-	margin-block: calc(2px + (15px - var(--tcw-touch-target)) / 2);
-	padding-inline: calc((var(--tcw-touch-target) - 12px) / 2);
-	margin-left: calc((12px - var(--tcw-touch-target)) / 2);
-	margin-right: calc(5px + (12px - var(--tcw-touch-target)) / 2);
+	margin-block: 0;
 }
 
 .is-mobile .taskido .todayHeader {
