@@ -101,9 +101,11 @@ class FakeMetadataCache extends Events {
 /** The timer of the module's start, which a test's mocked clock does not replace. */
 const realSetTimeout = setTimeout;
 
-/** What the workspace uses of a view opened in a leaf. */
+/** What the workspace uses to open, close and save a view in a leaf. */
 export interface LeafView {
 	getViewType(): string;
+	getState?(): Record<string, unknown>;
+	setState?(state: unknown, result: { history: boolean }): Promise<void>;
 	open?(): Promise<void>;
 	close?(): Promise<void>;
 }
@@ -149,14 +151,20 @@ export class FakeLeaf {
 		private readonly registry: FakeViewRegistry,
 	) {}
 
-	/** As in Obsidian: makes the view with the function registered for its type, then opens it. */
-	async setViewState(state: { type: string; active?: boolean }): Promise<void> {
+	/** Makes the registered view, opens it, then passes it the leaf's saved state. */
+	async setViewState(state: { type: string; active?: boolean; state?: unknown }): Promise<void> {
 		const creator = this.registry.creatorOf(state.type);
 		if (!creator) throw new Error(`no view type "${state.type}" is registered`);
 		await this.view?.close?.();
 		const view = creator(this);
 		this.view = view;
 		await view.open?.();
+		await view.setState?.(state.state ?? {}, { history: false });
+	}
+
+	/** The current view's type and state, or an empty leaf before a view opens. */
+	getViewState(): { type: string; state: Record<string, unknown> } {
+		return { type: this.view?.getViewType() ?? "empty", state: this.view?.getState?.() ?? {} };
 	}
 
 	/**
