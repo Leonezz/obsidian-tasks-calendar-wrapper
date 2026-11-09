@@ -725,17 +725,19 @@ export class Events {
 }
 
 /**
- * As Obsidian's Component: what is registered while it is loaded is undone, last first, when it unloads, and then
- * onunload runs. registerEvent registers taking the handler off again.
+ * As Obsidian's Component: loading runs onload then loads its children; unloading removes and unloads children,
+ * last first, then registered cleanups, then onunload. registerEvent registers taking the handler off again.
  */
 export class Component {
 	protected loaded = false;
+	private children: Component[] = [];
 	private cleanups: (() => unknown)[] = [];
 
 	load(): void | Promise<void> {
 		if (this.loaded) return;
 		this.loaded = true;
 		void this.onload();
+		for (const child of this.children) void child.load();
 	}
 
 	onload(): void | Promise<void> {}
@@ -743,6 +745,10 @@ export class Component {
 	unload(): void {
 		if (!this.loaded) return;
 		this.loaded = false;
+		for (let child = this.children.at(-1); child; child = this.children.at(-1)) {
+			this.children = this.children.slice(0, -1);
+			child.unload();
+		}
 		const cleanups = this.cleanups;
 		this.cleanups = [];
 		for (const cleanup of [...cleanups].reverse()) cleanup();
@@ -750,6 +756,18 @@ export class Component {
 	}
 
 	onunload(): void {}
+
+	addChild<T extends Component>(component: T): T {
+		this.children = [...this.children, component];
+		if (this.loaded) void component.load();
+		return component;
+	}
+
+	removeChild<T extends Component>(component: T): T {
+		this.children = this.children.filter((child) => child !== component);
+		component.unload();
+		return component;
+	}
 
 	register(cleanup: () => unknown): void {
 		this.cleanups = [...this.cleanups, cleanup];

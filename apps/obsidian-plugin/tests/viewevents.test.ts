@@ -253,21 +253,6 @@ test("a timeline closed before Obsidian's first resolved does not reload on it",
 	assert.equal(timeline.reloads(), 0);
 });
 
-test("a closed timeline hands the view task rows render with to another open one, or to none", async (t) => {
-	t.mock.timers.enable({ apis: ["setTimeout"] });
-	const vault = fakeVault(notes());
-	const first = await openTimeline(t, vault);
-	const second = await openTimeline(t, vault);
-	const third = await openTimeline(t, vault);
-	assert.equal(TasksTimelineView.view, third.view, "the last one created");
-	await first.close();
-	assert.equal(TasksTimelineView.view, third.view, "closing another one keeps it");
-	await third.close();
-	assert.equal(TasksTimelineView.view, second.view, "the one left open");
-	await second.close();
-	assert.equal(TasksTimelineView.view, null);
-});
-
 test("a note that cannot be read shows the Notice once, and its reason is logged on every reload", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const errors = t.mock.method(console, "error", () => {});

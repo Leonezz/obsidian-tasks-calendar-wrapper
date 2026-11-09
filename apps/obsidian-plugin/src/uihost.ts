@@ -11,7 +11,7 @@ export interface PluginUiHost extends UiHost {
 }
 
 export interface UiHostOptions {
-	/** The component that owns the renders: TasksTimelineView.view until step 17 gives each view its own. */
+	/** The component that owns the renders: the view's own child component, unloaded when the view closes. */
 	readonly owner: () => Component;
 	/** The detached element a render goes into; Obsidian's DOM in the app, a stand-in in the tests. */
 	readonly createElement?: () => HTMLElement;
