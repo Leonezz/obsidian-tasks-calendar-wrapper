@@ -1,4 +1,4 @@
-import { App, CachedMetadata, debounce, ItemView, WorkspaceLeaf } from "obsidian";
+import { App, CachedMetadata, Component, debounce, ItemView, WorkspaceLeaf } from "obsidian";
 import {
 	copy,
 	copyJsonValue,
@@ -43,7 +43,9 @@ export function timelineTaskIndex(app: App): SharedTaskIndex {
 
 export class TasksTimelineView extends ItemView {
 	private root?: Root;
-	private readonly uiHost: PluginUiHost = createUiHost({ owner: () => TasksTimelineView.view! });
+	/** The component that owns this view's row markdown renders; unloaded when the view closes. */
+	private readonly markdownOwner = this.addChild(new Component());
+	private readonly uiHost: PluginUiHost = createUiHost({ owner: () => this.markdownOwner });
 	/** The options, the tasks read last and the list shown, see TimelineState, which the bridge renders. */
 	private readonly store = createStore<TimelineState>(initialTimelineState());
 	/** Tasks belonging to the committed list, which can lag behind the store during a transition. */
@@ -106,7 +108,6 @@ export class TasksTimelineView extends ItemView {
 	/** The files that had tasks at the last reload. */
 	private filesWithTasks: ReadonlySet<string> = new Set();
 	private readonly requestReload = debounce(() => this.onReloadTasks(), RELOAD_DELAY_MS, true);
-	static view: TasksTimelineView | null = null;
 	constructor(
 		leaf: WorkspaceLeaf,
 		notes: ReaderSource,
@@ -118,8 +119,6 @@ export class TasksTimelineView extends ItemView {
 		this.undoNotices = createUndoNotices(writer, notices, { onWriteResult: this.onWriteResult });
 		this.stopWrites = writer.onWrite((event) => this.onWrite(event));
 		this.viewWriter = writer;
-
-		TasksTimelineView.view = this;
 	}
 
 	async onOpen(): Promise<void> {
@@ -186,16 +185,8 @@ export class TasksTimelineView extends ItemView {
 		if (!this.isReloading) this.reader.close();
 		// Runs the components' cleanup, so a reload that finishes after closing renders nothing.
 		this.root?.unmount();
-		// Task rows render their markdown with this static view as the owner. Hand it to another open
-		// timeline, so a closed view and its whole task list are not kept in memory.
-		if (TasksTimelineView.view === this) {
-			TasksTimelineView.view =
-				this.app.workspace
-					.getLeavesOfType(TIMELINE_VIEW)
-					.map((leaf) => leaf.view)
-					.find((view): view is TasksTimelineView => view instanceof TasksTimelineView && view !== this) ??
-				null;
-		}
+		// Unloads this view's markdown children, and only them.
+		this.removeChild(this.markdownOwner);
 	}
 
 	/** Only this view's own successful writes shift the targets it has already rendered. */

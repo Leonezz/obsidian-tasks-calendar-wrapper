@@ -1,7 +1,8 @@
-import { MarkdownRenderer, Platform } from "obsidian";
+import { Component, MarkdownRenderer, Platform } from "obsidian";
 import type { UiHost } from "@tasks-calendar-wrapper/ui";
-import { TasksTimelineView } from "../../src/views";
 import { moment } from "../../utils/moment";
+
+const testOwner = new Component();
 
 /** Uncached markdown and the test's existing clock, including tests without a DOM. */
 export const testHost: UiHost = {
@@ -12,7 +13,7 @@ export const testHost: UiHost = {
 	moment,
 	renderMarkdown(markdown, sourcePath) {
 		const el = { firstElementChild: null } as unknown as HTMLElement;
-		void MarkdownRenderer.renderMarkdown(markdown, el, sourcePath, TasksTimelineView.view!);
+		void MarkdownRenderer.renderMarkdown(markdown, el, sourcePath, testOwner);
 		return el.firstElementChild!.innerHTML;
 	},
 };

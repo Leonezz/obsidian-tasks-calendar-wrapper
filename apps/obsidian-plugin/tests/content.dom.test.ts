@@ -1,4 +1,4 @@
-// Pins row content markup, markdown render frequency, and the render owner across Content's move to packages/ui.
+// Pins row content markup, markdown render frequency, and the per-view render owner across Content's move to packages/ui.
 import "./golden-clock";
 import "./setup";
 
@@ -8,14 +8,10 @@ import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { HostContext, type UiHost, Content, type ContentProps } from "@tasks-calendar-wrapper/ui";
 import { MarkdownRenderer, Component } from "obsidian";
-import { TasksTimelineView } from "../src/views";
 import { defaultUserOptions } from "../src/useroptions";
-import { createTaskIndex } from "../timeline/src/taskindex";
-import { moment } from "../utils/moment";
-import { parseKeyOf } from "../utils/parsekey";
 import { mountView } from "./component-harness";
 import { metadataOf } from "./fakevault";
-import { notesApp, unusedNotices, unusedWriter } from "./view-harness";
+import { notesApp } from "./view-harness";
 
 type RenderCall = { sourcePath: string; markdown: string; owner: Component };
 
@@ -163,31 +159,6 @@ test("content renders markdown once per display change", async (t) => {
 		assert.ok(target, selector);
 		await act(() => target.click());
 		assert.equal(calls.length - before, 0, operation);
-	}
-});
-
-test("rows render their markdown with the static view as the owner", async (t) => {
-	const { calls } = mockMarkdown(t);
-	const notes = { "Content/Owner.md": "- [ ] Original task" };
-	const app = notesApp(notes);
-	const fixture = await mountView(t, { app });
-	const index = createTaskIndex({ app: app as never, moment, parseKey: () => parseKeyOf(moment) });
-	const other = new TasksTimelineView({ app } as never, index, unusedWriter, unusedNotices);
-	try {
-		assert.equal(TasksTimelineView.view, other);
-		const before = calls.length;
-		notes["Content/Owner.md"] = "- [ ] Changed owner task";
-		fixture.edited("Content/Owner.md");
-		await fixture.reload();
-		assert.equal(calls.length - before, 1);
-		const call = calls[before];
-		assert.equal(call.sourcePath, "Content/Owner.md");
-		assert.equal(call.markdown, "Changed owner task");
-		assert.equal(call.owner, TasksTimelineView.view);
-		assert.equal(call.owner, other);
-		assert.notEqual(call.owner, fixture.view);
-	} finally {
-		await other.onClose();
 	}
 });
 
