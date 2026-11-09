@@ -8,6 +8,13 @@ import { act, createElement, Profiler, type ContextType } from "react";
 import { providerValues, QuickEntryHandlerContext } from "@tasks-calendar-wrapper/ui";
 import TasksCalendarWrapper from "../src/main";
 import type { UserOption } from "../src/useroptions";
+import {
+	createViewSession,
+	createViewState,
+	onLoadViewState,
+	restoredViewState,
+	savedViewState,
+} from "../src/state/viewstate";
 import { TasksTimelineView, TIMELINE_VIEW } from "../src/views";
 import { onTimelineRender } from "./component-harness";
 import { fakeVault, type FakeLeaf } from "./fakevault";
@@ -435,6 +442,115 @@ test("getState holds exactly v, session, counter and todayFocus", async (t) => {
 	const otherSession = other.view.getState().session;
 	assert.ok(typeof otherSession === "string" && otherSession.length > 0, "the other plugin has a session id");
 	assert.notEqual(otherSession, firstState.session, "each plugin instance owns a different session");
+});
+
+// Brief-derived: action identities, immutable snapshots and the saved-state boundary.
+test("view state actions keep their identity and change only what they name", () => {
+	const initial = Object.freeze(onLoadViewState({ defaultFilters: "todo", defaultTodayFocus: false }));
+	assert.deepEqual(initial, { counter: "todo", todayFocus: false }, "On Load preserves the raw counter string");
+	const handle = createViewState(initial);
+	const { actions, store } = handle;
+	const methods = { ...actions };
+	assert.ok(Object.isFrozen(actions), "the actions object is frozen");
+	let changes = 0;
+	const unsubscribe = store.subscribe(() => changes++);
+	const unchanged = (action: () => void) => {
+		const before = store.getSnapshot();
+		const count = changes;
+		action();
+		assert.strictEqual(store.getSnapshot(), before, "a no-op keeps the snapshot");
+		assert.equal(changes, count, "a no-op does not notify listeners");
+	};
+	const changed = (action: () => void, expected: ReturnType<typeof store.getSnapshot>) => {
+		const before = store.getSnapshot();
+		const saved = structuredClone(before);
+		const count = changes;
+		action();
+		assert.notStrictEqual(store.getSnapshot(), before, "an action creates a new snapshot");
+		assert.deepEqual(before, saved, "the previous snapshot is unchanged");
+		assert.deepEqual(store.getSnapshot(), expected);
+		assert.equal(changes, count + 1, "one changed snapshot notifies once");
+	};
+	unchanged(() => actions.clearQuickFilter());
+	unchanged(() => actions.setQuickFilter(undefined));
+	unchanged(() => actions.restore(initial));
+	const filter = Object.freeze({ from: "2026-01-14", to: "2026-01-16", priorities: Object.freeze(["High"]) });
+	changed(() => actions.setQuickFilter(filter), { ...initial, quickFilter: filter });
+	unchanged(() => actions.setQuickFilter({ ...filter, priorities: [...filter.priorities] }));
+	assert.strictEqual(store.getSnapshot().quickFilter, filter, "an equal filter keeps the original object");
+	changed(() => actions.toggleCounter("todo"), { counter: "todoFilter", todayFocus: false, quickFilter: filter });
+	assert.deepEqual(initial, { counter: "todo", todayFocus: false }, "the initial value is not mutated");
+	for (const id of ["todo", "overdue", "unplanned"] as const) {
+		if (id !== "todo") {
+			changed(() => actions.toggleCounter(id), {
+				counter: `${id}Filter`,
+				todayFocus: false,
+				quickFilter: filter,
+			});
+		}
+		changed(() => actions.toggleCounter(id), { counter: "", todayFocus: false, quickFilter: filter });
+	}
+	changed(() => actions.toggleTodayFocus(), { counter: "", todayFocus: true, quickFilter: filter });
+	changed(() => actions.toggleTodayFocus(), { counter: "", todayFocus: false, quickFilter: filter });
+	changed(() => actions.restore({ counter: "todoFilter ", todayFocus: true }), {
+		counter: "todoFilter ",
+		todayFocus: true,
+		quickFilter: filter,
+	});
+	assert.strictEqual(store.getSnapshot().quickFilter, filter, "restore preserves the quick filter object");
+	unchanged(() => actions.restore({ counter: "todoFilter ", todayFocus: true }));
+	const replacement = Object.freeze({ priorities: Object.freeze(["Low"]) });
+	changed(() => actions.setQuickFilter(replacement), {
+		counter: "todoFilter ",
+		todayFocus: true,
+		quickFilter: replacement,
+	});
+	changed(() => actions.clearQuickFilter(), { counter: "todoFilter ", todayFocus: true, quickFilter: undefined });
+	unchanged(() => actions.clearQuickFilter());
+	unchanged(() => actions.setQuickFilter(undefined));
+	assert.strictEqual(handle.actions, actions, "the actions handle keeps its identity");
+	for (const name of Object.keys(methods) as (keyof typeof methods)[])
+		assert.strictEqual(actions[name], methods[name]);
+	unsubscribe();
+
+	const session = createViewSession("unit-session");
+	assert.equal(session.id, "unit-session", "the session id is injectable");
+	assert.equal(session.lastClosed(), undefined);
+	const closed = { counter: "overdueFilter", todayFocus: false };
+	session.recordClosed(closed);
+	assert.deepEqual(session.lastClosed(), closed);
+	assert.notStrictEqual(session.lastClosed(), closed, "last closed is a copy");
+	assert.ok(Object.isFrozen(session.lastClosed()), "the remembered state is frozen");
+	session.recordClosed({ counter: "", todayFocus: true });
+	assert.deepEqual(
+		session.lastClosed(),
+		{ counter: "", todayFocus: true },
+		"the latest close replaces the previous one",
+	);
+	assert.equal(createViewSession("another-session").lastClosed(), undefined, "sessions do not share last closed");
+	const valid = { v: 1, session: session.id, counter: "todoFilter ", todayFocus: true };
+	assert.deepEqual(savedViewState({ ...store.getSnapshot(), quickFilter: filter }, session), valid);
+	for (const raw of [valid, { ...valid, quickFilter: filter }, { ...valid, counter: "", todayFocus: false }]) {
+		assert.deepEqual(restoredViewState(raw, session), { counter: raw.counter, todayFocus: raw.todayFocus });
+	}
+	for (const raw of [
+		undefined,
+		null,
+		[],
+		{},
+		"x",
+		42,
+		true,
+		{ ...valid, v: 2 },
+		{ ...valid, v: "1" },
+		{ ...valid, session: "other" },
+		{ ...valid, session: undefined },
+		{ ...valid, counter: undefined },
+		{ ...valid, counter: 3 },
+		{ ...valid, todayFocus: undefined },
+		{ ...valid, todayFocus: "yes" },
+	])
+		assert.equal(restoredViewState(raw, session), undefined, `invalid saved state ${JSON.stringify(raw)}`);
 });
 
 // Brief-derived: a filter clear and the written list must be visible in the same commit.

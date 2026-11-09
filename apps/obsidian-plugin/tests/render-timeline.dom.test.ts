@@ -148,8 +148,7 @@ test("unchanged options keep provider values", async (t) => {
 		"C.md": "- [ ] gamma 📅 2026-01-27",
 	});
 	const before = providerValues();
-	for (const name of ["QuickEntryHandlerContext", "TodayFocusEventHandlersContext", "UserOptionContext"] as const)
-		assert.ok(before[name], name);
+	for (const name of ["QuickEntryHandlerContext", "ViewActions"] as const) assert.ok(before[name], name);
 	resetRenderCounts();
 	await act(async () => {
 		await opened.view.onUpdateOptions(structuredClone(opened.store.getSnapshot().options));
@@ -157,7 +156,7 @@ test("unchanged options keep provider values", async (t) => {
 	const after = providerValues();
 	assert.equal(rendersOf("TaskItemView"), 0);
 	assert.equal(rendersOf("DateView"), 0);
-	for (const name of ["QuickEntryHandlerContext", "TodayFocusEventHandlersContext", "UserOptionContext"] as const)
+	for (const name of ["QuickEntryHandlerContext", "ViewActions"] as const)
 		assert.strictEqual(after[name], before[name], name);
 });
 
@@ -208,12 +207,12 @@ test("changed counts update the entry while its counter and focus handlers still
 	const unplanned = container.querySelector<HTMLElement>("#unplanned");
 	const todo = container.querySelector<HTMLElement>("#todo");
 	assert.ok(timeline && focus && unplanned && todo);
-	const before = providerValues().TodayFocusEventHandlersContext;
+	const before = providerValues().ViewActions;
 	await act(() => focus.click());
 	assert.ok(timeline.classList.contains("todayFocus"));
 	await act(() => focus.click());
 	assert.ok(!timeline.classList.contains("todayFocus"));
-	assert.strictEqual(providerValues().TodayFocusEventHandlersContext, before);
+	assert.strictEqual(providerValues().ViewActions, before);
 	await act(() => unplanned.click());
 	assert.ok(timeline.classList.contains("unplannedFilter"));
 	assert.equal(container.querySelectorAll(".task").length, 0);

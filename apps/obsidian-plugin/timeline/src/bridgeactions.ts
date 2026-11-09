@@ -20,6 +20,7 @@ import type { UiHost } from "@tasks-calendar-wrapper/ui";
 import isEqual from "underscore/modules/isEqual.js";
 import { createResolveEnv } from "../../src/state/resolveenv";
 import { initialTimelineState, type TimelineState } from "../../src/state/timeline";
+import type { ViewStateHandle } from "../../src/state/viewstate";
 import { UserOption } from "../../src/useroptions";
 import { ConfirmModal } from "../../src/confirm-modal";
 import { openNoteAt } from "../../src/open-note";
@@ -50,6 +51,7 @@ const defaultObsidianBridgeProps = {
 };
 export type BridgeProps = Readonly<typeof defaultObsidianBridgeProps> & {
 	readonly host: UiHost;
+	readonly viewState: ViewStateHandle;
 	readonly writer: Pick<TaskWriter, "insert" | "write" | "editInTasksDialog" | "refuseIfNotReread">;
 	readonly ledger?: ShiftLedger;
 	readonly pendingWrites?: PendingWrites;
@@ -148,11 +150,12 @@ export function createBridgeActions(
 	let taskItemHandlers: TaskItemHandlers | undefined;
 	let quickEntryHandlers: QuickEntryHandlers | undefined;
 	const actions: BridgeActions = {
-		/** Shows the tasks read last, without the quick filter, as adding a task through the quick entry always did. */
+		/** The quick filter clear and the new list render together when quick entry adds a task. */
 		onUpdateTasks() {
+			props.viewState.actions.clearQuickFilter();
 			setState(() => {
 				const snap = props.store.getSnapshot();
-				return { tasks: snap.tasks, reloadId: snap.reloadId, quickFilter: undefined };
+				return { tasks: snap.tasks, reloadId: snap.reloadId };
 			});
 		},
 
@@ -167,9 +170,7 @@ export function createBridgeActions(
 				!startDate && !endDate && priorities.length === 0 && tags.length === 0
 					? undefined
 					: quickFilterOf(startDate, endDate, priorities, tags);
-			setState((state) => ({
-				quickFilter: isEqual(state.quickFilter, quickFilter) ? state.quickFilter : quickFilter,
-			}));
+			props.viewState.actions.setQuickFilter(quickFilter);
 		},
 
 		async handleCreateNewTask(path: string, append: string): Promise<boolean> {

@@ -4,7 +4,7 @@ import type { TimelineProps } from "./timeline/Timeline";
 import type { ListChangeClock } from "./clickguard";
 
 type ComponentName = "TaskItemView" | "DateView";
-type ProviderName = "QuickEntryHandlerContext" | "TodayFocusEventHandlersContext" | "UserOptionContext";
+type ProviderName = "QuickEntryHandlerContext" | "ViewActions";
 
 const counts: Record<ComponentName, number> = { TaskItemView: 0, DateView: 0 };
 const days: string[] = [];

@@ -1,4 +1,4 @@
-import { App, CachedMetadata, Component, debounce, ItemView, WorkspaceLeaf } from "obsidian";
+import { App, CachedMetadata, Component, debounce, ItemView, type ViewStateResult, WorkspaceLeaf } from "obsidian";
 import {
 	copy,
 	copyJsonValue,
@@ -26,7 +26,15 @@ import { parseKeyOf } from "../utils/parsekey";
 import { changeAffectsTasks } from "../utils/refresh";
 import { createResolveEnv } from "./state/resolveenv";
 import { heldOf, initialTimelineState, type TimelineState, withOptions, withReload } from "./state/timeline";
-import { UserOption } from "./useroptions";
+import {
+	createViewSession,
+	createViewState,
+	onLoadViewState,
+	restoredViewState,
+	savedViewState,
+	type ViewSession,
+} from "./state/viewstate";
+import { defaultUserOptions, UserOption } from "./useroptions";
 import { createUiHost, type PluginUiHost } from "./uihost";
 
 export const TIMELINE_VIEW = "tasks_timeline_view";
@@ -48,6 +56,10 @@ export class TasksTimelineView extends ItemView {
 	private readonly uiHost: PluginUiHost = createUiHost({ owner: () => this.markdownOwner });
 	/** The options, the tasks read last and the list shown, see TimelineState, which the bridge renders. */
 	private readonly store = createStore<TimelineState>(initialTimelineState());
+	/** Placeholder controls until onOpen seeds them from the session or the factory's options. */
+	private readonly viewState = createViewState(onLoadViewState(defaultUserOptions));
+	/** A same-session restore before onOpen takes precedence over its seed. */
+	private restoredBeforeOpen = false;
 	/** Tasks belonging to the committed list, which can lag behind the store during a transition. */
 	private shownTasks = this.store.getSnapshot().tasks;
 	/** A concurrent mount can commit an older snapshot after pre-mount reloads already cleared. */
@@ -113,6 +125,8 @@ export class TasksTimelineView extends ItemView {
 		notes: ReaderSource,
 		private readonly writer: TaskWriter,
 		notices: Pick<NoticePresenter, "undo">,
+		/** A view made outside the plugin has its own session and opens with On Load values. */
+		private readonly session: ViewSession = createViewSession(),
 	) {
 		super(leaf);
 		this.reader = notes.openReader();
@@ -151,11 +165,16 @@ export class TasksTimelineView extends ItemView {
 		container.empty();
 		this.root = createRoot(container);
 		this.uiHost.clearMarkdownCache();
+		if (!this.restoredBeforeOpen)
+			this.viewState.actions.restore(
+				this.session.lastClosed() ?? onLoadViewState(this.store.getSnapshot().options),
+			);
 		this.root.render(
 			<ObsidianBridge
 				plugin={this}
 				host={this.uiHost}
 				store={this.store}
+				viewState={this.viewState}
 				resolveEnv={this.resolveEnv}
 				writer={this.viewWriter}
 				ledger={this.ledger}
@@ -168,6 +187,8 @@ export class TasksTimelineView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		const { counter, todayFocus } = this.viewState.store.getSnapshot();
+		this.session.recordClosed({ counter, todayFocus });
 		this.requestReload.cancel();
 		this.stopWrites();
 		this.undoNotices.close();
@@ -187,6 +208,19 @@ export class TasksTimelineView extends ItemView {
 		this.root?.unmount();
 		// Unloads this view's markdown children, and only them.
 		this.removeChild(this.markdownOwner);
+	}
+
+	getState(): Record<string, unknown> {
+		return savedViewState(this.viewState.store.getSnapshot(), this.session);
+	}
+
+	async setState(state: unknown, result: ViewStateResult): Promise<void> {
+		const restored = restoredViewState(state, this.session);
+		if (restored) {
+			this.viewState.actions.restore(restored);
+			this.restoredBeforeOpen = true;
+		}
+		await super.setState(state, result);
 	}
 
 	/** Only this view's own successful writes shift the targets it has already rendered. */

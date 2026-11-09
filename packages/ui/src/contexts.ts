@@ -13,9 +13,27 @@ export function useHost(): UiHost {
 	return host;
 }
 
-export const TodayFocusEventHandlersContext = React.createContext({
-	handleTodayFocusClick: () => {},
+/** Per-view filters; counter keeps the raw filter string, with "" for none. */
+export interface ViewState {
+	readonly counter: string;
+	readonly todayFocus: boolean;
+	readonly quickFilter?: QuickFilter;
+}
+
+/** The counters a timeline can toggle. */
+export type CounterId = "todo" | "overdue" | "unplanned";
+
+/** Constant actions shared by a view's controls. */
+export interface ViewActions {
+	toggleTodayFocus(): void;
+	toggleCounter(id: CounterId): void;
+}
+
+export const ViewActionsContext = React.createContext<ViewActions>({
+	toggleTodayFocus: () => {},
+	toggleCounter: () => {},
 });
+ViewActionsContext.displayName = "ViewActions";
 
 export const RowDayKeyContext = React.createContext("");
 
@@ -71,13 +89,4 @@ export const QuickEntryHandlerContext = React.createContext<{
 	handleCreateNewTask: async (filePath: string, content: string) => false,
 	handleFilterEnable: (startDate: string | undefined, enddate: string | undefined, priorities: string[]) => {},
 	quickFilter: undefined,
-});
-
-export const UserOptionContext = React.createContext({
-	taskFiles: [] as string[],
-	select: "" as string,
-	dateFormat: "YYYY-MM-DD" as string,
-	tagPalette: {} as Record<string, string>,
-	hideTags: [] as string[],
-	useBuiltinStyle: true as boolean,
 });
