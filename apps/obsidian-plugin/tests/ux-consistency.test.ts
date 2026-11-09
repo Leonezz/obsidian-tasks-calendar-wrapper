@@ -191,10 +191,18 @@ describe("Visual", () => {
 
 // 平台 (l.235–237) | 移动端可用但未专门适配 | 定义移动端的最小可用范围（触控区域、无悬停交互），移动端继续支持
 describe("Platform", () => {
-	// Phase 4 step 16: set and verify the mobile target size.
-	it.todo("mobile touch targets are at least 44 px");
-	// Phase 4 step 16: expose every mobile action without hover.
-	it.todo("mobile interactions have no hover-only effects");
+	// Phase 4 step 16: mobile CSS and screenshot measurements enforce the target size.
+	it("mobile touch targets are at least 44 px", () => {
+		coveredBy("tests/stylesheet.test.ts", "every touch target gets --tcw-touch-target only under .is-mobile");
+		coveredBy(
+			"tests/screenshotsmobile.test.ts",
+			"a target below 44 px in either dimension fails the mobile profile",
+		);
+	});
+	// Phase 4 step 16: hover is gated; packages/ui/tests/mobile.dom.test.ts pins the touch menu and names.
+	it("mobile interactions have no hover-only effects", () => {
+		coveredBy("tests/stylesheet.test.ts", "every :hover rule is inside @media (hover: hover)");
+	});
 });
 
 // 可访问性 (l.238–240) | 图标按钮没有统一的标签与键盘操作 | 按钮带 aria-label，任务行可用键盘切换完成

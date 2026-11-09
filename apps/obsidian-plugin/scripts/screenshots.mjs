@@ -70,6 +70,14 @@ import {
 import { comparePngs, decodePng, encodePng, screenshotVerdict } from "./png.mjs";
 import { abExitCode, abReport, compareArms, firstDifference, parseScreenshotArgs } from "./screenshots-ab.mjs";
 import {
+	collectTouchTargets,
+	formatTouchTargetReport,
+	MOBILE_WIDTH,
+	mobilePlan,
+	TOUCH_TARGETS,
+	touchTargetProblems,
+} from "./screenshots-mobile.mjs";
+import {
 	collectStyles,
 	ROOT_CUSTOM_PROPERTIES,
 	serializeStyles,
@@ -357,8 +365,8 @@ function setViewport(cli, height) {
  * Captures the whole timeline: starting from a short page, which the timeline overflows, the page grows until the
  * timeline is not scrolled. Starting short every time makes the size depend only on the timeline.
  */
-function capture(cli) {
-	let box = setViewport(cli, MIN_HEIGHT);
+function capture(cli, viewport = setViewport, beforeScreenshot = () => {}) {
+	let box = viewport(cli, MIN_HEIGHT);
 	for (let attempt = 0; box.scrollHeight > box.clientHeight; attempt++) {
 		if (attempt === 3) throw new ScriptError(`the timeline does not fit the page: ${JSON.stringify(box)}`);
 		const height = Math.ceil(box.y + box.scrollHeight + box.below);
@@ -366,7 +374,7 @@ function capture(cli) {
 			throw new ScriptError(
 				`the timeline is ${box.scrollHeight} px high, more than the ${MAX_HEIGHT} px a screenshot can take.`,
 			);
-		box = setViewport(cli, height);
+		box = viewport(cli, height);
 	}
 	// Once, right after a change of the page size, the timeline measured 0 px wide; it is measured again then.
 	for (let attempt = 0; !(box.width >= 1 && box.height >= 1); attempt++) {
@@ -381,6 +389,7 @@ function capture(cli) {
 		height: Math.round(box.height),
 		scale: 1,
 	};
+	beforeScreenshot();
 	const { data } = cli.cdp("Page.captureScreenshot", { format: "png", clip, captureBeyondViewport: false });
 	if (!data) throw new ScriptError("Page.captureScreenshot returned no image.");
 	return Buffer.from(data, "base64");
@@ -480,8 +489,8 @@ function compareVisible(outDir, name) {
 	return expected === actual ? null : `what is displayed changed, first at ${firstDifference(expected, actual)}`;
 }
 
-function comparePng(outDir, name) {
-	const expectedFile = path.join(baselineDir, `${name}.png`);
+function comparePng(outDir, name, expectedDir = baselineDir) {
+	const expectedFile = path.join(expectedDir, `${name}.png`);
 	if (!existsSync(expectedFile)) return missingPngBaseline(name);
 	const expectedBytes = readFileSync(expectedFile);
 	const actualBytes = readFileSync(path.join(outDir, `${name}.png`));
@@ -847,6 +856,228 @@ function environment(cli, prepared) {
 	};
 }
 
+const mobileBaselineDir = path.join(baselineDir, "mobile");
+const mobileManifestFile = path.join(mobileBaselineDir, "mobile.json");
+const mobileReloadMessage =
+	"the Obsidian window reloaded after app.emulateMobile(true); mobile screenshots stopped. Check golden-vault's layout, restricted mode and appearance in Obsidian, then rerun --profile=mobile once mobile emulation can keep the prepared window open.";
+
+/** A reload loses the fixture's saved clock and layout; never take a state from that window. */
+function mobileWindow(cli) {
+	const check = () => {
+		if (!window.__tcwFixtureSaved) throw new Error("the Obsidian window reloaded");
+		if (!document.body.classList.contains("is-mobile"))
+			throw new Error("app.emulateMobile(true) did not leave the window in mobile mode");
+		return true;
+	};
+	const guarded = (run) => {
+		try {
+			cli.evaluate(check);
+			return run();
+		} catch (error) {
+			if (/reload|disappeared/i.test(error.message)) throw new ScriptError(mobileReloadMessage);
+			throw error;
+		}
+	};
+	return {
+		...cli,
+		evaluate: (...args) => guarded(() => cli.evaluate(...args)),
+		cdp: (...args) => guarded(() => cli.cdp(...args)),
+	};
+}
+
+function enableMobile(cli) {
+	try {
+		cli.evaluate(async () => {
+			await app.emulateMobile(true);
+			await new Promise((resolve) => setTimeout(resolve, 300));
+		});
+	} catch (error) {
+		if (/reload|disappeared/i.test(error.message)) throw new ScriptError(mobileReloadMessage);
+		throw error;
+	}
+	const mobile = mobileWindow(cli);
+	mobile.cdp("Emulation.setEmulatedMedia", {
+		features: [
+			{ name: "hover", value: "none" },
+			{ name: "pointer", value: "coarse" },
+		],
+	});
+	mobile.cdp("Emulation.setDeviceMetricsOverride", {
+		width: MOBILE_WIDTH,
+		height: MIN_HEIGHT,
+		deviceScaleFactor: 1,
+		mobile: true,
+	});
+	return mobile;
+}
+
+function disableMobile(cli) {
+	try {
+		cli.evaluate(async () => {
+			await app.emulateMobile(false);
+		});
+	} catch (error) {
+		// A reload while returning to desktop is safe after all fixture restoration has finished.
+		if (!/reload|disappeared/i.test(error.message)) throw error;
+	}
+	if (!cli.evaluate(() => !document.body.classList.contains("is-mobile")))
+		throw new ScriptError(
+			"app.emulateMobile(false) did not restore desktop mode; turn mobile emulation off in Obsidian.",
+		);
+}
+
+function setMobileViewport(cli, height) {
+	cli.cdp("Emulation.setDeviceMetricsOverride", {
+		width: MOBILE_WIDTH,
+		height,
+		deviceScaleFactor: 1,
+		mobile: true,
+	});
+	return cli.evaluate(timeline, { action: "measure", viewType: TIMELINE_VIEW });
+}
+
+/** Reach the same position, focus and counter states as desktop, measuring after capture sizes the page. */
+function takeMobileScreenshots(cli, plugin, outDir, only) {
+	const shots = {};
+	const problems = [];
+	let state = { position: null, todayFocus: false, counter: "none" };
+	for (const shot of mobilePlan(only)) {
+		if (state.position !== shot.position) {
+			plugin.writeSettings(quietSettings({ entryPosition: shot.position, counterBehavior: "Filter" }));
+			cli.evaluate(selectCssTheme, { cssTheme: THEMES.light.cssTheme });
+			cli.evaluate(timeline, {
+				action: "open",
+				viewType: TIMELINE_VIEW,
+				pluginId: manifest.id,
+				settleMs: SETTLE_AFTER_LOAD_MS,
+			});
+			cli.evaluate(timeline, { action: "theme", viewType: TIMELINE_VIEW, theme: THEMES.light.base });
+			state = { position: shot.position, todayFocus: false, counter: "none" };
+		}
+		if (state.todayFocus !== shot.todayFocus) {
+			cli.evaluate(timeline, { action: "click", viewType: TIMELINE_VIEW, label: TODAY_FOCUS });
+			state.todayFocus = shot.todayFocus;
+		}
+		if (state.counter !== shot.counter) {
+			const label = COUNTERS[shot.counter === "none" ? state.counter : shot.counter];
+			cli.evaluate(timeline, { action: "click", viewType: TIMELINE_VIEW, label });
+			state.counter = shot.counter;
+		}
+		unhover(cli);
+		let measurements;
+		const png = capture(cli, setMobileViewport, () => {
+			measurements = cli.evaluate(collectTouchTargets, {
+				container: `.workspace-leaf-content[data-type="${TIMELINE_VIEW}"] > .view-content`,
+				targets: TOUCH_TARGETS,
+			});
+			problems.push(...touchTargetProblems(shot.name, measurements));
+		});
+		writeFileSync(path.join(outDir, `${shot.name}.png`), png);
+		const { name, ...states } = shot;
+		const { width, height } = decodePng(png);
+		shots[name] = { ...states, png: { width, height }, touchTargets: measurements.length };
+		console.log(`screenshots: ${name} (${width}×${height}, ${measurements.length} touch targets)`);
+	}
+	return { shots, problems };
+}
+
+function updateMobileBaselines(outDir, shots, previous, env, build, only) {
+	mkdirSync(mobileBaselineDir, { recursive: true });
+	const changed = [];
+	for (const name of Object.keys(shots)) {
+		if (comparePng(outDir, name, mobileBaselineDir) === null) continue;
+		copyFileSync(path.join(outDir, `${name}.png`), path.join(mobileBaselineDir, `${name}.png`));
+		changed.push(name);
+	}
+	const kept = Object.fromEntries(Object.entries(previous?.shots ?? {}).filter(([name]) => !name.includes(only)));
+	for (const name of Object.keys(previous?.shots ?? {}))
+		if (name.includes(only) && !Object.hasOwn(shots, name))
+			rmSync(path.join(mobileBaselineDir, `${name}.png`), { force: true });
+	const record = {
+		note: "Taken by apps/obsidian-plugin/scripts/screenshots.mjs (`pnpm screenshots --profile=mobile --update`) after user approval. Do not edit by hand.",
+		...env,
+		takenAt: new Date().toISOString().slice(0, 10),
+		plugin: build,
+		shots: { ...kept, ...shots },
+	};
+	writeFileSync(mobileManifestFile, JSON.stringify(record, null, "\t") + "\n");
+	console.log(
+		`screenshots: recorded ${Object.keys(shots).length} mobile states; ${changed.length} PNG baselines changed in fixtures/screenshots/mobile.`,
+	);
+	return 0;
+}
+
+function finishMobile(outDir, shots, problems, env, build, only, update) {
+	const report = formatTouchTargetReport(problems);
+	for (const line of report.lines) console.log(line);
+	console.log(`screenshots: mobile PNGs from this run are in ${outDir}.`);
+	if (update && report.exitCode) {
+		console.log("screenshots: refusing to record mobile baselines while touch target problems exist.");
+		return 1;
+	}
+	const previous = existsSync(mobileManifestFile) ? JSON.parse(readFileSync(mobileManifestFile, "utf8")) : null;
+	if (previous) warnAboutSetup(previous, env, "the mobile baselines");
+	if (update) return updateMobileBaselines(outDir, shots, previous, env, build, only);
+	if (!previous) {
+		console.log(
+			"screenshots: there are no mobile baselines in fixtures/screenshots/mobile/. Record them with `pnpm screenshots --profile=mobile --update` only after the user approves these PNGs.",
+		);
+		return report.exitCode;
+	}
+	const names = new Set([
+		...Object.keys(shots),
+		...Object.keys(previous.shots).filter((name) => name.includes(only)),
+	]);
+	const differences = [];
+	for (const name of [...names].sort()) {
+		const problem = shots[name] ? comparePng(outDir, name, mobileBaselineDir) : "is no longer taken";
+		if (problem) differences.push(`${name}: ${problem}`);
+	}
+	for (const difference of differences) console.log(`screenshots: ${difference}`);
+	console.log(
+		differences.length
+			? `screenshots: ${differences.length} mobile states differ; PNGs and *.diff.png files are in ${outDir}.`
+			: `screenshots: all ${Object.keys(shots).length} mobile states match fixtures/screenshots/mobile.`,
+	);
+	return report.exitCode || (differences.length ? 1 : 0);
+}
+
+function runMobile(only, update) {
+	if (mobilePlan(only).length === 0) throw new ScriptError(`no mobile screenshot name contains "${only}".`);
+	const build = buildInfo();
+	const { cli, vaultPath } = screenshotVault();
+	if (!cli.evaluate(() => typeof app.emulateMobile === "function"))
+		throw new ScriptError(
+			"this Obsidian version has no app.emulateMobile; use a version with mobile emulation before running --profile=mobile.",
+		);
+	const outDir = mkdtempSync(path.join(os.tmpdir(), "tcw-screenshots-mobile-"));
+	const plugin = installPlugin(vaultPath, quietSettings());
+	const fixture = fixtureWindow(cli, VAULT_NAME, plugin);
+	let mobileAttempted = false;
+	const { shots, problems, env } = runAndUndo(() => {
+		backupAppearance(vaultPath);
+		const prepared = fixture.prepare();
+		mobileAttempted = true;
+		const mobile = enableMobile(cli);
+		const env = { ...environment(cli, prepared), viewportWidth: MOBILE_WIDTH };
+		const { shots, problems } = takeMobileScreenshots(mobile, plugin, outDir, only);
+		return { shots, problems, env: { ...env, ...appearances(mobile, shots, {}) } };
+	}, [
+		["clear the page size", () => cli.cdp("Emulation.clearDeviceMetricsOverride")],
+		["clear mobile hover and pointer emulation", () => cli.cdp("Emulation.setEmulatedMedia", { features: [] })],
+		["remove the style that hides the status bar", () => cli.evaluate(timeline, { action: "cleanup" })],
+		...fixture.undoSteps,
+		["restore appearance.json", () => restoreAppearance(cli, vaultPath)],
+		[
+			"turn mobile emulation off",
+			() => {
+				if (mobileAttempted) disableMobile(cli);
+			},
+		],
+	]);
+	return finishMobile(outDir, shots, problems, env, build, only, update);
+}
+
 await runScript("screenshots", async () => {
 	let args;
 	try {
@@ -854,7 +1085,8 @@ await runScript("screenshots", async () => {
 	} catch (error) {
 		throw new ScriptError(error.message);
 	}
-	const { mode, update, only, ab, themes } = args;
+	const { mode, update, only, ab, themes, profile } = args;
+	if (profile === "mobile") return runMobile(only, update);
 	if (mode === "pin-theme") return pinThemes();
 	const groups = plan(only, mode, themes);
 	if (groups.length === 0)

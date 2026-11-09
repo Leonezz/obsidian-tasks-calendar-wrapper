@@ -15,6 +15,10 @@
 	--tcw-focus-ring: 2px solid var(--interactive-accent);
 }
 
+.is-mobile .taskido {
+	--tcw-touch-target: 44px;
+}
+
 .taskido :is(.task, [role="button"], a.tag):focus-visible {
 	outline: var(--tcw-focus-ring);
 	outline-offset: 2px;
@@ -309,9 +313,11 @@
 	scale: 1.2;
 }
 
-.taskido .timeline .icon svg:hover {
-	color: var(--checkbox-border-color-hover);
-	scale: 1.3;
+@media (hover: hover) {
+	.taskido .timeline .icon svg:hover {
+		color: var(--checkbox-border-color-hover);
+		scale: 1.3;
+	}
 }
 
 .taskido .task .info {
@@ -503,9 +509,11 @@
 	margin: 2.5px 0;
 }
 
-.taskido .quickEntryPanel select:hover,
-.taskido .quickEntryPanel button:hover {
-	color: var(--text-normal);
+@media (hover: hover) {
+	.taskido .quickEntryPanel select:hover,
+	.taskido .quickEntryPanel button:hover {
+		color: var(--text-normal);
+	}
 }
 
 .taskido .quickEntryPanel select option,
@@ -558,6 +566,68 @@
 	border: none;
 	box-shadow: none;
 	transition: none;
+}
+
+/* Enlarge the controls themselves; matching margins retain the compact row spacing. */
+.is-mobile .taskido .task .timeline label.icon,
+.is-mobile .taskido .task a.menu,
+.is-mobile .taskido .task a.modify,
+.is-mobile .taskido .counter,
+.is-mobile .taskido .todayHeader,
+.is-mobile .taskido .task .info > :is(.tag, .relative, .repeat, .priority, .file),
+.is-mobile .taskido .quickEntryPanel :is(select, input, button),
+.is-mobile .taskido .tagFilterBar input {
+	min-height: var(--tcw-touch-target);
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.is-mobile .taskido .task .timeline label.icon,
+.is-mobile .taskido .task a.menu,
+.is-mobile .taskido .task a.modify,
+.is-mobile .taskido .todayHeader,
+.is-mobile .taskido .task .info > :is(.tag, .relative, .repeat, .priority, .file),
+.is-mobile .taskido .quickEntryPanel :is(select, input, button),
+.is-mobile .taskido .tagFilterBar input {
+	min-width: var(--tcw-touch-target);
+}
+
+.is-mobile .taskido .quickEntryPanel :is(select, input),
+.is-mobile .taskido .tagFilterBar input {
+	display: inline-flex;
+}
+
+.is-mobile .taskido .task .timeline label.icon {
+	margin-block: calc((var(--checkbox-size) - var(--tcw-touch-target)) / 2);
+}
+
+.is-mobile .taskido .task a.menu,
+.is-mobile .taskido .task a.modify {
+	margin-block: calc((1lh - var(--tcw-touch-target)) / 2);
+	margin-inline: calc((1em - var(--tcw-touch-target)) / 2);
+}
+
+.is-mobile .taskido .task .info > :is(.tag, .relative, .repeat, .priority, .file) {
+	padding-block: calc((var(--tcw-touch-target) - 15px) / 2);
+	margin-block: calc(2px + (15px - var(--tcw-touch-target)) / 2);
+	padding-inline: calc((var(--tcw-touch-target) - 12px) / 2);
+	margin-left: calc((12px - var(--tcw-touch-target)) / 2);
+	margin-right: calc(5px + (12px - var(--tcw-touch-target)) / 2);
+}
+
+.is-mobile .taskido .todayHeader {
+	margin-block: calc(10px - max(0px, (var(--tcw-touch-target) - 1lh) / 2));
+}
+
+.is-mobile .taskido .quickEntryPanel select {
+	height: auto;
+}
+
+.is-mobile .taskido .quickEntryPanel .right {
+	min-width: var(--tcw-touch-target);
+	flex-shrink: 0;
 }
 
 /* Classes */
@@ -650,8 +720,10 @@
 	background: var(--background-modifier-hover);
 }
 
-.taskido .task:hover {
-	background: var(--background-modifier-hover);
+@media (hover: hover) {
+	.taskido .task:hover {
+		background: var(--background-modifier-hover);
+	}
 }
 
 .tasks-calendar-wrapper-settings [hidden] {

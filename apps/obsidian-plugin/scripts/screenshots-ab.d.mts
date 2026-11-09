@@ -15,16 +15,23 @@ export type ScreenshotArgs = {
 	} | null;
 	/** --themes=default uses light and dark; --themes=all also uses Blue Topaz light and dark. */
 	themes: "default" | "all";
+	/** Present only for --profile=mobile; a desktop run parses to the same object as before profiles existed. */
+	profile?: "mobile";
 };
 
 /**
  * Parses --ab/--candidate/--report with a separate or = value, --any-base, --styles, --update, --only=<text>,
- * --themes=default|all and --pin-theme. Defaults to mode "screenshots", update false, only "", ab null and
- * themes "default"; --styles selects "styles", --ab selects "ab" and --pin-theme selects "pin-theme".
- * Unsupported arguments are rejected first, then --pin-theme combinations, invalid or conflicting --themes
+ * --themes=default|all, --profile=desktop|mobile and --pin-theme. Defaults to mode "screenshots", update false,
+ * only "", ab null, themes "default" and no profile (desktop); --styles selects "styles", --ab selects "ab" and
+ * --pin-theme selects "pin-theme". Mobile allows --only with --update, but rejects --ab, --styles,
+ * --themes=all and --pin-theme. Repeating the same profile is allowed; conflicting or invalid values fail.
+ * Unsupported arguments are rejected first, then profile values and mobile combinations, --pin-theme,
+ * invalid or conflicting --themes
  * values, missing A/B values or stray A/B options, and the remaining incompatible combinations.
  * Throws plain Errors with these exact messages:
- * - unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.
+ * - unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --profile=desktop|mobile, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.
+ * - --profile takes desktop or mobile; use only one profile value.
+ * - --profile=mobile cannot be combined with ${option}.
  * - --pin-theme takes no other option.
  * - --themes takes default or all, such as --themes=all.
  * - --themes was given twice with different values.
@@ -36,7 +43,8 @@ export type ScreenshotArgs = {
  * - leave out --styles, --ab compares styles already.
  * - --only cannot be combined with --update, which replaces all screenshots.
  * A missing value includes an empty = value or a following option. --only and --themes with separate values
- * stay unknown. Repeating the same --themes value is allowed; --pin-theme takes no other option, even --themes=default.
+ * stay unknown. Repeating the same --themes value is allowed; --pin-theme takes no other option except
+ * --profile=desktop, even --themes=default.
  */
 export function parseScreenshotArgs(argv: readonly string[]): ScreenshotArgs;
 

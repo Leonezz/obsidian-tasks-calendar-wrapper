@@ -191,7 +191,7 @@ test("an unknown argument is an error", () => {
 	] as const)
 		assert.throws(() => parseScreenshotArgs(args), {
 			name: "Error",
-			message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
+			message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --profile=desktop|mobile, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
 		});
 	assert.deepEqual(parseScreenshotArgs([]), {
 		mode: "screenshots",
@@ -239,7 +239,7 @@ test("--themes rejects any other value", () => {
 	] as const)
 		assert.throws(() => parseScreenshotArgs(args), {
 			name: "Error",
-			message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
+			message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --profile=desktop|mobile, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
 		});
 	for (const themes of [[], ["--themes=all"]])
 		assert.throws(() => parseScreenshotArgs([...themes, "--only=x", "--update"]), {
@@ -271,7 +271,7 @@ test("--pin-theme takes no other option", () => {
 	const unknown = ["--unknown"];
 	assert.throws(() => parseScreenshotArgs(["--pin-theme", "--update", ...unknown]), {
 		name: "Error",
-		message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
+		message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --profile=desktop|mobile, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
 	});
 });
 
