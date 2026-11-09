@@ -1,20 +1,28 @@
 /** Every rule of a stylesheet, inside at-rules too: its selectors, without the prefix that scopes them to the view. */
-export function cssRules(css: string): { selectors: string[]; body: string }[] {
+export function cssRules(css: string): { selectors: string[]; body: string; atRules?: string[] }[] {
 	const text = css.replace(/\/\*[\s\S]*?\*\//g, "");
-	const rules: { selectors: string[]; body: string }[] = [];
+	const rules: { selectors: string[]; body: string; atRules?: string[] }[] = [];
+	const atRules: string[] = [];
 	let prelude = "";
 	for (let i = 0; i < text.length; i++) {
 		const char = text[i];
 		if (char === "{") {
-			// An at-rule such as @media opens a block of rules, which are read as any other.
-			if (!prelude.trim().startsWith("@")) {
+			// Keep enclosing at-rules without adding a field to top-level rules.
+			if (prelude.trim().startsWith("@")) atRules.push(prelude.replace(/\s+/g, " ").trim());
+			else {
 				const end = text.indexOf("}", i);
-				rules.push({ selectors: selectorsOf(prelude), body: text.slice(i + 1, end) });
+				rules.push({
+					selectors: selectorsOf(prelude),
+					body: text.slice(i + 1, end),
+					...(atRules.length ? { atRules: [...atRules] } : {}),
+				});
 				i = end;
 			}
 			prelude = "";
-		} else if (char === "}") prelude = "";
-		else prelude += char;
+		} else if (char === "}") {
+			atRules.pop();
+			prelude = "";
+		} else prelude += char;
 	}
 	return rules;
 }
