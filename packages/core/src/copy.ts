@@ -5,6 +5,10 @@
  * An aria-label describes the action ("Complete task", not "✓"). Use emoji only for task syntax (📅 ⏫ 🔁),
  * never as a button's only label.
  * Enforced for settings from step 14; timeline enforcement follows in step 24.
+ *
+ * Mobile minimum: every interactive element has a 44 px tap target (--tcw-touch-target).
+ * Hover effects belong only inside @media (hover: hover). No long press: ⋯ opens the row menu on touch.
+ * The timeline strip stays 50 px wide.
  */
 
 /** Freeze every group, array and function once when the table loads. */

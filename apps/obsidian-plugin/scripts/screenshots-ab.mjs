@@ -8,6 +8,7 @@ export function parseScreenshotArgs(argv) {
 	const values = {};
 	const unknown = [];
 	const themeValues = [];
+	const profileValues = [];
 	let update = false;
 	let styles = false;
 	let pinTheme = false;
@@ -18,6 +19,7 @@ export function parseScreenshotArgs(argv) {
 		else if (arg === "--styles") styles = true;
 		else if (arg === "--pin-theme") pinTheme = true;
 		else if (arg.startsWith("--themes=")) themeValues.push(arg.slice("--themes=".length));
+		else if (arg.startsWith("--profile=")) profileValues.push(arg.slice("--profile=".length));
 		else if (arg === "--any-base") values[arg] = true;
 		else if (arg.startsWith("--only=")) only ??= arg.slice("--only=".length);
 		else {
@@ -37,8 +39,20 @@ export function parseScreenshotArgs(argv) {
 	}
 	if (unknown.length)
 		throw new Error(
-			`unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
+			`unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --profile=desktop|mobile, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
 		);
+	if (profileValues.some((value) => value !== "desktop" && value !== "mobile") || new Set(profileValues).size > 1)
+		throw new Error("--profile takes desktop or mobile; use only one profile value.");
+	const profile = profileValues[0] ?? "desktop";
+	if (profile === "mobile") {
+		const incompatible = [
+			[values["--ab"] !== undefined, "--ab"],
+			[styles, "--styles"],
+			[themeValues.includes("all"), "--themes=all"],
+			[pinTheme, "--pin-theme"],
+		].find(([present]) => present);
+		if (incompatible) throw new Error(`--profile=mobile cannot be combined with ${incompatible[1]}.`);
+	}
 	if (pinTheme && (update || styles || only !== undefined || themeValues.length || Object.keys(values).length))
 		throw new Error("--pin-theme takes no other option.");
 	if (themeValues.some((value) => value !== "default" && value !== "all"))
@@ -54,7 +68,8 @@ export function parseScreenshotArgs(argv) {
 		if (update) throw new Error("--ab compares two builds and records no baseline; leave out --update.");
 		if (styles) throw new Error("leave out --styles, --ab compares styles already.");
 	}
-	if (update && only) throw new Error("--only cannot be combined with --update, which replaces all screenshots.");
+	if (profile === "desktop" && update && only)
+		throw new Error("--only cannot be combined with --update, which replaces all screenshots.");
 	const ab =
 		values["--ab"] === undefined
 			? null
@@ -70,6 +85,7 @@ export function parseScreenshotArgs(argv) {
 		only: only ?? "",
 		ab,
 		themes: themeValues[0] ?? "default",
+		...(profile === "mobile" ? { profile } : {}),
 	};
 }
 
