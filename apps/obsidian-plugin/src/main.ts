@@ -20,10 +20,12 @@ import {
 	type Settings,
 	settingWarnings,
 } from "./state/settings";
+import { createViewSession } from "./state/viewstate";
 import { debounceOptionUpdates } from "../utils/refresh";
 
 export default class TasksCalendarWrapper extends Plugin {
 	private readonly settingsStore = createSettingsStore();
+	private readonly viewSession = createViewSession();
 	/** The notes the timelines read, shared, see SharedTaskIndex: made with the first timeline, gone after the last. */
 	private readonly taskIndex = timelineTaskIndex(this.app);
 	private readonly writerNotices = createNoticePresenter(this.app);
@@ -68,7 +70,7 @@ export default class TasksCalendarWrapper extends Plugin {
 		});
 		await this.loadOptions();
 		this.registerView(TIMELINE_VIEW, (leaf) => {
-			const view = new TasksTimelineView(leaf, this.taskIndex, this.writer, this.writerNotices);
+			const view = new TasksTimelineView(leaf, this.taskIndex, this.writer, this.writerNotices, this.viewSession);
 			view.onUpdateOptions(this.userOptions);
 			return view;
 		});

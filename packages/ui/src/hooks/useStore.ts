@@ -1,7 +1,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import type { Store } from "@tasks-calendar-wrapper/core";
 
-/** Settings and view state apply as urgent updates, as today. Callers pass stable select and isEqual functions. */
+/** Settings and view state apply as urgent updates, with the current selection on the server. Callers pass stable select and isEqual functions. */
 export function useStore<S, T = S>(
 	store: Store<S>,
 	select?: (state: S) => T,
@@ -18,5 +18,5 @@ export function useStore<S, T = S>(
 			return selection;
 		};
 	}, [store, select, isEqual]);
-	return useSyncExternalStore(store.subscribe, getSelection);
+	return useSyncExternalStore(store.subscribe, getSelection, getSelection);
 }

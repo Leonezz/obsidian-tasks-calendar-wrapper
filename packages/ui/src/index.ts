@@ -9,9 +9,11 @@ export {
 	QuickEntryHandlerContext,
 	RowWriteContext,
 	TaskItemEventHandlersContext,
-	TodayFocusEventHandlersContext,
-	UserOptionContext,
+	ViewActionsContext,
 	useHost,
+	type ViewState,
+	type ViewActions,
+	type CounterId,
 	type RowOverlay,
 	type RowOverlayStore,
 } from "./contexts";

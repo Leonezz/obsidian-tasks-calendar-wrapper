@@ -38,6 +38,7 @@ import { TasksTimelineView } from "../src/views";
 import type { PluginUiHost } from "../src/uihost";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import type { TimelineState } from "../src/state/timeline";
+import { createViewState, onLoadViewState, type ViewStateHandle } from "../src/state/viewstate";
 import { createTaskIndex, type ParseNote } from "../timeline/src/taskindex";
 import type { TaskWriter, WriteEvent } from "../timeline/src/taskwriter";
 import { moment } from "../utils/moment";
@@ -55,9 +56,10 @@ import { goldenApp, loadVault } from "./golden-vault";
 import { unusedNotices, unusedWriter } from "./view-harness";
 import { testHost } from "./stubs/host";
 
-/** testHost supplies the host for cases written before that prop existed. */
-export type BridgeProps = Omit<ActionBridgeProps, "host"> & {
+/** Supplies host and view-state defaults for cases written before those props existed. */
+export type BridgeProps = Omit<ActionBridgeProps, "host" | "viewState"> & {
 	readonly host?: UiHost;
+	readonly viewState?: ViewStateHandle;
 };
 
 /** The action harness keeps writable state and methods so tests can replace or spy on them. */
@@ -95,10 +97,18 @@ type BridgeOptions = { mode?: "sync" | "deferred"; mount?: boolean };
 export function bridgeActions(props: BridgeProps, options: BridgeOptions & { mode: "deferred" }): DeferredBridge;
 export function bridgeActions(props: BridgeProps, options?: BridgeOptions): BridgeHandle;
 export function bridgeActions(props: BridgeProps, { mode = "sync", mount = true }: BridgeOptions = {}): BridgeHandle {
-	// testHost is a test default for cases written before the host prop existed.
-	const bridgeProps = { ...props, host: props.host ?? testHost };
+	const bridgeProps = {
+		...props,
+		host: props.host ?? testHost,
+		viewState: props.viewState ?? createViewState(onLoadViewState(props.store.getSnapshot().options)),
+	};
 	let seen = bridgeProps.store.getSnapshot();
 	let unsubscribe: (() => void) | undefined;
+	let state: Omit<BridgeState, "quickFilter"> = {
+		userOptions: seen.options,
+		tasks: seen.tasks,
+		reloadId: seen.reloadId,
+	};
 	const bridge: BridgeActions & BridgeHandle = Object.assign(
 		createBridgeActions(
 			bridgeProps,
@@ -106,7 +116,7 @@ export function bridgeActions(props: BridgeProps, { mode = "sync", mount = true 
 			(update) => bridge.setState(update),
 		),
 		{
-			state: { userOptions: seen.options, tasks: seen.tasks, reloadId: seen.reloadId },
+			state,
 			props: bridgeProps,
 			setState: (update: Update) => {
 				const before = bridge.state;
@@ -131,6 +141,21 @@ export function bridgeActions(props: BridgeProps, { mode = "sync", mount = true 
 			unmount: () => unsubscribe?.(),
 		},
 	);
+	let lastState: typeof state | undefined;
+	let snapshot: BridgeState = state;
+	Object.defineProperty(bridge, "state", {
+		get: () => {
+			const quickFilter = bridgeProps.viewState.store.getSnapshot().quickFilter;
+			if (lastState !== state || snapshot.quickFilter !== quickFilter) {
+				lastState = state;
+				snapshot = { ...state, quickFilter };
+			}
+			return snapshot;
+		},
+		set: (next: BridgeState) => {
+			state = { userOptions: next.userOptions, tasks: next.tasks, reloadId: next.reloadId };
+		},
+	});
 	const apply = (update: Update) => {
 		bridge.state = {
 			...bridge.state,
@@ -197,6 +222,7 @@ export function mountBridge(props: BridgeProps) {
 	const element = createElement(wrapper.render as typeof ObsidianBridge, {
 		...props,
 		host: props.host ?? testHost,
+		viewState: props.viewState ?? createViewState(onLoadViewState(props.store.getSnapshot().options)),
 		handleRef: bridge,
 	});
 	return { element, bridge, bridgeState: () => bridge.current!.state };
@@ -273,6 +299,7 @@ export async function mountView(
 	const view = new TasksTimelineView({ app } as never, index, writer, unusedNotices);
 	const internals = view as unknown as {
 		store: Store<TimelineState>;
+		viewState: ViewStateHandle;
 		resolveEnv: BridgeProps["resolveEnv"];
 		uiHost: PluginUiHost;
 	};
@@ -283,6 +310,7 @@ export async function mountView(
 		plugin: view,
 		host: internals.uiHost,
 		store: internals.store,
+		viewState: internals.viewState,
 		resolveEnv: internals.resolveEnv,
 		writer: view.viewWriter,
 		ledger: view.ledger,
@@ -448,7 +476,7 @@ for (const key of ["jsx", "jsxs"] as const) {
 		return create(wrapper.render, ...args);
 	};
 }
-const providerNames = ["QuickEntryHandlerContext", "TodayFocusEventHandlersContext", "UserOptionContext"] as const;
+const providerNames = ["QuickEntryHandlerContext", "ViewActions"] as const;
 
 /** Counts function and memo renders through the stable JSX wrappers. */
 export function countRenders(t: TestContext) {

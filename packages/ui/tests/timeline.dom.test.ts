@@ -5,12 +5,13 @@ import { createRoot } from "react-dom/client";
 import {
 	createDailyNoteDateCache,
 	createResolvedTaskCache,
+	createStore,
 	taskRowModel,
 	type DateValue,
 	type MomentFactory,
 	type Task,
 } from "@tasks-calendar-wrapper/core";
-import { HostContext } from "../src/contexts";
+import { HostContext, type ViewActions, type ViewState } from "../src/contexts";
 import type { ListChangeClock } from "../src/clickguard";
 import type { UiHost } from "../src/host";
 import { onTimelineRender, providerValues } from "../src/renderprobe";
@@ -160,14 +161,36 @@ function timelineHarness(t: TestContext, parentLayout?: () => void) {
 		});
 		return createElement(Timeline, props);
 	}
+	const viewState = createStore<ViewState>({
+		counter: options.defaultFilters,
+		todayFocus: options.defaultTodayFocus,
+	});
+	const viewActions: ViewActions = {
+		toggleTodayFocus: () => viewState.setState((state) => ({ ...state, todayFocus: !state.todayFocus })),
+		toggleCounter: (id) =>
+			viewState.setState((state) => ({
+				...state,
+				counter: state.counter !== `${id}Filter` ? `${id}Filter` : "",
+			})),
+	};
+	let opened = false;
 	let props: TimelineProps = {
 		userOptions: options,
+		viewState,
+		viewActions,
 		tasks: [task(0), task(1, " ")],
 		queryEnv: (now) => ({ env: { now, moment, dateCache, taskCache } }),
 		taskRowModel: model,
 	};
 	const render = async (next: Partial<TimelineProps> = {}) => {
 		props = { ...props, ...next };
+		if (!opened) {
+			viewState.setState({
+				counter: props.userOptions.defaultFilters,
+				todayFocus: props.userOptions.defaultTodayFocus,
+			});
+			opened = true;
+		}
 		await act(() =>
 			root.render(createElement(HostContext.Provider, { value: host }, createElement(Parent, props))),
 		);
@@ -270,12 +293,10 @@ test("handlers and provider values keep their identity", async (t) => {
 	const timeline = timelineHarness(t);
 	await timeline.render();
 	const initial = providerValues();
-	assert.ok(initial.TodayFocusEventHandlersContext);
-	assert.ok(initial.UserOptionContext);
+	assert.ok(initial.ViewActions);
 	const sameProviders = () => {
 		const current = providerValues();
-		assert.equal(current.TodayFocusEventHandlersContext, initial.TodayFocusEventHandlersContext);
-		assert.equal(current.UserOptionContext, initial.UserOptionContext);
+		assert.equal(current.ViewActions, initial.ViewActions);
 	};
 	await timeline.click("#todo");
 	sameProviders();
@@ -284,8 +305,7 @@ test("handlers and provider values keep their identity", async (t) => {
 	await timeline.render({ userOptions: { ...options, hideTags: [], tagColorPalette: {}, taskFiles: ["Tasks.md"] } });
 	sameProviders();
 	await timeline.render({ userOptions: { ...options, hideTags: ["#hidden"] } });
-	assert.notEqual(providerValues().UserOptionContext, initial.UserOptionContext);
-	assert.equal(providerValues().TodayFocusEventHandlersContext, initial.TodayFocusEventHandlersContext);
+	assert.equal(providerValues().ViewActions, initial.ViewActions);
 });
 
 test("the open filter and focus come from the first render only", async (t) => {

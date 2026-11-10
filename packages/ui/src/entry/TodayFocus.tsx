@@ -1,20 +1,20 @@
 import * as React from "react";
 import { copy } from "@tasks-calendar-wrapper/core";
-import { TodayFocusEventHandlersContext } from "../contexts";
+import { ViewActionsContext } from "../contexts";
 
 export function TodayFocus({ visual }: { readonly visual: string }) {
-	const callback = React.useContext(TodayFocusEventHandlersContext);
+	const actions = React.useContext(ViewActionsContext);
 	return (
 		<div
 			className="todayHeader"
 			aria-label={copy.timeline.focusOnTodayAria}
 			role="button"
 			tabIndex={0}
-			onClick={callback.handleTodayFocusClick}
+			onClick={actions.toggleTodayFocus}
 			onKeyDown={(evt) => {
 				if (evt.key !== "Enter" && evt.key !== " ") return;
 				evt.preventDefault();
-				callback.handleTodayFocusClick();
+				actions.toggleTodayFocus();
 			}}
 		>
 			{visual}

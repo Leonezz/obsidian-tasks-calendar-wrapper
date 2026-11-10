@@ -808,6 +808,13 @@ export class ItemView extends Component {
 		await this.onClose();
 	}
 
+	/** Obsidian's View defaults: no saved state and no restore work. */
+	getState(): Record<string, unknown> {
+		return {};
+	}
+
+	async setState(_state: unknown, _result: unknown): Promise<void> {}
+
 	async onOpen(): Promise<void> {}
 
 	async onClose(): Promise<void> {}

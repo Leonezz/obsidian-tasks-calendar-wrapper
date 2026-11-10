@@ -19,15 +19,18 @@ import {
 	type RowOptions,
 	type TaskRowModel,
 	type Task,
+	type Store,
 } from "@tasks-calendar-wrapper/core";
 import {
 	RowWriteContext,
-	TodayFocusEventHandlersContext,
-	UserOptionContext,
+	ViewActionsContext,
 	rowInstanceKey,
 	useHost,
 	type RowOverlayStore,
+	type ViewState,
+	type ViewActions,
 } from "../contexts";
+import { useStore } from "../hooks/useStore";
 import { recordProvider, timelineRendered } from "../renderprobe";
 import { sameJsonValue } from "../sameJsonValue";
 import { Year } from "./Year";
@@ -63,6 +66,8 @@ export type TimelineOptions = ResolveSettings &
 
 export type TimelineProps = {
 	readonly userOptions: TimelineOptions;
+	readonly viewState: Store<ViewState>;
+	readonly viewActions: ViewActions;
 	readonly tasks: readonly Task[];
 	readonly pendingWrites?: RowOverlayStore;
 	readonly quickFilter?: QuickFilter;
@@ -85,6 +90,18 @@ function counterFilterOf(filter: string, behavior: string): CounterFilter {
 	return counterFilters.find((name) => classes.includes(name)) ?? "";
 }
 
+const selectCounter = (state: ViewState): string => state.counter;
+const selectTodayFocus = (state: ViewState): boolean => state.todayFocus;
+
+interface UserOptionValue {
+	readonly taskFiles: string[];
+	readonly select: string;
+	readonly dateFormat: string;
+	readonly tagPalette: Record<string, string>;
+	readonly hideTags: string[];
+	readonly useBuiltinStyle: boolean;
+}
+
 interface TimelineMemo {
 	readonly rowWrites: React.ContextType<typeof RowWriteContext>;
 	committedIds: readonly string[];
@@ -101,9 +118,8 @@ interface TimelineMemo {
 	readonly query: ReturnType<typeof createQuery>;
 	/** The options with the Filter behaviour, kept while the options are the same, see settingsFor. */
 	filtering?: { readonly options: TimelineOptions; readonly settings: TimelineOptions };
-	readonly todayHandlers: React.ContextType<typeof TodayFocusEventHandlersContext>;
 	readonly counterHandlers: Readonly<Record<"todo" | "overdue" | "unplanned", () => void>>;
-	userOptionValue?: React.ContextType<typeof UserOptionContext>;
+	userOptionValue?: UserOptionValue;
 	entry?: EntryProps;
 	tags?: { readonly tasks: readonly Task[]; readonly tags: readonly string[] };
 	rows?: {
@@ -155,11 +171,7 @@ function moveFocus(memo: TimelineMemo, id: string, key: string) {
 		memo.rowElements.get(memo.eligibleIds[next])?.focus();
 }
 
-function optionsFor(
-	memo: TimelineMemo,
-	options: TimelineOptions,
-	now: DateValue,
-): React.ContextType<typeof UserOptionContext> {
+function optionsFor(memo: TimelineMemo, options: TimelineOptions, now: DateValue): UserOptionValue {
 	const targets = quickEntryTargets(options, now);
 	const taskFiles =
 		memo.userOptionValue && sameJsonValue(memo.userOptionValue.taskFiles, targets)
@@ -280,8 +292,8 @@ function settingsFor(memo: TimelineMemo, options: TimelineOptions, counter: Coun
 
 export function Timeline(props: TimelineProps) {
 	const host = useHost();
-	const [filter, setFilter] = React.useState(() => props.userOptions.defaultFilters);
-	const [todayFocus, setTodayFocus] = React.useState(() => props.userOptions.defaultTodayFocus);
+	const counterFilterValue = useStore(props.viewState, selectCounter);
+	const todayFocus = useStore(props.viewState, selectTodayFocus);
 	const root = React.useRef<HTMLDivElement>(null);
 	const id = React.useId();
 	const ref = React.useRef<TimelineMemo>();
@@ -300,18 +312,17 @@ export function Timeline(props: TimelineProps) {
 			focusRow: (id) => focusRow(memo, id, true),
 			moveFocus: (id, key) => moveFocus(memo, id, key),
 		},
-		todayHandlers: { handleTodayFocusClick: () => setTodayFocus((focus) => !focus) },
 		counterHandlers: {
-			todo: () => setFilter((filter) => (filter !== "todoFilter" ? "todoFilter" : "")),
-			overdue: () => setFilter((filter) => (filter !== "overdueFilter" ? "overdueFilter" : "")),
-			unplanned: () => setFilter((filter) => (filter !== "unplannedFilter" ? "unplannedFilter" : "")),
+			todo: () => props.viewActions.toggleCounter("todo"),
+			overdue: () => props.viewActions.toggleCounter("overdue"),
+			unplanned: () => props.viewActions.toggleCounter("unplanned"),
 		},
 	});
-	const { rowWrites, todayHandlers } = memo;
+	const { rowWrites } = memo;
 	const { userOptions } = props;
 	const now = host.now();
 	const { env, prepared } = props.queryEnv(now);
-	const counter = counterFilterOf(filter, userOptions.counterBehavior);
+	const counter = counterFilterOf(counterFilterValue, userOptions.counterBehavior);
 	const { counts, years } = memo.query(
 		props.tasks,
 		{ settings: settingsFor(memo, userOptions, counter), counter, quickFilter: props.quickFilter },
@@ -402,7 +413,7 @@ export function Timeline(props: TimelineProps) {
 	}
 
 	const baseStyles = [...new Set(styles)].join(" ");
-	const counterFilter = counterClass(filter, props.userOptions.counterBehavior);
+	const counterFilter = counterClass(counterFilterValue, props.userOptions.counterBehavior);
 	const todayFocusClass = todayFocus ? "todayFocus" : "";
 	const userOptionValue = optionsFor(memo, userOptions, now);
 	const entry = entryFor(memo, counts, userOptionValue.taskFiles, tagsFor(memo, props.tasks));
@@ -414,24 +425,21 @@ export function Timeline(props: TimelineProps) {
 		host,
 		props.taskRowModel ?? taskRowModel,
 	);
-	process.env.NODE_ENV !== "production" && recordProvider("TodayFocusEventHandlersContext", todayHandlers);
-	process.env.NODE_ENV !== "production" && recordProvider("UserOptionContext", userOptionValue);
+	process.env.NODE_ENV !== "production" && recordProvider("ViewActions", props.viewActions);
 	const tree = (
 		<div ref={root} className={`taskido ${baseStyles} ${counterFilter} ${todayFocusClass}`}>
 			<RowWriteContext.Provider value={rowWrites}>
-				<TodayFocusEventHandlersContext.Provider value={todayHandlers}>
-					<UserOptionContext.Provider value={userOptionValue}>
-						<span>
-							{years.map((year, i) => (
-								// Keyed by place, then by year, as before: a year added in front of the entry's year makes
-								// React build the entry day, and with it the quick entry panel, again.
-								<React.Fragment key={i}>
-									<Year year={year} entry={entry} modelFor={modelFor} key={year.year} />
-								</React.Fragment>
-							))}
-						</span>
-					</UserOptionContext.Provider>
-				</TodayFocusEventHandlersContext.Provider>
+				<ViewActionsContext.Provider value={props.viewActions}>
+					<span>
+						{years.map((year, i) => (
+							// Keyed by place, then by year, as before: a year added in front of the entry's year makes
+							// React build the entry day, and with it the quick entry panel, again.
+							<React.Fragment key={i}>
+								<Year year={year} entry={entry} modelFor={modelFor} key={year.year} />
+							</React.Fragment>
+						))}
+					</span>
+				</ViewActionsContext.Provider>
 			</RowWriteContext.Provider>
 		</div>
 	);

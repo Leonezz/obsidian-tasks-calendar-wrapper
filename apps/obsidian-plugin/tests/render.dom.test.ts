@@ -686,7 +686,7 @@ test("a pending write renders only its subscribed row and keeps provider values"
 	assert.equal(icons, 1, "only the affected row renders its icon");
 	assert.equal(untouched.outerHTML, html);
 	const after = providerValues();
-	for (const name of ["QuickEntryHandlerContext", "TodayFocusEventHandlersContext", "UserOptionContext"] as const)
+	for (const name of ["QuickEntryHandlerContext", "ViewActions"] as const)
 		assert.strictEqual(after[name], before[name], name);
 });
 

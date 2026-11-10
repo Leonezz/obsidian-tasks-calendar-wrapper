@@ -19,7 +19,7 @@ import {
 } from "./bridgeactions";
 
 const selectOptions = (state: TimelineState) => state.options;
-type ListState = Omit<BridgeState, "userOptions">;
+type ListState = Pick<BridgeState, "tasks" | "reloadId" | "quickFilter">;
 export type MountedBridgeHandle = BridgeActions & { readonly state: BridgeState };
 
 export function ObsidianBridge(
@@ -27,6 +27,7 @@ export function ObsidianBridge(
 ) {
 	const userOptions = useStore(props.store, selectOptions);
 	const seen = React.useRef<TimelineState>();
+	const seenQuickFilter = React.useRef<BridgeState["quickFilter"]>();
 	const [state, dispatch] = React.useReducer(
 		(state: ListState, update: BridgeUpdate): ListState => {
 			const partial = typeof update === "function" ? update({ ...state, userOptions }) : update;
@@ -37,7 +38,9 @@ export function ObsidianBridge(
 		(store): ListState => {
 			const snapshot = store.getSnapshot();
 			seen.current = snapshot;
-			return { tasks: snapshot.tasks, reloadId: snapshot.reloadId };
+			const quickFilter = props.viewState.store.getSnapshot().quickFilter;
+			seenQuickFilter.current = quickFilter;
+			return { tasks: snapshot.tasks, reloadId: snapshot.reloadId, quickFilter };
 		},
 	);
 	const renderedState = React.useRef<BridgeState>({ ...state, userOptions });
@@ -62,6 +65,20 @@ export function ObsidianBridge(
 		onStateChanged();
 		return unsubscribe;
 	}, [props.store]);
+
+	// Dispatch instead of useStore so quick entry's filter clear renders with its list update.
+	React.useLayoutEffect(() => {
+		const onStateChanged = () => {
+			const { quickFilter } = props.viewState.store.getSnapshot();
+			if (quickFilter !== seenQuickFilter.current) {
+				seenQuickFilter.current = quickFilter;
+				dispatch({ quickFilter });
+			}
+		};
+		const unsubscribe = props.viewState.store.subscribe(onStateChanged);
+		onStateChanged();
+		return unsubscribe;
+	}, [props.viewState.store]);
 
 	React.useLayoutEffect(() => {
 		const id = state.reloadId;
@@ -97,6 +114,8 @@ export function bridgeTree(props: BridgeProps, state: BridgeState, actions: Brid
 			<QuickEntryHandlerContext.Provider value={quickEntryHandlers}>
 				<TaskItemEventHandlersContext.Provider value={actions.getTaskItemHandlers()}>
 					<Timeline
+						viewState={props.viewState.store}
+						viewActions={props.viewState.actions}
 						userOptions={userOptions}
 						tasks={tasks}
 						pendingWrites={props.pendingWrites}
