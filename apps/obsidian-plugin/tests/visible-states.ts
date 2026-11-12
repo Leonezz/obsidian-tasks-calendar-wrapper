@@ -9,7 +9,13 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-import { taskRowModel, type QueryResult, type ResolvedTask, type TaskStatus } from "@tasks-calendar-wrapper/core";
+import {
+	focusToday,
+	taskRowModel,
+	type QueryResult,
+	type ResolvedTask,
+	type TaskStatus,
+} from "@tasks-calendar-wrapper/core";
 import { defaultUserOptions, type UserOption } from "../src/useroptions";
 import { moment } from "../utils/moment";
 import { FIXTURES } from "./golden-vault";
@@ -149,17 +155,17 @@ function taskLine(resolved: ResolvedTask, settings: UserOption, highlighted: boo
 	return { line: rowLine(row.status, highlighted, badges), text: collapse(row.display) };
 }
 
-/** The lines the script writes for what core arranges, laid out as the views render it, colours left out. */
+/** The lines the script writes for core's arrangement and Focus on today, laid out as the views render it, colours left out. */
 export function displayed(arranged: QueryResult, state: State, settings: UserOption): Line[] {
+	const shown = state.todayFocus ? focusToday(arranged) : arranged;
 	const highlights = state.behavior === "Focus" && state.counter ? highlightedBy[state.counter] : [];
 	const lines: Line[] = [];
 	const add = (...texts: string[]) => lines.push(...texts.map((line) => ({ line })));
-	for (const year of arranged.years) {
-		// Focus on today hides the year headers and every day but today.
-		if (year.showHeader && !state.todayFocus) add(`year ${year.label}`);
+	for (const year of shown.years) {
+		if (year.showHeader) add(`year ${year.label}`);
 		for (const day of year.days) {
 			if (day.isEntry) add(...entryLines(arranged.counts));
-			if (day.tasks.length === 0 || (state.todayFocus && !day.isToday)) continue;
+			if (day.tasks.length === 0) continue;
 			add(`date ${day.label}`);
 			for (const resolved of day.tasks) {
 				lines.push(taskLine(resolved, settings, highlights.includes(resolved.status)));

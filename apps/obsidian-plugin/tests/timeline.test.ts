@@ -33,8 +33,8 @@ import {
 
 /**
  * The timeline's views, rendered to markup from fixtures/golden-vault the way the plugin renders them, against what a
- * real Obsidian displayed (see visible-states.ts). The views take their layout from core's query, so only the
- * stylesheet's rules that are left (Focus on today, the Focus highlight) hide or mark anything.
+ * real Obsidian displayed (see visible-states.ts). The views take their layout from core's query and focusToday;
+ * the stylesheet's Focus highlight marks the matching rows.
  */
 
 // The screenshots were taken with today pinned to noon, in English. Loading the Arabic locale switched moment to it.

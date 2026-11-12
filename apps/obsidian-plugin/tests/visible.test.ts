@@ -15,8 +15,8 @@ import { assertDisplayed, displayed, NOW, settingsOf, stateNames, stateOf } from
 /**
  * What the timeline displayed in a real Obsidian for fixtures/golden-vault (see visible-states.ts), against what core
  * arranges for the same notes, settings and state, laid out the way the views render it. The snapshots were taken with
- * the views and the stylesheet's Filter rules, which arrange does in data. Focus on today and the Focus highlight stay
- * in the stylesheet, so they are applied here as styles.css applies them. timeline.test.ts checks the views themselves.
+ * the views and the stylesheet's Filter rules, which arrange does in data. Focus on today comes from core's focusToday;
+ * only the Focus highlight is applied here as styles.css applies it. timeline.test.ts checks the views themselves.
  */
 
 test("visible: every light state has a snapshot", () => {
