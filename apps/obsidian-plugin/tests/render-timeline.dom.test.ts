@@ -410,3 +410,56 @@ test("quick entry ignores a second submit while the first is pending", async (t)
 	assert.equal(create.mock.callCount(), 3);
 	assert.equal(input.value, "");
 });
+
+test("a row click right after a Focus toggle is not guarded", async (t) => {
+	const { onTimelineRender } = await import("./component-harness");
+	t.mock.method(performance, "now", () => 1000);
+	t.mock.method(window.performance, "now", () => 1000);
+	const observed = onTimelineRender(t, (_props, rendered) => rendered);
+	const toggles: { path: string; line: number; sourceLine: string; kind: string }[] = [];
+	const writer: Pick<TaskWriter, "insert" | "write"> = {
+		async insert() {
+			throw new Error("This test only toggles existing tasks.");
+		},
+		async write(target, edit) {
+			toggles.push({ ...target(), kind: edit.kind });
+			return { kind: "unchanged" };
+		},
+	};
+	const notes = { "Today.md": "- [ ] today 📅 2026-01-15", "Later.md": "- [ ] later 📅 2026-01-16" };
+	const { opened, container } = await mountTimeline(t, notes, writer);
+	const openedNotes: { path: string; line: number }[] = [];
+	Object.assign(opened.view.app, {
+		workspace: {
+			getLeaf: () => ({
+				async openFile(file: { path: string }, state: { eState: { line: number } }) {
+					openedNotes.push({ path: file.path, line: state.eState.line });
+				},
+				view: {},
+			}),
+		},
+	});
+	const click = async (selector: string) => {
+		const element = container.querySelector<HTMLElement>(selector);
+		assert.ok(element, selector);
+		const event = new MouseEvent("click", { bubbles: true, cancelable: true, view: window });
+		Object.defineProperty(event, "timeStamp", { value: 1001 });
+		await act(() => element.dispatchEvent(event));
+	};
+	const before = observed.clock().lastListChangeAt;
+	assert.equal(before, -Infinity);
+	for (const [focused, path] of [
+		[true, "Today.md"],
+		[false, "Later.md"],
+	] as const) {
+		await click(".todayHeader");
+		assert.equal(container.querySelector(".taskido")?.classList.contains("todayFocus"), focused);
+		assert.equal(observed.clock().lastListChangeAt, before, `focus ${focused}`);
+		const row = `.task:has(a.file[aria-label="${path}"])`;
+		await click(`${row} label.icon`);
+		assert.deepEqual(toggles.splice(0), [{ path, line: 0, sourceLine: notes[path], kind: "toggle" }]);
+		assert.deepEqual(openedNotes, []);
+		await click(`${row} .lines`);
+		assert.deepEqual(openedNotes.splice(0), [{ path, line: 0 }]);
+	}
+});

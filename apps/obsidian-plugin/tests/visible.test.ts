@@ -5,7 +5,7 @@ import "./setup";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { query } from "@tasks-calendar-wrapper/core";
+import { focusToday, query } from "@tasks-calendar-wrapper/core";
 import { defaultUserOptions } from "../src/useroptions";
 import { readTasks } from "../timeline/src/taskadapter";
 import { moment } from "../utils/moment";
@@ -35,5 +35,25 @@ test("visible: core arranges what the timeline displayed in Obsidian, in every s
 			{ now: NOW, moment },
 		);
 		assertDisplayed(displayed(arranged, state, settings), name);
+	}
+});
+
+test("visible: core's focusToday gives what Obsidian displayed in the 21 Focus on today states", async () => {
+	const tasks = await readTasks(goldenApp(loadVault()), defaultUserOptions, moment);
+	const focusedStates = stateNames.filter((name) => stateOf(name).todayFocus);
+	assert.equal(focusedStates.length, 21);
+	for (const name of focusedStates) {
+		const state = stateOf(name);
+		const settings = settingsOf(state);
+		const arranged = query(
+			tasks,
+			{ settings, counter: state.counter && state.behavior ? `${state.counter}Filter` : "" },
+			{ now: NOW, moment },
+		);
+		const lines = displayed(arranged, state, settings);
+		assertDisplayed(lines, name);
+		const focusedLines = displayed(focusToday(arranged), { ...state, todayFocus: false }, settings);
+		assert.deepEqual(focusedLines, lines, `${name}: Focus on today comes from the data`);
+		assertDisplayed(focusedLines, name);
 	}
 });

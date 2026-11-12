@@ -15,11 +15,13 @@ import { timelineElement } from "./timeline-element";
 import { readTasks } from "../timeline/src/taskadapter";
 import { moment } from "../utils/moment";
 import { goldenApp, loadVault } from "./golden-vault";
+import { notesApp } from "./view-harness";
 import { cssRules } from "./css-rules";
 import { allWithClass, classesOf, displayedLines, findClass, parseMarkup, textOf, type Element } from "./markup";
 import {
 	assertDisplayed,
 	displayed,
+	entryLines,
 	NOW,
 	SCREENSHOT_NOW,
 	settingsOf,
@@ -52,6 +54,98 @@ function rendered(tasks: readonly Task[], state: State, extra: Partial<UserOptio
 
 let golden: Promise<Task[]> | undefined;
 const goldenTasks = () => (golden ??= readTasks(goldenApp(loadVault()), defaultUserOptions, moment));
+
+const focusTasks = (todayText = "today") =>
+	readTasks(
+		notesApp({
+			"Before.md": "- [ ] before 📅 2026-01-14",
+			"Today.md": `- [ ] ${todayText} 📅 2026-01-15`,
+			"After.md": "- [ ] after 📅 2026-01-16",
+		}) as never,
+		defaultUserOptions,
+		moment,
+	);
+
+const focusEntryLines = (todo: number) => entryLines({ todo, overdue: 1, unplanned: 0 }).map((line) => ({ line }));
+const focusTodayLines = [{ line: "date Thursday, Jan, 15" }, { line: "  task due: … | Today · Today", text: "today" }];
+
+test("timeline: Focus on today shows the entry panel at the top and today's rows", async () => {
+	const tasks = await focusTasks();
+	assert.deepEqual(displayedLines(rendered(tasks, { position: "top", todayFocus: true }, { forward: false })), [
+		...focusEntryLines(2),
+		...focusTodayLines,
+	]);
+});
+
+test("timeline: Focus on today shows the entry panel at today and today's rows", async () => {
+	const tasks = await focusTasks();
+	assert.deepEqual(displayedLines(rendered(tasks, { position: "today", todayFocus: true }, { forward: false })), [
+		...focusEntryLines(2),
+		...focusTodayLines,
+	]);
+});
+
+test("timeline: Focus on today shows the entry panel at the bottom and today's rows", async () => {
+	const tasks = await focusTasks();
+	assert.deepEqual(displayedLines(rendered(tasks, { position: "bottom", todayFocus: true }, { forward: false })), [
+		...focusTodayLines,
+		...focusEntryLines(2),
+	]);
+});
+
+test("timeline: Focus on today keeps today and its entry panel when filtered empty tasks leave it without rows", async () => {
+	const tasks = await focusTasks("");
+	const state: State = { position: "today", todayFocus: true };
+	const extra = { forward: false, filterEmpty: true };
+	assert.equal(tasks.length, 3, "the empty task is present before resolving");
+	const result = query(tasks, { settings: { ...settingsOf(state), ...extra }, counter: "" }, { now: NOW, moment });
+	const today = result.years.flatMap((year) => year.days).find((day) => day.isToday);
+	assert.ok(today?.isEntry);
+	assert.deepEqual(today.tasks, []);
+	assert.deepEqual(displayedLines(rendered(tasks, state, extra)), focusEntryLines(1));
+	assert.deepEqual(displayedLines(rendered(tasks, { ...state, todayFocus: false }, extra)), [
+		{ line: "year 2026" },
+		{ line: "date Wednesday, Jan, 14" },
+		{ line: "  task overdue: … | Yesterday · Before", text: "before" },
+		...focusEntryLines(1),
+		{ line: "date Friday, Jan, 16" },
+		{ line: "  task scheduled: … | Tomorrow · After", text: "after" },
+	]);
+});
+
+test("timeline: Focus on today renders only today's rows", async () => {
+	const tasks = await goldenTasks();
+	const names = stateNames.filter((name) => stateOf(name).todayFocus);
+	assert.equal(names.length, 21);
+	for (const name of names) {
+		const state = stateOf(name);
+		const counter = state.counter ? (`${state.counter}Filter` as const) : "";
+		const result = query(tasks, { settings: settingsOf(state), counter }, { now: NOW, moment });
+		const today = result.years.flatMap((year) => year.days).find((day) => day.isToday);
+		assert.ok(today, name);
+		const markup = parseMarkup(rendered(tasks, state));
+		assert.equal(allWithClass(markup, "year").length, 0, `${name}: no year headers`);
+		assert.deepEqual(
+			allWithClass(markup, "task").map(({ attrs }) => [
+				attrs["data-line"],
+				attrs["data-task"],
+				attrs["data-link"],
+			]),
+			today.tasks.map(({ task }) => [
+				String(task.line),
+				task.statusMarker,
+				task.section.path.replace("'", "&apos;"),
+			]),
+			`${name}: today's rows in order`,
+		);
+		assert.ok(
+			allWithClass(markup, "details").every((element) => classesOf(element).includes("today")),
+			`${name}: only today's details`,
+		);
+		for (const panel of ["todayHeader", "counters", "quickEntryPanel"])
+			assert.equal(allWithClass(markup, panel).length, 1, `${name}: ${panel}`);
+	}
+});
 
 test("timeline: the views display what the timeline displayed in Obsidian, in every state", async () => {
 	const tasks = await goldenTasks();
@@ -349,8 +443,6 @@ test("timeline: the stylesheet hides nothing the markup reader does not know of"
 			".taskido.noCounters .counters",
 			".taskido.noQuickEntry .quickEntryPanel",
 			".taskido.noYear .year",
-			".taskido.todayFocus .details:not(.today)",
-			".taskido.todayFocus .year",
 			// Classes the timeline never sets.
 			'.taskido.noDone .details[data-types="done"]',
 			".taskido.noDone .task.done",

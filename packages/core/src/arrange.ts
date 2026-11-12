@@ -283,6 +283,11 @@ export function arrange(resolved: Resolved, view: ViewState, env: QueryEnv): Que
 	});
 }
 
+/** Keeps the entry panel and today's rows, without year headers or changing the counts. */
+export function focusToday(result: QueryResult): QueryResult {
+	throw new Error("focusToday: not implemented");
+}
+
 /** The tasks of a view: resolveTasks, then arrange. */
 export function query(tasks: readonly Task[], view: ViewState, env: QueryEnv): QueryResult {
 	return arrange(resolveTasks(tasks, view.settings, env), view, env);

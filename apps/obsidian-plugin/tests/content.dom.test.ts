@@ -162,6 +162,42 @@ test("content renders markdown once per display change", async (t) => {
 	}
 });
 
+test("turning Focus on today off within one list renders no markdown again", async (t) => {
+	const { calls } = mockMarkdown(t);
+	const notes = {
+		"Content/Before.md": "- [ ] [[Note]] 📅 2026-01-14",
+		"Content/Today.md": "- [ ] today 📅 2026-01-15",
+		"Content/After.md": "- [ ] `x` 📅 2026-01-16",
+	};
+	const fixture = await mountView(t, {
+		app: notesApp(notes),
+		options: {
+			...structuredClone(defaultUserOptions),
+			defaultFilters: "",
+			defaultTodayFocus: false,
+			forward: false,
+		},
+	});
+	assert.equal(calls.length, 3, "mount renders each task once");
+	const contents = () => [...fixture.container.querySelectorAll(".task .content")].map((row) => row.innerHTML);
+	const before = contents();
+	assert.deepEqual(before, [
+		'<a><span class="internal-link">Note</span></a>',
+		"<a>today</a>",
+		"<a><code>x</code></a>",
+	]);
+	const rendered = calls.length;
+	for (const focused of [true, false]) {
+		const focus = fixture.container.querySelector<HTMLElement>(".todayHeader");
+		assert.ok(focus);
+		await act(() => focus.click());
+		assert.equal(fixture.root().classList.contains("todayFocus"), focused);
+		assert.equal(calls.length - rendered, 0, `focus ${focused}`);
+	}
+	assert.deepEqual(contents(), before, "all days return with their rendered content");
+	assert.equal(fixture.container.querySelectorAll(".details:not(.today) .task").length, 2);
+});
+
 test("two views each own their markdown children", async (t) => {
 	const { calls } = mockMarkdownChildren(t);
 	const notesA = { "Content/A.md": "- [ ] A at mount" };
