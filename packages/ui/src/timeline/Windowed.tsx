@@ -103,6 +103,7 @@ export class TimelineWindow implements TimelineHandle {
 	private readonly changed: () => void;
 	private stop?: () => void;
 	private boundElement?: HTMLElement;
+	private boundWindow?: Window;
 	private observer?: ResizeObserver;
 	private observed = new Set<Element>();
 	private frame?: number;
@@ -216,7 +217,10 @@ export class TimelineWindow implements TimelineHandle {
 	): WindowSnapshot {
 		if (!active || !this.scroll)
 			return { active, result, geometry, showYears, plans: new Map(), mounted: new Set(), signature: "" };
-		const height = this.scroll.clientHeight || this.scroll.ownerDocument.defaultView?.innerHeight || 600;
+		const windowHeight = this.scroll.ownerDocument.defaultView?.innerHeight ?? 0;
+		const maximumHeight = windowHeight > 0 ? windowHeight : 600;
+		// A new popout can grow with its contents until its layout styles arrive.
+		const height = Math.min(this.scroll.clientHeight || maximumHeight, maximumHeight);
 		const residents = [
 			...(this.focusId === undefined ? [] : [`t:${this.focusId}`]),
 			...(this.pendingReveal === undefined ? [] : [this.pendingReveal]),
@@ -335,7 +339,10 @@ export class TimelineWindow implements TimelineHandle {
 	}
 
 	private schedule() {
-		if (!this.active || this.disposed || this.frame !== undefined) return;
+		if (!this.active || this.disposed) return;
+		if (this.scroll && (this.boundElement !== this.scroll || this.boundWindow !== this.window()))
+			this.bind(this.scroll);
+		if (this.frame !== undefined) return;
 		this.frameWindow = this.window() ?? undefined;
 		this.frame = this.request(() => {
 			this.frame = undefined;
@@ -447,7 +454,7 @@ export class TimelineWindow implements TimelineHandle {
 			this.unbind();
 			return;
 		}
-		if (this.boundElement !== this.scroll) this.bind(this.scroll);
+		if (this.boundElement !== this.scroll || this.boundWindow !== this.window()) this.bind(this.scroll);
 		this.measure();
 		if (this.rangeChanged()) this.changed();
 	}
@@ -457,6 +464,7 @@ export class TimelineWindow implements TimelineHandle {
 		this.boundElement = element;
 		const view = element.ownerDocument.defaultView;
 		if (!view) return;
+		this.boundWindow = view;
 		const onScroll = () => {
 			this.schedule();
 			if (this.touchScrolling) settle();
@@ -504,22 +512,24 @@ export class TimelineWindow implements TimelineHandle {
 		this.stop?.();
 		this.stop = undefined;
 		this.boundElement = undefined;
+		this.boundWindow = undefined;
 		if (this.frame !== undefined) this.frameWindow?.cancelAnimationFrame(this.frame);
 		this.frame = undefined;
 		this.touching = false;
 		this.touchScrolling = false;
 		this.pendingAdjustment = 0;
-	}
-
-	dispose() {
-		this.disposed = true;
 		this.revealSequence++;
-		this.unbind();
+		this.pendingReveal = undefined;
 		for (const [id, pending] of this.revealFrames) {
 			pending.view.cancelAnimationFrame(id);
 			pending.resolve();
 		}
 		this.revealFrames.clear();
+	}
+
+	dispose() {
+		this.disposed = true;
+		this.unbind();
 	}
 
 	mount() {

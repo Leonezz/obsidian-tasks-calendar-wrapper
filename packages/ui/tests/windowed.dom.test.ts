@@ -12,7 +12,7 @@ import {
 } from "@tasks-calendar-wrapper/core";
 import { HostContext, type RowOverlay, type ViewActions, type ViewState } from "../src/contexts";
 import type { UiHost, TimelineHandle } from "../src/host";
-import { onTimelineRender } from "../src/renderprobe";
+import { onTimelineRender, rendersOf, resetRenderCounts } from "../src/renderprobe";
 import { Timeline, type TimelineOptions, type TimelineProps } from "../src/timeline/Timeline";
 
 class FakeDate {
@@ -125,8 +125,9 @@ function harness(t: TestContext, count = 2_000, popup = false) {
 	const container = doc.body.appendChild(doc.createElement("div"));
 	const viewport = doc.body.appendChild(doc.createElement("div"));
 	viewport.append(container);
+	let height = 300;
 	Object.defineProperties(viewport, {
-		clientHeight: { configurable: true, get: () => 300 },
+		clientHeight: { configurable: true, get: () => height },
 		clientWidth: { configurable: true, get: () => width },
 	});
 	let width = 600;
@@ -163,6 +164,12 @@ function harness(t: TestContext, count = 2_000, popup = false) {
 		}
 	}
 	const descriptor = Object.getOwnPropertyDescriptor(view, "ResizeObserver");
+	const heightDescriptor = Object.getOwnPropertyDescriptor(view, "innerHeight");
+	t.after(() =>
+		heightDescriptor
+			? Object.defineProperty(view, "innerHeight", heightDescriptor)
+			: Reflect.deleteProperty(view, "innerHeight"),
+	);
 	Object.defineProperty(view, "ResizeObserver", { configurable: true, value: Observer });
 	t.after(() =>
 		descriptor
@@ -189,7 +196,7 @@ function harness(t: TestContext, count = 2_000, popup = false) {
 		return top;
 	};
 	t.mock.method(view.HTMLElement.prototype, "getBoundingClientRect", function (this: HTMLElement) {
-		if (this === viewport) return rect(0, 300);
+		if (this === viewport) return rect(0, height);
 		const noYear = !!container.querySelector(".taskido.noYear");
 		const flowOffset = contentPadding - (escapedMargins && noYear ? 52 : 0);
 		if (this.classList.contains("taskido"))
@@ -326,6 +333,12 @@ function harness(t: TestContext, count = 2_000, popup = false) {
 			return handle;
 		},
 		clock: () => clock,
+		setViewportHeight: (value: number) => {
+			height = value;
+		},
+		setWindowHeight: (value: number) => {
+			Object.defineProperty(view, "innerHeight", { configurable: true, value });
+		},
 		setMinRows: (value: number) => {
 			minRows = value;
 		},
@@ -612,6 +625,106 @@ test("a popout window uses its own window's observer and animation frames", asyn
 	await f.unmount();
 	assert.ok(f.observers.every((observer) => observer.disconnected));
 	assert.equal(f.frames.size, 0);
+});
+
+test("an oversized temporary viewport is bounded by its owner's window height", async (t) => {
+	const f = harness(t);
+	f.setViewportHeight(200_000);
+	f.setWindowHeight(700);
+	resetRenderCounts();
+	await f.render();
+	assert.ok(f.container.querySelectorAll(".task").length < 40);
+	assert.ok(rendersOf("TaskItemView") < 100, "no intermediate render mounts the complete list");
+	assert.equal(f.row(100), null);
+	f.setWindowHeight(200_000);
+	f.setMinRows(0);
+	await f.render(f.items().slice(0, 100));
+	assert.equal(f.handle().getWindowingInfo().windowed, true);
+	assert.equal(f.container.querySelectorAll(".task").length, 100, "an intentionally full-height window remains full");
+});
+
+test("a popout with no window dimensions bounds zero and oversized temporary layouts", async (t) => {
+	const f = harness(t, 2_000, true);
+	f.setWindowHeight(0);
+	f.setViewportHeight(0);
+	resetRenderCounts();
+	await f.render();
+	assert.ok(f.container.querySelectorAll(".task").length < 30);
+	f.setViewportHeight(200_000);
+	await f.resize(600);
+	assert.ok(f.container.querySelectorAll(".task").length < 30);
+	assert.ok(rendersOf("TaskItemView") < 100, "the initial fallback never expands with the unconstrained contents");
+});
+
+test("adopting the same viewport cancels its pending reveal and rebinds to the new owner window", async (t) => {
+	const f = harness(t);
+	await f.render();
+	const oldObserver = f.observers[0];
+	const popup = document.body.appendChild(document.createElement("iframe"));
+	t.after(() => popup.remove());
+	const popupView = popup.contentDocument!.defaultView!;
+	const popupFrames = new Map<number, FrameRequestCallback>();
+	let frameId = 10_000;
+	t.mock.method(popupView, "requestAnimationFrame", (callback: FrameRequestCallback) => {
+		const id = ++frameId;
+		popupFrames.set(id, callback);
+		return id;
+	});
+	t.mock.method(popupView, "cancelAnimationFrame", (id: number) => popupFrames.delete(id));
+	const popupObservers: Observer[] = [];
+	class Observer {
+		readonly elements = new Set<Element>();
+		disconnected = false;
+		constructor(readonly callback: ResizeObserverCallback) {
+			popupObservers.push(this);
+		}
+		observe(element: Element) {
+			this.elements.add(element);
+		}
+		unobserve(element: Element) {
+			this.elements.delete(element);
+		}
+		disconnect() {
+			this.disconnected = true;
+			this.elements.clear();
+		}
+	}
+	Object.defineProperty(popupView, "ResizeObserver", { configurable: true, value: Observer });
+	const clearedTimers: number[] = [];
+	const clearTimeout = f.view.clearTimeout.bind(f.view);
+	t.mock.method(f.view, "clearTimeout", (id: number) => {
+		clearedTimers.push(id);
+		clearTimeout(id);
+	});
+	let pending!: Promise<boolean>;
+	await act(() => {
+		pending = f.handle().revealTask("Tasks.md:1800");
+	});
+	f.viewport.dispatchEvent(new f.view.Event("touchstart"));
+	f.viewport.dispatchEvent(new f.view.Event("touchend"));
+	f.viewport.dispatchEvent(new f.view.Event("scroll"));
+	assert.ok(f.frames.size > 0);
+	popup.contentDocument!.body.appendChild(popup.contentDocument!.adoptNode(f.viewport));
+	await act(() => f.viewport.dispatchEvent(new popupView.Event("scroll")));
+	assert.strictEqual(f.viewport.ownerDocument.defaultView, popupView);
+	assert.equal(oldObserver.disconnected, true);
+	assert.ok(clearedTimers.length > 0, "the old owner's pending touch timer is cleared");
+	assert.equal(f.frames.size, 0, "the old owner's pending frame is cancelled");
+	assert.equal(await pending, false, "a reveal waiting on the old window finishes without another old-window frame");
+	assert.equal(popupObservers.length, 1);
+	assert.equal(popupFrames.size, 1);
+	assert.equal(f.frames.size, 0);
+	await act(() => {
+		const callbacks = [...popupFrames.values()];
+		popupFrames.clear();
+		for (const callback of callbacks) callback(16);
+	});
+	assert.ok(popupObservers[0].elements.has(f.viewport));
+	await act(() => popupObservers[0].callback([], popupObservers[0] as unknown as ResizeObserver));
+	assert.equal(popupFrames.size, 1, "the new owner's observer schedules its own animation frame");
+	await f.unmount();
+	assert.ok(popupObservers.every((observer) => observer.disconnected));
+	assert.equal(popupFrames.size, 0);
 });
 
 test("an empty force-windowed view reports its logical row count", async (t) => {
