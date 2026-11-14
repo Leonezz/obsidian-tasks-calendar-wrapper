@@ -10,8 +10,9 @@ import { HostContext, type UiHost, Content, type ContentProps } from "@tasks-cal
 import { MarkdownRenderer, Component } from "obsidian";
 import { defaultUserOptions } from "../src/useroptions";
 import { mountView } from "./component-harness";
-import { metadataOf } from "./fakevault";
+import { fakeVault, metadataOf } from "./fakevault";
 import { notesApp } from "./view-harness";
+import { WriterClock } from "./writer-harness";
 
 type RenderCall = { sourcePath: string; markdown: string; owner: Component };
 
@@ -196,6 +197,119 @@ test("turning Focus on today off within one list renders no markdown again", asy
 	}
 	assert.deepEqual(contents(), before, "all days return with their rendered content");
 	assert.equal(fixture.container.querySelectorAll(".details:not(.today) .task").length, 2);
+});
+
+test("rows restored by Focus or a quick filter follow link targets without reloading tasks", async (t) => {
+	const clock = new WriterClock();
+	t.mock.method(globalThis, "setTimeout", clock.setTimeout as never);
+	t.mock.method(globalThis, "clearTimeout", clock.clearTimeout as never);
+	for (const control of ["focus", "quick filter"] as const) {
+		const h = fakeVault({
+			"Before.md": "- [ ] [[Target]] 📅 2026-01-14",
+			"Today.md": "- [ ] today ⏫ 📅 2026-01-15",
+		});
+		const renders = t.mock.method(MarkdownRenderer, "renderMarkdown", (markdown: string, el: object) => {
+			const html =
+				markdown === "[[Target]]"
+					? `<a class="internal-link${h.hasMetadata("Target.md") ? "" : " is-unresolved"}">Target</a>`
+					: markdown;
+			Object.defineProperty(el, "firstElementChild", { value: { innerHTML: html }, configurable: true });
+			return Promise.resolve();
+		});
+		const fixture = await mountView(t, {
+			app: h.app,
+			options: {
+				...structuredClone(defaultUserOptions),
+				defaultFilters: "",
+				defaultTodayFocus: false,
+				forward: false,
+			},
+		});
+		await act(async () => {
+			h.resolve();
+			await clock.advance(500);
+		});
+		const reload = t.mock.method(fixture.view, "onReloadTasks");
+		const snapshot = fixture.store.getSnapshot();
+		const listings = h.listings();
+		const reads = h.reads.length;
+		const viewState = fixture.bridgeProps.viewState;
+		assert.ok(viewState);
+		const show = async (shown: boolean) => {
+			await act(() => {
+				if (control === "focus") viewState.actions.toggleTodayFocus();
+				else viewState.actions.setQuickFilter(shown ? undefined : { priorities: ["High"] });
+			});
+			assert.equal(fixture.container.querySelectorAll(".task .internal-link").length, shown ? 1 : 0, control);
+		};
+		// Populate the current cache through a real row remount after the startup reload cleared it.
+		await show(false);
+		await show(true);
+		assert.ok(fixture.container.querySelector(".internal-link.is-unresolved"), control);
+		for (const [change, resolved] of [
+			[() => h.write("Target.md", "a note without tasks", { indexed: false }), false],
+			[() => h.indexPending(), true],
+			[() => h.rename("Target.md", "Other.md"), false],
+			[() => h.rename("Other.md", "Target.md"), true],
+			[() => h.remove("Target.md"), false],
+		] as const) {
+			await show(false);
+			const before = renders.mock.callCount();
+			await act(() => change());
+			assert.equal(renders.mock.callCount(), before, `${control}: target changes render no rows`);
+			await show(true);
+			const link = fixture.container.querySelector(".internal-link");
+			assert.ok(link, control);
+			assert.equal(link.classList.contains("is-unresolved"), !resolved, control);
+			await act(() => clock.advance(500));
+			assert.equal(reload.mock.callCount(), 0, `${control}: target changes do not reload tasks`);
+			assert.strictEqual(fixture.store.getSnapshot(), snapshot, control);
+			assert.equal(h.listings(), listings, control);
+			assert.equal(h.reads.length, reads, control);
+		}
+		await fixture.unmount();
+		renders.mock.restore();
+	}
+});
+
+test("link cache invalidation belongs to each open view and stops on close", async (t) => {
+	const clock = new WriterClock();
+	t.mock.method(globalThis, "setTimeout", clock.setTimeout as never);
+	t.mock.method(globalThis, "clearTimeout", clock.clearTimeout as never);
+	mockMarkdown(t);
+	const h = fakeVault({ "Task.md": "- [ ] task" });
+	const a = await mountView(t, { app: h.app });
+	const b = await mountView(t, { app: h.app });
+	await act(async () => {
+		h.resolve();
+		await clock.advance(500);
+	});
+	const clearA = t.mock.method(a.host, "clearMarkdownCache");
+	const clearB = t.mock.method(b.host, "clearMarkdownCache");
+	const handlerCount = (events: object, name: string) =>
+		(events as { handlerCount(name: string): number }).handlerCount(name);
+	const listeners = () => [
+		...(["create", "rename", "delete"] as const).map((event) => handlerCount(h.app.vault, event)),
+		handlerCount(h.app.metadataCache, "resolved"),
+	];
+	const before = listeners();
+	await act(() => h.app.vault.trigger("create", { path: "Target.md" }));
+	assert.equal(clearA.mock.callCount(), 1);
+	assert.equal(clearB.mock.callCount(), 1);
+	await act(() => a.view.onClose());
+	assert.deepEqual(
+		listeners(),
+		before.map((count) => count - 1),
+		"onClose alone removes this view's cache listeners",
+	);
+	for (const event of ["create", "rename", "delete"] as const)
+		await act(() => h.app.vault.trigger(event, { path: "Target.md" }, "Old.md"));
+	await act(() => h.resolve());
+	assert.equal(clearA.mock.callCount(), 1, "the closed view no longer hears cache events");
+	assert.equal(clearB.mock.callCount(), 5, "the other view still hears every cache event");
+	await a.unmount();
+	await b.unmount();
+	assert.deepEqual(listeners(), [0, 0, 0, 0]);
 });
 
 test("two views each own their markdown children", async (t) => {

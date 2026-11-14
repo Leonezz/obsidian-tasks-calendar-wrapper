@@ -136,6 +136,16 @@ export class TasksTimelineView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
+		// Link targets can change without affecting any task. Drop copied HTML for the next row remount, without
+		// reloading the task list. resolved also clears renders cached before a new target's metadata was ready.
+		const clearMarkdownCache = () => this.uiHost.clearMarkdownCache();
+		for (const ref of [
+			this.app.vault.on("create", clearMarkdownCache),
+			this.app.vault.on("rename", clearMarkdownCache),
+			this.app.vault.on("delete", clearMarkdownCache),
+			this.app.metadataCache.on("resolved", clearMarkdownCache),
+		])
+			this.markdownOwner.registerEvent(ref);
 		// The shared index marks every change for the next reload to read, see watchNotes. Only changes to files that
 		// have or had tasks reload the list, see issue #63.
 		for (const ref of watchChanges(this.app, (paths, cache) => this.onFileChanged(paths, cache)))
