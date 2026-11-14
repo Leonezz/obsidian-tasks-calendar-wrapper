@@ -204,7 +204,7 @@ const interactions: Interaction[] = [
 		selector: ".quickEntryPanel button.ok",
 		event: "click",
 		handler: "handleFilterEnable",
-		args: ["2026-01-10", "2026-01-20", ["1", "2"], []],
+		args: ["2026-01-10", "2026-01-20", ["High", "Medium"], []],
 		openNote: false,
 		defaultPrevented: false,
 		prepare: "filter",
@@ -265,7 +265,7 @@ const interactions: Interaction[] = [
 		name: "changing a priority marks the draft selection without submitting",
 		selector: 'select[name="priorityFilter"]',
 		event: "change",
-		value: "1",
+		value: "High",
 		handler: "none",
 		args: [],
 		openNote: false,
@@ -440,8 +440,8 @@ async function prepare(fixture: Mounted, mode?: Interaction["prepare"]) {
 				dates[index].dispatchEvent(new Event("input", { bubbles: true }));
 			}
 		});
-		await select(fixture, 'select[name="priorityFilter"]', "1");
-		await select(fixture, 'select[name="priorityFilter"]', "2");
+		await select(fixture, 'select[name="priorityFilter"]', "High");
+		await select(fixture, 'select[name="priorityFilter"]', "Medium");
 	}
 }
 

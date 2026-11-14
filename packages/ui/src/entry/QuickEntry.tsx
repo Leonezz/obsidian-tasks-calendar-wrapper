@@ -14,7 +14,12 @@ type QuickEntryState = {
 };
 
 function draftOf(applied?: QuickFilter): QuickEntryState["draft"] {
-	return { from: applied?.from ?? "", to: applied?.to ?? "", priorities: [...(applied?.priorities ?? [])] };
+	return {
+		from: applied?.from ?? "",
+		to: applied?.to ?? "",
+		// None is one control for both a missing emoji priority and an explicit Dataview none.
+		priorities: [...new Set((applied?.priorities ?? []).map((priority) => (priority === "" ? "No" : priority)))],
+	};
 }
 
 export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
@@ -187,7 +192,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 												name="priorityFilter"
 												ariaLabel={copy.quickEntry.priorityAria}
 												className=""
-												options={["+", "1", "2", "3", "4"]}
+												options={["+", "Highest", "High", "Medium", "No", "Low", "Lowest"]}
 												selected={draft.priorities}
 												visual={copy.quickEntry.priorityVisual}
 												fallbackValueIndex={0}
@@ -242,7 +247,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 							callback.handleFilterEnable(
 								draft.from,
 								draft.to,
-								[...draft.priorities],
+								draft.priorities.flatMap((priority) => (priority === "No" ? ["No", ""] : [priority])),
 								[...(applied?.tags ?? [])],
 							);
 						}

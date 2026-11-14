@@ -544,8 +544,8 @@ test("inputs show the applied filter after a reload", async () => {
 	assert.match(unfiltered, /<option value="append" selected="">New Task<\/option>/);
 	assert.doesNotMatch(unfiltered, /<input[^>]*type="date"/);
 
-	// The priority selector passes its option value, as before.
-	bridge.handleFilterEnable("2026-01-19", "2026-01-21", ["1"]);
+	// The priority selector passes the task's priority label.
+	bridge.handleFilterEnable("2026-01-19", "2026-01-21", ["High"]);
 	notes["Inbox.md"] = "- [ ] beta, renamed ⏫ 📅 2026-01-20";
 	opened.edited("Inbox.md");
 	await opened.view.onReloadTasks();
@@ -555,7 +555,7 @@ test("inputs show the applied filter after a reload", async () => {
 		["2026-01-19", "2026-01-21"],
 	);
 	assert.match(filtered, /<option value="filter" selected="">Filter<\/option>/);
-	assert.match(filtered, /<option value="1">High🎯<\/option>/);
+	assert.match(filtered, /<option value="High">High🎯<\/option>/);
 	assert.match(filtered, /<a>High🎯<\/a>/);
 });
 
