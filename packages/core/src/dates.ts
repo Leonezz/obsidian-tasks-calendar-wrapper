@@ -305,3 +305,8 @@ export function afterInstant(a: DateValue, b: DateValue): boolean {
 export function betweenDaysExclusive(date: DateValue, from: DateValue, to: DateValue): boolean {
 	return asMoment(date).isBetween(asMoment(from), asMoment(to), "day");
 }
+
+/** Whether a date falls on a day from `from` through `to`, both days included. */
+export function betweenDaysInclusive(date: DateValue, from: DateValue, to: DateValue): boolean {
+	return asMoment(date).isBetween(asMoment(from), asMoment(to), "day", "[]");
+}

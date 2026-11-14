@@ -277,8 +277,8 @@
       "TimelineView": 1,
       "YearView": 4,
       "YearHeader": 4,
-      "DateHeader": 3,
-      "NormalDateContent": 3,
+      "DateHeader": 2,
+      "NormalDateContent": 2,
       "QuickEntry": 6,
       "MultiSelect": 10,
       "TodayFocus": 1,
@@ -292,7 +292,7 @@
       "DateStatusBadge": 0,
       "ModifyBadge": 0,
       "TaskItemView": 0,
-      "DateView": 5
+      "DateView": 3
     },
     "providers": {
       "QuickEntryHandlerContext": "new",

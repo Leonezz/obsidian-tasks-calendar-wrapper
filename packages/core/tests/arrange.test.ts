@@ -150,9 +150,9 @@ test("the entry day is a day of its year even without a task, and only it is mar
 	assert.equal(days[0].label, "2026-09-18");
 });
 
-// The quick filter (ObsidianBridge.handleFilterEnable): a date range, both ends left out, and priorities.
+// The quick filter (ObsidianBridge.handleFilterEnable): an inclusive date range and priorities.
 
-test("the quick filter's range leaves out both of its days", () => {
+test("both ends are included in the quick filter's range", () => {
 	const resolved = resolve([
 		"- [ ] on the first day 📅 2026-09-20",
 		"- [ ] inside 📅 2026-09-25",
@@ -166,11 +166,70 @@ test("the quick filter's range leaves out both of its days", () => {
 	);
 	assert.deepEqual(
 		result.tasks.map((r) => r.visual),
-		["inside"],
+		["on the first day", "inside", "on the last day"],
 	);
 	// The shown tasks are kept as they were; counts, years and days use the filtered ones.
 	assert.equal(result.shown.length, 4);
-	assert.equal(result.counts.todo, 1);
+	assert.equal(result.counts.todo, 3);
+});
+
+test("a range from D to D includes D", () => {
+	const resolved = resolve([
+		"- [ ] before 📅 2026-09-19",
+		"- [ ] on D 📅 2026-09-20",
+		"- [ ] after 📅 2026-09-21",
+		"- [ ] unplanned",
+	]);
+	const result = arrange(
+		resolved,
+		view({ quickFilter: { from: "2026-09-20", to: "2026-09-20", priorities: [] } }),
+		env,
+	);
+	assert.deepEqual(
+		result.tasks.map((r) => r.visual),
+		["on D"],
+	);
+});
+
+test("a range from D to the next day includes both days", () => {
+	const resolved = resolve([
+		"- [ ] before 📅 2026-09-19",
+		"- [ ] first 📅 2026-09-20",
+		"- [ ] next 📅 2026-09-21",
+		"- [ ] after 📅 2026-09-22",
+	]);
+	const result = arrange(
+		resolved,
+		view({ quickFilter: { from: "2026-09-20", to: "2026-09-21", priorities: [] } }),
+		env,
+	);
+	assert.deepEqual(
+		result.tasks.map((r) => r.visual),
+		["first", "next"],
+	);
+});
+
+test("a range keeps a task when any of its dates is on an included day, once", () => {
+	const resolved = resolve(
+		[
+			"- [ ] due on first 🛫 2026-09-01 📅 2026-09-20",
+			"- [ ] scheduled on last ⏳ 2026-09-30 📅 2026-10-01",
+			"- [x] completed on last 📅 2026-10-01 ✅ 2026-09-30",
+			"- [ ] extra date [unplanned:: 2026-09-20]",
+			"- [ ] two boundaries ⏳ 2026-09-20 📅 2026-09-30",
+			"- [ ] spans range 🛫 2026-09-01 📅 2026-10-01",
+		],
+		{ forward: false },
+	);
+	const result = arrange(
+		resolved,
+		view({ quickFilter: { from: "2026-09-20", to: "2026-09-30", priorities: [] } }, { forward: false }),
+		env,
+	);
+	assert.deepEqual(
+		result.tasks.map((r) => r.visual),
+		["due on first", "scheduled on last", "completed on last", "extra date", "two boundaries"],
+	);
 });
 
 test("the quick filter counts a forwarded task as being on today", () => {
@@ -184,6 +243,28 @@ test("the quick filter counts a forwarded task as being on today", () => {
 		result.tasks.map((r) => r.visual),
 		["unplanned", "late"],
 	);
+});
+
+test("a today-only range includes undated tasks only when forwarded", () => {
+	const lines = ["- [ ] unplanned", "- [ ] late 📅 2026-09-01"];
+	const quickFilter = { from: "2026-09-18", to: "2026-09-18", priorities: [] };
+	for (const forward of [true, false]) {
+		const result = arrange(resolve(lines, { forward }), view({ quickFilter }, { forward }), env);
+		assert.deepEqual(
+			result.tasks.map((r) => r.visual),
+			forward ? ["unplanned", "late"] : [],
+		);
+	}
+});
+
+test("a range with its days reversed still matches no task", () => {
+	const resolved = resolve(["- [ ] first 📅 2026-09-20", "- [ ] inside 📅 2026-09-25", "- [ ] last 📅 2026-09-30"]);
+	const result = arrange(
+		resolved,
+		view({ quickFilter: { from: "2026-09-30", to: "2026-09-20", priorities: [] } }),
+		env,
+	);
+	assert.deepEqual(result.tasks, []);
 });
 
 test("the quick filter's range needs both of its days", () => {
@@ -274,8 +355,8 @@ test("None matches tasks without a priority and [priority:: none]", () => {
 
 test("the priority filter combines selected levels with the date range and tags", () => {
 	const resolved = resolve([
-		"- [ ] high #work ⏫ 📅 2026-09-25",
-		"- [ ] none #work [priority:: none] [due:: 2026-09-26]",
+		"- [ ] high #work ⏫ 📅 2026-09-20",
+		"- [ ] none #work [priority:: none] [due:: 2026-09-30]",
 		"- [ ] low #work 🔽 📅 2026-09-25",
 		"- [ ] home #home ⏫ 📅 2026-09-25",
 		"- [ ] later #work ⏫ 📅 2026-10-01",
