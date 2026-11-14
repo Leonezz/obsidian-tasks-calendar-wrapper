@@ -21,10 +21,31 @@ function properties(body: string): string[] {
 }
 
 test("content-visibility is set only on the skipped day's selector", () => {
-	const selectors = cssRules(readFileSync("styles.css", "utf8"))
+	const rules = cssRules(readFileSync("styles.css", "utf8"))
 		.filter(({ body }) => /(^|[;\s])content-visibility\s*:/.test(body))
-		.flatMap(({ selectors }) => selectors);
-	assert.deepEqual([...new Set(selectors)].sort(), [".taskido .details.tcw-day"]);
+		.map(({ selectors, body }) => ({
+			selectors,
+			value: /(?:^|[;\s])content-visibility\s*:\s*([^;]+)/.exec(body)?.[1].trim(),
+		}));
+	assert.deepEqual(rules, [
+		{ selectors: [".taskido .details.tcw-day"], value: "auto" },
+		{ selectors: [".taskido.tcw-windowed .details.tcw-day"], value: "visible" },
+	]);
+});
+
+test("windowed gaps preserve measured height without receiving input", () => {
+	const rules = cssRules(readFileSync("styles.css", "utf8"));
+	const gap = rules.find(({ selectors }) => selectors.includes(".taskido .tcw-gap"));
+	assert.ok(gap);
+	assert.match(gap.body, /(?:^|[;\s])height\s*:\s*var\(--tcw-gap-height\)\s*;/);
+	assert.match(gap.body, /(?:^|[;\s])flex-shrink\s*:\s*0\s*;/);
+	assert.match(gap.body, /(?:^|[;\s])pointer-events\s*:\s*none\s*;/);
+	const day = rules.find(({ selectors }) => selectors.includes(".taskido.tcw-windowed .details.tcw-day"));
+	assert.ok(day);
+	assert.match(day.body, /(?:^|[;\s])contain-intrinsic-size\s*:\s*none\s*;/);
+	const root = rules.find(({ selectors }) => selectors.includes(".taskido.tcw-windowed"));
+	assert.ok(root);
+	assert.match(root.body, /(?:^|[;\s])overflow-anchor\s*:\s*none\s*;/);
 });
 
 test("the focus ring is drawn only on :focus-visible from --tcw-focus-ring", () => {

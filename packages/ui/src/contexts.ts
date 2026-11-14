@@ -57,6 +57,8 @@ export const RowWriteContext = React.createContext<{
 	readonly prefix: string;
 	readonly focusRow: (id: string) => void;
 	readonly moveFocus: (id: string, key: string) => void;
+	/** A row instance includes its date column; virtual rows cannot be paired with the full list by DOM index. */
+	readonly registerRow?: (id: string, element: HTMLElement | null) => void;
 }>({
 	pendingWrites: { getSnapshot: () => undefined, subscribe: () => () => {} },
 	clock: { lastListChangeAt: -Infinity },

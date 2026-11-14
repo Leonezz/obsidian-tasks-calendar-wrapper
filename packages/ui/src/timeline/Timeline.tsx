@@ -37,6 +37,7 @@ import { recordProvider, timelineRendered } from "../renderprobe";
 import { sameJsonValue } from "../sameJsonValue";
 import { Year } from "./Year";
 import type { EntryProps } from "./Day";
+import { useWindowed, type TimelineWindow } from "./Windowed";
 
 declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
@@ -112,10 +113,13 @@ interface TimelineMemo {
 	committedTodayFocus?: boolean;
 	focusId?: string;
 	focusElement?: HTMLElement;
+	/** A focused row left before its surviving neighbour had mounted. */
+	pendingFocusRestore?: string;
 	/** Whether the stop row held DOM focus when this render began, before its commit could detach it. */
 	stopHadFocus: boolean;
 	eligibleIds: readonly string[];
-	rowElements: ReadonlyMap<string, HTMLElement>;
+	rowElements: Map<string, HTMLElement>;
+	window?: TimelineWindow;
 	/** Remembers the last layout, so a click on a counter or on Focus on today resolves no task again. */
 	readonly query: ReturnType<typeof createQuery>;
 	focus?: { readonly result: QueryResult; readonly focused: QueryResult };
@@ -147,8 +151,10 @@ function focusRow(memo: TimelineMemo, id: string | undefined, refresh = false) {
 		return;
 	}
 	if (memo.focusElement) setRowTabIndex(memo.focusElement, -1);
+	if (memo.pendingFocusRestore !== id) memo.pendingFocusRestore = undefined;
 	memo.focusId = id;
 	memo.focusElement = row;
+	memo.window?.setFocus(id);
 	if (row) setRowTabIndex(row, 0);
 }
 
@@ -170,8 +176,12 @@ function moveFocus(memo: TimelineMemo, id: string, key: string) {
 	const index = memo.eligibleIds.indexOf(id);
 	const next =
 		key === "Home" ? 0 : key === "End" ? memo.eligibleIds.length - 1 : key === "ArrowDown" ? index + 1 : index - 1;
-	if (index >= 0 && next >= 0 && next < memo.eligibleIds.length)
-		memo.rowElements.get(memo.eligibleIds[next])?.focus();
+	if (index >= 0 && next >= 0 && next < memo.eligibleIds.length) {
+		const id = memo.eligibleIds[next];
+		const row = memo.rowElements.get(id);
+		if (row) row.focus();
+		else void memo.window?.revealInstance(id).then((shown) => shown && memo.rowElements.get(id)?.focus());
+	}
 }
 
 function optionsFor(memo: TimelineMemo, options: TimelineOptions, now: DateValue): UserOptionValue {
@@ -320,6 +330,20 @@ export function Timeline(props: TimelineProps) {
 			prefix: `tcw-${id.replace(/:/g, "")}-`,
 			focusRow: (id) => focusRow(memo, id, true),
 			moveFocus: (id, key) => moveFocus(memo, id, key),
+			registerRow: (id, element) => {
+				if (element) {
+					memo.rowElements.set(id, element);
+					if (memo.focusId === id) focusRow(memo, id, true);
+					if (memo.pendingFocusRestore === id) {
+						memo.pendingFocusRestore = undefined;
+						const active = element.ownerDocument.activeElement;
+						if (!active || active === element.ownerDocument.body) element.focus();
+					}
+				} else {
+					memo.rowElements.delete(id);
+					if (memo.focusId === id) memo.focusElement = undefined;
+				}
+			},
 		},
 		counterHandlers: {
 			todo: () => props.viewActions.toggleCounter("todo"),
@@ -345,6 +369,8 @@ export function Timeline(props: TimelineProps) {
 	const shown = todayFocus ? focusedFor(memo, result) : result;
 	const days = shown.years.flatMap((year) => year.days);
 	const instanceIds = days.flatMap((day) => day.tasks.map(({ task }) => rowInstanceKey(day.key, task.id)));
+	const window = useWindowed(shown, host, memo.rowElements, memo.focusId, userOptions.useYearHeader);
+	memo.window = window.controller;
 	const active = memo.focusElement?.ownerDocument.activeElement;
 	memo.stopHadFocus = !!active && !!memo.focusElement?.contains(active);
 
@@ -374,8 +400,6 @@ export function Timeline(props: TimelineProps) {
 			link.tabIndex = link.closest(".task") === memo.focusElement ? 0 : -1;
 		// A control mounted since the last commit, such as a new tag, follows the stop row.
 		if (!focusChanged) return focusRow(memo, memo.focusId, true);
-		const elements = root.current.querySelectorAll<HTMLElement>(".task");
-		memo.rowElements = new Map(instanceIds.map((id, index) => [id, elements[index]]));
 		const eligible = days.filter((day) => !todayFocus || day.isToday);
 		const previousEligible = memo.eligibleIds;
 		memo.eligibleIds = eligible.flatMap((day) => day.tasks.map(({ task }) => rowInstanceKey(day.key, task.id)));
@@ -399,8 +423,15 @@ export function Timeline(props: TimelineProps) {
 		focusRow(memo, neighbour ?? afterEntry[0] ?? memo.eligibleIds[0], true);
 		// Focus fell to the body with the detached stop row; never take it from anywhere else.
 		const active = root.current.ownerDocument.activeElement;
-		if (memo.stopHadFocus && (!active || active === root.current.ownerDocument.body)) memo.focusElement?.focus();
+		if (memo.stopHadFocus && (!active || active === root.current.ownerDocument.body)) {
+			if (memo.focusElement) memo.focusElement.focus();
+			else if (memo.focusId !== undefined) {
+				memo.pendingFocusRestore = memo.focusId;
+				void memo.window?.revealInstance(memo.focusId);
+			}
+		}
 	});
+	useClientLayoutEffect(() => window.commit(root.current));
 
 	const styles = new Array<string>();
 	if (!props.userOptions.useCounters) styles.push("noCounters");
@@ -440,7 +471,10 @@ export function Timeline(props: TimelineProps) {
 	);
 	process.env.NODE_ENV !== "production" && recordProvider("ViewActions", props.viewActions);
 	const tree = (
-		<div ref={root} className={`taskido ${baseStyles} ${counterFilter} ${todayFocusClass}`}>
+		<div
+			ref={root}
+			className={`taskido ${baseStyles} ${counterFilter} ${todayFocusClass}${window.active ? " tcw-windowed" : ""}`}
+		>
 			<RowWriteContext.Provider value={rowWrites}>
 				<ViewActionsContext.Provider value={props.viewActions}>
 					<span>
@@ -448,7 +482,14 @@ export function Timeline(props: TimelineProps) {
 							// Keyed by place, then by year, as before: a year added in front of the entry's year makes
 							// React build the entry day, and with it the quick entry panel, again.
 							<React.Fragment key={i}>
-								<Year year={year} entry={entry} modelFor={modelFor} key={year.year} />
+								<Year
+									year={year}
+									entry={entry}
+									modelFor={modelFor}
+									window={window.active ? window : undefined}
+									yearIndex={i}
+									key={year.year}
+								/>
 							</React.Fragment>
 						))}
 					</span>
