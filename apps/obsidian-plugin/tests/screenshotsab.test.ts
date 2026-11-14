@@ -202,6 +202,74 @@ test("an unknown argument is an error", () => {
 	});
 });
 
+test("--windowing-parity is standalone, accepts a report and never updates a baseline", () => {
+	const expected = {
+		mode: "windowing-parity",
+		update: false,
+		only: "",
+		ab: null,
+		themes: "default",
+		windowingReport: null,
+	};
+	assert.deepEqual(parseScreenshotArgs(["--windowing-parity"]), expected);
+	assert.deepEqual(parseScreenshotArgs(["--windowing-parity", "--profile=desktop", "--report=out.json"]), {
+		...expected,
+		windowingReport: "out.json",
+	});
+	for (const args of [
+		["--force-windowing"],
+		["--update"],
+		["--styles"],
+		["--pin-theme"],
+		["--only=top"],
+		["--themes=default"],
+		["--profile=mobile"],
+		["--ab=master"],
+		["--candidate=other"],
+		["--any-base"],
+	])
+		assert.throws(
+			() => parseScreenshotArgs(["--windowing-parity", ...args]),
+			/--windowing-parity cannot be combined/,
+		);
+	assert.throws(() => parseScreenshotArgs(["--windowing-parity", "--report="]), /--report needs a file/);
+});
+
+test("--force-windowing changes no desktop defaults except its explicit debug flag", () => {
+	assert.deepEqual(parseScreenshotArgs(["--force-windowing", "--only=light-"]), {
+		mode: "screenshots",
+		update: false,
+		only: "light-",
+		ab: null,
+		themes: "default",
+		forceWindowing: true,
+	});
+	assert.deepEqual(parseScreenshotArgs(["--profile=desktop", "--themes=all", "--force-windowing"]), {
+		mode: "screenshots",
+		update: false,
+		only: "",
+		ab: null,
+		themes: "all",
+		forceWindowing: true,
+	});
+	for (const args of [
+		["--update"],
+		["--styles"],
+		["--pin-theme"],
+		["--profile=mobile"],
+		["--ab=master"],
+		["--candidate=other"],
+		["--report=out.json"],
+		["--any-base"],
+	])
+		assert.throws(
+			() => parseScreenshotArgs(["--force-windowing", ...args]),
+			/--force-windowing cannot be combined/,
+		);
+	assert.equal(Object.prototype.hasOwnProperty.call(parseScreenshotArgs([]), "forceWindowing"), false);
+	assert.equal(Object.prototype.hasOwnProperty.call(parseScreenshotArgs([]), "windowingReport"), false);
+});
+
 test("--themes defaults to default and takes all", () => {
 	const defaults = { mode: "screenshots", update: false, only: "", ab: null, themes: "default" };
 	assert.deepEqual(parseScreenshotArgs([]), defaults);
