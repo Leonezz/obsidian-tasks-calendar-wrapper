@@ -334,10 +334,21 @@ export async function measure({
 			const view = app.workspace.getLeavesOfType(viewType)[0]?.view;
 			if (typeof view?.revealTask !== "function") return { revealed: false };
 			const id = `${taskPath}:${taskLine}`;
-			try {
-				await view.revealTask(id);
-			} catch (error) {
-				throw new Error(`reveal: revealTask("${id}") failed: ${error?.message ?? String(error)}`);
+			const start = performance.now();
+			const limit = 5_000 * slowness;
+			for (;;) {
+				let revealed;
+				try {
+					revealed = await view.revealTask(id);
+				} catch (error) {
+					throw new Error(`reveal: revealTask("${id}") failed: ${error?.message ?? String(error)}`);
+				}
+				// A restored note can reach the metadata cache before its new task reaches the committed arrangement.
+				// Only retry a refused reveal; a successful reveal still has to mount the requested row below.
+				if (revealed !== false) break;
+				if (performance.now() - start > limit)
+					throw new Error(`timed out after ${limit / 1000} s waiting for reveal: the arranged task ${id}`);
+				await sleep(20);
 			}
 			await until(
 				() =>

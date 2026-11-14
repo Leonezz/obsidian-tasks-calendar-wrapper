@@ -682,6 +682,86 @@ test("reveal is skipped on a build without revealTask", async () => {
 	assert.deepEqual(page.scrolls, []);
 });
 
+test("toggle reset reveals a newly restored target before requiring its five mounted rows", () => {
+	const source = readFileSync("scripts/bench.mjs", "utf8");
+	const setupSource = source.slice(
+		source.indexOf("function toggleSetup("),
+		source.indexOf("/** The writer-only scenario"),
+	);
+	const original = "# Note\n- [ ] Existing task\n";
+	const taskPath = "Note.md";
+	let mounted = false;
+	let restored = "";
+	const evaluate = (arg: Record<string, unknown>) => {
+		if (arg.action === "toggleOptions") return {};
+		if (arg.action === "restore") {
+			assert.equal(arg.path, taskPath);
+			assert.equal(arg.verifyRestore, true);
+			mounted = false;
+			restored = String(arg.content);
+			return restored;
+		}
+		if (arg.action === "reveal") {
+			assert.equal(arg.taskPath, taskPath);
+			assert.equal(arg.taskLine, original.split("\n").length);
+			assert.ok(restored.includes("Bench toggle task 1"));
+			mounted = true;
+			return { revealed: true };
+		}
+		assert.equal(arg.action, "settle");
+		assert.equal(arg.toggleReady, true);
+		assert.equal((arg.toggleTasks as string[]).length, 5);
+		assert.ok(mounted, "the windowed target must be revealed before waiting for five mounted rows");
+		return {};
+	};
+	const setup = runInNewContext(`${setupSource}\ntoggleSetup`, {
+		BENCH_TARGETS: { toggle: taskPath },
+		LOAD_WATCH_MS: 2_000,
+		assertToggleRestored,
+		ScriptError: Error,
+	})(evaluate, new Map([[taskPath, original]])) as { reset(): void };
+	setup.reset();
+	setup.reset();
+});
+
+test("reveal retries a false result until newly indexed tasks reach the arranged view", async () => {
+	const page = viewPage({ rowPresent: false });
+	const calls: string[] = [];
+	let indexed = false;
+	void page.delay(80).then(() => {
+		indexed = true;
+	});
+	page.view.revealTask = async (id) => {
+		calls.push(id);
+		if (!indexed) return false;
+		page.showRow();
+		return true;
+	};
+	assert.deepEqual(await page.run({ action: "reveal", taskPath: page.taskPath, taskLine: page.taskLine }), {
+		revealed: true,
+	});
+	assert.ok(calls.length > 1, "a false reveal must be retried after the arrangement changes");
+	assert.ok(calls.every((id) => id === `${page.taskPath}:${page.taskLine}`));
+	assert.ok(page.now >= 1080);
+});
+
+test("a mounted row cannot hide a permanently refused reveal", async () => {
+	let calls = 0;
+	const page = viewPage({
+		view: {
+			revealTask: async () => {
+				calls++;
+				return false;
+			},
+		},
+	});
+	await assert.rejects(
+		page.run({ action: "reveal", taskPath: page.taskPath, taskLine: page.taskLine }),
+		/timed out after 5 s waiting for reveal: the arranged task/,
+	);
+	assert.ok(calls > 1);
+});
+
 test("reveal waits for revealTask and for the row it reveals", async () => {
 	const page = viewPage({ rowPresent: false });
 	let called = "";
