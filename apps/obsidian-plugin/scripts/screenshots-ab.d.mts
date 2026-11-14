@@ -1,8 +1,7 @@
 /** Types for the screenshot argument parser, pure A/B comparisons and Markdown report. */
 
 /** The selected screenshot mode and the options needed before any git or Obsidian work starts. */
-export type ScreenshotArgs = {
-	mode: "screenshots" | "styles" | "ab" | "pin-theme";
+type CommonScreenshotArgs = {
 	update: boolean;
 	/** The substring from --only=<text>, or an empty string when no filter was supplied. */
 	only: string;
@@ -19,6 +18,16 @@ export type ScreenshotArgs = {
 	profile?: "mobile";
 };
 
+export type ScreenshotArgs = CommonScreenshotArgs &
+	(
+		| { mode: "screenshots" | "styles" | "ab" | "pin-theme"; expandedFilter?: never }
+		| {
+				mode: "expanded-filter";
+				expandedFilter: { action: "review" | "record" | "check"; directory: string | null };
+				profile?: never;
+		  }
+	);
+
 /**
  * Parses --ab/--candidate/--report with a separate or = value, --any-base, --styles, --update, --only=<text>,
  * --themes=default|all, --profile=desktop|mobile and --pin-theme. Defaults to mode "screenshots", update false,
@@ -29,7 +38,7 @@ export type ScreenshotArgs = {
  * invalid or conflicting --themes
  * values, missing A/B values or stray A/B options, and the remaining incompatible combinations.
  * Throws plain Errors with these exact messages:
- * - unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --profile=desktop|mobile, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.
+ * - unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --profile=desktop|mobile, --pin-theme, --expanded-filter with --review <dir> or --record <dir>, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.
  * - --profile takes desktop or mobile; use only one profile value.
  * - --profile=mobile cannot be combined with ${option}.
  * - --pin-theme takes no other option.
@@ -45,6 +54,10 @@ export type ScreenshotArgs = {
  * A missing value includes an empty = value or a following option. --only and --themes with separate values
  * stay unknown. Repeating the same --themes value is allowed; --pin-theme takes no other option except
  * --profile=desktop, even --themes=default.
+ * --expanded-filter selects the independent check, --review <dir> collects review artifacts and --record <dir>
+ * promotes approved artifacts offline. Both directory options accept = values. This mode rejects --only, --update,
+ * --styles, --pin-theme, mobile and all A/B options; review and record are exclusive. Record rejects --themes because
+ * its manifest supplies the exact reviewed theme set. The new property is absent from every ordinary parse result.
  */
 export function parseScreenshotArgs(argv: readonly string[]): ScreenshotArgs;
 
