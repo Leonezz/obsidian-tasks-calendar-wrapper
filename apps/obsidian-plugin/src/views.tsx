@@ -21,6 +21,7 @@ import { reportNotice, type NoticePresenter } from "../timeline/src/notices";
 import { ERROR_NOTICE_MS } from "../timeline/src/writerconstants";
 import { flushSync } from "react-dom";
 import { createRoot, Root } from "react-dom/client";
+import type { TimelineHandle } from "@tasks-calendar-wrapper/ui";
 import { moment } from "../utils/moment";
 import { parseKeyOf } from "../utils/parsekey";
 import { changeAffectsTasks } from "../utils/refresh";
@@ -53,7 +54,17 @@ export class TasksTimelineView extends ItemView {
 	private root?: Root;
 	/** The component that owns this view's row markdown renders; unloaded when the view closes. */
 	private readonly markdownOwner = this.addChild(new Component());
-	private readonly uiHost: PluginUiHost = createUiHost({ owner: () => this.markdownOwner });
+	private timelineHandle?: TimelineHandle;
+	private readonly uiHost: PluginUiHost = createUiHost({
+		owner: () => this.markdownOwner,
+		windowing: {
+			getScrollElement: () => this.containerEl.children[1] as HTMLElement | undefined,
+			getMinRows: () => this.windowMinRows(),
+			connect: (handle) => {
+				this.timelineHandle = handle;
+			},
+		},
+	});
 	/** The options, the tasks read last and the list shown, see TimelineState, which the bridge renders. */
 	private readonly store = createStore<TimelineState>(initialTimelineState());
 	/** Placeholder controls until onOpen seeds them from the session or the factory's options. */
@@ -127,6 +138,7 @@ export class TasksTimelineView extends ItemView {
 		notices: Pick<NoticePresenter, "undo">,
 		/** A view made outside the plugin has its own session and opens with On Load values. */
 		private readonly session: ViewSession = createViewSession(),
+		private readonly windowMinRows: () => number | undefined = () => undefined,
 	) {
 		super(leaf);
 		this.reader = notes.openReader();
@@ -216,12 +228,28 @@ export class TasksTimelineView extends ItemView {
 		if (!this.isReloading) this.reader.close();
 		// Runs the components' cleanup, so a reload that finishes after closing renders nothing.
 		this.root?.unmount();
+		this.timelineHandle = undefined;
 		// Unloads this view's markdown children, and only them.
 		this.removeChild(this.markdownOwner);
 	}
 
 	getState(): Record<string, unknown> {
 		return savedViewState(this.viewState.store.getSnapshot(), this.session);
+	}
+
+	/** Brings a listed task into the viewport before scripts or keyboard actions inspect its row. */
+	async revealTask(id: string): Promise<boolean> {
+		return !this.closed && (this.timelineHandle?.revealTask(id) ?? false);
+	}
+
+	/** Reveals the date line of a day that belongs to the current arranged result. */
+	async revealDay(key: string): Promise<boolean> {
+		return !this.closed && (this.timelineHandle?.revealDay(key) ?? false);
+	}
+
+	/** Logical rows are counted before windowing, so fixture checks can distinguish an empty filter from a blank pane. */
+	getWindowingInfo(): ReturnType<TimelineHandle["getWindowingInfo"]> | undefined {
+		return this.closed ? undefined : this.timelineHandle?.getWindowingInfo();
 	}
 
 	async setState(state: unknown, result: ViewStateResult): Promise<void> {

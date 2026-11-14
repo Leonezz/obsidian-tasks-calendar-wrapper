@@ -140,7 +140,16 @@ function toggleSetup(evaluate, notes) {
 	const settle = () => evaluate({ action: "settle", settleMs: LOAD_WATCH_MS, toggleTasks });
 	const reset = () => {
 		restore(prepared);
-		evaluate({ action: "settle", settleMs: LOAD_WATCH_MS, path, toggleTasks, toggleReady: true });
+		evaluate({ action: "reveal", taskPath: path, taskLine: lines[0] });
+		evaluate({
+			action: "settle",
+			settleMs: LOAD_WATCH_MS,
+			path,
+			taskPath: path,
+			taskLine: lines[0],
+			toggleTasks,
+			toggleReady: true,
+		});
 	};
 	return {
 		path,
@@ -182,7 +191,6 @@ function measureToggle(evaluate, timed, notes, scale, label, cpuSummary, cpuText
 		const idle = [];
 		for (let run = 0; run < TOGGLE_RUNS[scale]; run++) {
 			reset();
-			evaluate({ action: "reveal", taskPath: path, taskLine: lines[0] });
 			const step = timed({ action: "toggle", path, toggleTasks, toggleMode: "idle" });
 			check(() => assertToggleChanges(prepared, step.content, lines.slice(0, 1)));
 			idle.push(step);
