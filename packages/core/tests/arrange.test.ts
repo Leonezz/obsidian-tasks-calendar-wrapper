@@ -246,14 +246,53 @@ test("the quick filter's tags keep a task with any of them, ignoring case", () =
 	assert.equal(tasksWith([]).length, 4);
 });
 
-test("the quick filter's priorities are compared as written, so the numbered ones match nothing, as before", () => {
-	const resolved = resolve(["- [ ] high ⏫", "- [ ] none"]);
+test("priority High matches ⏫ tasks", () => {
+	const resolved = resolve([
+		"- [ ] high ⏫",
+		"- [ ] dataview high [priority:: high]",
+		"- [ ] medium 🔼",
+		"- [ ] none",
+	]);
 	const tasksWith = (priorities: string[]) =>
 		arrange(resolved, view({ quickFilter: { priorities } }), env).tasks.map((r) => r.visual);
-	assert.deepEqual(tasksWith(["High"]), ["high"]);
-	// A known quirk, kept until it is fixed on purpose: the quick filter offers "1" to "4".
-	assert.deepEqual(tasksWith(["1"]), []);
-	assert.deepEqual(tasksWith([]), ["high", "none"]);
+	assert.deepEqual(tasksWith(["High"]), ["high", "dataview high"]);
+	assert.equal(tasksWith([]).length, 4);
+});
+
+test("None matches tasks without a priority and [priority:: none]", () => {
+	const resolved = resolve(["- [ ] implicit", "- [ ] explicit [priority:: none]", "- [ ] high ⏫"]);
+	assert.deepEqual(
+		resolved.shown.slice(0, 2).map((r) => r.task.priority),
+		["", "No"],
+	);
+	const result = arrange(resolved, view({ quickFilter: { priorities: ["No", ""] } }), env);
+	assert.deepEqual(
+		result.tasks.map((r) => r.visual),
+		["implicit", "explicit"],
+	);
+});
+
+test("the priority filter combines selected levels with the date range and tags", () => {
+	const resolved = resolve([
+		"- [ ] high #work ⏫ 📅 2026-09-25",
+		"- [ ] none #work [priority:: none] [due:: 2026-09-26]",
+		"- [ ] low #work 🔽 📅 2026-09-25",
+		"- [ ] home #home ⏫ 📅 2026-09-25",
+		"- [ ] later #work ⏫ 📅 2026-10-01",
+		"- [ ] unplanned #work ⏫",
+	]);
+	const result = arrange(
+		resolved,
+		view({
+			quickFilter: { from: "2026-09-20", to: "2026-09-30", priorities: ["High", "No", ""], tags: ["#work"] },
+		}),
+		env,
+	);
+	assert.deepEqual(
+		result.tasks.map((r) => r.visual),
+		["high", "none"],
+	);
+	assert.equal(result.counts.todo, 2);
 });
 
 // The counter filter, as styles.css applied it: Filter hides the tasks, days and year headers without the counter's

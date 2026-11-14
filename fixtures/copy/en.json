@@ -27,10 +27,12 @@
 		"priorities": "Priorities: ",
 		"priorityVisual": [
 			"➕",
+			"Highest",
 			"High",
 			"Medium",
 			"None",
-			"Low"
+			"Low",
+			"Lowest"
 		],
 		"appendTaskAria": "Append new task to selected note",
 		"tagPlaceholder": "🏷️ Filter by tag: #home",
