@@ -79,6 +79,21 @@ const props: DayProps = {
 	modelFor,
 };
 const changes: [string, DayProps][] = [
+	[
+		"window identity",
+		{
+			...props,
+			window: {
+				showHeader: true,
+				headerHeight: 41,
+				parts: [
+					{ kind: "row", index: 0 },
+					{ kind: "row", index: 1 },
+				],
+				ref: () => {},
+			},
+		},
+	],
 	["yearLabel", { ...props, yearLabel: "2027" }],
 	["modelFor", { ...props, modelFor: (task) => modelFor(task) }],
 	["entry identity", { ...props, entry: { ...props.entry! } }],
@@ -157,6 +172,21 @@ test("sameDayProps: each compared field changed means a render", async (t) => {
 
 test("sameDayProps: equal props mean no render", () => {
 	for (const [label, next] of equals) assert.equal(sameDayProps(props, next), true, label);
+});
+
+test("sameDayProps: an unchanged day reference does not revisit its task or status arrays", () => {
+	let arrayReads = 0;
+	const day = new Proxy(Object.freeze({ ...props.day }), {
+		get(target, key, receiver) {
+			if (key === "tasks" || key === "statuses") arrayReads++;
+			return Reflect.get(target, key, receiver);
+		},
+	});
+	const initial = { ...props, day };
+	assert.equal(sameDayProps(initial, { ...initial }), true);
+	assert.equal(arrayReads, 0);
+	assert.equal(sameDayProps(initial, { ...initial, day: { ...props.day } }), true);
+	assert.ok(arrayReads > 0, "a new day reference still compares its arrays");
 });
 
 test("Day is memo with sameDayProps", () => {

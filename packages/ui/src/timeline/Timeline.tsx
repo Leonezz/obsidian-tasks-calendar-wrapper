@@ -363,12 +363,18 @@ export function Timeline(props: TimelineProps) {
 		prepared,
 	);
 	const { counts } = result;
-	const renderedIds = result.years.flatMap((year) =>
-		year.days.flatMap((day) => day.tasks.map(({ task }) => task.id)),
+	const renderedIds = React.useMemo(
+		() => result.years.flatMap((year) => year.days.flatMap((day) => day.tasks.map(({ task }) => task.id))),
+		[result],
 	);
 	const shown = todayFocus ? focusedFor(memo, result) : result;
-	const days = shown.years.flatMap((year) => year.days);
-	const instanceIds = days.flatMap((day) => day.tasks.map(({ task }) => rowInstanceKey(day.key, task.id)));
+	const { days, instanceIds } = React.useMemo(() => {
+		const days = shown.years.flatMap((year) => year.days);
+		return {
+			days,
+			instanceIds: days.flatMap((day) => day.tasks.map(({ task }) => rowInstanceKey(day.key, task.id))),
+		};
+	}, [shown]);
 	const window = useWindowed(shown, host, memo.rowElements, memo.focusId, userOptions.useYearHeader);
 	memo.window = window.controller;
 	const active = memo.focusElement?.ownerDocument.activeElement;
@@ -376,11 +382,13 @@ export function Timeline(props: TimelineProps) {
 
 	useClientLayoutEffect(() => {
 		const listChanged =
-			renderedIds.length !== memo.committedIds.length ||
-			renderedIds.some((id, index) => id !== memo.committedIds[index]);
+			renderedIds !== memo.committedIds &&
+			(renderedIds.length !== memo.committedIds.length ||
+				renderedIds.some((id, index) => id !== memo.committedIds[index]));
 		const instancesChanged =
-			instanceIds.length !== memo.committedInstanceIds.length ||
-			instanceIds.some((id, index) => id !== memo.committedInstanceIds[index]);
+			instanceIds !== memo.committedInstanceIds &&
+			(instanceIds.length !== memo.committedInstanceIds.length ||
+				instanceIds.some((id, index) => id !== memo.committedInstanceIds[index]));
 		const focusChanged = !memo.committed || instancesChanged || memo.committedTodayFocus !== todayFocus;
 		if (memo.committed && listChanged) rowWrites.clock.lastListChangeAt = performance.now();
 		memo.committed = true;

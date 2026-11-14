@@ -37,15 +37,16 @@ export const sameDayProps = (prev: DayProps, next: DayProps): boolean =>
 	next.yearLabel === prev.yearLabel &&
 	next.modelFor === prev.modelFor &&
 	next.entry === prev.entry &&
-	next.day.key === prev.day.key &&
-	next.day.label === prev.day.label &&
-	next.day.isToday === prev.day.isToday &&
-	next.day.isEntry === prev.day.isEntry &&
-	next.day.dated === prev.day.dated &&
-	next.day.statuses.length === prev.day.statuses.length &&
-	next.day.statuses.every((status, index) => status === prev.day.statuses[index]) &&
-	next.day.tasks.length === prev.day.tasks.length &&
-	next.day.tasks.every((task, index) => task === prev.day.tasks[index]);
+	(next.day === prev.day ||
+		(next.day.key === prev.day.key &&
+			next.day.label === prev.day.label &&
+			next.day.isToday === prev.day.isToday &&
+			next.day.isEntry === prev.day.isEntry &&
+			next.day.dated === prev.day.dated &&
+			next.day.statuses.length === prev.day.statuses.length &&
+			next.day.statuses.every((status, index) => status === prev.day.statuses[index]) &&
+			next.day.tasks.length === prev.day.tasks.length &&
+			next.day.tasks.every((task, index) => task === prev.day.tasks[index])));
 
 // Keep the former Consumer's subscription here so a filter change does not render an unchanged day.
 function EntryFilters({ entry }: { readonly entry: EntryProps }) {

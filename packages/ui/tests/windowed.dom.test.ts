@@ -400,6 +400,32 @@ test("renders only the range plus overscan", async (t) => {
 	assert.equal(f.clock(), clock, "changing mounted rows does not change the full-list click guard");
 });
 
+test("scrolling a stable result does not revisit or encode the full logical row list", async (t) => {
+	const f = harness(t);
+	let idReads = 0;
+	const items = f.items().map((item) => {
+		const id = item.id;
+		return Object.defineProperty(item, "id", {
+			enumerable: true,
+			get: () => {
+				idReads++;
+				return id;
+			},
+		});
+	});
+	const encode = t.mock.method(globalThis, "encodeURIComponent");
+	await f.render(items);
+	idReads = 0;
+	encode.mock.resetCalls();
+	const clock = f.clock();
+	await f.scrollTo(30_240);
+	assert.ok(f.row(500));
+	assert.equal(f.row(100), null);
+	assert.ok(idReads < 100, `${idReads} task IDs read for the mounted window, not all ${items.length} tasks`);
+	assert.ok(encode.mock.callCount() < 200, "only newly mounted rows need encoded instance IDs");
+	assert.equal(f.clock(), clock);
+});
+
 test("the entry panel stays mounted when scrolled away and modes change", async (t) => {
 	const f = harness(t);
 	await f.render();
