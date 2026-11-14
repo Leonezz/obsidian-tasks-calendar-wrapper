@@ -356,6 +356,7 @@ function togglePage({
 	rowScanMs = 0,
 	writeDelay = 70,
 	windowed = false,
+	reorderAfterWrite = false,
 	focusWorkMs = 0,
 	backgroundDocument = false,
 	rowQueryMs = 0,
@@ -482,6 +483,9 @@ function togglePage({
 						schedule(() => {
 							busy = false;
 							if (windowed && focusRow !== row) row.isConnected = false;
+							if (reorderAfterWrite)
+								for (const other of pageRows)
+									if (other !== row && other.dataset.task === " ") other.isConnected = false;
 							view.onReloadTasks();
 							vault.cachedRead();
 							emit(row, "aria-busy", "true");
@@ -660,6 +664,29 @@ test("burst verifies accepted off-window writes after the five scheduled clicks"
 	assert.equal(result.reloadCalls, 5);
 	assert.ok(result.clicks.every(({ realMs }) => realMs !== null));
 	assert.ok(page.focused.every(({ preventScroll }) => preventScroll));
+});
+
+test("sequence reveals the next open target when the previous write moves it outside the window", async () => {
+	const page = togglePage({ windowed: true, reorderAfterWrite: true });
+	const result = (await page.run({ action: "toggle", toggleMode: "sequence" })) as ToggleMeasurement;
+	assert.deepEqual(
+		page.dispatched.map(({ text }) => text),
+		page.taskTexts,
+	);
+	assert.deepEqual(page.reveals, ["Note.md:1", "Note.md:2", "Note.md:3", "Note.md:4"]);
+	assert.ok(result.clicks.every(({ overlayMs, realMs }) => overlayMs !== null && realMs !== null));
+	assert.equal(result.reloadCalls, 5);
+	assert.ok(page.pageRows.every((row) => row.dataset.task === "x" && !row.hasAttribute("aria-busy")));
+});
+
+test("sequence still rejects a missing next target on a legacy view without revealTask", async () => {
+	const page = togglePage({ reorderAfterWrite: true });
+	Object.defineProperty(page.view, "revealTask", { value: undefined });
+	await assert.rejects(page.run({ action: "toggle", toggleMode: "sequence" }), /expected one row for "Two", found 0/);
+	assert.deepEqual(
+		page.dispatched.map(({ text }) => text),
+		["One"],
+	);
 });
 
 test("a step with no task over 50 ms reports blockedMs 0 and longestMs 0", async () => {

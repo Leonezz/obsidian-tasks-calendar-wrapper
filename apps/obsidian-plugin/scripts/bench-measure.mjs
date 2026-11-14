@@ -728,6 +728,19 @@ export async function measure({
 					for (const text of toggleMode === "idle" ? toggleTasks.slice(0, 1) : toggleTasks) {
 						let entry;
 						for (let attempt = 0; attempt < 10; attempt++) {
+							// Sequence is an untimed counts check. A preceding write can move the next open target outside the window.
+							if (toggleMode === "sequence" && toggleRows(root, text).length === 0) {
+								const line = initialRows[toggleTasks.indexOf(text)].getAttribute("data-line");
+								if (!/^\d+$/.test(line ?? ""))
+									throw new Error(`toggle: "${text}" has no task line to reveal`);
+								await measure({
+									action: "reveal",
+									viewType,
+									taskPath: path,
+									taskLine: Number(line),
+									slowness,
+								});
+							}
 							entry = click(text);
 							if (toggleMode === "idle") {
 								await until(() => entry.overlayAt !== null, 30_000, `the idle overlay for "${text}"`);
