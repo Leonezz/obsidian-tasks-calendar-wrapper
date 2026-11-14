@@ -321,6 +321,12 @@ interface PageRow {
 	hasAttribute(name: string): boolean;
 	querySelector(selector: string): unknown;
 	closest(): object;
+	focus(options: { preventScroll: boolean }): void;
+	ownerDocument: { activeElement: PageRow | null; defaultView: object; hasFocus(): boolean };
+	contains(element: PageRow | null): boolean;
+	addEventListener(type: string, listener: () => void): void;
+	removeEventListener(type: string, listener: () => void): void;
+	dispatchEvent(event: { type: string; synthetic?: boolean }): boolean;
 }
 
 interface PageClick {
@@ -348,6 +354,10 @@ function togglePage({
 	refuseRestore = false,
 	overlayDelay = 10,
 	rowScanMs = 0,
+	writeDelay = 70,
+	windowed = false,
+	focusWorkMs = 0,
+	backgroundDocument = false,
 } = {}) {
 	let now = 1000;
 	let disk = "- [ ] Task\n";
@@ -371,11 +381,39 @@ function togglePage({
 		for (const observer of observers)
 			observer.callback([{ target: row, attributeName: name, oldValue, type: "attributes", addedNodes: [] }]);
 	};
-	const pageWindow = {};
+	const pageWindow = {
+		FocusEvent: class {
+			synthetic = true;
+			constructor(
+				readonly type: string,
+				readonly options: { bubbles: boolean },
+			) {}
+		},
+	};
+	const pageDocument = {
+		activeElement: null as PageRow | null,
+		defaultView: pageWindow,
+		hasFocus: () => !backgroundDocument,
+	};
 	const dispatched: { text: string; at: number; event: PageClick }[] = [];
+	const focused: { text: string; at: number; preventScroll: boolean }[] = [];
+	const focusEvents: { text: string; at: number; synthetic: boolean }[] = [];
+	const focusListeners = new Set<() => void>();
+	const reveals: string[] = [];
+	let focusRow: PageRow | undefined;
 	const column = {};
 	const taskTexts = ["One", "Two", "Three", "Four", "Five"];
-	const view = { onReloadTasks() {} };
+	const view = {
+		onReloadTasks() {},
+		async revealTask(id: string) {
+			reveals.push(id);
+			const row = pageRows[Number(id.slice(id.lastIndexOf(":") + 1))];
+			if (!row) return false;
+			row.isConnected = true;
+			emit(row, "data-task", null);
+			return true;
+		},
+	};
 	const originalReload = view.onReloadTasks;
 	const vault = {
 		cachedRead() {
@@ -389,16 +427,39 @@ function togglePage({
 		adapter: { readBinary: async () => new TextEncoder().encode(disk) },
 	};
 	const originalRead = vault.cachedRead;
-	const pageRows = taskTexts.map((text) => {
+	const pageRows = taskTexts.map((text, line) => {
 		let busy = false;
 		const row: PageRow = {
 			nodeType: 1,
 			isConnected: true,
 			dataset: { task: " " },
 			parentElement: column,
-			getAttribute: () => (busy ? "true" : null),
+			getAttribute: (name) => (name === "data-line" ? String(line) : busy ? "true" : null),
 			hasAttribute: () => busy,
 			closest: () => root,
+			ownerDocument: pageDocument,
+			contains: (element) => element === row,
+			addEventListener(type, listener) {
+				assert.equal(type, "focusin");
+				focusListeners.add(listener);
+			},
+			removeEventListener(type, listener) {
+				assert.equal(type, "focusin");
+				focusListeners.delete(listener);
+			},
+			dispatchEvent(event) {
+				assert.equal(event.type, "focusin");
+				focusEvents.push({ text, at: now, synthetic: Boolean(event.synthetic) });
+				for (const listener of focusListeners) listener();
+				focusRow = row;
+				return true;
+			},
+			focus(options) {
+				focused.push({ text, at: now, preventScroll: options.preventScroll });
+				pageDocument.activeElement = row;
+				now += focusWorkMs;
+				if (!backgroundDocument) row.dispatchEvent({ type: "focusin", synthetic: false });
+			},
 			querySelector: (selector) => {
 				if (selector === ":scope > .lines > .content") return { textContent: text };
 				if (selector !== ":scope > .timeline > label.icon") return null;
@@ -416,17 +477,20 @@ function togglePage({
 						}, overlayDelay + 10);
 						schedule(() => {
 							busy = false;
+							if (windowed && focusRow !== row) row.isConnected = false;
 							view.onReloadTasks();
 							vault.cachedRead();
 							emit(row, "aria-busy", "true");
-						}, overlayDelay + 70);
+						}, overlayDelay + writeDelay);
 					},
 				};
 			},
 		};
 		return row;
 	});
-	const root = { querySelectorAll: () => pageRows.map((row) => ({ closest: () => row })) };
+	const root = {
+		querySelectorAll: () => pageRows.filter((row) => row.isConnected).map((row) => ({ closest: () => row })),
+	};
 	const plugin: { writer?: object; userOptions: { openNoteInsteadOfInPlace?: boolean } } = {
 		writer: {},
 		userOptions: { openNoteInsteadOfInPlace: false },
@@ -438,7 +502,15 @@ function togglePage({
 	const measure = runInNewContext(source + "\nmeasure", {
 		app: { plugins: { plugins: { test: plugin } }, workspace: { getLeavesOfType: () => [{ view }] }, vault },
 		document: {
-			querySelector: () => root,
+			body: root,
+			querySelector: (selector: string) => {
+				if (selector.includes('.task[aria-busy="true"]'))
+					return pageRows.find((row) => row.isConnected && row.hasAttribute("aria-busy")) ?? null;
+				const line = selector.match(/data-line="(\d+)"/)?.[1];
+				if (line !== undefined) return pageRows[Number(line)]?.isConnected ? pageRows[Number(line)] : null;
+				return root;
+			},
+			querySelectorAll: () => pageRows.filter((row) => row.isConnected),
 			getElementsByClassName: () => ({
 				*[Symbol.iterator]() {
 					now += rowScanMs;
@@ -473,12 +545,20 @@ function togglePage({
 	}) as (args: Record<string, unknown>) => Promise<unknown>;
 	return {
 		dispatched,
+		focused,
+		focusEvents,
+		reveals,
 		plugin,
+		pageRows,
+		taskTexts,
 		pageWindow,
 		view,
 		vault,
 		originalReload,
 		originalRead,
+		delay(ms: number) {
+			return new Promise<void>((resolve) => schedule(resolve, ms));
+		},
 		async run(args: Record<string, unknown>) {
 			let done = false;
 			let result: unknown;
@@ -512,6 +592,7 @@ function togglePage({
 			}
 			assert.ok(done, "the page did not finish");
 			assert.equal(observers.size, 0, "measurement observers were not disconnected");
+			assert.equal(focusListeners.size, 0, "temporary focus listeners were not removed");
 			if (failure) throw failure;
 			return result;
 		},
@@ -523,6 +604,43 @@ test("toggle: the overlay time does not include the recorder's first-row scan", 
 	const result = (await page.run({ action: "toggle" })) as ToggleMeasurement;
 	assert.equal(result.overlayMs, 10);
 	assert.equal(result.overlayPaintedMs, 11);
+});
+
+test("toggle focuses the clicked instance without scrolling before starting its click clock", async () => {
+	const page = togglePage({ windowed: true, focusWorkMs: 60 });
+	const result = (await page.run({ action: "toggle" })) as ToggleMeasurement;
+	assert.deepEqual(page.focused, [{ text: "One", at: 1000, preventScroll: true }]);
+	assert.equal(page.dispatched[0].at, 1060);
+	assert.equal(page.dispatched[0].event.timeStamp, 1060);
+	assert.equal(result.overlayMs, 10);
+	assert.equal(result.clicks[0].realMs, 80);
+	assert.deepEqual(page.focusEvents, [{ text: "One", at: 1060, synthetic: false }]);
+});
+
+test("a background document's silent focus receives one owner-window focusin before the click clock", async () => {
+	const page = togglePage({ windowed: true, backgroundDocument: true, focusWorkMs: 60 });
+	const result = (await page.run({ action: "toggle" })) as ToggleMeasurement;
+	assert.deepEqual(page.focusEvents, [{ text: "One", at: 1060, synthetic: true }]);
+	assert.equal(page.dispatched[0].at, 1060);
+	assert.equal(result.overlayMs, 10);
+	assert.equal(result.clicks[0].realMs, 80);
+	assert.deepEqual(page.reveals, [], "the clicked resident row must remain directly observable");
+});
+
+test("burst verifies accepted off-window writes after the five scheduled clicks", async () => {
+	const page = togglePage({ windowed: true, writeDelay: 370 });
+	const result = (await page.run({ action: "toggle", toggleMode: "burst", quietMs: 100 })) as ToggleMeasurement;
+	assert.deepEqual(
+		page.dispatched.map(({ at }) => at),
+		[1000, 1200, 1400, 1600, 1800],
+	);
+	assert.ok(
+		page.reveals.includes("Note.md:0"),
+		"an accepted completed row outside the window must be revealed and checked",
+	);
+	assert.equal(result.reloadCalls, 5);
+	assert.ok(result.clicks.every(({ realMs }) => realMs !== null));
+	assert.ok(page.focused.every(({ preventScroll }) => preventScroll));
 });
 
 test("a step with no task over 50 ms reports blockedMs 0 and longestMs 0", async () => {
@@ -710,6 +828,8 @@ test("toggle reset reveals a newly restored target before requiring its five mou
 		}
 		assert.equal(arg.action, "settle");
 		assert.equal(arg.toggleReady, true);
+		assert.equal(arg.taskPath, taskPath);
+		assert.equal(arg.taskLine, original.split("\n").length);
 		assert.equal((arg.toggleTasks as string[]).length, 5);
 		assert.ok(mounted, "the windowed target must be revealed before waiting for five mounted rows");
 		return {};
@@ -722,6 +842,63 @@ test("toggle reset reveals a newly restored target before requiring its five mou
 	})(evaluate, new Map([[taskPath, original]])) as { reset(): void };
 	setup.reset();
 	setup.reset();
+});
+
+test("toggle readiness reveals again when metadata reorders a successfully revealed old done target", async () => {
+	const page = togglePage();
+	page.pageRows[0].dataset.task = "x";
+	let committed = false;
+	const reveals: { id: string; committed: boolean }[] = [];
+	page.view.revealTask = async (id) => {
+		reveals.push({ id, committed });
+		if (committed)
+			page.pageRows.forEach((row) => {
+				row.isConnected = true;
+			});
+		return true;
+	};
+	assert.equal(
+		((await page.run({ action: "reveal", taskPath: "Note.md", taskLine: 0 })) as { revealed: boolean }).revealed,
+		true,
+	);
+	assert.equal(page.pageRows[0].dataset.task, "x", "the first reveal found the stale done target");
+	void page.delay(80).then(() => {
+		committed = true;
+		page.pageRows[0].dataset.task = " ";
+		page.pageRows.slice(1).forEach((row) => {
+			row.isConnected = false;
+		});
+	});
+	const result = await page.run({
+		action: "settle",
+		settleMs: 0,
+		toggleReady: true,
+		taskPath: "Note.md",
+		taskLine: 0,
+	});
+	assert.equal((result as { rows: number }).rows, 5);
+	assert.ok(
+		reveals.some(({ committed }) => committed),
+		"the new arrangement needs its own reveal",
+	);
+	assert.ok(reveals.every(({ id }) => id === "Note.md:0"));
+	assert.ok(
+		page.pageRows.every((row) => row.isConnected && row.dataset.task === " " && !row.hasAttribute("aria-busy")),
+	);
+});
+
+test("toggle readiness still validates five open rows on a legacy view without revealTask", async () => {
+	const page = togglePage();
+	Object.defineProperty(page.view, "revealTask", { value: undefined });
+	const result = await page.run({
+		action: "settle",
+		settleMs: 0,
+		toggleReady: true,
+		taskPath: "Note.md",
+		taskLine: 0,
+	});
+	assert.equal((result as { rows: number }).rows, 5);
+	assert.deepEqual(page.reveals, []);
 });
 
 test("reveal retries a false result until newly indexed tasks reach the arranged view", async () => {

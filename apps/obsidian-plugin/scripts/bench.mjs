@@ -141,7 +141,15 @@ function toggleSetup(evaluate, notes) {
 	const reset = () => {
 		restore(prepared);
 		evaluate({ action: "reveal", taskPath: path, taskLine: lines[0] });
-		evaluate({ action: "settle", settleMs: LOAD_WATCH_MS, path, toggleTasks, toggleReady: true });
+		evaluate({
+			action: "settle",
+			settleMs: LOAD_WATCH_MS,
+			path,
+			taskPath: path,
+			taskLine: lines[0],
+			toggleTasks,
+			toggleReady: true,
+		});
 	};
 	return {
 		path,
