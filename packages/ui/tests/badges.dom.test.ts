@@ -39,14 +39,14 @@ test("TagBadge renders the tag link with its colour variables", async (t) => {
 	await act(() => coloured.root.render(createElement(TagBadge, { tag: "#work", color: "#ff0000", onClick })));
 	assert.equal(
 		coloured.container.innerHTML,
-		'<a href="#work" class="tag" target="_blank" rel="noopener" style="--tag-color: #ff0000; --tag-background: #ff00001a; z-index: 9999;" aria-label="#work" tabindex="-1"><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path><path d="M7 7h.01"></path></svg></div><div class="label">work</div></a>',
+		'<a href="#work" class="tag" target="_blank" rel="noopener" style="--tag-color: #ff0000; --tag-background: #ff00001a;" aria-label="#work" tabindex="-1"><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path><path d="M7 7h.01"></path></svg></div><div class="label">work</div></a>',
 	);
 
 	const uncoloured = mountRoot(t);
 	await act(() => uncoloured.root.render(createElement(TagBadge, { tag: "#work", color: undefined, onClick })));
 	assert.equal(
 		uncoloured.container.innerHTML,
-		'<a href="#work" class="tag" target="_blank" rel="noopener" style="--tag-color: var(--text-muted); z-index: 9999;" aria-label="#work" tabindex="-1"><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path><path d="M7 7h.01"></path></svg></div><div class="label">work</div></a>',
+		'<a href="#work" class="tag" target="_blank" rel="noopener" style="--tag-color: var(--text-muted);" aria-label="#work" tabindex="-1"><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path><path d="M7 7h.01"></path></svg></div><div class="label">work</div></a>',
 	);
 });
 

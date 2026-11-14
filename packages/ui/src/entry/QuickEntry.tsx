@@ -104,7 +104,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 									: secondParentFolder + "📂 " + f.split("/")[f.split("/").length - 2] + " / ";
 								const filePath = parentFolder + "📄 " + getFileTitle(f);
 								return (
-									<option style={{ whiteSpace: "nowrap" }} value={f} title={f} key={i}>
+									<option value={f} title={f} key={i}>
 										{filePath}
 									</option>
 								);
