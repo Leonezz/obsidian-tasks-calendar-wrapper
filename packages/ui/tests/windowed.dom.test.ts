@@ -135,6 +135,7 @@ function harness(t: TestContext, count = 2_000, popup = false) {
 	let collapsedMargins = false;
 	let escapedMargins = false;
 	let contentPadding = 0;
+	let entryExtraHeight = 0;
 	let items = Array.from({ length: count }, (_, i) => ({ ...task(i), text: `Task ${i}`, visual: `Task ${i}` }));
 	const heights = new Map<number, number>();
 	const frames = new Map<number, FrameRequestCallback>();
@@ -188,7 +189,7 @@ function harness(t: TestContext, count = 2_000, popup = false) {
 		toJSON() {},
 	});
 	const rowTop = (line: number) => {
-		let top = collapsedMargins ? 360 : 240;
+		let top = (collapsedMargins ? 360 : 240) + entryExtraHeight;
 		for (const item of items) {
 			if (item.line === line) return top;
 			top += heights.get(item.line) ?? defaultHeight;
@@ -205,6 +206,7 @@ function harness(t: TestContext, count = 2_000, popup = false) {
 					(escapedMargins ? (noYear ? 10 : container.querySelector(".year") ? 20 : 0) : 0) -
 					viewport.scrollTop,
 				(collapsedMargins ? 360 : 240) +
+					entryExtraHeight +
 					items.reduce((sum, item) => sum + (heights.get(item.line) ?? defaultHeight), 0),
 			);
 		if (this.classList.contains("task")) {
@@ -218,9 +220,9 @@ function harness(t: TestContext, count = 2_000, popup = false) {
 		if (this.classList.contains("counters"))
 			return rect((collapsedMargins ? 112 : 52) + flowOffset - viewport.scrollTop, 90);
 		if (this.classList.contains("quickEntryPanel"))
-			return rect((collapsedMargins ? 222 : 142) + flowOffset - viewport.scrollTop, 60);
+			return rect((collapsedMargins ? 222 : 142) + flowOffset - viewport.scrollTop, 60 + entryExtraHeight);
 		if (this.classList.contains("dateLine"))
-			return rect((collapsedMargins ? 312 : 202) + flowOffset - viewport.scrollTop, 38);
+			return rect((collapsedMargins ? 312 : 202) + entryExtraHeight + flowOffset - viewport.scrollTop, 38);
 		return rect(0, 0);
 	});
 	const moment: MomentFactory = Object.assign(
@@ -338,6 +340,9 @@ function harness(t: TestContext, count = 2_000, popup = false) {
 		},
 		setWindowHeight: (value: number) => {
 			Object.defineProperty(view, "innerHeight", { configurable: true, value });
+		},
+		setEntryExtraHeight: (value: number) => {
+			entryExtraHeight = value;
 		},
 		setMinRows: (value: number) => {
 			minRows = value;
@@ -658,7 +663,12 @@ test("a popout with no window dimensions bounds zero and oversized temporary lay
 
 test("adopting the same viewport cancels its pending reveal and rebinds to the new owner window", async (t) => {
 	const f = harness(t);
-	await f.render();
+	await f.render(f.items(), { useYearHeader: false });
+	const prefix = [".todayHeader", ".counters", ".tagFilterBar", ".quickEntryPanel"].map((selector) => {
+		const element = f.container.querySelector<HTMLElement>(selector);
+		assert.ok(element);
+		return element;
+	});
 	const oldObserver = f.observers[0];
 	const popup = document.body.appendChild(document.createElement("iframe"));
 	t.after(() => popup.remove());
@@ -707,6 +717,15 @@ test("adopting the same viewport cancels its pending reveal and rebinds to the n
 	popup.contentDocument!.body.appendChild(popup.contentDocument!.adoptNode(f.viewport));
 	await act(() => f.viewport.dispatchEvent(new popupView.Event("scroll")));
 	assert.strictEqual(f.viewport.ownerDocument.defaultView, popupView);
+	for (const element of prefix) {
+		assert.ok(element instanceof f.view.HTMLElement);
+		assert.equal(
+			element instanceof popupView.HTMLElement,
+			false,
+			"adoption retains the original realm's prototype",
+		);
+		assert.strictEqual(element.ownerDocument, popup.contentDocument);
+	}
 	assert.equal(oldObserver.disconnected, true);
 	assert.ok(clearedTimers.length > 0, "the old owner's pending touch timer is cleared");
 	assert.equal(f.frames.size, 0, "the old owner's pending frame is cancelled");
@@ -720,8 +739,24 @@ test("adopting the same viewport cancels its pending reveal and rebinds to the n
 		for (const callback of callbacks) callback(16);
 	});
 	assert.ok(popupObservers[0].elements.has(f.viewport));
+	for (const element of prefix)
+		assert.ok(popupObservers[0].elements.has(element), `${element.className} remains observed after adoption`);
+	const before = f.row(1800)!.getBoundingClientRect().top;
+	const scroll = f.viewport.scrollTop;
+	f.setEntryExtraHeight(40);
 	await act(() => popupObservers[0].callback([], popupObservers[0] as unknown as ResizeObserver));
 	assert.equal(popupFrames.size, 1, "the new owner's observer schedules its own animation frame");
+	await act(() => {
+		const callbacks = [...popupFrames.values()];
+		popupFrames.clear();
+		for (const callback of callbacks) callback(32);
+	});
+	assert.equal(
+		f.viewport.scrollTop,
+		scroll + 40,
+		"a resized entry updates geometry even when it is the first segment",
+	);
+	assert.equal(f.row(1800)!.getBoundingClientRect().top, before, "the visible row remains anchored below the entry");
 	await f.unmount();
 	assert.ok(popupObservers.every((observer) => observer.disconnected));
 	assert.equal(popupFrames.size, 0);

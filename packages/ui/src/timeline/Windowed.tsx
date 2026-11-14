@@ -178,7 +178,7 @@ export class TimelineWindow implements TimelineHandle {
 		} else if (view && first?.kind === "entry") {
 			const entry = this.dayElements.get(first.dayKey);
 			if (entry) {
-				const tops = this.entryChildren(entry, view).flatMap((child) => {
+				const tops = this.entryChildren(entry).flatMap((child) => {
 					const box = this.bounds(child, view);
 					return box ? [box.top] : [];
 				});
@@ -202,9 +202,10 @@ export class TimelineWindow implements TimelineHandle {
 		return bottom > top ? { top, bottom } : undefined;
 	}
 
-	private entryChildren(element: HTMLElement, view: NonNullable<Document["defaultView"]>) {
+	private entryChildren(element: HTMLElement) {
 		return [...element.children].filter(
-			(child): child is HTMLElement => child instanceof view.HTMLElement && !child.classList.contains("details"),
+			(child): child is HTMLElement =>
+				child.namespaceURI === "http://www.w3.org/1999/xhtml" && !child.classList.contains("details"),
 		);
 	}
 
@@ -388,7 +389,7 @@ export class TimelineWindow implements TimelineHandle {
 		for (const [key, element] of this.dayElements) {
 			add(`d:${key}`, element.querySelector<HTMLElement>(":scope > .details > .dateLine"));
 			if (key === this.result?.entryDay) {
-				const children = this.entryChildren(element, view);
+				const children = this.entryChildren(element);
 				const visible = children.flatMap((child) => {
 					const box = this.bounds(child, view);
 					return box ? [box] : [];
