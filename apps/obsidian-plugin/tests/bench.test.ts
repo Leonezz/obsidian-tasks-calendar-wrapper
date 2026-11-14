@@ -358,8 +358,12 @@ function togglePage({
 	windowed = false,
 	focusWorkMs = 0,
 	backgroundDocument = false,
+	rowQueryMs = 0,
+	clockResolutionMs = 1,
 } = {}) {
 	let now = 1000;
+	let rowQueries = 0;
+	const longTaskRecords: { startTime: number; duration: number }[] = [];
 	let disk = "- [ ] Task\n";
 	const timers: { at: number; callback: () => void }[] = [];
 	const schedule = (callback: () => void, delay = 0) => timers.push({ at: now + delay, callback });
@@ -489,7 +493,13 @@ function togglePage({
 		return row;
 	});
 	const root = {
-		querySelectorAll: () => pageRows.filter((row) => row.isConnected).map((row) => ({ closest: () => row })),
+		querySelectorAll: () => {
+			rowQueries++;
+			const started = now;
+			now += rowQueryMs;
+			if (rowQueryMs >= 50) longTaskRecords.push({ startTime: started, duration: rowQueryMs });
+			return pageRows.filter((row) => row.isConnected).map((row) => ({ closest: () => row }));
+		},
 	};
 	const plugin: { writer?: object; userOptions: { openNoteInsteadOfInPlace?: boolean } } = {
 		writer: {},
@@ -519,7 +529,7 @@ function togglePage({
 			}),
 		},
 		window: pageWindow,
-		performance: { now: () => now },
+		performance: { now: () => Math.floor(now / clockResolutionMs) * clockResolutionMs },
 		Node: { ELEMENT_NODE: 1 },
 		CSS: { escape: (value: string) => value },
 		TextDecoder,
@@ -528,7 +538,7 @@ function togglePage({
 			observe() {}
 			disconnect() {}
 			takeRecords() {
-				return [];
+				return longTaskRecords.splice(0);
 			}
 		},
 		MouseEvent: class {
@@ -556,6 +566,15 @@ function togglePage({
 		vault,
 		originalReload,
 		originalRead,
+		get queryCount() {
+			return rowQueries;
+		},
+		get now() {
+			return now;
+		},
+		notifyChange() {
+			emit(pageRows[0], "data-task", null);
+		},
 		delay(ms: number) {
 			return new Promise<void>((resolve) => schedule(resolve, ms));
 		},
@@ -899,6 +918,56 @@ test("toggle readiness still validates five open rows on a legacy view without r
 	});
 	assert.equal((result as { rows: number }).rows, 5);
 	assert.deepEqual(page.reveals, []);
+});
+
+test("ready polling does not keep itself busy by repeating expensive selectors during quiet time", async () => {
+	const page = togglePage({ rowQueryMs: 60 });
+	void page.delay(0).then(() => page.notifyChange());
+	const result = await page.run({
+		action: "settle",
+		settleMs: 0,
+		quietMs: 100,
+		toggleReady: true,
+		taskPath: "Note.md",
+		taskLine: 0,
+	});
+	assert.equal((result as { rows: number }).rows, 5);
+	assert.equal(page.queryCount, 5, "the five strict queries should run once after this DOM generation");
+	assert.ok(
+		page.now >= 1400 && page.now < 2000,
+		"quiet must still wait after the selector long tasks and their paint",
+	);
+});
+
+test("a DOM generation change invalidates cached uniqueness even when mutation timestamps are equal", async () => {
+	const page = togglePage({ clockResolutionMs: 100 });
+	let reveals = 0;
+	page.view.revealTask = async () => {
+		reveals++;
+		page.pageRows.pop();
+		page.notifyChange();
+		return true;
+	};
+	void page.delay(0).then(() => page.notifyChange());
+	void page.delay(40).then(() => {
+		page.pageRows.push({ ...page.pageRows[0] });
+		page.notifyChange();
+	});
+	const result = await page.run({
+		action: "settle",
+		settleMs: 0,
+		quietMs: 100,
+		toggleReady: true,
+		taskPath: "Note.md",
+		taskLine: 0,
+	});
+	assert.equal((result as { rows: number }).rows, 5);
+	assert.equal(
+		reveals,
+		1,
+		"a duplicate inserted during quiet time must fail readiness and trigger preparation again",
+	);
+	assert.equal(page.queryCount, 11, "strict uniqueness must be rescanned after both mutation generations");
 });
 
 test("reveal retries a false result until newly indexed tasks reach the arranged view", async () => {

@@ -67,6 +67,7 @@ export async function measure({
 		const seen = {
 			first: null,
 			last: null,
+			mutationVersion: 0,
 			token: null,
 			times: [],
 			rowsAt: rowsPresent ? performance.now() : null,
@@ -95,6 +96,7 @@ export async function measure({
 			const now = performance.now();
 			const relevant = changes.filter((change) => inView(change.target));
 			if (relevant.length === 0) return;
+			seen.mutationVersion++;
 			seen.first ??= now;
 			seen.last = now;
 			seen.times.push(now);
@@ -302,24 +304,41 @@ export async function measure({
 						"pending toggle writes to finish",
 					);
 				if (toggleReady) {
+					let readyRows = [];
 					const ready = () => {
 						const root = document.querySelector(leafSelector);
-						return (
+						const checked = [];
+						const open =
 							root &&
 							toggleTasks.every((text) => {
 								const matches = toggleRows(root, text);
-								return (
+								const valid =
 									matches.length === 1 &&
 									matches[0].dataset.task === " " &&
-									!matches[0].hasAttribute("aria-busy")
-								);
-							})
-						);
+									!matches[0].hasAttribute("aria-busy");
+								if (valid) checked.push(matches[0]);
+								return valid;
+							});
+						readyRows = open ? checked : [];
+						return open;
 					};
 					const start = performance.now();
 					const limit = 30_000 * slowness;
+					let open = false;
+					let checkedVersion = -1;
 					for (;;) {
-						const open = ready();
+						// Full selectors over a large legacy DOM can themselves be long tasks. Cache a successful strict scan
+						// while it goes quiet, but invalidate on every real DOM mutation, including equal-timestamp batches.
+						if (
+							!open ||
+							checkedVersion !== recorder.seen.mutationVersion ||
+							readyRows.some(
+								(row) => !row.isConnected || row.dataset.task !== " " || row.hasAttribute("aria-busy"),
+							)
+						) {
+							open = ready();
+							checkedVersion = recorder.seen.mutationVersion;
+						}
 						if (open && (recorder.seen.last === null || quietFor(recorder, quietMs)())) break;
 						if (!open) {
 							const view = app.workspace.getLeavesOfType(viewType)[0]?.view;
