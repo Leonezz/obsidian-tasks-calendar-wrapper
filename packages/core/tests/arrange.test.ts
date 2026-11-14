@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import moment from "moment";
 import "moment/locale/ar";
 
-import { arrange, createQuery, query, type ViewState } from "../src/arrange";
+import { arrange, createQuery, focusToday, query, type ViewState } from "../src/arrange";
 import { createDailyNoteDateCache } from "../src/dates";
 import { parseTaskLine } from "../src/parse";
 import { resolveTasks, type ResolveSettings } from "../src/resolve";
@@ -383,6 +383,153 @@ test("the current year is the year of now, wherever the entry sits", () => {
 test("counts are taken before the counter filter", () => {
 	const result = arrange(resolve(mixed), view({ counter: "unplannedFilter" }, { counterBehavior: "Filter" }), env);
 	assert.deepEqual(result.counts, { todo: 2, overdue: 2, unplanned: 1, done: 0, cancelled: 0 });
+});
+
+const focusLines = [
+	"- [ ] oldest 📅 2024-03-01",
+	"- [ ] before today 📅 2026-09-10",
+	"- [ ] due today 📅 2026-09-18",
+	"- [x] done today ✅ 2026-09-18",
+	"- [ ] after today 📅 2026-09-25",
+	"- [ ] newest 📅 2027-01-01",
+];
+
+test("focusToday keeps the entry panel and today's rows only", () => {
+	const resolved = resolve(focusLines, { forward: false });
+	for (const entryPosition of ["top", "today", "bottom"] as const) {
+		const result = arrange(resolved, view({}, { forward: false, entryPosition }), env);
+		const days = result.years.flatMap((year) => year.days);
+		const today = days.find((day) => day.isToday);
+		assert.ok(today && today.tasks.length > 0, entryPosition);
+		const focused = focusToday(result);
+		assert.deepEqual(
+			focused.years.map((year) => year.year),
+			result.years.map((year) => year.year),
+			entryPosition,
+		);
+		assert.ok(
+			focused.years.every((year) => !year.showHeader),
+			entryPosition,
+		);
+		assert.deepEqual(
+			focused.years.map((year) => year.days.map((day) => day.key)),
+			result.years.map((year) => year.days.filter((day) => day.isToday || day.isEntry).map((day) => day.key)),
+			entryPosition,
+		);
+		assert.strictEqual(
+			focused.years.flatMap((year) => year.days).find((day) => day.isToday),
+			today,
+			entryPosition,
+		);
+	}
+});
+
+test("the entry day's rows are dropped when it is not today", () => {
+	const resolved = resolve(focusLines, { forward: false });
+	for (const entryPosition of ["top", "bottom"] as const) {
+		const result = arrange(resolved, view({}, { forward: false, entryPosition }), env);
+		const entry = result.years.flatMap((year) => year.days).find((day) => day.isEntry);
+		assert.ok(entry && !entry.isToday && entry.tasks.length > 0, entryPosition);
+		const focused = focusToday(result);
+		const days = focused.years.flatMap((year) => year.days);
+		const kept = days.find((day) => day.isEntry);
+		assert.ok(kept, entryPosition);
+		assert.notStrictEqual(kept, entry, entryPosition);
+		assert.deepEqual(kept, { ...entry, tasks: [] }, entryPosition);
+		assert.ok(
+			days.every((day) => day.tasks.every((row) => !entry.tasks.includes(row))),
+			entryPosition,
+		);
+	}
+});
+
+test("counts unchanged by todayFocus", () => {
+	const resolved = resolve(
+		[
+			"- [ ] late ⏫ 📅 2026-09-01",
+			"- [ ] due today ⏫ 📅 2026-09-18",
+			"- [ ] later ⏫ 📅 2026-09-25",
+			"- [ ] unplanned ⏫",
+			"- [x] done ⏫ ✅ 2025-05-01",
+			"- [-] cancelled ⏫ 📅 2027-01-01",
+			"- [ ] low 🔽 📅 2028-01-01",
+		],
+		{ forward: false },
+	);
+	for (const counter of ["", "todoFilter"] as const) {
+		for (const quickFilter of [undefined, { priorities: ["High"] }]) {
+			const message = `${counter || "no counter"}, ${quickFilter ? "quick filter" : "no quick filter"}`;
+			const result = arrange(
+				resolved,
+				view({ counter, quickFilter }, { forward: false, counterBehavior: "Filter" }),
+				env,
+			);
+			const counts = { todo: quickFilter ? 2 : 3, overdue: 1, unplanned: 1, done: 1, cancelled: 1 };
+			assert.deepEqual(result.counts, counts, message);
+			const focused = focusToday(result);
+			assert.strictEqual(focused.counts, result.counts, message);
+			assert.deepEqual(focused.counts, counts, message);
+		}
+	}
+});
+
+test("today without tasks is kept when it holds the entry panel", () => {
+	for (const todayLines of [[], ["- [ ] 📅 2026-09-18"]]) {
+		const message = todayLines.length ? "today's empty task is filtered" : "today has no task";
+		const result = query(
+			["- [ ] before 📅 2026-09-10", ...todayLines, "- [ ] after 📅 2026-09-25"].map((line) => task(line)),
+			view({}, { forward: false, filterEmpty: true, entryPosition: "today" }),
+			env,
+		);
+		assert.equal(result.shown.length, 2, message);
+		const today = result.years.flatMap((year) => year.days).find((day) => day.isToday);
+		assert.ok(today && today.isEntry, message);
+		assert.deepEqual(today.tasks, [], message);
+		const focused = focusToday(result);
+		assert.deepEqual(
+			focused.years.flatMap((year) => year.days),
+			[today],
+			message,
+		);
+		assert.strictEqual(focused.years.flatMap((year) => year.days)[0], today, message);
+	}
+});
+
+test("focusToday keeps the result's parts and freezes what it makes", () => {
+	for (const entryPosition of ["top", "today", "bottom"] as const) {
+		const result = arrange(
+			resolve(focusLines, { forward: false }),
+			view({}, { forward: false, entryPosition }),
+			env,
+		);
+		const before = {
+			...result,
+			shown: [...result.shown],
+			tasks: [...result.tasks],
+			counts: { ...result.counts },
+			years: result.years.map((year) => ({
+				...year,
+				statuses: [...year.statuses],
+				days: year.days.map((day) => ({ ...day, tasks: [...day.tasks], statuses: [...day.statuses] })),
+			})),
+		};
+		assert.deepEqual(unfrozen(result), [], entryPosition);
+		const focused = focusToday(result);
+		assert.deepEqual(result, before, entryPosition);
+		assert.deepEqual(unfrozen(result), [], entryPosition);
+		for (const part of ["today", "entryDay", "shown", "tasks", "counts"] as const) {
+			assert.strictEqual(focused[part], result[part], `${entryPosition}: ${part}`);
+		}
+		assert.equal(focused.years.length, result.years.length, entryPosition);
+		for (const [index, year] of focused.years.entries()) {
+			assert.equal(year.year, result.years[index].year, entryPosition);
+			assert.equal(year.label, result.years[index].label, entryPosition);
+			assert.equal(year.isCurrent, result.years[index].isCurrent, entryPosition);
+			assert.strictEqual(year.statuses, result.years[index].statuses, entryPosition);
+		}
+		assert.deepEqual(unfrozen(focused), [], entryPosition);
+		assert.deepEqual(focusToday(focused), focused, entryPosition);
+	}
 });
 
 // Languages that write numbers in their own digits
