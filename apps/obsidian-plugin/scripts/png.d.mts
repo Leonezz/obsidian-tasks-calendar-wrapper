@@ -17,6 +17,17 @@ export interface Comparison {
 
 export function decodePng(buffer: Buffer): Image;
 export function encodePng(image: Image): Buffer;
+export function cropPng(
+	buffer: Buffer,
+	rect: {
+		readonly x: number;
+		readonly y: number;
+		readonly width: number;
+		readonly height: number;
+		readonly scale?: number;
+	},
+	expectedViewport: { readonly width: number; readonly height: number },
+): Buffer;
 export function comparePngs(expected: Image, actual: Image): Comparison;
 
 export const NOISE_PIXELS: number;

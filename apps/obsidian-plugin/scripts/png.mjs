@@ -112,6 +112,137 @@ export function encodePng({ width, height, data }) {
 	]);
 }
 
+/** Validates the RGB profile envelope without interpreting or rewriting its color transform. */
+function checkCropProfile(body) {
+	const end = body.indexOf(0);
+	const name = body.subarray(0, end).toString("latin1");
+	if (end < 1 || end > 79 || /[^\x20-\x7e\xa1-\xff]|^ | $|  /.test(name) || body[end + 1] !== 0)
+		throw new Error("cropPng: malformed iCCP name or compression method");
+	let profile;
+	try {
+		profile = inflateSync(body.subarray(end + 2), { maxOutputLength: 16 * 1024 * 1024 });
+	} catch {
+		throw new Error("cropPng: malformed or unsupported iCCP compressed profile (maximum 16 MiB)");
+	}
+	if (
+		profile.length < 132 ||
+		profile.readUInt32BE(0) !== profile.length ||
+		profile.toString("latin1", 36, 40) !== "acsp" ||
+		profile.toString("latin1", 16, 20) !== "RGB "
+	)
+		throw new Error("cropPng: malformed or non-RGB iCCP profile header");
+	const tags = profile.readUInt32BE(128);
+	const tableEnd = 132 + tags * 12;
+	if (tableEnd > profile.length) throw new Error("cropPng: malformed iCCP tag table");
+	for (let i = 0; i < tags; i++) {
+		const offset = profile.readUInt32BE(136 + i * 12);
+		const length = profile.readUInt32BE(140 + i * 12);
+		if (offset < tableEnd || offset % 4 || length < 8 || offset + length > profile.length)
+			throw new Error("cropPng: malformed iCCP tag bounds");
+	}
+}
+
+/** Metadata the screenshot codec can retain across an RGB/RGBA integer crop, in its original IDAT-relative order. */
+function cropMetadata(buffer, expectedViewport) {
+	if (!Buffer.isBuffer(buffer) || !buffer.subarray(0, 8).equals(SIGNATURE)) throw new Error("not a PNG file");
+	const before = [],
+		after = [],
+		colors = new Set();
+	let header = false,
+		data = false,
+		dataEnded = false,
+		ended = false;
+	for (let pos = 8; pos < buffer.length;) {
+		if (pos + 12 > buffer.length) throw new Error("cropPng: truncated PNG chunk");
+		const length = buffer.readUInt32BE(pos);
+		const end = pos + 12 + length;
+		if (length > 0x7fffffff || end > buffer.length) throw new Error("cropPng: truncated or oversized PNG chunk");
+		const type = buffer.toString("latin1", pos + 4, pos + 8);
+		const body = buffer.subarray(pos + 8, end - 4);
+		if (!/^[A-Za-z]{2}[A-Z][A-Za-z]$/.test(type)) throw new Error("cropPng: invalid PNG chunk type");
+		if (crc32(buffer.subarray(pos + 4, end - 4)) !== buffer.readUInt32BE(end - 4))
+			throw new Error(`cropPng: invalid ${type} CRC`);
+		if (!header && type !== "IHDR") throw new Error("cropPng: IHDR must be first");
+		if (type === "IHDR") {
+			if (header || length !== 13) throw new Error("cropPng: malformed or duplicate IHDR");
+			header = true;
+			if (body.readUInt32BE(0) !== expectedViewport.width || body.readUInt32BE(4) !== expectedViewport.height)
+				throw new Error("cropPng: PNG dimensions do not match the expected viewport");
+			if (body[8] !== 8 || ![2, 6].includes(body[9]) || body[10] || body[11] || body[12])
+				throw new Error("cropPng: only non-interlaced 8-bit RGB/RGBA screenshots are supported");
+		} else if (type === "IDAT") {
+			if (dataEnded) throw new Error("cropPng: IDAT chunks must be consecutive");
+			data = true;
+		} else if (type === "IEND") {
+			if (!data || length || end !== buffer.length)
+				throw new Error("cropPng: malformed IEND or trailing PNG data");
+			ended = true;
+		} else {
+			if (data) dataEnded = true;
+			if (["iCCP", "gAMA", "cHRM", "sRGB", "bKGD"].includes(type)) {
+				if (data || colors.has(type)) throw new Error(`cropPng: late or duplicate ${type}`);
+				colors.add(type);
+				const lengths = { gAMA: 4, cHRM: 32, sRGB: 1, bKGD: 6 };
+				if (type === "iCCP") checkCropProfile(body);
+				else if (
+					length !== lengths[type] ||
+					(type === "gAMA" && !body.readUInt32BE(0)) ||
+					(type === "sRGB" && body[0] > 3) ||
+					(type === "bKGD" && [0, 2, 4].some((at) => body.readUInt16BE(at) > 255))
+				)
+					throw new Error(`cropPng: malformed ${type}`);
+			} else if (
+				!/^[a-z]/.test(type) ||
+				!/[a-z]$/.test(type) ||
+				["tRNS", "sBIT", "acTL", "fcTL", "fdAT"].includes(type)
+			) {
+				// tRNS and animation alter decoded pixels; sBIT depends on the source color type. None is silently dropped.
+				throw new Error(`cropPng: unsupported PNG chunk ${type}`);
+			}
+			(data ? after : before).push(buffer.subarray(pos, end));
+		}
+		pos = end;
+	}
+	if (!header || !data || !ended) throw new Error("cropPng: incomplete PNG");
+	if (colors.has("iCCP") && colors.has("sRGB")) throw new Error("cropPng: conflicting iCCP and sRGB profiles");
+	return { before, after };
+}
+
+/** Copies integer RGBA rows without scaling, preserving supported color metadata and safe-to-copy ancillary chunks. */
+export function cropPng(buffer, rect, expectedViewport) {
+	const positive = (n) => Number.isSafeInteger(n) && n > 0;
+	if (!positive(expectedViewport?.width) || !positive(expectedViewport?.height))
+		throw new Error("cropPng: expected viewport width and height must be positive safe integers");
+	if (
+		!Number.isSafeInteger(rect?.x) ||
+		!Number.isSafeInteger(rect?.y) ||
+		rect.x < 0 ||
+		rect.y < 0 ||
+		!positive(rect?.width) ||
+		!positive(rect?.height) ||
+		(rect.scale !== undefined && rect.scale !== 1)
+	)
+		throw new Error("cropPng: clip coordinates must be integers, dimensions positive, and scale 1");
+	if (rect.width > expectedViewport.width - rect.x || rect.height > expectedViewport.height - rect.y)
+		throw new Error("cropPng: clip is outside the expected viewport");
+	const { before, after } = cropMetadata(buffer, expectedViewport);
+	const full = decodePng(buffer);
+	const data = Buffer.alloc(rect.width * rect.height * 4);
+	for (let y = 0; y < rect.height; y++) {
+		const from = ((rect.y + y) * full.width + rect.x) * 4;
+		full.data.copy(data, y * rect.width * 4, from, from + rect.width * 4);
+	}
+	const encoded = encodePng({ width: rect.width, height: rect.height, data });
+	// The existing encoder writes signature, 13-byte IHDR, one IDAT, and empty IEND.
+	return Buffer.concat([
+		encoded.subarray(0, 33),
+		...before,
+		encoded.subarray(33, -12),
+		...after,
+		encoded.subarray(-12),
+	]);
+}
+
 /**
  * Counts the pixels that differ between two images and the largest difference of a colour channel. Where the sizes
  * differ, the area only one image covers counts as different, by 255. The diff image shows the expected image faded,
