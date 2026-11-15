@@ -75,7 +75,7 @@ async function captureState({ pluginId, viewType, state }) {
 	// Options arrive 200 ms after loading the plugin; markdown rendering can finish later still.
 	await pause(1_500);
 	await quiet(500);
-	if (state.todayFocus) await click('[aria-label="Focus today"]', "todayFocus");
+	if (state.todayFocus) await click('[aria-label="Focus on today"]', "todayFocus");
 	if (state.counter) await click(`#${state.counter}`, `${state.counter}${state.behavior}`);
 	const root = content()?.querySelector(".taskido");
 	if (!root) throw new Error("the timeline has no .taskido element");

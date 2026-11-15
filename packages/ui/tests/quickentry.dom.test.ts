@@ -110,6 +110,27 @@ test("Enter submits once", async (t) => {
 	assert.deepEqual(entry.createCalls, [["Notes/Work.md", "buy milk"]]);
 });
 
+test("the submit label follows the quick entry action without changing either handler", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render();
+	const action = element<HTMLSelectElement>(entry.container, "select.actionName");
+	const submit = element<HTMLButtonElement>(entry.container, "button.ok");
+	assert.equal(submit.getAttribute("aria-label"), "Add task to selected note");
+	await changeSelect(action, "filter");
+	assert.equal(element(entry.container, "button.ok"), submit);
+	assert.equal(submit.getAttribute("aria-label"), "Apply filters");
+	await act(() => submit.click());
+	assert.deepEqual(entry.filterCalls, [["", "", [], []]]);
+	assert.deepEqual(entry.createCalls, []);
+	await changeSelect(action, "append");
+	assert.equal(element(entry.container, "button.ok"), submit);
+	assert.equal(submit.getAttribute("aria-label"), "Add task to selected note");
+	element<HTMLInputElement>(entry.container, "input.newTask").value = "buy milk";
+	await act(() => submit.click());
+	assert.deepEqual(entry.createCalls, [["Notes/Work.md", "buy milk"]]);
+	assert.deepEqual(entry.filterCalls, [["", "", [], []]]);
+});
+
 test("a second Enter while pending is ignored", async (t) => {
 	const pending = deferred<boolean>();
 	const entry = entryHarness(t, () => pending.promise);
@@ -208,7 +229,7 @@ test("applied filter re-derived when the prop changes", async (t) => {
 				assert.equal(element<HTMLSelectElement>(entry.container, "select.actionName").value, "filter");
 				assert.deepEqual(
 					[...entry.container.querySelectorAll("select.filterSelector ~ a")].map((item) => item.textContent),
-					["📆 date🎯", "⏫ priority🎯"],
+					["📆 Date🎯", "⏫ Priority🎯"],
 				);
 				assert.equal(dates().length, 2);
 				assert.ok(entry.container.querySelector('select[name="priorityFilter"]'));
@@ -257,7 +278,7 @@ test("the priority select offers the six names", async (t) => {
 	assert.deepEqual(
 		[...select.options].map((option) => [option.value, option.textContent?.trim()]),
 		[
-			["+", "➕"],
+			["+", "Add priority"],
 			["Highest", "Highest"],
 			["High", "High🎯"],
 			["Medium", "Medium"],

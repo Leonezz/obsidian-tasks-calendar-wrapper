@@ -454,7 +454,7 @@ test("mobile renders ⋯ after ✏️ and sends its click to the row menu; deskt
 	const button = mobile.container.querySelector<HTMLElement>(".info .menu");
 	assert.ok(button);
 	assert.equal(button.textContent, "⋯");
-	assert.equal(button.getAttribute("aria-label"), "Task menu");
+	assert.equal(button.getAttribute("aria-label"), "Open task menu");
 	assert.equal(button.previousElementSibling?.className, "modify");
 	const event = new MouseEvent("click", { bubbles: true, view: window });
 	await act(() => button.dispatchEvent(event));
@@ -483,7 +483,7 @@ test("the setting leaves the default context menu and hides ⋯ on mobile", asyn
 test("date badge clicks pick due, scheduled and start without opening the note", async (t) => {
 	const source = "- [ ] a 📅 2026-10-31 ⏳ 2026-10-30 🛫 2026-10-29 ✅ 2026-10-28";
 	const row = await mountPendingRow(t, source, [source.replace("[ ]", "[x]")], true);
-	const selectors = ["due at ", "scheduled to ", "start at ", "complete at "].map(
+	const selectors = ["Due: ", "Scheduled: ", "Start: ", "Completed: "].map(
 		(prefix) => `.info > a[aria-label^="${prefix}"]`,
 	);
 	for (const selector of selectors) await row.click(selector);
@@ -509,7 +509,7 @@ test("guarded mobile menu and date badge clicks do not open the note", async (t)
 	const other = parseTaskLine("- [ ] b", { moment, path: "Other.md" });
 	assert.ok(other);
 	await row.renderTasks([other, row.task]);
-	for (const selector of [".info .menu", '.info > a[aria-label^="due at "]']) {
+	for (const selector of [".info .menu", '.info > a[aria-label^="Due: "]']) {
 		const control = row.container.querySelector<HTMLElement>(selector);
 		assert.ok(control);
 		const event = new MouseEvent("click", { bubbles: true, view: window });

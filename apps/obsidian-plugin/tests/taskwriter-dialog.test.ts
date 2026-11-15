@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { deferred, flush, writerHarness } from "./writer-harness";
 
 const explanation =
-	"Nothing was written. If you completed this task in the dialog: Tasks returns nothing for a task set to delete itself, so use the checkbox to complete it.";
+	"Nothing was written. Tasks returns no result when completing a task that deletes itself. Use the checkbox to complete the task.";
 
 test("edit dialog that never settles locks nothing", async () => {
 	const h = writerHarness({ "a.md": "- [ ] A\n- [ ] B" });
@@ -138,7 +138,7 @@ test("recurrence removed, confirmed / declined", async () => {
 				confirms++;
 				assert.deepEqual(options, {
 					title: "Remove recurrence?",
-					message: `The edited task no longer repeats. If you cleared Recurs, save it. If you did not, Tasks could not read the rule in “${expected}” and dropped it.`,
+					message: `The edited task no longer repeats. If you removed the recurrence rule, save the task. Otherwise, Tasks could not read the rule in “${expected}” and dropped it.`,
 					confirmText: "Save without recurrence",
 					focusCancel: true,
 				});
@@ -187,7 +187,7 @@ test("native digits from the dialog are refused", async () => {
 		assert.equal(result.reason, "unreadable-date");
 		assert.equal(
 			result.message,
-			"“A” would get a date the timeline cannot read back (“۲۰۲۶-۱۱-۰۱”). Nothing was written. Tasks wrote it in the digits of Obsidian's language (fa).",
+			"“A” would get a date the timeline cannot read back (“۲۰۲۶-۱۱-۰۱”). Nothing was written. Tasks used the numeral system for Obsidian's language (fa).",
 		);
 	}
 	assert.equal(h.unsavedEdits[0]?.editedLine, output);
@@ -210,7 +210,7 @@ test("dialog throws on open", async () => {
 			}),
 		});
 		assert.deepEqual(await w.editInTasksDialog(() => h.target()), { kind: "failed", unknownOutcome: false, error });
-		assert.deepEqual(h.notices, ["Tasks' edit dialog failed: cannot open"]);
+		assert.deepEqual(h.notices, ["The Tasks edit dialog failed: cannot open"]);
 		assert.equal(h.errors.length, 1);
 		assert.deepEqual(h.unsavedEdits, []);
 		assert.equal(h.events.length, 0);
@@ -302,10 +302,10 @@ test("Tasks older than 7.21 opens the note and says so", async () => {
 	assert.deepEqual(await w.editInTasksDialog(() => h.target(1)), {
 		kind: "refused",
 		reason: "tasks-too-old",
-		message: "Tasks 7.21 or later edits here",
+		message: "Editing tasks here requires Tasks 7.21 or later. The note was opened at the task.",
 	});
 	assert.deepEqual(h.opened, [{ path: "a.md", line: 1 }]);
-	assert.deepEqual(h.notices, ["Tasks 7.21 or later edits here"]);
+	assert.deepEqual(h.notices, ["Editing tasks here requires Tasks 7.21 or later. The note was opened at the task."]);
 	assert.equal(h.events.length, 0);
 	w.dispose();
 });
