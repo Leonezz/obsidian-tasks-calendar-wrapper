@@ -12,6 +12,26 @@ test("the version in manifest.json has release notes", async () => {
 	assert.ok(note && note.items.length > 0, `add release notes for ${manifest.version} to utils/whatsnew.ts`);
 });
 
+test("the beta.4 entry is first and an update from beta.3 shows only its new notes", async () => {
+	const { notesSince } = await import("@tasks-calendar-wrapper/core");
+	const { RELEASE_NOTES } = await import("../utils/whatsnew");
+	assert.equal(RELEASE_NOTES[0].version, "0.4.0-beta.4");
+	assert.ok(RELEASE_NOTES[0].items.length > 0);
+	assert.ok(RELEASE_NOTES[0].items.every((item) => item.trim().length > 0));
+	assert.equal(new Set(RELEASE_NOTES.map((note) => note.version)).size, RELEASE_NOTES.length);
+	assert.deepEqual(notesSince(RELEASE_NOTES, "0.4.0-beta.3", "0.4.0-beta.4"), [RELEASE_NOTES[0]]);
+});
+
+test("the prepared beta.4 notes do not appear for stable versions", async () => {
+	const { notesSince } = await import("@tasks-calendar-wrapper/core");
+	const { RELEASE_NOTES } = await import("../utils/whatsnew");
+	assert.deepEqual(
+		notesSince(RELEASE_NOTES, "0.3.6", "0.3.7").map((note) => note.version),
+		["0.3.7"],
+	);
+	assert.ok(notesSince(RELEASE_NOTES, "0.3.7", "0.4.0").every((note) => !note.version.includes("-beta.")));
+});
+
 test("the support links in the dialog match the fundingUrl in manifest.json", async () => {
 	const { readFileSync } = await import("node:fs");
 	const { SUPPORT_LINKS } = await import("../utils/whatsnew");
