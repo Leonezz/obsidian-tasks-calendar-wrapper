@@ -15,6 +15,19 @@ export interface SupportLink {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
 	{
+		version: "0.4.0-beta.4",
+		items: [
+			"Settings are grouped into Sources, Display, New tasks and Advanced. Live settings update open timelines after a short typing pause; settings used only when opening a timeline or starting Obsidian say so.",
+			"Saved settings with a value of the wrong type show an explanation and a Reset to default button beside the setting. Invalid and duplicate tags are reported inline.",
+			"Use Tab to reach timeline controls, Up/Down and Home/End to move between tasks, Enter to open a task's note, and Space to activate its status control. Shift+F10 opens the date menu when in-place editing is enabled. Keys inside inputs and task controls keep that control's usual behavior.",
+			"On mobile, built-in styles give task controls, badges and quick entry larger touch targets. Hover effects are limited to devices that support hovering.",
+			"Each open timeline keeps its own counter, Focus on today and quick filter. Closing and reopening a timeline during the same plugin session restores its counter and Focus on today; quick filters are cleared.",
+			"With Focus on today, dates outside the focused view are no longer kept as hidden page elements. Custom CSS that depends on those elements may need updating.",
+			"Large timelines render nearby rows as you scroll instead of keeping every task row on the page.",
+			"The quick priority filter now matches all six priority levels. None includes tasks without a priority and Dataview none. Date ranges include both the From and To days.",
+		],
+	},
+	{
 		version: "0.4.0-beta.3",
 		items: [
 			'The timeline now writes to your notes. Clicking a task\'s checkbox completes it, or marks it not done, right in the note without opening it, and every open timeline shows the change at once. Each change shows a notice with "Undo", which puts the note back exactly as it was, and "Open note". To get the old behaviour back, turn on "Open the note instead of changing tasks in place".',
