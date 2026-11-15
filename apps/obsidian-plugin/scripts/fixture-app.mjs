@@ -44,6 +44,17 @@ const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 
  * did run, so every call has a timeout, and calls that can safely run twice are tried again.
  */
 export function fixtureCli(vaultName) {
+	const trace = (phase, fn, arg = null) => {
+		if (typeof process !== "undefined" && process.env?.TCW_FIXTURE_TRACE === "1")
+			console.error(
+				JSON.stringify({
+					fixture: vaultName,
+					phase,
+					operation: typeof fn === "string" ? fn : fn.name || "anonymous",
+					...(typeof arg?.action === "string" ? { action: arg.action } : {}),
+				}),
+			);
+	};
 	function run(args, { timeout = 20_000, retries = 2 } = {}) {
 		for (let attempt = 0; ; attempt++) {
 			const result = spawnSync(cliPath(), [`vault=${vaultName}`, ...args], {
@@ -86,6 +97,7 @@ export function fixtureCli(vaultName) {
 		 * loses costs a retry instead of the result. Both calls can be repeated without running `fn` twice.
 		 */
 		evaluate(fn, arg = null, timeout = 120_000) {
+			trace("start", fn, arg);
 			const id = JSON.stringify(`job-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
 			const encoded = Buffer.from(JSON.stringify(arg), "utf8").toString("base64");
 			const decode = `JSON.parse(new TextDecoder().decode(Uint8Array.from(atob("${encoded}"), c => c.charCodeAt(0))))`;
@@ -107,6 +119,7 @@ export function fixtureCli(vaultName) {
 				if (state.done) {
 					evalString(`(() => { delete window.__tcwJobs[${id}]; return "deleted"; })()`);
 					if (state.error !== undefined) throw new ScriptError(`code run in Obsidian failed: ${state.error}`);
+					trace("done", fn, arg);
 					return JSON.parse(state.result);
 				}
 				if (Date.now() - start > timeout)
@@ -115,9 +128,12 @@ export function fixtureCli(vaultName) {
 		},
 		/** Calls a Chrome DevTools Protocol method on the vault's window. */
 		cdp(method, params) {
+			trace("start", `cdp:${method}`);
 			const out = run(["dev:cdp", `method=${method}`, ...(params ? [`params=${JSON.stringify(params)}`] : [])]);
 			try {
-				return JSON.parse(out);
+				const result = JSON.parse(out);
+				trace("done", `cdp:${method}`);
+				return result;
 			} catch {
 				throw new ScriptError(`${method} did not return JSON: ${out.slice(0, 500)}`);
 			}
@@ -302,14 +318,20 @@ export async function prepareApp({ pluginId, today }) {
  * matter most, then the plugin is unloaded, after waiting for code from a call that timed out to finish. Every step
  * runs even when one fails; the failures are thrown together at the end.
  */
-export async function unloadApp({ pluginId, viewType }) {
+export async function unloadApp({ pluginId, viewType, trace = false }) {
 	const saved = window.__tcwFixtureSaved;
 	if (!saved) return false;
 	const failures = [];
 	const step = async (what, run) => {
 		try {
+			if (trace)
+				console.info("[tcw-fixture] " + JSON.stringify({ operation: "unloadApp", phase: "start", step: what }));
 			await run();
+			if (trace)
+				console.info("[tcw-fixture] " + JSON.stringify({ operation: "unloadApp", phase: "done", step: what }));
 		} catch (error) {
+			if (trace)
+				console.info("[tcw-fixture] " + JSON.stringify({ operation: "unloadApp", phase: "error", step: what }));
 			failures.push(`${what}: ${error?.message ?? error}`);
 		}
 	};
@@ -343,14 +365,24 @@ export async function unloadApp({ pluginId, viewType }) {
  * Runs in Obsidian once the plugin folder is back as it was, the second half of undoing prepareApp: the plugin list,
  * restricted mode, the theme setting and the layout.
  */
-export async function restoreApp({ pluginId }) {
+export async function restoreApp({ pluginId, trace = false }) {
 	const saved = window.__tcwFixtureSaved;
 	if (!saved) return false;
 	const failures = [];
 	const step = async (what, run) => {
 		try {
+			if (trace)
+				console.info(
+					"[tcw-fixture] " + JSON.stringify({ operation: "restoreApp", phase: "start", step: what }),
+				);
 			await run();
+			if (trace)
+				console.info("[tcw-fixture] " + JSON.stringify({ operation: "restoreApp", phase: "done", step: what }));
 		} catch (error) {
+			if (trace)
+				console.info(
+					"[tcw-fixture] " + JSON.stringify({ operation: "restoreApp", phase: "error", step: what }),
+				);
 			failures.push(`${what}: ${error?.message ?? error}`);
 		}
 	};
@@ -378,9 +410,10 @@ export async function restoreApp({ pluginId }) {
  */
 export function fixtureWindow(cli, vaultName, plugin) {
 	let prepared = false;
+	const trace = process.env.TCW_FIXTURE_TRACE === "1";
 	const undo = (fn, what) => () => {
 		if (!prepared) return;
-		if (cli.evaluate(fn, { pluginId: manifest.id, viewType: TIMELINE_VIEW }) === false) {
+		if (cli.evaluate(fn, { pluginId: manifest.id, viewType: TIMELINE_VIEW, trace }) === false) {
 			throw new ScriptError(
 				`the window of ${vaultName} no longer has what it saved before the run (was it reloaded, or closed and reopened?), so ${what} were not put back; check them in Obsidian`,
 			);
@@ -411,18 +444,28 @@ export function fixtureWindow(cli, vaultName, plugin) {
  * @param undoSteps [description, function] pairs, in the order they run.
  */
 export function runAndUndo(work, undoSteps) {
+	const trace = (phase, step = "") => {
+		if (typeof process !== "undefined" && process.env?.TCW_FIXTURE_TRACE === "1")
+			console.error(JSON.stringify({ fixtureUndo: phase, ...(step ? { step } : {}) }));
+	};
 	let failure = null;
 	let result;
 	try {
+		trace("work:start");
 		result = work();
+		trace("work:done");
 	} catch (error) {
+		trace("work:error");
 		failure = error;
 	}
 	const problems = [];
 	for (const [what, undo] of undoSteps) {
 		try {
+			trace("undo:start", what);
 			undo();
+			trace("undo:done", what);
 		} catch (error) {
+			trace("undo:error", what);
 			problems.push(`${what}: ${error.message}`);
 		}
 	}

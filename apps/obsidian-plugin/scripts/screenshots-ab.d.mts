@@ -2,7 +2,7 @@
 
 /** The selected screenshot mode and the options needed before any git or Obsidian work starts. */
 export type ScreenshotArgs = {
-	mode: "screenshots" | "styles" | "ab" | "pin-theme";
+	mode: "screenshots" | "styles" | "ab" | "pin-theme" | "windowing-parity";
 	update: boolean;
 	/** The substring from --only=<text>, or an empty string when no filter was supplied. */
 	only: string;
@@ -17,6 +17,10 @@ export type ScreenshotArgs = {
 	themes: "default" | "all";
 	/** Present only for --profile=mobile; a desktop run parses to the same object as before profiles existed. */
 	profile?: "mobile";
+	/** Present only for --force-windowing; sets the per-view debug threshold before its factory runs. */
+	forceWindowing?: true;
+	/** Present only in the standalone --windowing-parity mode; never records a baseline. */
+	windowingReport?: string | null;
 };
 
 /**
@@ -25,6 +29,9 @@ export type ScreenshotArgs = {
  * only "", ab null, themes "default" and no profile (desktop); --styles selects "styles", --ab selects "ab" and
  * --pin-theme selects "pin-theme". Mobile allows --only with --update, but rejects --ab, --styles,
  * --themes=all and --pin-theme. Repeating the same profile is allowed; conflicting or invalid values fail.
+ * --windowing-parity selects its standalone mode, accepts only --report and --profile=desktop, and adds
+ * windowingReport (null by default). --force-windowing adds forceWindowing: true for ordinary desktop
+ * screenshot comparisons, rejects baseline updates and other modes, and leaves --only/--themes available.
  * Unsupported arguments are rejected first, then profile values and mobile combinations, --pin-theme,
  * invalid or conflicting --themes
  * values, missing A/B values or stray A/B options, and the remaining incompatible combinations.
@@ -42,6 +49,8 @@ export type ScreenshotArgs = {
  * - --ab compares two builds and records no baseline; leave out --update.
  * - leave out --styles, --ab compares styles already.
  * - --only cannot be combined with --update, which replaces all screenshots.
+ * - --windowing-parity cannot be combined with ${option}.
+ * - --force-windowing cannot be combined with ${option}.
  * A missing value includes an empty = value or a following option. --only and --themes with separate values
  * stay unknown. Repeating the same --themes value is allowed; --pin-theme takes no other option except
  * --profile=desktop, even --themes=default.

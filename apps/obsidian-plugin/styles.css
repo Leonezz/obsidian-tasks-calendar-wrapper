@@ -807,3 +807,22 @@
 .taskido .quickEntryPanel .fileSelect option {
 	white-space: nowrap;
 }
+
+/* Windowed days use measured segments instead of a second, whole-day intrinsic estimate. */
+.taskido.tcw-windowed {
+	overflow-anchor: none;
+}
+
+.taskido.tcw-windowed .details.tcw-day {
+	content-visibility: visible;
+	contain-intrinsic-size: none;
+}
+
+.taskido .tcw-gap {
+	height: var(--tcw-gap-height);
+	flex-shrink: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	pointer-events: none;
+}

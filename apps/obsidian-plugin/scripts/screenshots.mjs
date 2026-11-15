@@ -21,6 +21,9 @@
  * `--ab <ref>` compares visible text, PNGs and styles of that build and this checkout in one session; --candidate <ref>
  * builds another candidate, --report <file> saves the Markdown report, and --any-base allows a different merge base.
  * Both modes also fingerprint a dimmed row in each theme, without taking its visible text or PNG.
+ * `--force-windowing --only=light-` exercises the windowed path in the 42 light golden states, comparing existing
+ * baselines without recording any. `--windowing-parity [--report <json>]` instead compares only viewport-intersecting
+ * rows at top/today/bottom in both generated benchmark vaults, with windowing disabled and enabled in the same build.
  *
  * Pixels and colours depend on the machine, the Obsidian version, the golden vault's appearance settings (accent colour,
  * font size and fonts, community theme, CSS snippets, ribbon, zoom), the font the timeline ends up with, and the display
@@ -51,6 +54,7 @@ import path from "path";
 import { abMergeBase, checkAbBase } from "./bench-ab.mjs";
 import { buildAt, localBuild } from "./bench-builds.mjs";
 import { otherBenchProcesses } from "./bench-host.mjs";
+import { benchVaultName, benchVaultNotes } from "./bench-notes.mjs";
 import {
 	buildInfo,
 	fixtureCli,
@@ -69,6 +73,14 @@ import {
 } from "./fixture-app.mjs";
 import { comparePngs, decodePng, encodePng, screenshotVerdict } from "./png.mjs";
 import { abExitCode, abReport, compareArms, firstDifference, parseScreenshotArgs } from "./screenshots-ab.mjs";
+import {
+	collectViewportRows,
+	compareOpeningScroll,
+	compareViewportRows,
+	windowingPage,
+	WINDOWING_POSITIONS,
+	WINDOWING_VIEWPORT,
+} from "./screenshots-windowing.mjs";
 import {
 	collectTouchTargets,
 	formatTouchTargetReport,
@@ -130,7 +142,7 @@ const TODAY_FOCUS = "Focus today";
  * Runs in Obsidian: everything the screenshots do in the window. Each action ends when the timeline's DOM has not
  * changed for a while, so rows that render their markdown later are in the picture.
  */
-async function timeline({ action, viewType, pluginId, label, theme, settleMs }) {
+async function timeline({ action, viewType, pluginId, label, theme, settleMs, windowMinRows }) {
 	// A window behind others may draw no frames, so waiting for one is cut short.
 	const frame = () =>
 		Promise.race([
@@ -172,6 +184,18 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 			below: innerHeight - rect.bottom,
 		};
 	}
+	function forcedWindowingInfo() {
+		const root = content()?.querySelector(".taskido");
+		const info = app.workspace.getLeavesOfType(viewType)[0]?.view.getWindowingInfo?.();
+		const active = root?.classList.contains("tcw-windowed") ?? false;
+		if (!info || !Number.isInteger(info.rowCount) || info.rowCount < 0 || typeof info.windowed !== "boolean")
+			throw new Error("the forced golden has no committed getWindowingInfo() row count");
+		if (info.windowed !== active || (info.rowCount > 0 && !active))
+			throw new Error(
+				`the forced golden is not using the expected windowed path: ${JSON.stringify({ ...info, classActive: active })}`,
+			);
+		return info;
+	}
 	switch (action) {
 		case "open": {
 			// The plugin is loaded again, so the timeline starts without a counter or "Focus on today".
@@ -179,9 +203,21 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 			if (app.plugins.plugins[pluginId]) await app.plugins.disablePlugin(pluginId);
 			if (!(await app.plugins.enablePlugin(pluginId)))
 				throw new Error(`Obsidian could not load the plugin ${pluginId}`);
+			if (windowMinRows === 0) {
+				const plugin = app.plugins.plugins[pluginId];
+				if (!plugin?.debug || typeof plugin.debug !== "object")
+					throw new Error("this build has no windowing debug override for --force-windowing");
+				plugin.debug.windowMinRows = 0;
+			}
 			const others = [];
 			app.workspace.iterateRootLeaves((leaf) => others.push(leaf));
-			const leaf = app.workspace.getLeaf("tab");
+			let leaf;
+			try {
+				leaf = app.workspace.getLeaf("tab");
+			} catch (error) {
+				if (error?.message !== "No tab group found.") throw error;
+				leaf = app.workspace.createLeafInParent(app.workspace.rootSplit, 0);
+			}
 			await leaf.setViewState({ type: viewType, active: true });
 			// An empty tab can be reused for the timeline, so only the other leaves go.
 			others.filter((other) => other !== leaf).forEach((other) => other.detach());
@@ -198,6 +234,7 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 			}
 			await new Promise((resolve) => setTimeout(resolve, settleMs));
 			await quiet(500);
+			if (windowMinRows === 0) forcedWindowingInfo();
 			return measure();
 		}
 		case "click": {
@@ -284,6 +321,7 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 			const root = content()?.querySelector(".taskido");
 			if (!root) throw new Error("the timeline has no .taskido element");
 			await quiet(300);
+			if (windowMinRows === 0) forcedWindowingInfo();
 			const text = (element) => (element?.innerText ?? "").replace(/\s+/g, " ").trim();
 			const lines = [];
 			for (const element of root.querySelectorAll(
@@ -312,6 +350,8 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs }) 
 			}
 			return lines;
 		}
+		case "windowing-info":
+			return forcedWindowingInfo();
 		case "appearance": {
 			const root = content()?.querySelector(".taskido");
 			if (!root) throw new Error("the timeline has no .taskido element");
@@ -396,7 +436,17 @@ function capture(cli, viewport = setViewport, beforeScreenshot = () => {}) {
 }
 
 /** Takes every state's records into `outDir` and returns what the manifest records about them. */
-function takeScreenshots(cli, plugin, outDir, only, mode, themes, pins, buildLabel = "this checkout") {
+function takeScreenshots(
+	cli,
+	plugin,
+	outDir,
+	only,
+	mode,
+	themes,
+	pins,
+	buildLabel = "this checkout",
+	forceWindowing = false,
+) {
 	const shots = {};
 	if (mode !== "styles") mkdirSync(path.join(outDir, VISIBLE), { recursive: true });
 	for (const group of plan(only, mode, themes)) {
@@ -414,6 +464,7 @@ function takeScreenshots(cli, plugin, outDir, only, mode, themes, pins, buildLab
 			viewType: TIMELINE_VIEW,
 			pluginId: manifest.id,
 			settleMs: SETTLE_AFTER_LOAD_MS,
+			...(forceWindowing ? { windowMinRows: 0 } : {}),
 		});
 		const state = { theme: null, todayFocus: false, counter: "none" };
 		for (const shot of group.shots) {
@@ -447,8 +498,16 @@ function takeScreenshots(cli, plugin, outDir, only, mode, themes, pins, buildLab
 			const { name, png: takePng, visible: takeVisible, styles: takeStyles, ...states } = shot;
 			const record = { ...states, png: null, visibleLines: null };
 			if (mode !== "screenshots") record.styles = takeStyles;
+			// Force mode must expose the whole golden before V reads its DOM. Ordinary captures keep their old order.
+			const forcedPng = forceWindowing && takePng ? capture(cli) : null;
+			if (forceWindowing)
+				record.windowing = cli.evaluate(timeline, { action: "windowing-info", viewType: TIMELINE_VIEW });
 			if (takeVisible) {
-				const lines = cli.evaluate(timeline, { action: "visible", viewType: TIMELINE_VIEW });
+				const lines = cli.evaluate(timeline, {
+					action: "visible",
+					viewType: TIMELINE_VIEW,
+					...(forceWindowing ? { windowMinRows: 0 } : {}),
+				});
 				writeFileSync(path.join(outDir, VISIBLE, `${name}.txt`), lines.join("\n") + "\n");
 				record.visibleLines = lines.length;
 			}
@@ -467,7 +526,7 @@ function takeScreenshots(cli, plugin, outDir, only, mode, themes, pins, buildLab
 				writeFileSync(path.join(dir, `${name}.json`), serializeStyles(fingerprint));
 			}
 			if (takePng) {
-				const png = capture(cli);
+				const png = forcedPng ?? capture(cli);
 				writeFileSync(path.join(outDir, `${name}.png`), png);
 				const { width, height } = decodePng(png);
 				record.png = { width, height };
@@ -1042,6 +1101,124 @@ function finishMobile(outDir, shots, problems, env, build, only, update) {
 	return report.exitCode || (differences.length ? 1 : 0);
 }
 
+/** Validates both generated fixtures before changing either, and always keeps the measured rows and failures. */
+function runWindowingParity(reportFile = null) {
+	const others = otherBenchProcesses(
+		execFileSync("ps", ["-A", "-o", "pid=,ppid=,command="], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }),
+		process.pid,
+	);
+	if (others.length)
+		throw new ScriptError(
+			`another script is driving Obsidian: ${others.map(({ pid, command }) => `${pid} ${command}`).join("; ")}`,
+		);
+	if (
+		reportFile &&
+		(!existsSync(path.dirname(path.resolve(reportFile))) ||
+			!statSync(path.dirname(path.resolve(reportFile))).isDirectory())
+	)
+		throw new ScriptError(`the folder of the report ${reportFile} does not exist.`);
+	const sessions = [1, 10].map((scale) => {
+		const name = benchVaultName(scale);
+		const cli = fixtureCli(name);
+		const notes = benchVaultNotes(scale);
+		const howToOpen = `Generate and open the fixture ${name} before running --windowing-parity.`;
+		return { scale, name, cli, notes, howToOpen, vaultPath: fixtureVaultPath(cli, name, notes, howToOpen) };
+	});
+	const outDir = mkdtempSync(path.join(os.tmpdir(), "tcw-windowing-parity-"));
+	const buildDir = path.join(outDir, "build");
+	const report = {
+		note: "Current-build viewport parity; no baselines read or written.",
+		measuredAt: new Date().toISOString(),
+		viewport: WINDOWING_VIEWPORT,
+		vaults: [],
+		error: null,
+	};
+	const save = () => {
+		const serialized = JSON.stringify(report, null, "\t") + "\n";
+		writeFileSync(path.join(outDir, "report.json"), serialized);
+		if (reportFile) writeFileSync(reportFile, serialized);
+	};
+	let failure;
+	try {
+		const build = localBuild(buildDir);
+		const { mainJs, stylesCss, ...buildRecord } = build;
+		report.build = buildRecord;
+		save();
+		for (const { scale, name, cli, notes, howToOpen, vaultPath } of sessions) {
+			const record = { scale, name, openings: {}, arms: {}, comparisons: [] };
+			report.vaults.push(record);
+			const plugin = installPlugin(
+				vaultPath,
+				quietSettings({ entryPosition: "today", useBuiltinStyle: true }),
+				build,
+			);
+			const fixture = fixtureWindow(cli, name, plugin);
+			runAndUndo(() => {
+				record.env = fixture.prepare();
+				cli.cdp("Emulation.setDeviceMetricsOverride", WINDOWING_VIEWPORT);
+				for (const arm of ["off", "default"]) {
+					const baseArg = { pluginId: manifest.id, viewType: TIMELINE_VIEW, todayKey: "2026-01-15" };
+					const opening = (record.openings[arm] = cli.evaluate(windowingPage, {
+						...baseArg,
+						action: "open",
+						arm,
+					}));
+					const openingProblems = compareOpeningScroll(arm, opening);
+					record.comparisons.push({ position: "opening", arm, problems: openingProblems });
+					console.log(`screenshots: ${name} ${arm} opening: scrollTop=${opening.scrollTop}`);
+					for (const problem of openingProblems)
+						console.error(`screenshots: ${name} ${arm} opening: ${JSON.stringify(problem)}`);
+					save();
+					const positions = (record.arms[arm] = {});
+					for (const position of WINDOWING_POSITIONS) {
+						const alignment = cli.evaluate(windowingPage, { ...baseArg, action: "position", position });
+						const measured = cli.evaluate(collectViewportRows, {
+							container: `.workspace-leaf-content[data-type="${TIMELINE_VIEW}"] > .view-content`,
+						});
+						positions[position] = {
+							...measured,
+							rowCount: alignment.rowCount,
+							logicalWindowed: alignment.logicalWindowed,
+							alignment,
+						};
+						console.log(
+							`screenshots: ${name} ${arm} ${position}: ${measured.rows.length} intersecting rows, ${measured.mountedRows} of ${alignment.rowCount} mounted`,
+						);
+						save();
+					}
+				}
+				for (const position of WINDOWING_POSITIONS) {
+					const problems = compareViewportRows(record.arms.off[position], record.arms.default[position]);
+					record.comparisons.push({ position, problems });
+					for (const problem of problems)
+						console.error(`screenshots: ${name} ${position}: ${JSON.stringify(problem)}`);
+				}
+			}, [
+				["clear the fixed viewport", () => cli.cdp("Emulation.clearDeviceMetricsOverride")],
+				["remove the status bar fixture style", () => cli.evaluate(windowingPage, { action: "cleanup" })],
+				...fixture.undoSteps,
+				["verify unchanged generated notes", () => fixtureVaultPath(cli, name, notes, howToOpen)],
+			]);
+			save();
+		}
+	} catch (error) {
+		report.error = String(error.stack ?? error);
+		failure = error;
+	} finally {
+		save();
+		rmSync(buildDir, { recursive: true, force: true });
+		console.log(
+			`screenshots: windowing measurements and differences are in ${path.join(outDir, "report.json")}${reportFile ? ` and ${reportFile}` : ""}.`,
+		);
+	}
+	if (failure) throw failure;
+	const differences = report.vaults.flatMap(({ comparisons }) => comparisons.flatMap(({ problems }) => problems));
+	console.log(
+		`screenshots: windowing viewport parity: ${differences.length} difference(s) over both scales, opening and all three positions.`,
+	);
+	return differences.length ? 1 : 0;
+}
+
 function runMobile(only, update) {
 	if (mobilePlan(only).length === 0) throw new ScriptError(`no mobile screenshot name contains "${only}".`);
 	const build = buildInfo();
@@ -1085,7 +1262,8 @@ await runScript("screenshots", async () => {
 	} catch (error) {
 		throw new ScriptError(error.message);
 	}
-	const { mode, update, only, ab, themes, profile } = args;
+	const { mode, update, only, ab, themes, profile, forceWindowing, windowingReport } = args;
+	if (mode === "windowing-parity") return runWindowingParity(windowingReport);
 	if (profile === "mobile") return runMobile(only, update);
 	if (mode === "pin-theme") return pinThemes();
 	const groups = plan(only, mode, themes);
@@ -1093,6 +1271,8 @@ await runScript("screenshots", async () => {
 		throw new ScriptError(
 			`no screenshot name contains "${only}".${themes === "default" && plan(only, mode, "all").length ? " Add --themes=all to include Blue Topaz states." : ""}`,
 		);
+	if (forceWindowing && !groups.some(({ shots }) => shots.some(({ visible }) => visible)))
+		throw new ScriptError("--force-windowing needs a light visible state; use --only=light- for all 42.");
 	if (ab) return runAb(ab, only, themes);
 	// A wrong theme is refused before anything else is said about this run's baselines.
 	const session = themes === "all" ? screenshotVault() : null;
@@ -1125,7 +1305,7 @@ await runScript("screenshots", async () => {
 		backupAppearance(vaultPath);
 		const prepared = fixture.prepare();
 		const env = environment(cli, prepared);
-		const shots = takeScreenshots(cli, plugin, outDir, only, mode, themes, pins);
+		const shots = takeScreenshots(cli, plugin, outDir, only, mode, themes, pins, "this checkout", forceWindowing);
 		return { env: { ...env, ...appearances(cli, shots, pins) }, shots };
 	}, [
 		["clear the page size", () => cli.cdp("Emulation.clearDeviceMetricsOverride")],
@@ -1135,6 +1315,22 @@ await runScript("screenshots", async () => {
 	]);
 
 	if (mode === "styles") return finishStyles(outDir, shots, env, build, only, update, themes);
+	if (forceWindowing) {
+		const states = Object.entries(shots).filter(([, shot]) => shot.visibleLines !== null);
+		const differences = states.flatMap(([name]) => {
+			const problem = compareVisible(outDir, name);
+			return problem ? [{ name, problem }] : [];
+		});
+		for (const { name, problem } of differences) console.log(`screenshots: forced V ${name}: ${problem}`);
+		writeFileSync(
+			path.join(outDir, "windowing-visible.json"),
+			JSON.stringify({ build, env, states: Object.fromEntries(states), differences }, null, "\t") + "\n",
+		);
+		console.log(
+			`screenshots: forced windowing V: ${states.length} states, ${differences.length} differences against the unwindowed visible baselines; P/S not judged. PNG diagnostics and windowing-visible.json are in ${outDir}.`,
+		);
+		return differences.length ? 1 : 0;
+	}
 
 	if (update) {
 		const previous = existsSync(manifestFile) ? JSON.parse(readFileSync(manifestFile, "utf8")) : null;

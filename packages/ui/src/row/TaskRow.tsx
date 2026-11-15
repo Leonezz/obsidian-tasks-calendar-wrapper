@@ -70,6 +70,10 @@ export const TaskRow = React.memo(function TaskRow(props: TaskRowProps) {
 	const { model, callbacks, overlay, clock } = props;
 	const id = `${model.path}:${model.line}`;
 	const instanceId = rowInstanceKey(dayKey, id);
+	const rowRef = React.useCallback(
+		(element: HTMLDivElement | null) => rowWrites.registerRow?.(instanceId, element),
+		[rowWrites, instanceId],
+	);
 	const contentId = `${rowWrites.prefix}${instanceId}-text`;
 	const summaryId = `${rowWrites.prefix}${instanceId}-summary`;
 	const openTaskFile = (evt: React.MouseEvent | React.KeyboardEvent) => {
@@ -122,6 +126,7 @@ export const TaskRow = React.memo(function TaskRow(props: TaskRowProps) {
 	};
 	return (
 		<div
+			ref={rowRef}
 			{...(callbacks.handleRowMenu ? { onContextMenu } : {})}
 			data-line={model.line}
 			data-task={model.statusMarker}

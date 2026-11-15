@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
 	bucketTrace,
+	isPluginScript,
 	moduleCategory,
 	moduleMap,
 	pluginLineOffset,
@@ -107,6 +108,47 @@ function traceOf({
 }
 
 const options = { scenario: "initialLoad", mainJs, pluginId };
+
+test("plugin frames recognise Obsidian's current encoded bundle route without matching another plugin", () => {
+	const current = `app://obsidian.md/_plugin/b0c94e3cf0fc5cc2/.obsidian%2Fplugins%2F${pluginId}?id=${pluginId}`;
+	assert.equal(isPluginScript(pluginUrl, pluginId), true);
+	assert.equal(isPluginScript(current, pluginId), true);
+	for (const url of [
+		undefined,
+		"",
+		current.replace("obsidian.md", "example.com"),
+		current.replace("/_plugin/", "/other/"),
+		current.replace(`?id=${pluginId}`, "?id=another-plugin"),
+		current.replace(`%2F${pluginId}?`, `%2F${pluginId}-other?`),
+		current.replace(".obsidian%2F", "%invalid%2F"),
+	])
+		assert.equal(isPluginScript(url, pluginId), false, url);
+	const profileNodes = nodes.map((entry) => ({
+		...entry,
+		callFrame: { ...entry.callFrame, url: entry.callFrame.url === pluginUrl ? current : entry.callFrame.url },
+	}));
+	const result = bucketTrace(traceOf({ profileNodes }), { ...options, requireMarkdown: true, requireReactDom: true });
+	assert.equal(result.lineOffset, lineOffset);
+	assert.equal(result.categories["react-dom"], 20);
+	assert.equal(result.categories.MarkdownRenderer, 20);
+});
+
+test("required react-dom coverage still fails when matching samples are outside long-task script time", () => {
+	const noReact = traceOf({ samples: [3, 6], times: [15, 75] });
+	assert.throws(
+		() => bucketTrace(noReact, { ...options, requireReactDom: true }),
+		/no long-task script time.*react-dom/,
+	);
+	const noLongTasks = traceOf({
+		events: [complete("RunTask", 0, 20), complete("FunctionCall", 0, 20)],
+		samples: [3, 4, 6],
+		times: [5, 10, 15],
+	});
+	assert.throws(
+		() => bucketTrace(noLongTasks, { ...options, requireReactDom: true }),
+		/no long-task script time.*react-dom/,
+	);
+});
 
 test("buckets a recorded trace into the categories", () => {
 	const result = bucketTrace({ traceEvents: traceOf() }, options);

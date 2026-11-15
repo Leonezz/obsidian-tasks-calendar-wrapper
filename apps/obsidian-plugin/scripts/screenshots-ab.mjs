@@ -12,12 +12,16 @@ export function parseScreenshotArgs(argv) {
 	let update = false;
 	let styles = false;
 	let pinTheme = false;
+	let windowingParity = false;
+	let forceWindowing = false;
 	let only;
 	for (let i = 0; i < argv.length; i++) {
 		const arg = argv[i];
 		if (arg === "--update") update = true;
 		else if (arg === "--styles") styles = true;
 		else if (arg === "--pin-theme") pinTheme = true;
+		else if (arg === "--windowing-parity") windowingParity = true;
+		else if (arg === "--force-windowing") forceWindowing = true;
 		else if (arg.startsWith("--themes=")) themeValues.push(arg.slice("--themes=".length));
 		else if (arg.startsWith("--profile=")) profileValues.push(arg.slice("--profile=".length));
 		else if (arg === "--any-base") values[arg] = true;
@@ -44,6 +48,38 @@ export function parseScreenshotArgs(argv) {
 	if (profileValues.some((value) => value !== "desktop" && value !== "mobile") || new Set(profileValues).size > 1)
 		throw new Error("--profile takes desktop or mobile; use only one profile value.");
 	const profile = profileValues[0] ?? "desktop";
+	if (windowingParity) {
+		const incompatible = [
+			[forceWindowing, "--force-windowing"],
+			[update, "--update"],
+			[styles, "--styles"],
+			[pinTheme, "--pin-theme"],
+			[only !== undefined, "--only"],
+			[themeValues.length > 0, "--themes"],
+			[profile === "mobile", "--profile=mobile"],
+			...["--ab", "--candidate", "--any-base"].map((name) => [values[name] !== undefined, name]),
+		].find(([present]) => present);
+		if (incompatible) throw new Error(`--windowing-parity cannot be combined with ${incompatible[1]}.`);
+		if (values["--report"] === null) throw new Error("--report needs a file to write the report to.");
+		return {
+			mode: "windowing-parity",
+			update: false,
+			only: "",
+			ab: null,
+			themes: "default",
+			windowingReport: values["--report"] ?? null,
+		};
+	}
+	if (forceWindowing) {
+		const incompatible = [
+			[update, "--update"],
+			[styles, "--styles"],
+			[pinTheme, "--pin-theme"],
+			[profile === "mobile", "--profile=mobile"],
+			...["--ab", "--candidate", "--report", "--any-base"].map((name) => [values[name] !== undefined, name]),
+		].find(([present]) => present);
+		if (incompatible) throw new Error(`--force-windowing cannot be combined with ${incompatible[1]}.`);
+	}
 	if (profile === "mobile") {
 		const incompatible = [
 			[values["--ab"] !== undefined, "--ab"],
@@ -86,6 +122,7 @@ export function parseScreenshotArgs(argv) {
 		ab,
 		themes: themeValues[0] ?? "default",
 		...(profile === "mobile" ? { profile } : {}),
+		...(forceWindowing ? { forceWindowing: true } : {}),
 	};
 }
 
