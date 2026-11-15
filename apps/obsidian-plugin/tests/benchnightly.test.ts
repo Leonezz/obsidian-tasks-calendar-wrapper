@@ -248,6 +248,24 @@ test("another benchmark driving Obsidian is found, but not this one or what star
 	);
 });
 
+test("the permanent parity driver participates in the native guard without matching corpus generators", () => {
+	const ps = [
+		"10 1 sh -c node scripts/tasks-parity-check.mjs --report=/tmp/report.json",
+		"11 10 node scripts/tasks-parity-check.mjs --report=/tmp/report.json",
+		"20 1 node /work/apps/obsidian-plugin/scripts/tasks-parity-check.mjs --restore",
+		"21 1 node scripts/tasks-parity-vault.mjs",
+		"22 1 node scripts/tasks-parity-checker.mjs",
+	].join("\n");
+	assert.deepEqual(
+		otherBenchProcesses(ps, 11).map(({ pid }) => pid),
+		[20],
+	);
+	assert.deepEqual(
+		otherBenchProcesses(ps, 20).map(({ pid }) => pid),
+		[10, 11],
+	);
+});
+
 test("the idle time, the power source and Low Power Mode are read from ioreg and pmset", () => {
 	assert.equal(hidIdleSeconds('    | |   "HIDIdleTime" = 46000820041\n'), 46.000820041);
 	assert.throws(() => hidIdleSeconds("nothing"), /HIDIdleTime/);
