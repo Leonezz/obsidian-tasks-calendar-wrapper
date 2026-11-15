@@ -17,12 +17,10 @@ export function TagBadge(props: TagBadgeProps) {
 		style = {
 			"--tag-color": color,
 			"--tag-background": `${color}1a`,
-			zIndex: 9999,
 		};
 	} else {
 		style = {
 			"--tag-color": "var(--text-muted)",
-			zIndex: 9999,
 		};
 	}
 	return (

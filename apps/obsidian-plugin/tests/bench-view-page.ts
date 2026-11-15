@@ -43,7 +43,7 @@ interface ViewOptions {
 	clientHeight?: number;
 	visibilityState?: string;
 	rowPresent?: boolean;
-	view?: { revealTask?: (id: string) => Promise<void> };
+	view?: { revealTask?: (id: string) => Promise<boolean | void> };
 	longTasks?: readonly { offset: number; duration: number }[];
 }
 

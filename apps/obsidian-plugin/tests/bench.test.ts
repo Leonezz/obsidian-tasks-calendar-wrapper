@@ -321,6 +321,12 @@ interface PageRow {
 	hasAttribute(name: string): boolean;
 	querySelector(selector: string): unknown;
 	closest(): object;
+	focus(options: { preventScroll: boolean }): void;
+	ownerDocument: { activeElement: PageRow | null; defaultView: object; hasFocus(): boolean };
+	contains(element: PageRow | null): boolean;
+	addEventListener(type: string, listener: () => void): void;
+	removeEventListener(type: string, listener: () => void): void;
+	dispatchEvent(event: { type: string; synthetic?: boolean }): boolean;
 }
 
 interface PageClick {
@@ -348,8 +354,17 @@ function togglePage({
 	refuseRestore = false,
 	overlayDelay = 10,
 	rowScanMs = 0,
+	writeDelay = 70,
+	windowed = false,
+	reorderAfterWrite = false,
+	focusWorkMs = 0,
+	backgroundDocument = false,
+	rowQueryMs = 0,
+	clockResolutionMs = 1,
 } = {}) {
 	let now = 1000;
+	let rowQueries = 0;
+	const longTaskRecords: { startTime: number; duration: number }[] = [];
 	let disk = "- [ ] Task\n";
 	const timers: { at: number; callback: () => void }[] = [];
 	const schedule = (callback: () => void, delay = 0) => timers.push({ at: now + delay, callback });
@@ -371,11 +386,39 @@ function togglePage({
 		for (const observer of observers)
 			observer.callback([{ target: row, attributeName: name, oldValue, type: "attributes", addedNodes: [] }]);
 	};
-	const pageWindow = {};
+	const pageWindow = {
+		FocusEvent: class {
+			synthetic = true;
+			constructor(
+				readonly type: string,
+				readonly options: { bubbles: boolean },
+			) {}
+		},
+	};
+	const pageDocument = {
+		activeElement: null as PageRow | null,
+		defaultView: pageWindow,
+		hasFocus: () => !backgroundDocument,
+	};
 	const dispatched: { text: string; at: number; event: PageClick }[] = [];
+	const focused: { text: string; at: number; preventScroll: boolean }[] = [];
+	const focusEvents: { text: string; at: number; synthetic: boolean }[] = [];
+	const focusListeners = new Set<() => void>();
+	const reveals: string[] = [];
+	let focusRow: PageRow | undefined;
 	const column = {};
 	const taskTexts = ["One", "Two", "Three", "Four", "Five"];
-	const view = { onReloadTasks() {} };
+	const view = {
+		onReloadTasks() {},
+		async revealTask(id: string) {
+			reveals.push(id);
+			const row = pageRows[Number(id.slice(id.lastIndexOf(":") + 1))];
+			if (!row) return false;
+			row.isConnected = true;
+			emit(row, "data-task", null);
+			return true;
+		},
+	};
 	const originalReload = view.onReloadTasks;
 	const vault = {
 		cachedRead() {
@@ -389,16 +432,39 @@ function togglePage({
 		adapter: { readBinary: async () => new TextEncoder().encode(disk) },
 	};
 	const originalRead = vault.cachedRead;
-	const pageRows = taskTexts.map((text) => {
+	const pageRows = taskTexts.map((text, line) => {
 		let busy = false;
 		const row: PageRow = {
 			nodeType: 1,
 			isConnected: true,
 			dataset: { task: " " },
 			parentElement: column,
-			getAttribute: () => (busy ? "true" : null),
+			getAttribute: (name) => (name === "data-line" ? String(line) : busy ? "true" : null),
 			hasAttribute: () => busy,
 			closest: () => root,
+			ownerDocument: pageDocument,
+			contains: (element) => element === row,
+			addEventListener(type, listener) {
+				assert.equal(type, "focusin");
+				focusListeners.add(listener);
+			},
+			removeEventListener(type, listener) {
+				assert.equal(type, "focusin");
+				focusListeners.delete(listener);
+			},
+			dispatchEvent(event) {
+				assert.equal(event.type, "focusin");
+				focusEvents.push({ text, at: now, synthetic: Boolean(event.synthetic) });
+				for (const listener of focusListeners) listener();
+				focusRow = row;
+				return true;
+			},
+			focus(options) {
+				focused.push({ text, at: now, preventScroll: options.preventScroll });
+				pageDocument.activeElement = row;
+				now += focusWorkMs;
+				if (!backgroundDocument) row.dispatchEvent({ type: "focusin", synthetic: false });
+			},
 			querySelector: (selector) => {
 				if (selector === ":scope > .lines > .content") return { textContent: text };
 				if (selector !== ":scope > .timeline > label.icon") return null;
@@ -416,17 +482,29 @@ function togglePage({
 						}, overlayDelay + 10);
 						schedule(() => {
 							busy = false;
+							if (windowed && focusRow !== row) row.isConnected = false;
+							if (reorderAfterWrite)
+								for (const other of pageRows)
+									if (other !== row && other.dataset.task === " ") other.isConnected = false;
 							view.onReloadTasks();
 							vault.cachedRead();
 							emit(row, "aria-busy", "true");
-						}, overlayDelay + 70);
+						}, overlayDelay + writeDelay);
 					},
 				};
 			},
 		};
 		return row;
 	});
-	const root = { querySelectorAll: () => pageRows.map((row) => ({ closest: () => row })) };
+	const root = {
+		querySelectorAll: () => {
+			rowQueries++;
+			const started = now;
+			now += rowQueryMs;
+			if (rowQueryMs >= 50) longTaskRecords.push({ startTime: started, duration: rowQueryMs });
+			return pageRows.filter((row) => row.isConnected).map((row) => ({ closest: () => row }));
+		},
+	};
 	const plugin: { writer?: object; userOptions: { openNoteInsteadOfInPlace?: boolean } } = {
 		writer: {},
 		userOptions: { openNoteInsteadOfInPlace: false },
@@ -438,7 +516,15 @@ function togglePage({
 	const measure = runInNewContext(source + "\nmeasure", {
 		app: { plugins: { plugins: { test: plugin } }, workspace: { getLeavesOfType: () => [{ view }] }, vault },
 		document: {
-			querySelector: () => root,
+			body: root,
+			querySelector: (selector: string) => {
+				if (selector.includes('.task[aria-busy="true"]'))
+					return pageRows.find((row) => row.isConnected && row.hasAttribute("aria-busy")) ?? null;
+				const line = selector.match(/data-line="(\d+)"/)?.[1];
+				if (line !== undefined) return pageRows[Number(line)]?.isConnected ? pageRows[Number(line)] : null;
+				return root;
+			},
+			querySelectorAll: () => pageRows.filter((row) => row.isConnected),
 			getElementsByClassName: () => ({
 				*[Symbol.iterator]() {
 					now += rowScanMs;
@@ -447,7 +533,7 @@ function togglePage({
 			}),
 		},
 		window: pageWindow,
-		performance: { now: () => now },
+		performance: { now: () => Math.floor(now / clockResolutionMs) * clockResolutionMs },
 		Node: { ELEMENT_NODE: 1 },
 		CSS: { escape: (value: string) => value },
 		TextDecoder,
@@ -456,7 +542,7 @@ function togglePage({
 			observe() {}
 			disconnect() {}
 			takeRecords() {
-				return [];
+				return longTaskRecords.splice(0);
 			}
 		},
 		MouseEvent: class {
@@ -473,12 +559,29 @@ function togglePage({
 	}) as (args: Record<string, unknown>) => Promise<unknown>;
 	return {
 		dispatched,
+		focused,
+		focusEvents,
+		reveals,
 		plugin,
+		pageRows,
+		taskTexts,
 		pageWindow,
 		view,
 		vault,
 		originalReload,
 		originalRead,
+		get queryCount() {
+			return rowQueries;
+		},
+		get now() {
+			return now;
+		},
+		notifyChange() {
+			emit(pageRows[0], "data-task", null);
+		},
+		delay(ms: number) {
+			return new Promise<void>((resolve) => schedule(resolve, ms));
+		},
 		async run(args: Record<string, unknown>) {
 			let done = false;
 			let result: unknown;
@@ -512,6 +615,7 @@ function togglePage({
 			}
 			assert.ok(done, "the page did not finish");
 			assert.equal(observers.size, 0, "measurement observers were not disconnected");
+			assert.equal(focusListeners.size, 0, "temporary focus listeners were not removed");
 			if (failure) throw failure;
 			return result;
 		},
@@ -523,6 +627,66 @@ test("toggle: the overlay time does not include the recorder's first-row scan", 
 	const result = (await page.run({ action: "toggle" })) as ToggleMeasurement;
 	assert.equal(result.overlayMs, 10);
 	assert.equal(result.overlayPaintedMs, 11);
+});
+
+test("toggle focuses the clicked instance without scrolling before starting its click clock", async () => {
+	const page = togglePage({ windowed: true, focusWorkMs: 60 });
+	const result = (await page.run({ action: "toggle" })) as ToggleMeasurement;
+	assert.deepEqual(page.focused, [{ text: "One", at: 1000, preventScroll: true }]);
+	assert.equal(page.dispatched[0].at, 1060);
+	assert.equal(page.dispatched[0].event.timeStamp, 1060);
+	assert.equal(result.overlayMs, 10);
+	assert.equal(result.clicks[0].realMs, 80);
+	assert.deepEqual(page.focusEvents, [{ text: "One", at: 1060, synthetic: false }]);
+});
+
+test("a background document's silent focus receives one owner-window focusin before the click clock", async () => {
+	const page = togglePage({ windowed: true, backgroundDocument: true, focusWorkMs: 60 });
+	const result = (await page.run({ action: "toggle" })) as ToggleMeasurement;
+	assert.deepEqual(page.focusEvents, [{ text: "One", at: 1060, synthetic: true }]);
+	assert.equal(page.dispatched[0].at, 1060);
+	assert.equal(result.overlayMs, 10);
+	assert.equal(result.clicks[0].realMs, 80);
+	assert.deepEqual(page.reveals, [], "the clicked resident row must remain directly observable");
+});
+
+test("burst verifies accepted off-window writes after the five scheduled clicks", async () => {
+	const page = togglePage({ windowed: true, writeDelay: 370 });
+	const result = (await page.run({ action: "toggle", toggleMode: "burst", quietMs: 100 })) as ToggleMeasurement;
+	assert.deepEqual(
+		page.dispatched.map(({ at }) => at),
+		[1000, 1200, 1400, 1600, 1800],
+	);
+	assert.ok(
+		page.reveals.includes("Note.md:0"),
+		"an accepted completed row outside the window must be revealed and checked",
+	);
+	assert.equal(result.reloadCalls, 5);
+	assert.ok(result.clicks.every(({ realMs }) => realMs !== null));
+	assert.ok(page.focused.every(({ preventScroll }) => preventScroll));
+});
+
+test("sequence reveals the next open target when the previous write moves it outside the window", async () => {
+	const page = togglePage({ windowed: true, reorderAfterWrite: true });
+	const result = (await page.run({ action: "toggle", toggleMode: "sequence" })) as ToggleMeasurement;
+	assert.deepEqual(
+		page.dispatched.map(({ text }) => text),
+		page.taskTexts,
+	);
+	assert.deepEqual(page.reveals, ["Note.md:1", "Note.md:2", "Note.md:3", "Note.md:4"]);
+	assert.ok(result.clicks.every(({ overlayMs, realMs }) => overlayMs !== null && realMs !== null));
+	assert.equal(result.reloadCalls, 5);
+	assert.ok(page.pageRows.every((row) => row.dataset.task === "x" && !row.hasAttribute("aria-busy")));
+});
+
+test("sequence still rejects a missing next target on a legacy view without revealTask", async () => {
+	const page = togglePage({ reorderAfterWrite: true });
+	Object.defineProperty(page.view, "revealTask", { value: undefined });
+	await assert.rejects(page.run({ action: "toggle", toggleMode: "sequence" }), /expected one row for "Two", found 0/);
+	assert.deepEqual(
+		page.dispatched.map(({ text }) => text),
+		["One"],
+	);
 });
 
 test("a step with no task over 50 ms reports blockedMs 0 and longestMs 0", async () => {
@@ -680,6 +844,195 @@ test("reveal is skipped on a build without revealTask", async () => {
 		revealed: false,
 	});
 	assert.deepEqual(page.scrolls, []);
+});
+
+test("toggle reset reveals a newly restored target before requiring its five mounted rows", () => {
+	const source = readFileSync("scripts/bench.mjs", "utf8");
+	const setupSource = source.slice(
+		source.indexOf("function toggleSetup("),
+		source.indexOf("/** The writer-only scenario"),
+	);
+	const original = "# Note\n- [ ] Existing task\n";
+	const taskPath = "Note.md";
+	let mounted = false;
+	let restored = "";
+	const evaluate = (arg: Record<string, unknown>) => {
+		if (arg.action === "toggleOptions") return {};
+		if (arg.action === "restore") {
+			assert.equal(arg.path, taskPath);
+			assert.equal(arg.verifyRestore, true);
+			mounted = false;
+			restored = String(arg.content);
+			return restored;
+		}
+		if (arg.action === "reveal") {
+			assert.equal(arg.taskPath, taskPath);
+			assert.equal(arg.taskLine, original.split("\n").length);
+			assert.ok(restored.includes("Bench toggle task 1"));
+			mounted = true;
+			return { revealed: true };
+		}
+		assert.equal(arg.action, "settle");
+		assert.equal(arg.toggleReady, true);
+		assert.equal(arg.taskPath, taskPath);
+		assert.equal(arg.taskLine, original.split("\n").length);
+		assert.equal((arg.toggleTasks as string[]).length, 5);
+		assert.ok(mounted, "the windowed target must be revealed before waiting for five mounted rows");
+		return {};
+	};
+	const setup = runInNewContext(`${setupSource}\ntoggleSetup`, {
+		BENCH_TARGETS: { toggle: taskPath },
+		LOAD_WATCH_MS: 2_000,
+		assertToggleRestored,
+		ScriptError: Error,
+	})(evaluate, new Map([[taskPath, original]])) as { reset(): void };
+	setup.reset();
+	setup.reset();
+});
+
+test("toggle readiness reveals again when metadata reorders a successfully revealed old done target", async () => {
+	const page = togglePage();
+	page.pageRows[0].dataset.task = "x";
+	let committed = false;
+	const reveals: { id: string; committed: boolean }[] = [];
+	page.view.revealTask = async (id) => {
+		reveals.push({ id, committed });
+		if (committed)
+			page.pageRows.forEach((row) => {
+				row.isConnected = true;
+			});
+		return true;
+	};
+	assert.equal(
+		((await page.run({ action: "reveal", taskPath: "Note.md", taskLine: 0 })) as { revealed: boolean }).revealed,
+		true,
+	);
+	assert.equal(page.pageRows[0].dataset.task, "x", "the first reveal found the stale done target");
+	void page.delay(80).then(() => {
+		committed = true;
+		page.pageRows[0].dataset.task = " ";
+		page.pageRows.slice(1).forEach((row) => {
+			row.isConnected = false;
+		});
+	});
+	const result = await page.run({
+		action: "settle",
+		settleMs: 0,
+		toggleReady: true,
+		taskPath: "Note.md",
+		taskLine: 0,
+	});
+	assert.equal((result as { rows: number }).rows, 5);
+	assert.ok(
+		reveals.some(({ committed }) => committed),
+		"the new arrangement needs its own reveal",
+	);
+	assert.ok(reveals.every(({ id }) => id === "Note.md:0"));
+	assert.ok(
+		page.pageRows.every((row) => row.isConnected && row.dataset.task === " " && !row.hasAttribute("aria-busy")),
+	);
+});
+
+test("toggle readiness still validates five open rows on a legacy view without revealTask", async () => {
+	const page = togglePage();
+	Object.defineProperty(page.view, "revealTask", { value: undefined });
+	const result = await page.run({
+		action: "settle",
+		settleMs: 0,
+		toggleReady: true,
+		taskPath: "Note.md",
+		taskLine: 0,
+	});
+	assert.equal((result as { rows: number }).rows, 5);
+	assert.deepEqual(page.reveals, []);
+});
+
+test("ready polling does not keep itself busy by repeating expensive selectors during quiet time", async () => {
+	const page = togglePage({ rowQueryMs: 60 });
+	void page.delay(0).then(() => page.notifyChange());
+	const result = await page.run({
+		action: "settle",
+		settleMs: 0,
+		quietMs: 100,
+		toggleReady: true,
+		taskPath: "Note.md",
+		taskLine: 0,
+	});
+	assert.equal((result as { rows: number }).rows, 5);
+	assert.equal(page.queryCount, 5, "the five strict queries should run once after this DOM generation");
+	assert.ok(
+		page.now >= 1400 && page.now < 2000,
+		"quiet must still wait after the selector long tasks and their paint",
+	);
+});
+
+test("a DOM generation change invalidates cached uniqueness even when mutation timestamps are equal", async () => {
+	const page = togglePage({ clockResolutionMs: 100 });
+	let reveals = 0;
+	page.view.revealTask = async () => {
+		reveals++;
+		page.pageRows.pop();
+		page.notifyChange();
+		return true;
+	};
+	void page.delay(0).then(() => page.notifyChange());
+	void page.delay(40).then(() => {
+		page.pageRows.push({ ...page.pageRows[0] });
+		page.notifyChange();
+	});
+	const result = await page.run({
+		action: "settle",
+		settleMs: 0,
+		quietMs: 100,
+		toggleReady: true,
+		taskPath: "Note.md",
+		taskLine: 0,
+	});
+	assert.equal((result as { rows: number }).rows, 5);
+	assert.equal(
+		reveals,
+		1,
+		"a duplicate inserted during quiet time must fail readiness and trigger preparation again",
+	);
+	assert.equal(page.queryCount, 11, "strict uniqueness must be rescanned after both mutation generations");
+});
+
+test("reveal retries a false result until newly indexed tasks reach the arranged view", async () => {
+	const page = viewPage({ rowPresent: false });
+	const calls: string[] = [];
+	let indexed = false;
+	void page.delay(80).then(() => {
+		indexed = true;
+	});
+	page.view.revealTask = async (id) => {
+		calls.push(id);
+		if (!indexed) return false;
+		page.showRow();
+		return true;
+	};
+	assert.deepEqual(await page.run({ action: "reveal", taskPath: page.taskPath, taskLine: page.taskLine }), {
+		revealed: true,
+	});
+	assert.ok(calls.length > 1, "a false reveal must be retried after the arrangement changes");
+	assert.ok(calls.every((id) => id === `${page.taskPath}:${page.taskLine}`));
+	assert.ok(page.now >= 1080);
+});
+
+test("a mounted row cannot hide a permanently refused reveal", async () => {
+	let calls = 0;
+	const page = viewPage({
+		view: {
+			revealTask: async () => {
+				calls++;
+				return false;
+			},
+		},
+	});
+	await assert.rejects(
+		page.run({ action: "reveal", taskPath: page.taskPath, taskLine: page.taskLine }),
+		/timed out after 5 s waiting for reveal: the arranged task/,
+	);
+	assert.ok(calls > 1);
 });
 
 test("reveal waits for revealTask and for the row it reveals", async () => {

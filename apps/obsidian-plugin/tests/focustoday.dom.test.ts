@@ -8,6 +8,39 @@ import { defaultUserOptions } from "../src/useroptions";
 import { mountView } from "./component-harness";
 import { notesApp } from "./view-harness";
 
+test("view reveal commands use the mounted timeline controller and stop after close", async (t) => {
+	const fixture = await mountView(t);
+	const windowing = fixture.host.windowing;
+	assert.ok(windowing);
+	assert.strictEqual(windowing.getScrollElement(), fixture.container);
+	const calls: string[] = [];
+	const info = { rowCount: 2, windowed: true };
+	const handle = {
+		getWindowingInfo: () => info,
+		revealTask: async (id: string) => {
+			calls.push(`task:${id}`);
+			return true;
+		},
+		revealDay: async (key: string) => {
+			calls.push(`day:${key}`);
+			return true;
+		},
+	};
+	windowing.connect(handle);
+	assert.strictEqual(fixture.view.getWindowingInfo(), info);
+	assert.equal(await fixture.view.revealTask("Inbox.md:3"), true);
+	assert.equal(await fixture.view.revealDay("2026-01-15"), true);
+	assert.deepEqual(calls, ["task:Inbox.md:3", "day:2026-01-15"]);
+	windowing.connect(undefined);
+	assert.equal(fixture.view.getWindowingInfo(), undefined);
+	assert.equal(await fixture.view.revealTask("Inbox.md:3"), false);
+	windowing.connect(handle);
+	await fixture.unmount();
+	assert.equal(fixture.view.getWindowingInfo(), undefined);
+	assert.equal(await fixture.view.revealDay("2026-01-15"), false);
+	assert.deepEqual(calls, ["task:Inbox.md:3", "day:2026-01-15"]);
+});
+
 test("toggling Focus on today keeps the entry panel mounted, its draft and the keyboard focus", async (t) => {
 	for (const entryPosition of ["top", "today"] as const) {
 		const fixture = await mountView(t, {

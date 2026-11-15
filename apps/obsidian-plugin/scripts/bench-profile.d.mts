@@ -128,7 +128,7 @@ export function profileMarker(scenario: string, edge: "start" | "end"): string;
 export function moduleMap(mainJs: string): { line: number; path: string }[];
 /** Categorises a bundle module, including React and scheduler in the react-dom bucket. */
 export function moduleCategory(path: string): "core" | "react-dom" | "other script";
-/** Recognises the plugin's evaluated bundle URL in a sampled frame. */
+/** Recognises legacy plugin: URLs and Obsidian's app://obsidian.md/_plugin/ bundle routes. */
 export function isPluginScript(url: string | undefined, pluginId: string): boolean;
 /** Finds the unique offset from 0 through 10 aligning sampled function names with the bundle source. */
 export function pluginLineOffset(

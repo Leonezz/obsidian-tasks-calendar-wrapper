@@ -16,6 +16,7 @@ export interface UiHostOptions {
 	/** The detached element a render goes into; Obsidian's DOM in the app, a stand-in in the tests. */
 	readonly createElement?: () => HTMLElement;
 	readonly capacity?: number;
+	readonly windowing?: UiHost["windowing"];
 }
 
 /**
@@ -28,6 +29,7 @@ export function createUiHost(options: UiHostOptions): PluginUiHost {
 		throw new Error(`the markdown cache capacity must be a positive integer, got ${capacity}`);
 	const cache = new Map<string, string>();
 	return {
+		...(options.windowing ? { windowing: options.windowing } : {}),
 		isMobile: Platform.isMobile,
 		now: () => moment(),
 		moment,

@@ -24,6 +24,8 @@ import { createViewSession } from "./state/viewstate";
 import { debounceOptionUpdates } from "../utils/refresh";
 
 export default class TasksCalendarWrapper extends Plugin {
+	/** Fixture controls, never part of the options saved to data.json. */
+	readonly debug: { windowMinRows?: number } = {};
 	private readonly settingsStore = createSettingsStore();
 	private readonly viewSession = createViewSession();
 	/** The notes the timelines read, shared, see SharedTaskIndex: made with the first timeline, gone after the last. */
@@ -70,7 +72,14 @@ export default class TasksCalendarWrapper extends Plugin {
 		});
 		await this.loadOptions();
 		this.registerView(TIMELINE_VIEW, (leaf) => {
-			const view = new TasksTimelineView(leaf, this.taskIndex, this.writer, this.writerNotices, this.viewSession);
+			const view = new TasksTimelineView(
+				leaf,
+				this.taskIndex,
+				this.writer,
+				this.writerNotices,
+				this.viewSession,
+				() => this.debug.windowMinRows,
+			);
 			view.onUpdateOptions(this.userOptions);
 			return view;
 		});

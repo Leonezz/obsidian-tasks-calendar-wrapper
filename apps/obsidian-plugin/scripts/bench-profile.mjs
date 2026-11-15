@@ -115,7 +115,17 @@ export function moduleCategory(path) {
 
 /** Recognises the plugin's evaluated bundle URL in a sampled frame; V8's own frames, such as (root), have no url. */
 export function isPluginScript(url, pluginId) {
-	return url !== undefined && url.includes(`plugin:${pluginId}`);
+	if (url?.includes(`plugin:${pluginId}`)) return true;
+	if (!url?.startsWith("app://obsidian.md/_plugin/")) return false;
+	try {
+		const script = new URL(url);
+		return (
+			script.searchParams.get("id") === pluginId &&
+			decodeURIComponent(script.pathname).endsWith(`/plugins/${pluginId}`)
+		);
+	} catch {
+		return false;
+	}
 }
 
 /** Finds the unique wrapper-line offset that aligns sampled function names with the bundle source. */
@@ -381,11 +391,11 @@ export function bucketTrace(
 	}
 	if (requireMarkdown && !totals.MarkdownRenderer)
 		throw new Error(
-			`profile ${scenario}: no renderMarkdown frame in the trace although rows rendered; the MarkdownRenderer bucket cannot be found.`,
+			`profile ${scenario}: no long-task script time was attributed to renderMarkdown; check MarkdownRenderer stack recognition and trace coverage.`,
 		);
 	if (requireReactDom && !totals["react-dom"])
 		throw new Error(
-			`profile ${scenario}: no react-dom sample in the plugin bundle; check isPluginScript and the line offset.`,
+			`profile ${scenario}: no long-task script time was attributed to react-dom; check isPluginScript, the line offset and trace coverage.`,
 		);
 	const total = tasks.reduce((sum, task) => sum + task.dur, 0);
 	const remainder = total - Object.values(totals).reduce((sum, value) => sum + value, 0);

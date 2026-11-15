@@ -289,6 +289,52 @@ test("the click clock moves before the parent's layout effects", async (t) => {
 	assert.deepEqual(observed, [-Infinity, 1000]);
 });
 
+test("cached logical lists refresh for tasks, dates and Focus while stable commits initialize links", async (t) => {
+	let now = 1000;
+	t.mock.method(performance, "now", () => now);
+	const timeline = timelineHarness(t);
+	const dated = (day: string): Task => ({
+		...task(0),
+		extraDates: [["date", new FakeDate(day) as unknown as DateValue]],
+	});
+	await timeline.render({ tasks: [dated("2026-01-14"), task(1)] });
+	const row = (line: number) => {
+		const element = timeline.container.querySelector<HTMLElement>(`.task[data-line="${line}"]`);
+		assert.ok(element);
+		return element;
+	};
+	assert.equal(timeline.rows(), 2);
+	assert.match(row(0).getAttribute("aria-labelledby")!, /2026-01-14/);
+	await act(() => row(1).focus());
+	const link = document.createElement("a");
+	link.href = "#new-markdown-link";
+	row(1).querySelector(".lines > .content")!.append(link);
+	await timeline.render();
+	assert.equal(link.tabIndex, 0, "a stable result still initializes newly mounted Markdown links");
+	await timeline.click(".todayHeader");
+	assert.equal(timeline.rows(), 1);
+	assert.equal(row(1).tabIndex, 0);
+	assert.equal(timeline.clock().lastListChangeAt, -Infinity, "Focus does not change the full-list click clock");
+	await timeline.click(".todayHeader");
+	assert.equal(timeline.rows(), 2);
+	await act(() => row(0).focus());
+	await timeline.render({ tasks: [dated("2026-01-15"), task(1), task(2)] });
+	assert.equal(timeline.rows(), 3);
+	assert.match(row(0).getAttribute("aria-labelledby")!, /2026-01-15/);
+	assert.equal(timeline.clock().lastListChangeAt, 1000);
+	assert.strictEqual(document.activeElement, row(1), "a moved date instance hands focus to the surviving neighbour");
+	await act(() => row(1).dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true })));
+	assert.strictEqual(document.activeElement, row(2), "keyboard navigation includes the newly added task");
+	now = 2000;
+	timeline.setDay("2026-01-16");
+	await timeline.render();
+	assert.match(row(1).getAttribute("aria-labelledby")!, /2026-01-16/);
+	assert.equal(timeline.clock().lastListChangeAt, 1000, "equal full-list IDs retain the clock across a new result");
+	await timeline.click(".todayHeader");
+	assert.equal(timeline.rows(), 2);
+	assert.equal(timeline.container.querySelector('.task[data-line="0"]'), null);
+});
+
 test("handlers and provider values keep their identity", async (t) => {
 	const timeline = timelineHarness(t);
 	await timeline.render();
