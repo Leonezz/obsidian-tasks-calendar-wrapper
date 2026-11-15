@@ -147,7 +147,7 @@ test("serialized browser driver selects High and None, resets closed selects and
 	assert.equal(record.semantic.controls.priorityClosedValue, "+");
 	assert.equal(record.semantic.controls.filterClosedValue, "+");
 	assert.deepEqual(record.semantic.controls.priorityOptions, [
-		{ value: "+", label: "➕" },
+		{ value: "+", label: "Add priority" },
 		{ value: "Highest", label: "Highest" },
 		{ value: "High", label: "High🎯" },
 		{ value: "Medium", label: "Medium" },

@@ -18,7 +18,7 @@ date Monday, Jan, 12
 date Tuesday, Jan, 13
   task start: last task of the long note | 2 days ago · Big note > Tasks at the end
 date Wednesday, Jan, 14
-  task start: 混合 mixed 任务 | Yesterday · High Priority · 中文 笔记 > 中文标题
+  task start: 混合 mixed 任务 | Yesterday · High priority · 中文 笔记 > 中文标题
   task process: undated task in a daily note | Yesterday · Yesterday · Yesterday · 2026, January 14 - Wednesday
   task process: no space after the emojis | Yesterday · Tomorrow · in 5 days · Emoji dates > Emoji dates
 date Thursday, Jan, 15
@@ -63,9 +63,9 @@ date Tuesday, Jan, 20
   task scheduled: block link | in 5 days · Emoji dates > Emoji dates
   task scheduled: task with an id 🆔 abc123 | in 5 days · Emoji dates > Emoji dates
   task scheduled: delete when done 🏁 delete | in 5 days · every day when done · Emoji dates > Emoji dates
-  task scheduled: text after the due date to continue | in 5 days · High Priority · Priorities > Priorities
-  task scheduled: due date before the priority | in 5 days · Medium Priority · Priorities > Priorities
-  task scheduled: fix the bug in the middle | in 5 days · Highest Priority · Priorities > Priorities
+  task scheduled: text after the due date to continue | in 5 days · High priority · Priorities > Priorities
+  task scheduled: due date before the priority | in 5 days · Medium priority · Priorities > Priorities
+  task scheduled: fix the bug in the middle | in 5 days · Highest priority · Priorities > Priorities
   task scheduled: task with and and tags | in 5 days · Structure > Text · work · work/admin · home · single · project
   task scheduled: task with a footnote1 | in 5 days · Structure > More syntax · single · project
   task scheduled: call about issue | in 5 days · Structure > Tags and markers · single · project · 123
@@ -87,8 +87,8 @@ date Sunday, Feb, 1
   task scheduled: due later | in 17 days · Emoji dates > Emoji dates
   task scheduled: uppercase done but scheduled in the future | in 17 days · Emoji dates > Emoji dates
   task process: in progress with a later due date | in 17 days · Status > Status without dates
-today header "Focus On Today", color rgb(34, 34, 34)
-counter 65 Todo, color rgb(138, 92, 245), background oklch(0 0 none / 0.067)
+today header "Focus on today", color rgb(34, 34, 34)
+counter 65 To-do, color rgb(138, 92, 245), background oklch(0 0 none / 0.067)
 counter 19 Overdue, color rgb(34, 34, 34), background rgb(228, 228, 228)
 counter 85 Unplanned, color rgb(34, 34, 34), background rgb(228, 228, 228)
 quick entry

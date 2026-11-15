@@ -1,6 +1,6 @@
 year 2023
-today header "Focus On Today", color rgb(34, 34, 34)
-counter 65 Todo, color rgb(34, 34, 34), background rgb(228, 228, 228)
+today header "Focus on today", color rgb(34, 34, 34)
+counter 65 To-do, color rgb(34, 34, 34), background rgb(228, 228, 228)
 counter 19 Overdue, color rgb(34, 34, 34), background rgb(228, 228, 228)
 counter 85 Unplanned, color rgb(34, 34, 34), background rgb(228, 228, 228)
 quick entry
@@ -25,7 +25,7 @@ date Monday, Jan, 12
 date Tuesday, Jan, 13
   task start: last task of the long note | 2 days ago · Big note > Tasks at the end
 date Wednesday, Jan, 14
-  task start: 混合 mixed 任务 | Yesterday · High Priority · 中文 笔记 > 中文标题
+  task start: 混合 mixed 任务 | Yesterday · High priority · 中文 笔记 > 中文标题
   task process: undated task in a daily note | Yesterday · Yesterday · Yesterday · 2026, January 14 - Wednesday
   task process: no space after the emojis | Yesterday · Tomorrow · in 5 days · Emoji dates > Emoji dates
 date Thursday, Jan, 15
@@ -33,7 +33,7 @@ date Thursday, Jan, 15
   task overdue: starts in one year and is due in the next | 15 days ago · 13 days ago · Emoji dates > Emoji dates
   task overdue: leap day | 686 days ago · Emoji dates > Emoji dates
   task overdue: recurring | 3 days ago · Yesterday · every week · Emoji dates > Emoji dates
-  task overdue: write the report | 4 days ago · 2 days ago · every week · High Priority · Emoji dates > Emoji dates · work · home
+  task overdue: write the report | 4 days ago · 2 days ago · every week · High priority · Emoji dates > Emoji dates · work · home
   task overdue: Ten, Nine, Eight, Seven, Six, Five, Four, Three , Two, One, Liftoff | 965 days ago · Inbox
   task overdue: This is Ground Control to Major Tom | 965 days ago · Inbox
   task overdue: You've really made the grade | 965 days ago · Inbox
@@ -111,19 +111,19 @@ date Thursday, Jan, 15
   task unplanned: Speech bubble 7 | Markers
   task unplanned: Speech bubble 8 | Markers
   task unplanned: Speech bubble 9 | Markers
-  task unplanned: highest | Highest Priority · Priorities > Priorities
-  task unplanned: high | High Priority · Priorities > Priorities
-  task unplanned: medium | Medium Priority · Priorities > Priorities
-  task unplanned: low | Low Priority · Priorities > Priorities
-  task unplanned: lowest | Lowest Priority · Priorities > Priorities
+  task unplanned: highest | Highest priority · Priorities > Priorities
+  task unplanned: high | High priority · Priorities > Priorities
+  task unplanned: medium | Medium priority · Priorities > Priorities
+  task unplanned: low | Low priority · Priorities > Priorities
+  task unplanned: lowest | Lowest priority · Priorities > Priorities
   task unplanned: no priority | Priorities > Priorities
-  task unplanned: dataview priority | High Priority · Priorities > Priorities
+  task unplanned: dataview priority | High priority · Priorities > Priorities
   task unplanned: dataview priority with an unknown name | Priorities > Priorities
-  task unplanned: unknown text after the priority | High Priority · Priorities > Priorities
-  task unplanned: priority at the start | High Priority · Priorities > Priorities
-  task unplanned: two priorities | High Priority · Priorities > Priorities
-  task unplanned: medium without a space | Medium Priority · Priorities > Priorities
-  task unplanned: see Plan note | High Priority · Priorities > Priorities
+  task unplanned: unknown text after the priority | High priority · Priorities > Priorities
+  task unplanned: priority at the start | High priority · Priorities > Priorities
+  task unplanned: two priorities | High priority · Priorities > Priorities
+  task unplanned: medium without a space | Medium priority · Priorities > Priorities
+  task unplanned: see Plan note | High priority · Priorities > Priorities
   task unplanned: open without a date | Status > Status without dates
   task unplanned: top level | Structure > Lists · single · project
   task unplanned: subtask with four spaces | Structure · single · project
@@ -174,9 +174,9 @@ date Tuesday, Jan, 20
   task scheduled: block link | in 5 days · Emoji dates > Emoji dates
   task scheduled: task with an id 🆔 abc123 | in 5 days · Emoji dates > Emoji dates
   task scheduled: delete when done 🏁 delete | in 5 days · every day when done · Emoji dates > Emoji dates
-  task scheduled: text after the due date to continue | in 5 days · High Priority · Priorities > Priorities
-  task scheduled: due date before the priority | in 5 days · Medium Priority · Priorities > Priorities
-  task scheduled: fix the bug in the middle | in 5 days · Highest Priority · Priorities > Priorities
+  task scheduled: text after the due date to continue | in 5 days · High priority · Priorities > Priorities
+  task scheduled: due date before the priority | in 5 days · Medium priority · Priorities > Priorities
+  task scheduled: fix the bug in the middle | in 5 days · Highest priority · Priorities > Priorities
   task scheduled: task with and and tags | in 5 days · Structure > Text · work · work/admin · home · single · project
   task scheduled: task with a footnote1 | in 5 days · Structure > More syntax · single · project
   task scheduled: call about issue | in 5 days · Structure > Tags and markers · single · project · 123

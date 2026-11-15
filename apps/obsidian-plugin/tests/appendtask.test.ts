@@ -175,10 +175,7 @@ test("quick entry into a missing note still asks Create note and creates it outs
 		asked = true;
 		this.open();
 		assert.equal((this.titleEl as unknown as FakeElement).text, "Create note");
-		assert.equal(
-			(this.contentEl as unknown as FakeElement).text,
-			"No such file: Inbox.md. Would you like to create it?",
-		);
+		assert.equal((this.contentEl as unknown as FakeElement).text, "The note Inbox.md does not exist. Create it?");
 		assert.deepEqual(writes, []);
 		const buttons = (this.contentEl as unknown as FakeElement).children
 			.flatMap((child) => (child instanceof FakeElement ? child.children : []))

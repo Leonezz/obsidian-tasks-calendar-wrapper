@@ -419,7 +419,7 @@ test("Undo with unknown outcome (save never returns, 60 s) → only may-not-have
 	assert.equal(result.kind, "failed");
 	if (result.kind === "failed") assert.equal(result.unknownOutcome, true);
 	assert.deepEqual(h.notices, [
-		"a may not have been saved: the file system didn't answer within 60 s. Check the note before trying again.",
+		"a may not have been saved: the file system did not respond within 60 seconds. Check the note before trying again.",
 	]);
 	assert.equal(
 		h.events.some((event) => event.kind === "overwritten"),
@@ -548,7 +548,7 @@ test("quick entry times out at 60 s and blocks that note's queue until modify", 
 	assert.equal(result.kind, "failed");
 	if (result.kind === "failed") assert.equal(result.unknownOutcome, true);
 	assert.deepEqual(h.notices, [
-		"a may not have been saved: the file system didn't answer within 60 s. Check the note before trying again.",
+		"a may not have been saved: the file system did not respond within 60 seconds. Check the note before trying again.",
 	]);
 	assert.equal(h.holds.get("a.md"), 0);
 	h.onProcess();

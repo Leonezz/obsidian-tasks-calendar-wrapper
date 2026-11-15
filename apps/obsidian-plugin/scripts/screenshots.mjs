@@ -142,7 +142,7 @@ const MAX_HEIGHT = 16_000;
  */
 const SETTLE_AFTER_LOAD_MS = 1_500;
 
-const TODAY_FOCUS = "Focus today";
+const TODAY_FOCUS = "Focus on today";
 
 /**
  * Runs in Obsidian: everything the screenshots do in the window. Each action ends when the timeline's DOM has not
