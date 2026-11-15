@@ -63,3 +63,36 @@ export function idleProblems(state, limits) {
 	for (const other of state.others) problems.push(`another benchmark is running: ${other.pid} ${other.command}`);
 	return problems;
 }
+
+/** Waits outside measured actions for an unrounded load sample strictly below the limit. */
+export function waitForLoadBelow({ limit, timeoutMs, pollMs, readLoad, now, pause, log = () => {} }) {
+	if (!Number.isFinite(limit) || limit <= 0) throw new Error("the load limit must be positive and finite");
+	if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0)
+		throw new Error("the load timeout must be a non-negative safe integer");
+	if (!Number.isSafeInteger(pollMs) || pollMs <= 0)
+		throw new Error("the load poll interval must be a positive safe integer");
+	const startedAtMs = now();
+	if (!Number.isFinite(startedAtMs)) throw new Error("the load clock must be finite");
+	const samples = [];
+	for (;;) {
+		const loadAverage = readLoad();
+		if (!Number.isFinite(loadAverage) || loadAverage < 0)
+			throw new Error(`the 1-minute load average must be finite and non-negative, got ${loadAverage}`);
+		const atMs = now();
+		if (!Number.isFinite(atMs) || atMs < (samples.at(-1)?.atMs ?? startedAtMs))
+			throw new Error("the load clock must be finite and must not move backwards");
+		const sample = { atMs, loadAverage };
+		samples.push(sample);
+		const waitedMs = atMs - startedAtMs;
+		if (loadAverage < limit && waitedMs <= timeoutMs) {
+			log(`bench: admitted 1-minute load average ${loadAverage} < ${limit} after ${waitedMs} ms.`);
+			return { limit, timeoutMs, pollMs, startedAtMs, waitedMs, sample, samples };
+		}
+		if (waitedMs >= timeoutMs)
+			throw new Error(
+				`timed out after ${timeoutMs} ms waiting for 1-minute load average < ${limit}; last sample ${loadAverage}`,
+			);
+		log(`bench: waiting for 1-minute load average < ${limit}: ${loadAverage} (${waitedMs}/${timeoutMs} ms).`);
+		pause(Math.min(pollMs, timeoutMs - waitedMs));
+	}
+}
