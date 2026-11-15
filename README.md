@@ -44,7 +44,27 @@ about the options, see [Obsidian-Tasks-Calendar](https://github.com/702573N/Obsi
 
 ## Usage
 
-Go to command panel and find "Tasks Calendar Wrapper: Open Tasks Timeline View", select the command and the view will show up.
+Open the command palette, search for **Open Tasks Timeline**, and select the command.
+
+### Keyboard
+
+Use Tab to reach the timeline controls and its current task. One task at a time is in the Tab order; use the navigation keys to move between tasks.
+
+| Key                                          | Action                                                       |
+| -------------------------------------------- | ------------------------------------------------------------ |
+| Tab / Shift+Tab                              | Move between controls, the current task and its controls.    |
+| ↑ / ↓                                        | Move to the previous or next task when a task row has focus. |
+| Home / End                                   | Move to the first or last task when a task row has focus.    |
+| Enter                                        | Open the focused task's note.                                |
+| Space                                        | Activate the focused task's status control.                  |
+| Shift+F10                                    | Open the focused task's date menu.                           |
+| Enter / Space on Focus on today or a counter | Toggle that control.                                         |
+
+In the new task field, Enter adds the task; in the tag filter, Enter applies the tag. Keys used inside an input, select or task control keep that control's behavior. With **Open the note instead of changing tasks in place** enabled, Space opens the note and task date menus are unavailable.
+
+### Mobile
+
+Tap a task's text to open its note. With in-place editing enabled, tap **⋯** beside a task for due, scheduled and start date actions, or tap one of those date badges to choose a date. The mobile layout provides larger touch targets for these controls and quick entry. Keep **Use builtin style** enabled for touch controls. Focus on today, counters and date, priority and tag filters are available from the timeline.
 
 ### Date format
 
@@ -105,7 +125,7 @@ Besides, there are some natural language dates support:
 
 - today/tomorrow/yesterday: expand to today/tomorrow/yesterday's date
 
-Another functionality the input line provides is a quick filter, currently data range and priorities based filter are supported, hopefully a tag based filter will be added soon!
+Choose **Filter** in quick entry to filter by date range or priority. Use the tag filter to enter a tag or pick a suggestion; clearing the tag field removes that tag filter.
 
 ![](imgs/filter.png)
 
@@ -123,7 +143,11 @@ The status are displayed in form of icons, and the other meta-data are displayed
 
 ![](imgs/item.png)
 
-Since v0.2.1, now you can switch from the builtin icons to theme defined status and icons!
+### Themes
+
+The timeline follows Obsidian's active theme and light or dark appearance. The default theme needs no extra setup. To use [Blue Topaz](https://github.com/PKM-er/Blue-Topaz_Obsidian-css), install and select it under **Settings > Appearance**, then choose light or dark mode in Obsidian.
+
+Keep **Use builtin style** enabled for the plugin's status icons, or disable it to use your theme's task checkboxes and status styles.
 
 Below is a screen shot with theme [AnuPpuccin](https://github.com/AnubisNekhet/AnuPpuccin).
 
