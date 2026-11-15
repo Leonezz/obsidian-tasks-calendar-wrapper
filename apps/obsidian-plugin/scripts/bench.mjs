@@ -41,6 +41,8 @@
  * The base must be the candidate's merge base unless `--any-base` explicitly allows a different one.
  * Both arms get this checkout's manifest.json, so a different version does not make one of them save its options while
  * it loads. scripts/bench-nightly.mjs runs this for labelled PRs at night.
+ * Scale 10 A/B waits after building and preparing the app for a 1-minute load average strictly below 6. It checks the
+ * same limit at completion, retaining the report on failure. These two checks do not establish whole-run quiet.
  *
  * `pnpm bench --profile [--ab <ref>]` records each scenario once per arm, outside timed rounds. Chrome timeline,
  * V8 CPU-profiler/GC and toplevel events split long tasks into core, react-dom, MarkdownRenderer, other script,
@@ -57,6 +59,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "fs";
 import os from "os";
 import path from "path";
 import { AB_RUNS, compareAb, parseBenchArgs } from "./bench-ab.mjs";
+import { waitForLoadBelow } from "./bench-host.mjs";
 import { measure } from "./bench-measure.mjs";
 import { prepareBenchBuilds, runProfile } from "./bench-profile-run.mjs";
 import {
@@ -106,6 +109,8 @@ const NO_RELOAD_WINDOW_MS = 3_000;
  * so any such render is seen and counted apart from the first one.
  */
 const LOAD_WATCH_MS = 2_000;
+/** Only the formal large-vault A/B has this environment gate; all waits precede measured actions. */
+const B10_LOAD_GATE = { limit: 6, timeoutMs: 10 * 60_000, pollMs: 5_000 };
 
 /**
  * The main thread's CPU time so far, in milliseconds: the renderer's task time counted in thread ticks, which needs
@@ -440,7 +445,7 @@ const restoreSteps = (cli, notes) =>
 /**
  * `pnpm bench --ab <ref>`: builds the base at the ref and the candidate at `--candidate <ref>` or from this checkout,
  * then measures them in turn, round by round, and judges the candidate against the base (bench-ab.mjs). Returns the
- * exit code: 1 when something got slower.
+ * exit code: 1 when something got slower or the B10 environment load gate failed.
  */
 function runAb(ab, scale) {
 	const { mergeBase, seed, order, vaultName, cli, notes, vaultPath, workDir, builds, identicalBuilds } =
@@ -454,12 +459,22 @@ function runAb(ab, scale) {
 		const plugin = installPlugin(vaultPath, quietSettings(), builds.candidate);
 		const fixture = fixtureWindow(cli, vaultName, plugin);
 		const restoreNotes = restoreSteps(cli, notes);
-		const { env, loadAverage, slots } = runAndUndo(() => {
+		const { env, loadAverage, environmentGate, slots } = runAndUndo(() => {
 			const prepared = fixture.prepare();
 			cli.cdp("Emulation.setDeviceMetricsOverride", VIEWPORT);
 			cli.cdp("Performance.enable", { timeDomain: "threadTicks" });
 			const env = environment(cli, prepared);
-			const loadBefore = os.loadavg()[0];
+			const admission =
+				scale === 10
+					? waitForLoadBelow({
+							...B10_LOAD_GATE,
+							readLoad: () => os.loadavg()[0],
+							now: Date.now,
+							pause: (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms),
+							log: console.log,
+						})
+					: null;
+			const loadBefore = admission ? admission.sample.loadAverage : os.loadavg()[0];
 			const slots = [];
 			order.forEach((arms, i) => {
 				for (const arm of arms) {
@@ -479,7 +494,22 @@ function runAb(ab, scale) {
 					slots.push({ round: i + 1, arm, results });
 				}
 			});
-			return { env, loadAverage: loadAverageSince(loadBefore), slots };
+			const completion = admission ? { loadAverage: os.loadavg()[0], atMs: Date.now() } : null;
+			const loadAverage = completion
+				? { before: loadBefore, after: completion.loadAverage, cores: os.cpus().length }
+				: loadAverageSince(loadBefore);
+			const environmentGate = admission
+				? {
+						scope: "admission-and-completion-only",
+						admission,
+						completion,
+						passed:
+							Number.isFinite(completion.loadAverage) &&
+							completion.loadAverage >= 0 &&
+							completion.loadAverage < admission.limit,
+					}
+				: null;
+			return { env, loadAverage, environmentGate, slots };
 		}, [
 			...restoreNotes,
 			["stop measuring the main thread", () => cli.cdp("Performance.disable")],
@@ -523,6 +553,7 @@ function runAb(ab, scale) {
 				identicalBuilds,
 				env,
 				loadAverage,
+				...(environmentGate ? { environmentGate } : {}),
 				settings: {
 					quietMs: QUIET_MS,
 					noReloadWindowMs: NO_RELOAD_WINDOW_MS,
@@ -546,7 +577,11 @@ function runAb(ab, scale) {
 				? `bench: ${verdict.slower} measurement(s) got slower than the base.`
 				: "bench: nothing got slower than the base.",
 		);
-		return verdict.slower ? 1 : 0;
+		if (environmentGate)
+			console[environmentGate.passed ? "log" : "error"](
+				`bench: environment load gate ${environmentGate.passed ? "PASS" : "FAIL"}: admission ${loadAverage.before}, completion ${loadAverage.after}, both must be < ${environmentGate.admission.limit}; endpoints only, not whole-run quiet. Complete samples and statistics are retained.`,
+			);
+		return verdict.slower || environmentGate?.passed === false ? 1 : 0;
 	} finally {
 		rmSync(workDir, { recursive: true, force: true });
 	}

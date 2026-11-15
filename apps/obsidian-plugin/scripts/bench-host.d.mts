@@ -21,3 +21,28 @@ export function idleProblems(
 	state: HostState,
 	limits: { readonly load: number; readonly idleMinutes: number },
 ): string[];
+
+export interface LoadSample {
+	readonly atMs: number;
+	readonly loadAverage: number;
+}
+
+export interface LoadAdmission {
+	readonly limit: number;
+	readonly timeoutMs: number;
+	readonly pollMs: number;
+	readonly startedAtMs: number;
+	readonly waitedMs: number;
+	readonly sample: LoadSample;
+	readonly samples: readonly LoadSample[];
+}
+
+export function waitForLoadBelow(options: {
+	readonly limit: number;
+	readonly timeoutMs: number;
+	readonly pollMs: number;
+	readonly readLoad: () => number;
+	readonly now: () => number;
+	readonly pause: (ms: number) => void;
+	readonly log?: (message: string) => void;
+}): LoadAdmission;

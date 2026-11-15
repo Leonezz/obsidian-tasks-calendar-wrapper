@@ -2,9 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
-import { abArgs, compareAb, parseBenchArgs, type Slot } from "../scripts/bench-ab.mjs";
+import { AB_RUNS, abArgs, compareAb, parseBenchArgs, type Slot } from "../scripts/bench-ab.mjs";
+import { waitForLoadBelow, type LoadAdmission } from "../scripts/bench-host.mjs";
 import { benchVaultNotes, SAVE_MARKER, withSaveToken } from "../scripts/bench-notes.mjs";
-import { heapAfterLoad, measureViewScenarios } from "../scripts/bench-scenarios.mjs";
+import { SCROLL, VIEW_RUNS, heapAfterLoad, measureViewScenarios } from "../scripts/bench-scenarios.mjs";
 import { viewPage, viewScenarioDeps } from "./bench-view-page";
 
 import {
@@ -1177,4 +1178,220 @@ test("--profile takes --report without --ab; --report alone is still an error", 
 	assert.deepEqual(parseBenchArgs(["--update"]), { scale: 1, update: true, ab: null, profile: null });
 	const ab = abArgs(["--ab", "master"], 1).ab;
 	assert.deepEqual(parseBenchArgs(["--ab", "master"]), { scale: 1, update: false, ab, profile: null });
+});
+
+interface LoadGateReport {
+	readonly loadAverage: { readonly before: number; readonly after: number };
+	readonly environmentGate?: {
+		readonly scope: string;
+		readonly passed: boolean;
+		readonly admission: LoadAdmission;
+		readonly completion: { readonly loadAverage: number; readonly atMs: number };
+	};
+	readonly slots: readonly { readonly arm: string }[];
+	readonly verdict: { readonly slower: number };
+}
+
+/** Executes the actual A/B orchestration and undo, replacing only OS, native and disk boundaries. */
+function loadGateRun({ loads, scale = 10, slower = 0 }: { loads: readonly number[]; scale?: number; slower?: number }) {
+	const source = readFileSync("scripts/bench.mjs", "utf8");
+	const constants = source.slice(
+		source.indexOf("const OPEN_COMMAND"),
+		source.indexOf("/**\n * The main thread's CPU"),
+	);
+	const loadAverage = source.slice(
+		source.indexOf("const loadAverageSince"),
+		source.indexOf("/** The steps that put"),
+	);
+	const run = source.slice(source.indexOf("function runAb("), source.indexOf("\nawait runScript("));
+	const fixtureSource = readFileSync("scripts/fixture-app.mjs", "utf8");
+	const undo = fixtureSource
+		.slice(fixtureSource.indexOf("export function runAndUndo("), fixtureSource.indexOf("/** The machine, for"))
+		.replace("export function", "function");
+	const events: string[] = [];
+	const messages: string[] = [];
+	const pauses: number[] = [];
+	let time = 1_000;
+	let reads = 0;
+	let written: LoadGateReport | undefined;
+	class ClockDate extends Date {
+		constructor() {
+			super(time);
+		}
+		static now() {
+			return time;
+		}
+	}
+	const plugin = {
+		copyBuild(build: { ref: string }) {
+			events.push(`copy ${build.ref}`);
+		},
+		writeSettings() {
+			events.push("write settings");
+		},
+	};
+	const cli = { cdp: (method: string) => events.push(method) };
+	const runAb = runInNewContext(`${constants}\n${loadAverage}\n${undo}\n${run}\nrunAb`, {
+		manifest: { id: "plugin" },
+		TIMELINE_VIEW: "timeline",
+		AB_RUNS,
+		VIEW_RUNS,
+		SCROLL,
+		waitForLoadBelow,
+		Date: ClockDate,
+		Atomics: {
+			wait(_array: unknown, _index: number, _value: number, ms: number) {
+				pauses.push(ms);
+				time += ms;
+			},
+		},
+		os: {
+			loadavg() {
+				const value = loads[Math.min(reads++, loads.length - 1)];
+				events.push(`load ${value}`);
+				return [value, 0, 0];
+			},
+			cpus: () => Array.from({ length: 14 }),
+		},
+		prepareBenchBuilds() {
+			events.push("builds complete");
+			return {
+				mergeBase: "basecommit",
+				seed: 123,
+				order: [["base", "candidate"]],
+				vaultName: "fixture",
+				cli,
+				notes: new Map(),
+				vaultPath: "/fixture",
+				workDir: "/work-dir",
+				builds: { base: { ref: "base", commit: "base" }, candidate: { ref: "candidate", commit: "candidate" } },
+				identicalBuilds: false,
+			};
+		},
+		installPlugin() {
+			events.push("install candidate");
+			return plugin;
+		},
+		quietSettings: () => ({}),
+		fixtureWindow: () => ({
+			prepare() {
+				events.push("app prepared");
+				return {};
+			},
+			undoSteps: [["restore fixture", () => events.push("fixture restored")]],
+		}),
+		restoreSteps: () => [["restore note", () => events.push("restore note")]],
+		environment() {
+			events.push("environment");
+			return {};
+		},
+		measureAll(_cli: unknown, _notes: unknown, _scale: number, options: { arm: string; install: () => void }) {
+			options.install();
+			events.push(`measure ${options.arm}`);
+			return { saveWithTasks: {}, toggle: { skipped: true } };
+		},
+		compareAb(slots: readonly unknown[]) {
+			assert.equal(slots.length, 2);
+			events.push("compare");
+			return { slower, lines: [], warnings: [] };
+		},
+		writeFileSync(file: string, json: string) {
+			assert.equal(file, "/report.json");
+			written = JSON.parse(json) as LoadGateReport;
+			events.push("report written");
+		},
+		rmSync(file: string) {
+			assert.equal(file, "/work-dir");
+			events.push("workdir removed");
+		},
+		console: Object.fromEntries(
+			["log", "warn", "error"].map((method) => [method, (text: string) => messages.push(text)]),
+		),
+		ScriptError: Error,
+		process: { env: {} },
+	}) as (options: { rounds: number; report: string }, scale: number) => number;
+	return {
+		events,
+		messages,
+		pauses,
+		reads: () => reads,
+		report: () => written,
+		run: () => runAb({ rounds: 1, report: "/report.json" }, scale),
+	};
+}
+
+test("B10 admits after builds and app preparation, retaining the actual sample without rounding or resampling", () => {
+	const page = loadGateRun({ loads: [6, 5.999123, 5.5] });
+	assert.equal(page.run(), 0);
+	const report = page.report();
+	assert.ok(report?.environmentGate);
+	assert.equal(report.loadAverage.before, 5.999123);
+	assert.equal(report.loadAverage.before, report.environmentGate.admission.sample.loadAverage);
+	assert.equal(report.loadAverage.after, report.environmentGate.completion.loadAverage);
+	assert.equal(report.environmentGate.admission.limit, 6);
+	assert.equal(report.environmentGate.admission.timeoutMs, 600_000);
+	assert.equal(report.environmentGate.admission.pollMs, 5_000);
+	assert.equal(report.environmentGate.scope, "admission-and-completion-only");
+	assert.equal(report.environmentGate.passed, true);
+	assert.equal(page.reads(), 3);
+	assert.deepEqual(page.pauses, [5_000]);
+	assert.ok(page.events.indexOf("builds complete") < page.events.indexOf("app prepared"));
+	assert.ok(page.events.indexOf("environment") < page.events.indexOf("load 6"));
+	assert.ok(page.events.indexOf("load 5.999123") < page.events.indexOf("measure base"));
+	assert.match(page.messages.join("\n"), /not whole-run quiet/);
+});
+
+test("a completion load at or above six fails the environment gate after undo and preserves every slot and statistic", () => {
+	for (const [after, slower] of [
+		[6, 0],
+		[6.01, 3],
+	]) {
+		const page = loadGateRun({ loads: [5.75, after], slower });
+		assert.equal(page.run(), 1);
+		const report = page.report();
+		assert.ok(report?.environmentGate);
+		assert.equal(report.environmentGate.passed, false);
+		assert.equal(report.environmentGate.completion.loadAverage, after);
+		assert.equal(report.verdict.slower, slower);
+		assert.deepEqual(
+			report.slots.map((slot) => slot.arm),
+			["base", "candidate"],
+		);
+		assert.ok(page.events.lastIndexOf("restore note") < page.events.indexOf("Performance.disable"));
+		assert.ok(
+			page.events.indexOf("Performance.disable") < page.events.indexOf("Emulation.clearDeviceMetricsOverride"),
+		);
+		assert.ok(
+			page.events.indexOf("Emulation.clearDeviceMetricsOverride") < page.events.indexOf("fixture restored"),
+		);
+		assert.ok(page.events.indexOf("fixture restored") < page.events.indexOf("report written"));
+		assert.equal(page.events.at(-1), "workdir removed");
+		assert.match(page.messages.join("\n"), /environment load gate FAIL/);
+	}
+});
+
+test("a B10 admission timeout measures no slots and still runs the actual normal undo and workdir cleanup", () => {
+	const page = loadGateRun({ loads: [6] });
+	assert.throws(page.run, /timed out after 600000 ms/);
+	assert.ok(!page.events.some((event) => event.startsWith("measure ")));
+	assert.deepEqual(page.events.slice(-5), [
+		"restore note",
+		"Performance.disable",
+		"Emulation.clearDeviceMetricsOverride",
+		"fixture restored",
+		"workdir removed",
+	]);
+	assert.equal(page.report(), undefined);
+});
+
+test("B1 keeps its existing load metadata and does not wait or apply the B10 environment gate", () => {
+	const page = loadGateRun({ loads: [7.01, 8.02], scale: 1 });
+	assert.equal(page.run(), 0);
+	const report = page.report();
+	assert.ok(report);
+	assert.equal(report.loadAverage.before, 7);
+	assert.equal(report.loadAverage.after, 8);
+	assert.equal(report.environmentGate, undefined);
+	assert.deepEqual(page.pauses, []);
+	assert.equal(page.reads(), 2);
 });
