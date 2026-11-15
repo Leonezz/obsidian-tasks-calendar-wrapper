@@ -163,7 +163,7 @@ describe("Visual", () => {
 		coveredBy("tests/stylesheet.test.ts", "status colors, spacing and badge tokens preserve their initial values");
 		coveredBy(
 			"tests/stylesheet.test.ts",
-			"every tcw token reference is defined in a scoped rule or by the day component",
+			"every tcw token reference is defined in a scoped rule or by a timeline component",
 		);
 	});
 	// Phase 4 step 22: replace component literals with tokens.

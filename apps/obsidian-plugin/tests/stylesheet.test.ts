@@ -205,7 +205,7 @@ test("pixel literals outside token definitions are limited to glyphs, fine lines
 	}
 });
 
-test("every tcw token reference is defined in a scoped rule or by the day component", () => {
+test("every tcw token reference is defined in a scoped rule or by a timeline component", () => {
 	const css = readFileSync("styles.css", "utf8");
 	const rules = cssRules(css);
 	const definitions = new Set<string>();
@@ -227,6 +227,8 @@ test("every tcw token reference is defined in a scoped rule or by the day compon
 	}
 	assert.match(readFileSync("../../packages/ui/src/timeline/Day.tsx", "utf8"), /"--tcw-day-estimate"\s*:/);
 	definitions.add("--tcw-day-estimate");
+	assert.match(readFileSync("../../packages/ui/src/timeline/Windowed.tsx", "utf8"), /"--tcw-gap-height"\s*:/);
+	definitions.add("--tcw-gap-height");
 	for (const [, name] of css.matchAll(/var\(\s*(--tcw-[\w-]+)/g)) assert.ok(definitions.has(name), name);
 	for (const name of timelineTokens().keys()) resolvedTokens(`var(${name})`);
 });
