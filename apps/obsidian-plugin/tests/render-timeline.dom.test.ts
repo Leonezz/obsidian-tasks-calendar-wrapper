@@ -77,7 +77,7 @@ test("inputs show the applied filter after a reload", async (t) => {
 		setDate(dates[0], "2026-01-19");
 		setDate(dates[1], "2026-01-21");
 	});
-	await select(container, 'select[name="priorityFilter"]', "1");
+	await select(container, 'select[name="priorityFilter"]', "High");
 	const apply = container.querySelector<HTMLButtonElement>(".quickEntryPanel button.ok");
 	assert.ok(apply);
 	await act(() => apply.click());
@@ -98,10 +98,9 @@ test("inputs show the applied filter after a reload", async (t) => {
 		[...priority.querySelectorAll("a")].map((selected) => selected.textContent),
 		["High🎯"],
 	);
-	// The reload changed the list the bridge shows. The priority selector passes its option value, as before, which
-	// no task's priority is written as, so the filter lists no task.
+	// The reload changes the task shown while keeping the working priority filter and its controls.
 	assert.ok(bridge.current?.state.tasks.some((task) => task.text.includes("beta, renamed")));
-	assert.deepEqual(texts(), []);
+	assert.deepEqual(texts(), ["beta, renamed"]);
 });
 
 test("render counters count TaskItemView and DateView renders", async (t) => {

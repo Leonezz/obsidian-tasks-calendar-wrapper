@@ -7,7 +7,7 @@
  * changing data.
  */
 import {
-	betweenDaysExclusive,
+	betweenDaysInclusive,
 	dayKey,
 	inDisplayOrder,
 	parseLooseDate,
@@ -47,7 +47,7 @@ export interface ArrangeSettings {
 /** The active counter, as the "Activate Filter On Load" setting saves it, or "" for none. */
 export type CounterFilter = "" | "todoFilter" | "overdueFilter" | "unplannedFilter";
 
-/** The quick entry panel's filter. A range needs both of its days, which are left out of it, read as moment(day) reads them. */
+/** The quick entry panel's filter. A range needs both of its days, both included, read as moment(day) reads them. */
 export interface QuickFilter {
 	readonly from?: DayKey;
 	readonly to?: DayKey;
@@ -183,7 +183,7 @@ function quickFiltered(shown: readonly ResolvedTask[], quick: QuickFilter | unde
 		// The days come from date inputs. One moment cannot read matched no task, which the view shows as it is.
 		tasks =
 			from && to
-				? tasks.filter((r) => datesOf(r, env.now).some((date) => betweenDaysExclusive(date, from, to)))
+				? tasks.filter((r) => datesOf(r, env.now).some((date) => betweenDaysInclusive(date, from, to)))
 				: [];
 	}
 	if (quick.priorities.length !== 0) tasks = tasks.filter((r) => quick.priorities.includes(r.task.priority));

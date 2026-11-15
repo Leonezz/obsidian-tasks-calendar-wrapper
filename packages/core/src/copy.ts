@@ -43,7 +43,7 @@ export const copy = freezeCopy({
 		from: "From: ",
 		to: "  To: ",
 		priorities: "Priorities: ",
-		priorityVisual: ["➕", "High", "Medium", "None", "Low"],
+		priorityVisual: ["➕", "Highest", "High", "Medium", "None", "Low", "Lowest"],
 		appendTaskAria: "Append new task to selected note",
 		tagPlaceholder: "🏷️ Filter by tag: #home",
 		tagAria: "Show only tasks with this tag",

@@ -8,6 +8,7 @@ import {
 	afterInstant,
 	beforeDay,
 	betweenDaysExclusive,
+	betweenDaysInclusive,
 	convert24HourPrefix,
 	DateValue,
 	dateOfDay,
@@ -336,6 +337,36 @@ test("between leaves out both end days, as moment's isBetween does by default", 
 	assert.ok(betweenDaysExclusive(at("2026-01-15 12:00"), from, to));
 	assert.ok(!betweenDaysExclusive(at("2026-01-14 12:00"), from, to));
 	assert.ok(!betweenDaysExclusive(at("2026-01-16 00:00"), from, to));
+});
+
+test("an inclusive range covers whole end days and a single day without changing its dates", () => {
+	const from = at("2026-01-14 12:00");
+	const to = at("2026-01-16 12:00");
+	const values = [from.valueOf(), to.valueOf()];
+	assert.ok(betweenDaysInclusive(at("2026-01-14 00:00"), from, to));
+	assert.ok(betweenDaysInclusive(at("2026-01-15 12:00"), from, to));
+	assert.ok(betweenDaysInclusive(at("2026-01-16 23:59"), from, to));
+	assert.ok(!betweenDaysInclusive(at("2026-01-13 23:59"), from, to));
+	assert.ok(!betweenDaysInclusive(at("2026-01-17 00:00"), from, to));
+	assert.ok(betweenDaysInclusive(at("2026-01-14 23:59"), from, from));
+	assert.ok(!betweenDaysInclusive(at("2026-01-15 00:00"), from, from));
+	assert.ok(!betweenDaysInclusive(at("2026-01-15 12:00"), to, from));
+	assert.deepEqual([from.valueOf(), to.valueOf()], values);
+});
+
+test("inclusive days span daylight-saving transitions without assuming 24-hour days", () => {
+	for (const [first, last] of [
+		["2026-03-07", "2026-03-09"],
+		["2026-10-31", "2026-11-02"],
+	]) {
+		const from = day(first);
+		const to = day(last);
+		for (const date of [from, from.clone().add(1, "day"), to.clone().endOf("day")]) {
+			assert.ok(betweenDaysInclusive(date, from, to), date.format());
+		}
+		assert.ok(!betweenDaysInclusive(from.clone().subtract(1, "minute"), from, to));
+		assert.ok(!betweenDaysInclusive(to.clone().add(1, "day"), from, to));
+	}
 });
 
 // Issue #54: an option to show the latest dates on top

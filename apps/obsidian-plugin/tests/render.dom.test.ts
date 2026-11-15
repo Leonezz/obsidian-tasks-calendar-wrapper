@@ -993,7 +993,8 @@ test("quick filter and counters stay urgent during a pending list transition", a
 		fixture.h.put("Note.md", "- [ ] a 📅 2026-01-15\n- [ ] b 📅 2026-01-16\n- [ ] c 📅 2026-01-15");
 		await fixture.h.deliver();
 		await fixture.view.onReloadTasks();
-		flushSync(() => fixture.bridge.current!.handleFilterEnable("2026-01-14", "2026-01-16", []));
+		// An inclusive today-only range keeps a and leaves out tomorrow's b.
+		flushSync(() => fixture.bridge.current!.handleFilterEnable("2026-01-15", "2026-01-15", []));
 		assert.equal(fixture.container.querySelectorAll(".task").length, 1, "the quick filter applies to the old list");
 		assert.equal(fixture.bridge.current!.state.tasks.length, 2);
 		flushSync(() => fixture.container.querySelector<HTMLElement>("#todo")!.click());
@@ -1003,7 +1004,7 @@ test("quick filter and counters stay urgent during a pending list transition", a
 	assert.equal(fixture.bridge.current!.state.tasks.length, 3);
 	assert.equal(fixture.container.querySelectorAll(".task").length, 2);
 	assert.ok(fixture.container.querySelector(".taskido.todoFilter"));
-	assert.equal(fixture.bridge.current!.state.quickFilter?.from, "2026-01-14");
+	assert.equal(fixture.bridge.current!.state.quickFilter?.from, "2026-01-15");
 });
 
 test("click clock in a popout", (t) => {

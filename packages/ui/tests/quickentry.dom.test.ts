@@ -189,7 +189,7 @@ test(".focus class on focus and blur", async (t) => {
 });
 
 test("applied filter re-derived when the prop changes", async (t) => {
-	const a: QuickFilter = { from: "2026-01-10", to: "2026-01-20", priorities: ["1"], tags: ["#work"] };
+	const a: QuickFilter = { from: "2026-01-10", to: "2026-01-20", priorities: ["High"], tags: ["#work"] };
 	const b: QuickFilter = { to: "2026-02-20", priorities: [], tags: ["#home"] };
 	// Brief-derived cases pin reference identity and resets even without an edit between applied values.
 	const cases: [string, (QuickFilter | undefined)[], string][] = [
@@ -248,6 +248,59 @@ test("applied filter re-derived when the prop changes", async (t) => {
 		assert.equal(entry.container.querySelector(".dateFilter"), null);
 		assert.equal(entry.container.querySelector('select[name="priorityFilter"]'), null);
 	});
+});
+
+test("the priority select offers the six names", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render({ priorities: ["High"] });
+	const select = element<HTMLSelectElement>(entry.container, 'select[name="priorityFilter"]');
+	assert.deepEqual(
+		[...select.options].map((option) => [option.value, option.textContent?.trim()]),
+		[
+			["+", "➕"],
+			["Highest", "Highest"],
+			["High", "High🎯"],
+			["Medium", "Medium"],
+			["No", "None"],
+			["Low", "Low"],
+			["Lowest", "Lowest"],
+		],
+	);
+});
+
+test("priority choices submit task labels, and None includes both stored forms", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render({ from: "2026-01-10", to: "2026-01-20", priorities: [], tags: ["#work"] });
+	await changeSelect(element<HTMLSelectElement>(entry.container, "select.filterSelector"), "priority");
+	const select = element<HTMLSelectElement>(entry.container, 'select[name="priorityFilter"]');
+	const submit = () => act(() => element<HTMLButtonElement>(entry.container, "button.ok").click());
+	await changeSelect(select, "High");
+	await submit();
+	assert.deepEqual(entry.filterCalls.at(-1), ["2026-01-10", "2026-01-20", ["High"], ["#work"]]);
+	await changeSelect(select, "No");
+	await changeSelect(select, "Lowest");
+	await submit();
+	assert.deepEqual(entry.filterCalls.at(-1), ["2026-01-10", "2026-01-20", ["High", "No", "", "Lowest"], ["#work"]]);
+	await changeSelect(select, "No");
+	await changeSelect(select, "+");
+	await submit();
+	assert.deepEqual(entry.filterCalls.at(-1), ["2026-01-10", "2026-01-20", ["High", "Lowest"], ["#work"]]);
+});
+
+test("an applied None filter restores as one selectable choice", async (t) => {
+	const entry = entryHarness(t);
+	for (const priorities of [[""], ["No"], ["No", ""], ["", "No"]]) {
+		await entry.render({ priorities });
+		assert.deepEqual(
+			[...entry.container.querySelectorAll('select[name="priorityFilter"] ~ a')].map((item) => item.textContent),
+			["None🎯"],
+		);
+		await act(() => element<HTMLButtonElement>(entry.container, "button.ok").click());
+		assert.deepEqual(entry.filterCalls.at(-1), ["", "", ["No", ""], []]);
+	}
+	await changeSelect(element<HTMLSelectElement>(entry.container, 'select[name="priorityFilter"]'), "No");
+	await act(() => element<HTMLButtonElement>(entry.container, "button.ok").click());
+	assert.deepEqual(entry.filterCalls.at(-1), ["", "", [], []], "deselecting None removes both stored forms");
 });
 
 // Brief-derived: the clock is read for each input event, not while rendering the panel.

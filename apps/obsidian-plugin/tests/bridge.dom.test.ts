@@ -284,7 +284,8 @@ test("a reload that ends before the transition renders, with the same list shown
 test("quick entry during a pending list transition stays urgent and the transition does not restore the quick filter", async (t) => {
 	const pause = pauseList(t, (props) => props.tasks.length > 2 && props.quickFilter !== undefined);
 	const f = await mountTimeline(t, "- [ ] a 📅 2026-01-15\n- [ ] b 📅 2026-01-16");
-	await act(() => f.bridge.current!.handleFilterEnable("2026-01-14", "2026-01-16", []));
+	// An inclusive today-only range keeps a and leaves out tomorrow's b.
+	await act(() => f.bridge.current!.handleFilterEnable("2026-01-15", "2026-01-15", []));
 	assertRows(f.container, ["a"]);
 	await act(() => f.reload("- [ ] a 📅 2026-01-15\n- [ ] b 📅 2026-01-16\n- [ ] c 📅 2026-01-15"));
 	assert.ok(pause.attempts() > 0);

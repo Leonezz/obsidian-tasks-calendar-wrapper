@@ -21,6 +21,10 @@
  * `--ab <ref>` compares visible text, PNGs and styles of that build and this checkout in one session; --candidate <ref>
  * builds another candidate, --report <file> saves the Markdown report, and --any-base allows a different merge base.
  * Both modes also fingerprint a dimmed row in each theme, without taking its visible text or PNG.
+ * `--expanded-filter --review=<dir>` collects one applied High + None, Jan 10–20 state per selected theme into a
+ * separate review directory, including controls, applied state and ordered row identities. After image approval,
+ * `node scripts/screenshots.mjs --expanded-filter --record=<dir>` records those exact bytes offline; leave out
+ * review/record to compare the dedicated expanded-filter baselines. This opt-in mode never extends the ordinary plan.
  *
  * Pixels and colours depend on the machine, the Obsidian version, the golden vault's appearance settings (accent colour,
  * font size and fonts, community theme, CSS snippets, ribbon, zoom), the font the timeline ends up with, and the display
@@ -61,6 +65,7 @@ import {
 	manifest,
 	notesOf,
 	quietSettings,
+	releaseBuild,
 	repoRoot,
 	runAndUndo,
 	runScript,
@@ -69,6 +74,7 @@ import {
 } from "./fixture-app.mjs";
 import { comparePngs, decodePng, encodePng, screenshotVerdict } from "./png.mjs";
 import { abExitCode, abReport, compareArms, firstDifference, parseScreenshotArgs } from "./screenshots-ab.mjs";
+import { runExpandedFilter } from "./screenshots-expanded-filter.mjs";
 import {
 	collectTouchTargets,
 	formatTouchTargetReport,
@@ -1085,6 +1091,30 @@ await runScript("screenshots", async () => {
 	} catch (error) {
 		throw new ScriptError(error.message);
 	}
+	if (args.mode === "expanded-filter")
+		return runExpandedFilter(args, {
+			repoRoot,
+			fixture: () => ({
+				buildInfo,
+				releaseBuild,
+				installPlugin,
+				quietSettings,
+				fixtureWindow,
+				runAndUndo,
+				TIMELINE_VIEW,
+				manifest,
+			}),
+			screenshotVault,
+			checkedThemePins,
+			timeline,
+			capture,
+			unhover,
+			backupAppearance,
+			restoreAppearance,
+			environment,
+			appearances,
+			settleMs: SETTLE_AFTER_LOAD_MS,
+		});
 	const { mode, update, only, ab, themes, profile } = args;
 	if (profile === "mobile") return runMobile(only, update);
 	if (mode === "pin-theme") return pinThemes();

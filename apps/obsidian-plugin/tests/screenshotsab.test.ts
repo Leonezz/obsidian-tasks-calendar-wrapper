@@ -191,7 +191,7 @@ test("an unknown argument is an error", () => {
 	] as const)
 		assert.throws(() => parseScreenshotArgs(args), {
 			name: "Error",
-			message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --profile=desktop|mobile, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
+			message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --profile=desktop|mobile, --pin-theme, --expanded-filter with --review <dir> or --record <dir>, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
 		});
 	assert.deepEqual(parseScreenshotArgs([]), {
 		mode: "screenshots",
@@ -239,7 +239,7 @@ test("--themes rejects any other value", () => {
 	] as const)
 		assert.throws(() => parseScreenshotArgs(args), {
 			name: "Error",
-			message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --profile=desktop|mobile, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
+			message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --profile=desktop|mobile, --pin-theme, --expanded-filter with --review <dir> or --record <dir>, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
 		});
 	for (const themes of [[], ["--themes=all"]])
 		assert.throws(() => parseScreenshotArgs([...themes, "--only=x", "--update"]), {
@@ -271,8 +271,64 @@ test("--pin-theme takes no other option", () => {
 	const unknown = ["--unknown"];
 	assert.throws(() => parseScreenshotArgs(["--pin-theme", "--update", ...unknown]), {
 		name: "Error",
-		message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --profile=desktop|mobile, --pin-theme, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
+		message: `unknown arguments ${JSON.stringify(unknown)}; use --update, --only=<text>, --styles, --themes=default|all, --profile=desktop|mobile, --pin-theme, --expanded-filter with --review <dir> or --record <dir>, or --ab <ref> with --candidate <ref>, --report <file> and --any-base.`,
 	});
+});
+
+test("expanded-filter uses an independent check/review/record mode without extending ordinary options", () => {
+	const defaults = { mode: "expanded-filter", update: false, only: "", ab: null, themes: "default" };
+	assert.deepEqual(parseScreenshotArgs(["--expanded-filter"]), {
+		...defaults,
+		expandedFilter: { action: "check", directory: null },
+	});
+	for (const option of ["review", "record"] as const) {
+		for (const args of [[`--${option}=reviewed files`], [`--${option}`, "reviewed files"]])
+			assert.deepEqual(parseScreenshotArgs(["--expanded-filter", ...args]), {
+				...defaults,
+				expandedFilter: { action: option, directory: "reviewed files" },
+			});
+	}
+	assert.deepEqual(parseScreenshotArgs(["--expanded-filter", "--themes=all", "--review=artifacts"]), {
+		...defaults,
+		themes: "all",
+		expandedFilter: { action: "review", directory: "artifacts" },
+	});
+	for (const args of [[], ["--styles"], ["--ab=master"], ["--profile=mobile"]])
+		assert.equal(Object.prototype.hasOwnProperty.call(parseScreenshotArgs(args), "expandedFilter"), false);
+});
+
+test("expanded-filter rejects baseline update, ordinary selection, mobile and strict A/B combinations", () => {
+	for (const args of [
+		["--update"],
+		["--styles"],
+		["--pin-theme"],
+		["--only="],
+		["--only=expanded-filter"],
+		["--profile=mobile"],
+		["--ab=master"],
+		["--candidate=head"],
+		["--report=out"],
+		["--any-base"],
+		["--review=out", "--record=out"],
+		["--record=out", "--themes=default"],
+	])
+		assert.throws(() => parseScreenshotArgs(["--expanded-filter", ...args]));
+	for (const option of ["review", "record"]) {
+		assert.throws(() => parseScreenshotArgs([`--${option}=out`]), /only go with --expanded-filter/);
+		for (const args of [[`--${option}`], [`--${option}=`], [`--${option}`, "--themes=all"]])
+			assert.throws(
+				() => parseScreenshotArgs(["--expanded-filter", ...args]),
+				new RegExp(`--${option} needs a directory`),
+			);
+	}
+	assert.throws(
+		() => parseScreenshotArgs(["--expanded-filter", "--update", "--unknown"]),
+		/unknown arguments \["--unknown"\]/,
+	);
+	assert.throws(
+		() => parseScreenshotArgs(["--ab=master", "--only=light-expanded-filter", "--expanded-filter"]),
+		/--expanded-filter cannot be combined with --only/,
+	);
 });
 
 test("identical visible text, PNGs and styles report no differences and exit 0", () => {
