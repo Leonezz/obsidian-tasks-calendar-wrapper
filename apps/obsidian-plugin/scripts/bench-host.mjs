@@ -5,7 +5,8 @@
  */
 
 /** The scripts that drive the running Obsidian; one's work would land in another's measurements. */
-const DRIVES_OBSIDIAN = /\bnode\b.*\bscripts\/(bench|screenshots)\.mjs\b/;
+const DRIVES_OBSIDIAN =
+	/\bnode\b.*\bscripts\/(bench|screenshots|capture-golden|capture-tasks-toggle|markup-obsidian|coldstart-check|tasks-parity-check)\.mjs\b/;
 
 /**
  * The processes in the output of `ps -A -o pid=,ppid=,command=` that run a benchmark or the screenshots, other than
