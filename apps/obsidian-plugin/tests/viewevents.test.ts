@@ -379,7 +379,7 @@ test("counted as the benchmark counts them, a save with tasks reloads once and r
 	assert.deepEqual({ reloadCalls, reads }, { reloadCalls: 2, reads: 2 }, "the next save with tasks");
 });
 
-test("the first reload after the view opens reads every note again, as a change before it listened went unheard", async (t) => {
+test("an independently constructed timeline keeps a full read when it opens", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const vault = fakeVault(notes());
 	const leaf = vault.app.workspace.addLeaf();
@@ -395,7 +395,7 @@ test("the first reload after the view opens reads every note again, as a change 
 	assert.deepEqual(linesIn(view, "Inbox.md"), ["- [ ] call the plumber, before the view listened"]);
 });
 
-test("Obsidian's first resolved after opening reads every note again, also after a reload before it; later ones do not", async (t) => {
+test("an independently constructed timeline rereads every note at first resolved; later ones do not", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const vault = fakeVault(notes());
 	const timeline = await openTimeline(t, vault, { resolved: false });
@@ -415,7 +415,7 @@ test("Obsidian's first resolved after opening reads every note again, also after
 	assert.deepEqual(read(), ["Projects/Garden.md"], "a later resolved, which each save brings");
 });
 
-test("skipOpenReread reads only notes marked between construction and opening", async (t) => {
+test("opening reads only what the shared index marked", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const vault = fakeVault(notes());
 	const leaf = vault.app.workspace.addLeaf();
@@ -442,7 +442,7 @@ test("skipOpenReread reads only notes marked between construction and opening", 
 	assert.deepEqual(linesIn(view, "Projects/Garden.md"), ["- [ ] plant the tulips", "- [x] buy bulbs"]);
 });
 
-test("skipOpenReread first resolved does not compensate for a silent write, while marked saves still update", async (t) => {
+test("first resolved reloads without rereading all", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const vault = fakeVault(notes());
 	const timeline = await openTimeline(t, vault, { resolved: false, skipOpenReread: () => true });
