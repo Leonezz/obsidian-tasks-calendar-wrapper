@@ -2,6 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import path from "node:path";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
 
@@ -302,14 +303,7 @@ type CaptureCli = {
 };
 type Viewport = (cli: CaptureCli, height: number) => CaptureBox;
 
-function capturePipeline(
-	options: {
-		box?: (width: number, height: number, read: number) => Partial<CaptureBox>;
-		metrics?: Partial<CaptureViewport>;
-		pngSize?: { width: number; height: number };
-		missingData?: boolean;
-	} = {},
-) {
+function numericScreenshotConstants(): Record<string, number> {
 	const constants: Record<string, number> = {};
 	for (const statement of screenshotSource.statements) {
 		if (!ts.isVariableStatement(statement)) continue;
@@ -318,6 +312,18 @@ function capturePipeline(
 				constants[item.name.text] = Number(item.initializer.text);
 		}
 	}
+	return constants;
+}
+
+function capturePipeline(
+	options: {
+		box?: (width: number, height: number, read: number) => Partial<CaptureBox>;
+		metrics?: Partial<CaptureViewport>;
+		pngSize?: { width: number; height: number };
+		missingData?: boolean;
+	} = {},
+) {
+	const constants = numericScreenshotConstants();
 	const events: string[] = [];
 	const calls: { method: string; params: Record<string, unknown> }[] = [];
 	let width = 0;
@@ -525,4 +531,271 @@ test("capture failures propagate through the actual normal undo routine without 
 	);
 	assert.deepEqual(restored, ["viewport", "plugin", "appearance"]);
 	assert.equal(pipeline.calls.filter(({ method }) => method === "Page.captureScreenshot").length, 1);
+	const skipped = capturePipeline();
+	restored.length = 0;
+	assert.throws(
+		() =>
+			runAndUndo(
+				() =>
+					skipped.capture(skipped.cli, undefined, () => {
+						throw new Error("auto-skipped element");
+					}),
+				["viewport", "plugin", "appearance"].map((name): [string, () => void] => [
+					name,
+					() => {
+						restored.push(name);
+					},
+				]),
+			),
+		/auto-skipped/u,
+	);
+	assert.deepEqual(restored, ["viewport", "plugin", "appearance"]);
+	assert.equal(skipped.calls.filter(({ method }) => method === "Page.captureScreenshot").length, 0);
+});
+
+/** Tests the real state runner's capture wiring; capture itself is exercised above with actual synthetic PNGs. */
+function screenshotRunner(mode: "screenshots" | "styles" | "ab", options: { force?: boolean; visible?: boolean } = {}) {
+	const fullHeight = 1_000;
+	const theme = options.visible === false ? "dark" : "light";
+	const name = `${theme}-today-all-days-no-counter`;
+	const events: string[] = [];
+	const writes = new Map<string, string | Buffer>();
+	const visibleArguments: Record<string, unknown>[] = [];
+	const captureCalls: { hooked: boolean }[] = [];
+	const styleHeights: number[] = [];
+	const canonicalPng = Buffer.from("one canonical surface");
+	let height = 0;
+	let insideCaptureHook = false;
+	const timeline = () => {};
+	const collectStyles = () => {};
+	const cli = {
+		cdp(method: string, argument: Record<string, unknown>) {
+			assert.equal(method, "Emulation.setDeviceMetricsOverride");
+			height = Number(argument.height);
+			events.push(`resize:${height}`);
+		},
+		evaluate(fn: unknown, argument: Record<string, unknown>) {
+			if (fn === collectStyles) {
+				styleHeights.push(height);
+				events.push(`S:${height}`);
+				return { measuredAtHeight: height };
+			}
+			if (argument.action === "measure") {
+				events.push(`measure:${height}`);
+				return {};
+			}
+			if (argument.action === "visible") {
+				visibleArguments.push(JSON.parse(JSON.stringify(argument)) as Record<string, unknown>);
+				assert.equal(
+					height,
+					fullHeight,
+					"V must read the fully prepared timeline, not the initial short viewport",
+				);
+				assert.equal(
+					insideCaptureHook,
+					!options.force,
+					"ordinary V belongs inside capture's hook; forced V retains its post-P order",
+				);
+				events.push(`V:${height}`);
+				return ["year 2026", "  task due: Visible after full measurement | Note"];
+			}
+			if (argument.action === "windowing-info") {
+				events.push("windowing-info");
+				return { rowCount: 2, windowed: true };
+			}
+			return undefined;
+		},
+	};
+	const capture = (driver: typeof cli, viewport?: unknown, beforeScreenshot?: () => void) => {
+		assert.strictEqual(driver, cli);
+		assert.equal(viewport, undefined);
+		captureCalls.push({ hooked: typeof beforeScreenshot === "function" });
+		cli.cdp("Emulation.setDeviceMetricsOverride", { height: fullHeight });
+		cli.evaluate(timeline, { action: "measure" });
+		insideCaptureHook = true;
+		try {
+			beforeScreenshot?.();
+		} finally {
+			insideCaptureHook = false;
+		}
+		events.push(`P:${height}`);
+		return canonicalPng;
+	};
+	const take = runInNewContext(`${declaration("setViewport")}\n${declaration("takeScreenshots")}\ntakeScreenshots`, {
+		...numericScreenshotConstants(),
+		path,
+		THEMES,
+		timeline,
+		collectStyles,
+		capture,
+		VISIBLE: "visible",
+		TIMELINE_VIEW: "tasks_timeline_view",
+		TODAY_FOCUS: "Focus today",
+		manifest: { id: "tasks-calendar-wrapper" },
+		plan: () => [
+			{
+				settings: {},
+				shots: [
+					{
+						name,
+						theme,
+						position: "today",
+						todayFocus: false,
+						counter: "none",
+						behavior: null,
+						png: mode !== "styles",
+						visible: mode !== "styles" && options.visible !== false,
+						styles: mode !== "screenshots",
+					},
+				],
+			},
+		],
+		quietSettings: (settings: unknown) => settings,
+		selectCssTheme: () => {},
+		unhover: () => {},
+		mkdirSync: () => {},
+		writeFileSync: (file: string, value: string | Buffer) => writes.set(file, value),
+		serializeStyles: (value: unknown) => JSON.stringify(value),
+		decodePng: (png: Buffer) => {
+			assert.strictEqual(png, canonicalPng);
+			return { width: 556, height: 880 };
+		},
+		STYLE_PROBES: [],
+		STYLE_PROPERTIES: [],
+		ROOT_CUSTOM_PROPERTIES: [],
+		ScriptError: Error,
+		console: { log: () => {} },
+	}) as (
+		driver: typeof cli,
+		plugin: { writeSettings(value: unknown): void },
+		outDir: string,
+		only: string,
+		mode: string,
+		themes: string,
+		pins: Record<string, unknown>,
+		label: string,
+		force: boolean,
+	) => Record<string, { visibleLines: number | null; png: unknown }>;
+	const shots = take(cli, { writeSettings: () => {} }, "/memory", "", mode, "default", {}, "test", !!options.force);
+	return { name, events, writes, shots, visibleArguments, captureCalls, styleHeights, canonicalPng };
+}
+
+test("ordinary V runs after the full capture measurement and before its only canonical P", () => {
+	const run = screenshotRunner("screenshots");
+	assert.deepEqual(run.events, ["resize:600", "resize:1000", "measure:1000", "V:1000", "P:1000"]);
+	assert.deepEqual(run.captureCalls, [{ hooked: true }]);
+	assert.equal(run.visibleArguments.length, 1);
+	assert.equal(run.shots[run.name].visibleLines, 2);
+	assert.equal(
+		run.writes.get(`/memory/visible/${run.name}.txt`),
+		"year 2026\n  task due: Visible after full measurement | Note\n",
+	);
+	assert.strictEqual(run.writes.get(`/memory/${run.name}.png`), run.canonicalPng);
+});
+
+test("A/B keeps S at 600 and then collects full-height V in the once-only P hook", () => {
+	const run = screenshotRunner("ab");
+	assert.deepEqual(run.styleHeights, [600]);
+	assert.deepEqual(run.events, [
+		"resize:600",
+		"resize:600",
+		"measure:600",
+		"S:600",
+		"resize:1000",
+		"measure:1000",
+		"V:1000",
+		"P:1000",
+	]);
+	assert.deepEqual(run.captureCalls, [{ hooked: true }]);
+	assert.equal(run.visibleArguments.length, 1);
+	assert.strictEqual(run.writes.get(`/memory/${run.name}.png`), run.canonicalPng);
+});
+
+test("styles-only and non-V states retain their record kinds without an extra visible capture", () => {
+	const styles = screenshotRunner("styles");
+	assert.deepEqual(styles.styleHeights, [600]);
+	assert.deepEqual(styles.captureCalls, []);
+	assert.deepEqual(styles.visibleArguments, []);
+	assert.equal(styles.writes.size, 1);
+	const dark = screenshotRunner("screenshots", { visible: false });
+	assert.deepEqual(dark.captureCalls, [{ hooked: true }]);
+	assert.deepEqual(dark.visibleArguments, []);
+	assert.equal(dark.shots[dark.name].visibleLines, null);
+	assert.equal(dark.writes.size, 1);
+});
+
+test("forced windowing retains P then windowing info then V, without a second canonical capture", () => {
+	const run = screenshotRunner("screenshots", { force: true });
+	assert.deepEqual(run.events, ["resize:600", "resize:1000", "measure:1000", "P:1000", "windowing-info", "V:1000"]);
+	assert.deepEqual(run.captureCalls, [{ hooked: false }]);
+	assert.equal(run.visibleArguments[0].windowMinRows, 0);
+	assert.strictEqual(run.writes.get(`/memory/${run.name}.png`), run.canonicalPng);
+});
+
+function visibleCandidate(options: { css: boolean; auto: boolean; text?: string }) {
+	const checks: Record<string, unknown>[] = [];
+	let reads = 0;
+	const element = {
+		className: "year",
+		checkVisibility(value: Record<string, unknown>) {
+			checks.push(JSON.parse(JSON.stringify(value)) as Record<string, unknown>);
+			return value.contentVisibilityAuto === true ? options.auto : options.css;
+		},
+		matches: (selector: string) => selector === ".year",
+		get innerText() {
+			reads++;
+			assert.ok(options.css && options.auto, "hidden or auto-skipped candidates must not be read");
+			return options.text ?? "2026";
+		},
+		get textContent(): never {
+			throw new Error("textContent must never replace innerText in V");
+		},
+	};
+	return { element, checks, reads: () => reads };
+}
+
+async function collectActualVisible(candidates: ReturnType<typeof visibleCandidate>[]): Promise<string[]> {
+	let time = 0;
+	const root = { querySelectorAll: () => candidates.map(({ element }) => element) };
+	const timeline = runInNewContext(`(${declaration("timeline")})`, {
+		document: { querySelector: () => ({ querySelector: () => root }), fonts: { ready: Promise.resolve() } },
+		performance: { now: () => (time += 1_000) },
+		MutationObserver: class {
+			observe() {}
+			disconnect() {}
+		},
+		requestAnimationFrame: (run: () => void) => {
+			run();
+			return 0;
+		},
+		setTimeout: (run: () => void) => {
+			run();
+			return 0;
+		},
+		getComputedStyle: () => ({ color: "rgb(1, 2, 3)", backgroundColor: "rgba(0, 0, 0, 0)" }),
+	}) as (argument: { action: string; viewType: string }) => Promise<string[]>;
+	return Array.from(await timeline({ action: "visible", viewType: "tasks_timeline_view" }));
+}
+
+test("the actual visible action rejects CSS-visible auto-skipped elements instead of dropping or reading them", async () => {
+	const candidate = visibleCandidate({ css: true, auto: false });
+	await assert.rejects(collectActualVisible([candidate]), /auto-skipped/u);
+	assert.deepEqual(candidate.checks, [
+		{ checkVisibilityCSS: true },
+		{ checkVisibilityCSS: true, contentVisibilityAuto: true },
+	]);
+	assert.equal(candidate.reads(), 0);
+});
+
+test("the actual visible action still excludes CSS-hidden elements and reads innerText after both checks", async () => {
+	const hidden = visibleCandidate({ css: false, auto: false });
+	const visible = visibleCandidate({ css: true, auto: true, text: " 2026\n  " });
+	assert.deepEqual(await collectActualVisible([hidden, visible]), ["year 2026"]);
+	assert.deepEqual(hidden.checks, [{ checkVisibilityCSS: true }]);
+	assert.equal(hidden.reads(), 0);
+	assert.equal(visible.reads(), 1);
+	assert.deepEqual(visible.checks, [
+		{ checkVisibilityCSS: true },
+		{ checkVisibilityCSS: true, contentVisibilityAuto: true },
+	]);
 });
