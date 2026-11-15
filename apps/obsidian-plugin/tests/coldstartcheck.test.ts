@@ -644,10 +644,10 @@ test("plugin and appearance backup leftovers are rejected without recovering or 
 
 test("driver detection excludes own ancestors and includes other permanent and temporary drivers", () => {
 	const ps =
-		"1 0 launchd\n20 1 node scripts/coldstart-check.mjs --report=a\n21 20 node /runner.js\n30 1 node scripts/bench.mjs\n31 1 node /tmp/tcw-native-check.mjs\n32 1 node scripts/screenshots.mjs\n33 1 node scripts/test.mjs";
+		"1 0 launchd\n20 1 node scripts/coldstart-check.mjs --report=a\n21 20 node /runner.js\n30 1 node scripts/bench.mjs\n31 1 node /tmp/tcw-native-check.mjs\n32 1 node scripts/screenshots.mjs\n33 1 node scripts/test.mjs\n34 1 node scripts/tasks-parity-check.mjs --report=/tmp/parity.json";
 	assert.deepEqual(
 		coldstartDriverProcesses(ps, 21).map(({ pid }) => pid),
-		[30, 31, 32],
+		[30, 31, 32, 34],
 	);
 });
 

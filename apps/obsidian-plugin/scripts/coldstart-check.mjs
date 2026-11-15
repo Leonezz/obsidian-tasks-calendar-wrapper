@@ -282,7 +282,7 @@ export function coldstartDriverProcesses(ps, selfPid) {
 		.filter(
 			([, pid, , command]) =>
 				!own.has(Number(pid)) &&
-				/\bnode\b.*(?:scripts\/(?:bench|screenshots|capture|markup|coldstart-check)[\w-]*\.mjs|\/tmp\/tcw-[^\s]*\.mjs)\b/.test(
+				/\bnode\b.*(?:scripts\/(?:bench|screenshots|capture|markup|coldstart-check|tasks-parity-check)[\w-]*\.mjs|\/tmp\/tcw-[^\s]*\.mjs)\b/.test(
 					command,
 				),
 		)
