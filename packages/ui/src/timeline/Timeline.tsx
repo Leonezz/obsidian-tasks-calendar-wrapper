@@ -4,6 +4,7 @@ import {
 	counterClass,
 	createQuery,
 	dayKey,
+	focusToday,
 	taskRowModel,
 	quickEntryTargets,
 	type ArrangeSettings,
@@ -13,6 +14,7 @@ import {
 	type Counts,
 	type DateValue,
 	type QueryEnv,
+	type QueryResult,
 	type QuickFilter,
 	type Resolved,
 	type ResolvedTask,
@@ -116,6 +118,7 @@ interface TimelineMemo {
 	rowElements: ReadonlyMap<string, HTMLElement>;
 	/** Remembers the last layout, so a click on a counter or on Focus on today resolves no task again. */
 	readonly query: ReturnType<typeof createQuery>;
+	focus?: { readonly result: QueryResult; readonly focused: QueryResult };
 	/** The options with the Filter behaviour, kept while the options are the same, see settingsFor. */
 	filtering?: { readonly options: TimelineOptions; readonly settings: TimelineOptions };
 	readonly counterHandlers: Readonly<Record<"todo" | "overdue" | "unplanned", () => void>>;
@@ -290,6 +293,12 @@ function settingsFor(memo: TimelineMemo, options: TimelineOptions, counter: Coun
 	return memo.filtering.settings;
 }
 
+/** Keeps the focused layout while the query result is the same. */
+function focusedFor(memo: TimelineMemo, result: QueryResult): QueryResult {
+	if (memo.focus?.result !== result) memo.focus = { result, focused: focusToday(result) };
+	return memo.focus.focused;
+}
+
 export function Timeline(props: TimelineProps) {
 	const host = useHost();
 	const counterFilterValue = useStore(props.viewState, selectCounter);
@@ -323,14 +332,18 @@ export function Timeline(props: TimelineProps) {
 	const now = host.now();
 	const { env, prepared } = props.queryEnv(now);
 	const counter = counterFilterOf(counterFilterValue, userOptions.counterBehavior);
-	const { counts, years } = memo.query(
+	const result = memo.query(
 		props.tasks,
 		{ settings: settingsFor(memo, userOptions, counter), counter, quickFilter: props.quickFilter },
 		env,
 		prepared,
 	);
-	const renderedIds = years.flatMap((year) => year.days.flatMap((day) => day.tasks.map(({ task }) => task.id)));
-	const days = years.flatMap((year) => year.days);
+	const { counts } = result;
+	const renderedIds = result.years.flatMap((year) =>
+		year.days.flatMap((day) => day.tasks.map(({ task }) => task.id)),
+	);
+	const shown = todayFocus ? focusedFor(memo, result) : result;
+	const days = shown.years.flatMap((year) => year.days);
 	const instanceIds = days.flatMap((day) => day.tasks.map(({ task }) => rowInstanceKey(day.key, task.id)));
 	const active = memo.focusElement?.ownerDocument.activeElement;
 	memo.stopHadFocus = !!active && !!memo.focusElement?.contains(active);
@@ -431,7 +444,7 @@ export function Timeline(props: TimelineProps) {
 			<RowWriteContext.Provider value={rowWrites}>
 				<ViewActionsContext.Provider value={props.viewActions}>
 					<span>
-						{years.map((year, i) => (
+						{shown.years.map((year, i) => (
 							// Keyed by place, then by year, as before: a year added in front of the entry's year makes
 							// React build the entry day, and with it the quick entry panel, again.
 							<React.Fragment key={i}>

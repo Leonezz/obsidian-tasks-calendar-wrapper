@@ -1,9 +1,9 @@
 /**
  * Reads the timeline's server-rendered markup the way scripts/screenshots.mjs read the DOM: one line per displayed
  * year, entry panel element, date and task, in document order (see visible-states.ts). What is displayed is worked out
- * from the stylesheet's rules that hide those elements, applied to the markup's classes: Focus on today, and the
- * options that turn the year headers, the counters and the quick entry off. Nothing else in styles.css hides them. A
- * task is highlighted when the Focus behaviour's rule gives it a background.
+ * from the stylesheet's rules that hide those elements, applied to the markup's classes: the options that turn the
+ * year headers, the counters and the quick entry off. Nothing else in styles.css hides them. A task is highlighted
+ * when the Focus behaviour's rule gives it a background.
  */
 import assert from "node:assert/strict";
 
@@ -102,8 +102,6 @@ export function displayedLines(html: string): Line[] {
 	const focused = (["todo", "overdue", "unplanned"] as Counter[]).find((counter) => root.includes(`${counter}Focus`));
 	const highlights = focused ? highlightedBy[focused] : [];
 	const hides = (classes: string[]) =>
-		(root.includes("todayFocus") &&
-			(classes.includes("year") || (classes.includes("details") && !classes.includes("today")))) ||
 		(root.includes("noYear") && classes.includes("year")) ||
 		(root.includes("noCounters") && classes.includes("counters")) ||
 		(root.includes("noQuickEntry") && classes.includes("quickEntryPanel"));

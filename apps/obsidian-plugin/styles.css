@@ -694,11 +694,6 @@
 }
 
 /* Focus */
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.todayFocus .details:not(.today),
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.todayFocus .year {
-	display: none;
-}
-
 .taskido.todayFocus .details.today {
 	padding: 0;
 }

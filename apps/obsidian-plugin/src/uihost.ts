@@ -6,7 +6,7 @@ import { moment } from "../utils/moment";
 export const MARKDOWN_CACHE_CAPACITY = 40_000;
 
 export interface PluginUiHost extends UiHost {
-	/** Drops every cached render before the view mounts or publishes a reload. */
+	/** Drops cached renders before mount or reload, and when link targets may have changed. */
 	clearMarkdownCache(): void;
 }
 
@@ -20,7 +20,7 @@ export interface UiHostOptions {
 
 /**
  * Caches markdown between reloads. The view clears before mounting and before a reload reaches the store,
- * so rows remounting in the reload's render cannot read old entries.
+ * so rows remounting in the reload's render cannot read old entries. Link-target events clear it without a reload.
  */
 export function createUiHost(options: UiHostOptions): PluginUiHost {
 	const { owner, createElement = () => document.createElement("a"), capacity = MARKDOWN_CACHE_CAPACITY } = options;

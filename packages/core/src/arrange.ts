@@ -3,7 +3,8 @@
  * their days, the day the entry panel sits on, and the counter filter. It does what the plugin's views (TimelineView,
  * YearView, DateView), its quick filter (ObsidianBridge.handleFilterEnable) and the Filter rules of styles.css did
  * before phase 1 step 8; those rules hid the tasks, days and year headers without the counter's statuses. Focus on
- * today and the Focus counter behaviour stay in the stylesheet: they hide or highlight, and change no data.
+ * today is applied by focusToday; only the Focus counter behaviour stays in the stylesheet, highlighting without
+ * changing data.
  */
 import {
 	betweenDaysExclusive,
@@ -280,6 +281,26 @@ export function arrange(resolved: Resolved, view: ViewState, env: QueryEnv): Que
 		tasks: Object.freeze(tasks),
 		counts: Object.freeze(countsOf(tasks)),
 		years: Object.freeze(years.map(yearGroup)),
+	});
+}
+
+/** Keeps the entry panel and today's rows, without year headers or changing the counts. */
+export function focusToday(result: QueryResult): QueryResult {
+	return Object.freeze({
+		...result,
+		years: Object.freeze(
+			result.years.map((year) =>
+				Object.freeze({
+					...year,
+					showHeader: false,
+					days: Object.freeze(
+						year.days
+							.filter((day) => day.isToday || day.isEntry)
+							.map((day) => (day.isToday ? day : Object.freeze({ ...day, tasks: Object.freeze([]) }))),
+					),
+				}),
+			),
+		),
 	});
 }
 

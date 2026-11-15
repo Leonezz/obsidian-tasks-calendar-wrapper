@@ -666,7 +666,7 @@ async function wait(t: TestContext, ms: number): Promise<void> {
 const handlerCount = (events: object, name: string) =>
 	(events as { handlerCount(name: string): number }).handlerCount(name);
 
-/** The note handlers: the writer's four, the shared task index's four, and each open timeline's three. */
+/** The read/write handlers, including each timeline's change handlers and markdown-cache rename handler. */
 function noteHandlers(vault: FakeVault): number {
 	const { vault: files, metadataCache } = vault.app;
 	return (
@@ -680,26 +680,69 @@ function noteHandlers(vault: FakeVault): number {
 test("the plugin's timelines share one task index, which stops watching when the plugin unloads", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const { vault, plugin } = await startPlugin(readFixture("quiet.json"), { layoutReady: true });
-	assert.equal(noteHandlers(vault), 4, "the writer watches before the first timeline opens an index");
-	await openTimeline(vault);
+	t.after(() => plugin.unload());
+	const assertWatching = (views: number, pluginLoaded = true) => {
+		const { vault: files, metadataCache, workspace } = vault.app;
+		// The writer watches once while loaded, and one index watches while any view has a reader.
+		const shared = Number(pluginLoaded) + Number(views > 0);
+		assert.deepEqual(
+			{
+				changed: handlerCount(metadataCache, "changed"),
+				deleted: handlerCount(metadataCache, "deleted"),
+				modify: handlerCount(files, "modify"),
+				rename: handlerCount(files, "rename"),
+				create: handlerCount(files, "create"),
+				delete: handlerCount(files, "delete"),
+				resolved: handlerCount(metadataCache, "resolved"),
+				windowOpen: handlerCount(workspace, "window-open"),
+			},
+			{
+				changed: shared + views,
+				deleted: shared + views,
+				modify: shared,
+				// Each view watches renames for its task list and its markdown cache.
+				rename: shared + 2 * views,
+				create: views,
+				delete: views,
+				resolved: views,
+				windowOpen: views,
+			},
+			`${views} open timelines, plugin ${pluginLoaded ? "loaded" : "unloaded"}`,
+		);
+	};
+	assertWatching(0);
 	await openTimeline(vault);
 	vault.resolve();
 	await wait(t, 10 * OPTIONS_DELAY_MS);
-	assert.equal(noteHandlers(vault), 4 + 4 + 3 + 3);
+	assertWatching(1);
+	await openTimeline(vault);
+	vault.resolve();
+	await wait(t, 10 * OPTIONS_DELAY_MS);
+	assertWatching(2);
 	const from = vault.reads.length;
 	vault.write("Inbox.md", "- [ ] call the plumber again");
 	await wait(t, 10 * OPTIONS_DELAY_MS);
 	assert.deepEqual(vault.reads.slice(from), ["Inbox.md"], "read once for both timelines");
+	await vault.app.workspace.getLeavesOfType(TIMELINE_VIEW)[0].detach();
+	assertWatching(1);
+	await vault.app.workspace.getLeavesOfType(TIMELINE_VIEW)[0].detach();
+	assertWatching(0);
+	// Reopening creates one shared index again, with no handlers retained from the closed views.
+	await openTimeline(vault);
+	await openTimeline(vault);
+	vault.resolve();
+	await wait(t, 10 * OPTIONS_DELAY_MS);
+	assertWatching(2);
 	// Unloading while a timeline's reload reads: the reload goes on, and nothing is watched any more.
 	const release = vault.holdReads();
 	vault.write("Inbox.md", "- [ ] call the plumber once more");
 	await wait(t, 10 * OPTIONS_DELAY_MS);
 	plugin.unload();
 	await settle();
-	assert.equal(noteHandlers(vault), 0);
+	assertWatching(0, false);
 	release();
 	await settle();
-	assert.equal(noteHandlers(vault), 0);
+	assertWatching(0, false);
 });
 
 test("changing Style for new dates reaches the plugin's writer without a reload", async (t) => {
