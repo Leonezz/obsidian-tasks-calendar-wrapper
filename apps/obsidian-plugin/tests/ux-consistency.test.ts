@@ -173,8 +173,12 @@ describe("Visual", () => {
 			"components set only custom properties in inline styles",
 		);
 	});
-	// Phase 4 steps 22 and 26: use Obsidian variables; record the open question 19 exception if 26 is declined.
-	it.todo("tokens are defined with Obsidian CSS variables");
+	// Phase 4 step 26: on 2026-11-15 the user approved retaining current values as a step 27 exception.
+	it(
+		"tokens are defined with Obsidian CSS variables",
+		{ skip: "phase 4 step 26: the user approved keeping the current token values for this refactor" },
+		() => {},
+	);
 	// Phase 4 step 23: remove repeated specificity prefixes.
 	it.todo("selectors have no repeated specificity prefixes");
 	// Phase 4 step 0b: compare the default theme screenshots and computed styles against the base.
