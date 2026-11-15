@@ -210,7 +210,7 @@ export function assertExpandedFilter({ semantic, geometry }) {
 		action: "filter",
 		dates: ["2026-01-10", "2026-01-20"],
 		priorityOptions: [
-			{ value: "+", label: "➕" },
+			{ value: "+", label: "Add priority" },
 			{ value: "Highest", label: "Highest" },
 			{ value: "High", label: "High🎯" },
 			{ value: "Medium", label: "Medium" },
@@ -219,7 +219,7 @@ export function assertExpandedFilter({ semantic, geometry }) {
 			{ value: "Lowest", label: "Lowest" },
 		],
 		priorityChips: ["High🎯", "None🎯"],
-		filterChips: ["📆 date🎯", "⏫ priority🎯"],
+		filterChips: ["📆 Date🎯", "⏫ Priority🎯"],
 		priorityClosedValue: "+",
 		filterClosedValue: "+",
 	});

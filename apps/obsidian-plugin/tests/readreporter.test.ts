@@ -40,7 +40,7 @@ const warn = (w: ParseWarning) => ["warn", `Tasks Calendar Wrapper: ${w.path}, l
 const error = (path: string) => ["error", "Tasks Calendar Wrapper: reading a file failed", failure(path).reason];
 const notice = (count: number) => [
 	"notice",
-	`Tasks Calendar Wrapper: ${count} file(s) could not be read, their tasks are missing. See the developer console.`,
+	`Tasks Calendar Wrapper: ${count} ${count === 1 ? "note" : "notes"} could not be read. ${count === 1 ? "Its" : "Their"} tasks are missing from the timeline. See the developer console.`,
 ];
 
 test("the first report tells what reportNoteReads tells, in its order: warnings, reasons, the Notice", async (t) => {
