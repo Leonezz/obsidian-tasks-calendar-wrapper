@@ -231,17 +231,27 @@ export class TasksTimelineView extends ItemView {
 		// Runs the components' cleanup, so a reload that finishes after closing renders nothing.
 		const root = this.root;
 		this.root = undefined;
-		if (root) {
-			try {
-				// Commit an empty tree first: React 18 can retain the previous tree in its alternate root.
-				flushSync(() => root.render(null));
-			} finally {
-				root.unmount();
+		try {
+			if (root) {
+				try {
+					// Commit an empty tree first: React 18 can retain the previous tree in its alternate root.
+					flushSync(() => root.render(null));
+				} finally {
+					root.unmount();
+				}
 			}
+		} finally {
+			if (root) {
+				// React can retain its unmounted container. Detach it from the host view and keep an empty content slot.
+				const content = this.contentEl;
+				const replacement = content.cloneNode(false) as HTMLElement;
+				content.replaceWith(replacement);
+				this.contentEl = replacement;
+			}
+			this.timelineHandle = undefined;
+			// Unloads this view's markdown children, and only them.
+			this.removeChild(this.markdownOwner);
 		}
-		this.timelineHandle = undefined;
-		// Unloads this view's markdown children, and only them.
-		this.removeChild(this.markdownOwner);
 	}
 
 	getState(): Record<string, unknown> {

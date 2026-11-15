@@ -778,9 +778,51 @@ export class Component {
 	}
 }
 
-/** Obsidian's `empty()` on the elements of a view. */
+/** The view's DOM elements: attributes, child/parent links and public empty, clone and replace operations. */
 class ViewElement {
-	empty(): void {}
+	children: ViewElement[] = [];
+	parentElement: ViewElement | null = null;
+	textContent = "";
+	private readonly attributes = new Map<string, string>();
+
+	constructor(cls: string, children: ViewElement[] = []) {
+		this.setAttribute("class", cls);
+		this.children = children;
+		for (const child of children) child.parentElement = this;
+	}
+
+	getAttribute(name: string): string | null {
+		return this.attributes.get(name) ?? null;
+	}
+
+	setAttribute(name: string, value: string): void {
+		this.attributes.set(name, value);
+	}
+
+	empty(): void {
+		this.textContent = "";
+		for (const child of this.children) child.parentElement = null;
+		this.children = [];
+	}
+
+	cloneNode(deep = false): ViewElement {
+		const clone = new ViewElement("");
+		for (const [name, value] of this.attributes) clone.setAttribute(name, value);
+		if (deep) {
+			clone.textContent = this.textContent;
+			clone.children = this.children.map((child) => child.cloneNode(true));
+			for (const child of clone.children) child.parentElement = clone;
+		}
+		return clone;
+	}
+
+	replaceWith(replacement: ViewElement): void {
+		const parent = this.parentElement;
+		if (!parent) return;
+		parent.children = parent.children.map((child) => (child === this ? replacement : child));
+		replacement.parentElement = parent;
+		this.parentElement = null;
+	}
 }
 
 /**
@@ -791,7 +833,19 @@ class ViewElement {
 export class ItemView extends Component {
 	readonly app: unknown;
 	/** The view's header and its content, as Obsidian builds them. */
-	readonly containerEl = { children: [new ViewElement(), new ViewElement()] };
+	readonly containerEl = new ViewElement("workspace-leaf-content", [
+		new ViewElement("view-header"),
+		new ViewElement("view-content"),
+	]);
+
+	/** Public and writable, also when a DOM test supplies the host-created children. */
+	get contentEl(): ViewElement {
+		return this.containerEl.children[1];
+	}
+
+	set contentEl(element: ViewElement) {
+		this.containerEl.children[1] = element;
+	}
 
 	constructor(public leaf: { app?: unknown }) {
 		super();
