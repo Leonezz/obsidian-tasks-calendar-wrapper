@@ -168,7 +168,7 @@ test("Tasks without executeToggleTaskDoneCommand is too old: the note opens at t
 	if (result.kind === "refused") assert.equal(result.reason, "tasks-too-old");
 	assert.deepEqual(h.opened, [{ path: "a.md", line: 0 }]);
 	assert.deepEqual(h.notices, [
-		"Completing from the timeline needs Tasks 7.2.0 or newer, so the note was opened at the task.",
+		"Completing tasks from the timeline requires Tasks 7.2.0 or later. The note was opened at the task.",
 	]);
 	assert.equal(h.processCalls.length, 0);
 	writer.dispose();

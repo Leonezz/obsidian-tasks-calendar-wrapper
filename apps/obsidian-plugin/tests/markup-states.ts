@@ -94,7 +94,7 @@ export async function reachMarkupState(fixture: ViewFixture, name: string) {
 	if (name.startsWith("light-")) {
 		const state = stateOf(name);
 		for (const selector of [
-			...(state.todayFocus ? ['[aria-label="Focus today"]'] : []),
+			...(state.todayFocus ? ['[aria-label="Focus on today"]'] : []),
 			...(state.counter ? [`#${state.counter}`] : []),
 		]) {
 			const control = fixture.root().querySelector<HTMLElement>(selector);

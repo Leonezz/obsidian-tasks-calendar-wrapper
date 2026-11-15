@@ -131,7 +131,7 @@ test("relative dates follow the current day, so a row changes when the day does"
 	const tomorrow = taskRowModel(task, options, env(today.clone().add(1, "day")));
 	assert.deepEqual(
 		now.badges.map((b) => b.label),
-		["Yesterday", "Tomorrow", "every week", "High Priority"],
+		["Yesterday", "Tomorrow", "every week", "High priority"],
 	);
 	assert.notEqual(JSON.stringify(now), JSON.stringify(tomorrow));
 });
@@ -141,10 +141,10 @@ test("badges come in the order the row shows them, with their full dates in the 
 	assert.deepEqual(
 		row.badges.map((b) => [b.kind, b.ariaLabel]),
 		[
-			["scheduled", "scheduled to 11.10.2026"],
-			["due", "due at 13.10.2026"],
-			["repeat", "recurrent: every week"],
-			["priority", "priority: High"],
+			["scheduled", "Scheduled: 11.10.2026"],
+			["due", "Due: 13.10.2026"],
+			["repeat", "Repeats: every week"],
+			["priority", "Priority: High"],
 		],
 	);
 });
@@ -190,10 +190,10 @@ test("every date badge has its own words before the full date", () => {
 	);
 	assert.deepEqual(
 		row.badges.map((b) => b.ariaLabel),
-		["start at 2026-10-10", "scheduled to 2026-10-11", "due at 2026-10-13", "complete at 2026-10-12"],
+		["Start: 2026-10-10", "Scheduled: 2026-10-11", "Due: 2026-10-13", "Completed: 2026-10-12"],
 	);
 	const diary = taskRowModel(resolved("- [ ] diary", "Journal/2026-10-10.md"), options, env());
-	assert.equal(diary.badges[0].ariaLabel, "create at 2026-10-10");
+	assert.equal(diary.badges[0].ariaLabel, "Created: 2026-10-10");
 });
 
 test("a row shows the text after the 24-hour option, or the task's text when nothing is left to show", () => {

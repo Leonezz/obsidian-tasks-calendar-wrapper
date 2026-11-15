@@ -11,7 +11,11 @@ export const THEMES = {
 };
 
 export const POSITIONS = ["top", "today", "bottom"];
-export const COUNTERS = { todo: "Todo Tasks", overdue: "Overdue Tasks", unplanned: "Unplanned Tasks" };
+export const COUNTERS = {
+	todo: "Toggle to-do counter",
+	overdue: "Toggle overdue counter",
+	unplanned: "Toggle unplanned counter",
+};
 
 /** The appearance settings recorded in screenshots.json, with their names in Obsidian's settings for the warnings. */
 export const APPEARANCE = {

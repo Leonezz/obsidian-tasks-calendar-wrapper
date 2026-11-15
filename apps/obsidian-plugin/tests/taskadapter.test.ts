@@ -109,7 +109,7 @@ test("a note whose frontmatter tags hold a number drops only that note, and says
 	assert.deepEqual(tasks[0].tags, ["#work"]);
 	assert.equal(errors.mock.callCount(), 1);
 	assert.deepEqual(shownNotices, [
-		"Tasks Calendar Wrapper: 1 file(s) could not be read, their tasks are missing. See the developer console.",
+		"Tasks Calendar Wrapper: 1 note could not be read. Its tasks are missing from the timeline. See the developer console.",
 	]);
 });
 
@@ -151,7 +151,7 @@ const dateWarnings = [
 ];
 
 const twoFailed =
-	"Tasks Calendar Wrapper: 2 file(s) could not be read, their tasks are missing. See the developer console.";
+	"Tasks Calendar Wrapper: 2 notes could not be read. Their tasks are missing from the timeline. See the developer console.";
 
 test("readTasks warns about every note's dates first, then reports each failed read, then shows one Notice", async (t) => {
 	const told = ourLines(t);

@@ -1,5 +1,5 @@
-// Pin verbatim user-visible strings no other test pins, so the move into the copy table (phase 4 step 11)
-// is checked byte for byte. These tests must stay green, unchanged.
+// Pin verbatim user-visible strings no other test pins. Keep these expectations literal so an
+// approved wording change is reviewed independently of the copy table.
 import "./setup";
 
 import { beforeEach, test, type TestContext } from "node:test";
@@ -99,11 +99,11 @@ test("the what's-new modal pins its title, version headings, support text and bu
 	);
 	assert.deepEqual(
 		elements.filter((element) => element.tag === "p").map((element) => element.textContent),
-		["If you find this plugin useful, a star on GitHub or your support for its development helps a lot."],
+		["If this plugin is useful to you, star it on GitHub or support its development."],
 	);
 	assert.deepEqual(
 		buttons(content).map((button) => button.buttonText),
-		["⭐ Star on GitHub", "Support development", "Thanks!"],
+		["Star on GitHub", "Support development", "Close"],
 	);
 });
 
@@ -127,7 +127,7 @@ test("a failed timeline command pins the open-view failure notice for five secon
 	assert.ok(command?.callback);
 	command.callback();
 	await settle();
-	assert.deepEqual(Notice.shown, ["Failed to open the timeline view. See the developer console for details."]);
+	assert.deepEqual(Notice.shown, ["Could not open the timeline. See the developer console for details."]);
 	assert.equal(Notice.instances.length, 1);
 	assert.equal(Notice.instances[0].duration, 5000);
 });

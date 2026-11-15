@@ -61,8 +61,8 @@ test("menu offers Remove only for own dates", () => {
 	for (const marker of ["+", "1)"])
 		assert.deepEqual(removes(`${marker} [ ] b ⏳ 2026-10-20`), ["Remove scheduled date"]);
 	assert.deepEqual(titles(source), [
-		["Due today", "due"],
-		["Due tomorrow", "due"],
+		["Set due date to today", "due"],
+		["Set due date to tomorrow", "due"],
 		["Pick due date…", "due"],
 		["Remove due date", "due"],
 		["Pick scheduled date…", "scheduled"],
@@ -132,8 +132,8 @@ test("parenthesized and impossible dates offer Pick but no Remove", () => {
 
 test("each menu item writes its field and reports the shifted target", async () => {
 	for (const [title, field, day] of [
-		["Due today", "due", "2026-01-15"],
-		["Due tomorrow", "due", "2026-01-16"],
+		["Set due date to today", "due", "2026-01-15"],
+		["Set due date to tomorrow", "due", "2026-01-16"],
 		["Pick due date…", "due", "2026-10-24"],
 		["Remove due date", "due", null],
 		["Pick scheduled date…", "scheduled", "2026-10-24"],

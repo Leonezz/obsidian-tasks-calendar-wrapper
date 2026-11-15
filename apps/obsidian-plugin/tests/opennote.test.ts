@@ -48,7 +48,7 @@ test("opens once at the line", async () => {
 	opens.length = 0;
 	leafRequests.length = 0;
 	assert.equal(await openNoteAt(app, "Notes/missing.md", 3), null);
-	assert.deepEqual(Notice.shown, ["No such file: Notes/missing.md"]);
+	assert.deepEqual(Notice.shown, ["Note not found: Notes/missing.md"]);
 	assert.equal(opens.length, 0);
 	assert.equal(leafRequests.length, 0);
 });

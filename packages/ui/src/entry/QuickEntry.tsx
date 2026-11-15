@@ -72,6 +72,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 	}
 
 	const filterNames = ["+", "date", "priority"];
+	const submitAria = action === "append" ? copy.quickEntry.appendTaskAria : copy.quickEntry.applyFilterAria;
 	return (
 		<div className={focused ? "quickEntryPanel focus" : "quickEntryPanel"}>
 			<div className="left">
@@ -220,7 +221,7 @@ export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
 				<button
 					className="ok"
 					ref={okButton}
-					aria-label={copy.quickEntry.appendTaskAria}
+					aria-label={submitAria}
 					onClick={() => {
 						if (action === "append") {
 							if (appendPending.current) return;

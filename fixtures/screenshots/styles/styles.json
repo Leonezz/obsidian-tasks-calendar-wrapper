@@ -1,6 +1,6 @@
 {
 	"note": "Taken by apps/obsidian-plugin/scripts/screenshots.mjs (`pnpm screenshots --styles --update`). Do not edit by hand.",
-	"obsidianVersion": "1.14.5 (installer 1.13.7)",
+	"obsidianVersion": "1.15.1 (installer 1.13.7)",
 	"electron": "43.3.0",
 	"chrome": "150.0.7871.212",
 	"machine": {
@@ -24,16 +24,16 @@
 		"zoom": 1,
 		"timelineFont": "\"??\", \"??\", \"??\", ui-sans-serif, -apple-system, \"system-ui\", system-ui, \"Segoe UI\", \"Google Sans Flex\", Roboto, \"Inter Variable\", Inter, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", sans-serif",
 		"display": {
-			"name": "内建视网膜显示器",
-			"internal": true,
-			"colorSpace": "{primaries:P3, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
+			"name": "P275MV PLUS",
+			"internal": false,
+			"colorSpace": "{r:[0.6835, 0.3066], g:[0.2177, 0.7265], b:[0.1523, 0.0449], w:[0.3127, 0.3290]}, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
 			"scaleFactor": 2
 		}
 	},
-	"takenAt": "2026-11-01",
+	"takenAt": "2026-11-15",
 	"plugin": {
 		"version": "0.3.7",
-		"commit": "2f4febb",
+		"commit": "ec42bf0",
 		"uncommittedChanges": false
 	},
 	"states": [

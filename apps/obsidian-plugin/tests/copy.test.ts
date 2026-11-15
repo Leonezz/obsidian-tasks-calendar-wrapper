@@ -372,3 +372,169 @@ test("settings copy follows the style guide", () => {
 	};
 	walk(copy.settings, "copy.settings");
 });
+
+type TimelineCopyRole =
+	"label" | "sentence" | "error" | "prefix" | "suffix" | "appendSentence" | "phrase" | "summary" | "glyph";
+
+/** These fragments are composed by callers; trimming or capitalising them would change the resulting message. */
+const fragmentRoles: Readonly<Record<string, TimelineCopyRole>> = {
+	"quickEntry.from": "prefix",
+	"quickEntry.to": "prefix",
+	"quickEntry.priorities": "prefix",
+	"row.createdPrefix": "prefix",
+	"row.startPrefix": "prefix",
+	"row.scheduledPrefix": "prefix",
+	"row.duePrefix": "prefix",
+	"row.donePrefix": "prefix",
+	"row.recurrencePrefix": "prefix",
+	"row.priorityPrefix": "prefix",
+	"row.prioritySuffix": "suffix",
+	"row.summary": "summary",
+	"row.menuGlyph": "glyph",
+	"row.modifyGlyph": "glyph",
+	"notices.changeDateWithMenu": "appendSentence",
+	"notices.localDigits": "appendSentence",
+	"notices.fixInNote": "appendSentence",
+	"notices.dialogChangesNotUndone": "appendSentence",
+	"notices.couldNotUndo": "prefix",
+	"notices.touchMenu": "phrase",
+	"notices.rightClick": "phrase",
+};
+const errorTails = new Set([
+	"writeFailure",
+	"tasksDialogError",
+	"tasksDialogFailure",
+	"openFailure",
+	"fileMissing",
+	"reloadFailure",
+]);
+const noticeLabels = new Set(["editNotSaved", "editChangedBack", "copy", "openNote", "redo", "undo"]);
+const modalSentences = new Set(["createNoteMessage", "removeRecurrenceMessage", "support"]);
+
+function timelineRole(name: string): TimelineCopyRole {
+	if (fragmentRoles[name]) return fragmentRoles[name];
+	const [group, key] = name.split(".");
+	if (["counters", "quickEntry", "row", "timeline", "commands", "menus"].includes(group)) return "label";
+	if (group === "modals") return modalSentences.has(key) ? "sentence" : "label";
+	if (group === "notices") return errorTails.has(key) ? "error" : noticeLabels.has(key) ? "label" : "sentence";
+	assert.fail(`copy.${name}: assign the new group a text role`);
+}
+
+/** Validate fixed English only. Braced fields stand for user data, never text to recase. */
+function labelText(text: string, name: string): void {
+	assert.equal(text, text.trim(), `${name}: labels have no boundary whitespace`);
+	for (const [symbol] of text.matchAll(/(?:\p{Extended_Pictographic}|\p{Emoji_Presentation})\uFE0F?/gu))
+		assert.ok(taskSyntax.test(symbol), `${name}: unexpected label emoji ${symbol}`);
+	const words = text.replace(/(?:\p{Extended_Pictographic}|\p{Emoji_Presentation})\uFE0F?/gu, "").trim();
+	assert.match(words, /^\p{Lu}/u, `${name}: labels need English text beginning with a capital`);
+	assert.doesNotMatch(words, /\.$/u, `${name}: labels have no final full stop`);
+	for (const [product] of words.matchAll(
+		/\b(?:tasks calendar wrapper|tasks timeline|obsidian|dataview|github|utf-8)\b/giu,
+	))
+		assert.ok(
+			["Tasks Calendar Wrapper", "Tasks Timeline", "Obsidian", "Dataview", "GitHub", "UTF-8"].includes(product),
+			`${name}: retain product spelling (${product})`,
+		);
+	const fixed = words
+		.replace(/\{[A-Za-z_$][\w$]*\}/gu, "value")
+		.replace(/\b(?:Tasks Calendar Wrapper|Tasks Timeline|Obsidian|Dataview|GitHub|Tasks|UTF-8)\b/gu, (product) =>
+			product.toLowerCase(),
+		)
+		.replace(/^\p{Lu}/u, (first) => first.toLowerCase());
+	assert.doesNotMatch(fixed, /(?:^|[^\p{L}\p{N}])\p{Lu}/u, `${name}: use sentence case`);
+}
+
+function sentenceText(text: string, name: string): void {
+	assert.equal(text, text.trim(), `${name}: complete messages have no boundary whitespace`);
+	assert.doesNotMatch(text, / {2,}|[\n\t]/u, `${name}: no layout whitespace`);
+	assert.match(text, /[.!?]$/u, `${name}: complete messages end with punctuation`);
+	// A leading task, note or count keeps the supplied spelling and case.
+	if (!/^(?:“)?\{/u.test(text)) assert.match(text, /^\p{Lu}/u, `${name}: capitalise the fixed opening`);
+}
+
+function assertTimelineText(text: string, role: TimelineCopyRole, name: string): void {
+	if (role === "label") return labelText(text, name);
+	if (role === "sentence") return sentenceText(text, name);
+	if (role === "error") {
+		assert.match(text, /: \{(?:reason|path)\}$/u, `${name}: leave the supplied error/path tail verbatim`);
+		return labelText(text.slice(0, text.lastIndexOf(": ")), name);
+	}
+	if (role === "prefix") {
+		assert.ok(text.endsWith(" ") && !text.endsWith("  "), `${name}: exactly one joining space`);
+		return labelText(text.slice(0, -1), name);
+	}
+	if (role === "suffix") {
+		assert.ok(text.startsWith(" ") && !text.startsWith("  "), `${name}: exactly one joining space`);
+		assert.match(text.slice(1), /^[a-z]+$/u, `${name}: lower-case continuation`);
+		return;
+	}
+	if (role === "appendSentence") {
+		assert.ok(text.startsWith(" ") && !text.startsWith("  "), `${name}: exactly one joining space`);
+		return sentenceText(text.slice(1), name);
+	}
+	if (role === "phrase") {
+		assert.equal(text, text.trim(), name);
+		assert.match(text, /^the [a-z]/u, `${name}: phrase follows “Use”`);
+		assert.doesNotMatch(text, /\p{Lu}|[.!?]$/u, `${name}: lower-case phrase without sentence-ending punctuation`);
+		return;
+	}
+	if (role === "summary") {
+		assert.equal(text, "{status}, {dates}, {note}", `${name}: preserve supplied values and order`);
+		return;
+	}
+	assert.ok(
+		name === "row.menuGlyph" || name === "row.modifyGlyph",
+		`${name}: only declared visual glyphs are exempt`,
+	);
+}
+
+test("timeline copy follows the style guide for its text role", () => {
+	for (const [name, value] of leaves(copy)) {
+		const key = name.slice("copy.".length);
+		if (key.startsWith("settings.")) continue;
+		const role = timelineRole(key);
+		const rendered = snapshot(value);
+		assert.ok(typeof rendered === "string" || Array.isArray(rendered), name);
+		for (const text of typeof rendered === "string" ? [rendered] : (rendered as string[]))
+			assertTimelineText(text, role, key);
+	}
+	assert.equal(copy.row.menuGlyph, "⋯");
+	assert.equal(copy.row.modifyGlyph, "✏️");
+	assert.match(copy.row.menuAria, /^Open /u);
+	assert.match(copy.row.modifyAria, /^Edit /u);
+});
+
+test("text-role checks reject title case and emoji-only controls without recasing data or error tails", () => {
+	for (const text of ["Toggle To-do Counter", "📆 date", "➕", "Add task.", "Star on github"])
+		assert.throws(() => labelText(text, "invalid label"));
+	for (const text of ["the right-click Menu", "the right-click menu."])
+		assert.throws(() => assertTimelineText(text, "phrase", "invalid continuation"));
+	assert.throws(() => sentenceText("Nothing was written", "invalid message"));
+	assert.doesNotThrow(() => labelText("What's new in Tasks Calendar Wrapper", "product name"));
+	assert.doesNotThrow(() => labelText("Star on GitHub", "product name"));
+	assert.doesNotThrow(() => assertTimelineText("Could not open {path}: {reason}", "error", "error tail"));
+	assert.throws(() => assertTimelineText("Could not open {path}: {reason}.", "error", "error tail"));
+	assert.equal(
+		copy.notices.tasksDialogFailure({ reason: 'Disk "WORK" is busy.' }),
+		'The Tasks edit dialog failed: Disk "WORK" is busy.',
+	);
+	assert.equal(
+		copy.notices.reloadFailure({ reason: { toString: () => "WHY?" } }),
+		"Could not reload tasks from notes: WHY?",
+	);
+	assert.equal(
+		copy.row.summary({ status: "Due", dates: ["Due: NOW", "Start: THEN"], note: "WORK NOTES" }),
+		"Due, Due: NOW, Start: THEN, WORK NOTES",
+	);
+});
+
+test("unreadable-note copy uses the existing count parameter for singular and plural messages", () => {
+	assert.equal(
+		copy.notices.readFailures({ count: 1 }),
+		"Tasks Calendar Wrapper: 1 note could not be read. Its tasks are missing from the timeline. See the developer console.",
+	);
+	assert.equal(
+		copy.notices.readFailures({ count: 2 }),
+		"Tasks Calendar Wrapper: 2 notes could not be read. Their tasks are missing from the timeline. See the developer console.",
+	);
+});
