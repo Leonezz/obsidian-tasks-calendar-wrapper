@@ -1076,6 +1076,9 @@ export function startupNotReady(error) {
 		error.message.includes("NOT_READY:") ||
 		error.message.includes("the Obsidian CLI did not answer") ||
 		error.message.includes(
+			'the Obsidian CLI failed for "eval": The CLI is unable to find Obsidian. Please make sure Obsidian is running and try again.',
+		) ||
+		error.message.includes(
 			'code run in Obsidian failed: Error: Command "eval" not found. It may require a plugin to be enabled.',
 		)
 	);

@@ -398,10 +398,14 @@ test("startup metadata reads report NOT_READY before app/vault globals exist", a
 });
 
 test("startup-only polling tolerates unregistered eval but preserves identity and actual collector failures", () => {
+	const unavailable = new Error(
+		'the Obsidian CLI failed for "eval": The CLI is unable to find Obsidian. Please make sure Obsidian is running and try again.',
+	);
 	const unregistered = new Error(
 		'code run in Obsidian failed: Error: Command "eval" not found. It may require a plugin to be enabled.',
 	);
 	assert.equal(startupNotReady(unregistered), true);
+	assert.equal(startupNotReady(unavailable), true);
 	for (const message of [
 		"Unexpected fixture path: personal",
 		"Script failed to execute",
@@ -437,8 +441,9 @@ test("startup-only polling tolerates unregistered eval but preserves identity an
 		awaitColdstartHost(
 			() => {
 				calls++;
-				if (calls === 1) throw unregistered;
-				if (calls === 2) throw new Error("NOT_READY: fixture globals not ready");
+				if (calls === 1) throw unavailable;
+				if (calls === 2) throw unregistered;
+				if (calls === 3) throw new Error("NOT_READY: fixture globals not ready");
 				return ready;
 			},
 			paths,
@@ -448,7 +453,7 @@ test("startup-only polling tolerates unregistered eval but preserves identity an
 		),
 		ready,
 	);
-	assert.equal(calls, 3, "recovery must wait for the same complete verified host before scheduling quit");
+	assert.equal(calls, 4, "recovery must wait for the same complete verified host before scheduling quit");
 	calls = 0;
 	assert.throws(
 		() =>
