@@ -76,7 +76,7 @@ import {
 	ScriptError,
 	TIMELINE_VIEW,
 } from "./fixture-app.mjs";
-import { comparePngs, decodePng, encodePng, screenshotVerdict } from "./png.mjs";
+import { comparePngs, cropPng, decodePng, encodePng, screenshotVerdict } from "./png.mjs";
 import { abExitCode, abReport, compareArms, firstDifference, parseScreenshotArgs } from "./screenshots-ab.mjs";
 import { runExpandedFilter } from "./screenshots-expanded-filter.mjs";
 import {
@@ -188,6 +188,7 @@ async function timeline({ action, viewType, pluginId, label, theme, settleMs, wi
 			scrollHeight: target.scrollHeight,
 			clientHeight: target.clientHeight,
 			below: innerHeight - rect.bottom,
+			viewport: { width: innerWidth, height: innerHeight, devicePixelRatio },
 		};
 	}
 	function forcedWindowingInfo() {
@@ -435,10 +436,27 @@ function capture(cli, viewport = setViewport, beforeScreenshot = () => {}) {
 		height: Math.round(box.height),
 		scale: 1,
 	};
+	const dimensions = box.viewport;
+	if (
+		!dimensions ||
+		!Number.isInteger(dimensions.width) ||
+		!Number.isInteger(dimensions.height) ||
+		dimensions.width <= 0 ||
+		dimensions.height <= 0 ||
+		dimensions.devicePixelRatio !== 1
+	)
+		throw new ScriptError(
+			`the screenshot needs a positive integer CSS viewport at DPR 1: ${JSON.stringify(dimensions)}`,
+		);
 	beforeScreenshot();
-	const { data } = cli.cdp("Page.captureScreenshot", { format: "png", clip, captureBeyondViewport: false });
+	// Capture the surface once, then crop pixels: CDP's clip can rasterise fractional SVG strokes differently.
+	const { data } = cli.cdp("Page.captureScreenshot", {
+		format: "png",
+		fromSurface: true,
+		captureBeyondViewport: false,
+	});
 	if (!data) throw new ScriptError("Page.captureScreenshot returned no image.");
-	return Buffer.from(data, "base64");
+	return cropPng(Buffer.from(data, "base64"), clip, { width: dimensions.width, height: dimensions.height });
 }
 
 /** Takes every state's records into `outDir` and returns what the manifest records about them. */
