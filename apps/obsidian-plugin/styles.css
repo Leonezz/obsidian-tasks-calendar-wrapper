@@ -3,7 +3,6 @@
 .taskido {
 	cursor: default;
 	user-select: none;
-	margin-bottom: 15%;
 	--taskido-color-warning: var(--color-red);
 	--taskido-color-focus: var(--text-accent, var(--interactive-accent));
 	--taskido-color-focus-hsl: var(--interactive-accent-hsl);
@@ -13,6 +12,69 @@
 	/* The height of a row with its info line, from the screenshots' style fingerprints. */
 	--tcw-day-row-estimate: 43px;
 	--tcw-focus-ring: 2px solid var(--interactive-accent);
+	/* Optional overrides use initial so their fallbacks resolve the old variables on the consuming element,
+	   including values supplied by themes and user snippets below .taskido. */
+	--tcw-color-warning: initial;
+	--tcw-color-focus: initial;
+	--tcw-color-focus-hsl: initial;
+	--tcw-color-overdue: initial;
+	--tcw-color-done: initial;
+	--tcw-color-process: initial;
+	--tcw-color-text: initial;
+	--tcw-color-muted: initial;
+	--tcw-color-faint: initial;
+	--tcw-color-link: initial;
+	--tcw-color-hover-bg: initial;
+	--tcw-color-border: initial;
+	--tcw-color-shadow: rgba(0, 0, 0, 0.1);
+	--tcw-color-checkbox-border: initial;
+	--tcw-color-checkbox-hover: initial;
+	--tcw-control-bg: initial;
+	--tcw-control-shadow: initial;
+	--tcw-control-border-width: initial;
+	--tcw-entry-bg: initial;
+	--tcw-option-bg: initial;
+	--tcw-badge-bg: none;
+	--tcw-badge-fg: initial;
+	/* These values preserve the existing layout; adopting Obsidian's spacing scale is a separate change. */
+	--tcw-space-1: 2px;
+	--tcw-space-2: 3px;
+	--tcw-space-3: 5px;
+	--tcw-space-4: 10px;
+	--tcw-space-5: 20px;
+	--tcw-bottom-space: 15%;
+	--tcw-strip-width: 50px;
+	--tcw-strip-line-width: 1.2px;
+	--tcw-radius-badge: 10px;
+	--tcw-radius-info: 3px;
+	--tcw-radius-control: 5px;
+	--tcw-row-line-height: 22px;
+	--tcw-checkbox-size: initial;
+	--tcw-counter-min-width: 70px;
+	--tcw-counter-max-width: 150px;
+	--tcw-info-icon-height: 15px;
+	--tcw-select-height: 15px;
+	--tcw-input-height: 20px;
+	--tcw-font-year: 30px;
+	--tcw-font-focus: 24px;
+	--tcw-font-count: 18px;
+	--tcw-font-counter-label: 12px;
+	--tcw-font-date: 16px;
+	--tcw-font-task: 15px;
+	--tcw-font-badge: 9px;
+	--tcw-font-select: 11px;
+	--tcw-font-input: 14px;
+	margin-bottom: var(--tcw-bottom-space);
+}
+
+/* Warnings in palette modals use the same token with their own text-error fallback. */
+.tasks-calendar-wrapper-settings {
+	--tcw-color-warning: initial;
+}
+
+.tasks-calendar-wrapper-whats-new {
+	--tcw-support-gap: initial;
+	--tcw-support-margin: initial;
 }
 
 .is-mobile .taskido {
@@ -21,7 +83,7 @@
 
 .taskido :is(.task, [role="button"], a.tag):focus-visible {
 	outline: var(--tcw-focus-ring);
-	outline-offset: 2px;
+	outline-offset: var(--tcw-space-1);
 }
 
 .taskido .tcw-sr-only {
@@ -56,7 +118,7 @@
 
 .taskido .task .internal-link,
 .taskido .task .external-link {
-	color: var(--text-accent, var(--interactive-accent));
+	color: var(--tcw-color-link, var(--text-accent, var(--interactive-accent)));
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .internal-link,
@@ -65,10 +127,10 @@
 }
 
 .taskido .year {
-	font-size: 30px;
+	font-size: var(--tcw-font-year);
 	font-weight: bold;
-	margin: 20px 0;
-	color: var(--text-normal);
+	margin: var(--tcw-space-5) 0;
+	color: var(--tcw-color-text, var(--text-normal));
 	text-align: center;
 }
 
@@ -87,16 +149,16 @@
 }
 
 .taskido .todayHeader {
-	font-size: 24px;
+	font-size: var(--tcw-font-focus);
 	font-weight: bold;
 	text-align: center;
-	margin: 10px 5px;
-	border-radius: 10px;
+	margin: var(--tcw-space-4) var(--tcw-space-3);
+	border-radius: var(--tcw-radius-badge);
 	cursor: pointer;
 }
 
 .taskido .details.today .date {
-	color: var(--taskido-color-focus);
+	color: var(--tcw-color-focus, var(--taskido-color-focus));
 }
 
 .taskido .counters {
@@ -105,29 +167,29 @@
 	flex-wrap: nowrap;
 	justify-content: center;
 	align-content: center;
-	margin: 20px 0;
+	margin: var(--tcw-space-5) 0;
 }
 
 .taskido .counter {
 	display: flex;
 	flex-direction: column;
 	flex-wrap: nowrap;
-	color: var(--text-normal);
-	border-radius: 10px;
-	padding: 5px;
+	color: var(--tcw-color-text, var(--text-normal));
+	border-radius: var(--tcw-radius-badge);
+	padding: var(--tcw-space-3);
 	text-align: center;
 	flex: 1 1 0;
-	margin: 0 5px;
-	min-width: 70px;
-	max-width: 150px;
+	margin: 0 var(--tcw-space-3);
+	min-width: var(--tcw-counter-min-width);
+	max-width: var(--tcw-counter-max-width);
 	overflow: hidden;
-	background: var(--interactive-normal);
-	box-shadow: var(--input-shadow);
+	background: var(--tcw-control-bg, var(--interactive-normal));
+	box-shadow: var(--tcw-control-shadow, var(--input-shadow));
 	cursor: pointer;
 }
 
 .taskido .count {
-	font-size: 18px;
+	font-size: var(--tcw-font-count);
 	font-weight: normal;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -135,7 +197,7 @@
 }
 
 .taskido .counter .label {
-	font-size: 12px;
+	font-size: var(--tcw-font-counter-label);
 	font-weight: normal;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -148,12 +210,12 @@
 	flex-wrap: nowrap;
 	justify-content: space-between;
 	align-items: center;
-	margin: 10px 0;
+	margin: var(--tcw-space-4) 0;
 }
 
 .taskido .date {
-	color: var(--text-normal);
-	font-size: 16px;
+	color: var(--tcw-color-text, var(--text-normal));
+	font-size: var(--tcw-font-date);
 	font-weight: bold;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -161,19 +223,19 @@
 }
 
 .taskido .weekday {
-	color: var(--text-normal);
+	color: var(--tcw-color-text, var(--text-normal));
 	font-weight: normal;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-size: 16px;
+	font-size: var(--tcw-font-date);
 }
 
 .taskido .task {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
-	border-radius: 10px;
+	border-radius: var(--tcw-radius-badge);
 	padding: 0;
 	margin: 0;
 	cursor: pointer;
@@ -188,7 +250,7 @@
 }
 
 .taskido .timeline {
-	width: 50px;
+	width: var(--tcw-strip-width);
 	flex-shrink: 0;
 	flex-grow: 0;
 	align-items: center;
@@ -208,41 +270,41 @@
 	flex-shrink: 1;
 	flex-grow: 1;
 	position: relative;
-	margin-top: 3px;
-	margin-bottom: 3px;
-	width: 1.2px;
-	background: var(--checkbox-border-color);
+	margin-top: var(--tcw-space-2);
+	margin-bottom: var(--tcw-space-2);
+	width: var(--tcw-strip-line-width);
+	background: var(--tcw-color-checkbox-border, var(--checkbox-border-color));
 }
 
 .taskido .task.overdue .timeline::after,
 .taskido .task[data-task=">"] .timeline::after {
-	background-color: var(--taskido-color-overdue);
+	background-color: var(--tcw-color-overdue, var(--taskido-color-overdue));
 }
 
 .taskido .task.done .timeline::after,
 .taskido .task[data-task="x"] .timeline::after {
-	background-color: var(--taskido-color-done);
+	background-color: var(--tcw-color-done, var(--taskido-color-done));
 }
 
 .taskido .task.process .timeline::after,
 .taskido .task.scheduled .timeline::after,
 .taskido .task.start .timeline::after,
 .taskido .task[data-task="<"] .timeline::after {
-	background-color: var(--taskido-color-process);
+	background-color: var(--tcw-color-process, var(--taskido-color-process));
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.overdue .timeline .icon svg {
-	stroke: var(--taskido-color-overdue);
+	stroke: var(--tcw-color-overdue, var(--taskido-color-overdue));
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.done .timeline .icon svg {
-	stroke: var(--taskido-color-done);
+	stroke: var(--tcw-color-done, var(--taskido-color-done));
 }
 
 .taskido .task.process .timeline .icon svg,
 .taskido .task.scheduled .timeline .icon svg,
 .taskido .task.start .timeline .icon svg {
-	stroke: var(--taskido-color-process);
+	stroke: var(--tcw-color-process, var(--taskido-color-process));
 }
 
 .taskido .task.done .info .tag,
@@ -268,13 +330,13 @@
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.cancelled .info .priority,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.cancelled .info .relative,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.cancelled .info .file {
-	color: var(--text-muted);
+	color: var(--tcw-color-muted, var(--text-muted));
 }
 
 .taskido .task.done .content,
 .taskido .task.cancelled .content {
 	text-decoration: line-through;
-	color: var(--text-muted);
+	color: var(--tcw-color-muted, var(--text-muted));
 }
 
 .taskido .line {
@@ -285,7 +347,7 @@
 }
 
 .taskido .task .timeline input[type="checkbox"]:not(.icon) {
-	margin-top: calc(11px - var(--checkbox-size) / 2);
+	margin-top: calc(var(--tcw-row-line-height) / 2 - var(--tcw-checkbox-size, var(--checkbox-size)) / 2);
 	margin-left: 0;
 	margin-right: 0;
 }
@@ -306,23 +368,23 @@
 }
 
 .taskido .timeline .icon svg {
-	height: var(--checkbox-size);
-	width: var(--checkbox-size);
+	height: var(--tcw-checkbox-size, var(--checkbox-size));
+	width: var(--tcw-checkbox-size, var(--checkbox-size));
 	stroke-width: 1.75px;
-	color: var(--checkbox-border-color);
+	color: var(--tcw-color-checkbox-border, var(--checkbox-border-color));
 	scale: 1.2;
 }
 
 @media (hover: hover) {
 	.taskido .timeline .icon svg:hover {
-		color: var(--checkbox-border-color-hover);
+		color: var(--tcw-color-checkbox-hover, var(--checkbox-border-color-hover));
 		scale: 1.3;
 	}
 }
 
 .taskido .task .info {
-	line-height: 22px;
-	padding-bottom: 2px;
+	line-height: var(--tcw-row-line-height);
+	padding-bottom: var(--tcw-space-1);
 	cursor: default;
 }
 
@@ -333,10 +395,10 @@
 .taskido .task .content {
 	display: block;
 	white-space: break-word;
-	font-size: 15px;
+	font-size: var(--tcw-font-task);
 	font-weight: normal;
-	color: var(--text-normal);
-	line-height: 22px;
+	color: var(--tcw-color-text, var(--text-normal));
+	line-height: var(--tcw-row-line-height);
 }
 
 .taskido .task .info .tag,
@@ -349,10 +411,10 @@
 	flex-wrap: nowrap;
 	align-items: center;
 	width: auto;
-	font-size: 9px;
+	font-size: var(--tcw-font-badge);
 	font-weight: normal;
-	margin: 2px 5px 2px 0;
-	color: var(--text-muted);
+	margin: var(--tcw-space-1) var(--tcw-space-3) var(--tcw-space-1) 0;
+	color: var(--tcw-badge-fg, var(--tcw-color-muted, var(--text-muted)));
 	border: none;
 	padding: 0;
 }
@@ -363,7 +425,7 @@
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .relative,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .file {
 	line-height: 1;
-	border-radius: 3px;
+	border-radius: var(--tcw-radius-info);
 }
 
 .taskido .task .info .file {
@@ -376,16 +438,16 @@
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .tag {
 	color: var(--tag-color);
-	background: none;
+	background: var(--tcw-badge-bg);
 }
 
 .taskido .info .icon {
 	text-align: center;
-	height: 15px;
+	height: var(--tcw-info-icon-height);
 }
 
 .taskido .info .label {
-	margin-left: 2px;
+	margin-left: var(--tcw-space-1);
 }
 
 .taskido .info svg {
@@ -395,12 +457,12 @@
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.overdue .info .relative {
-	color: var(--taskido-color-overdue);
+	color: var(--tcw-color-overdue, var(--taskido-color-overdue));
 }
 
 /* Tag Filter, shown with or without the quick entry panel */
 .taskido .tagFilterBar {
-	margin: 0 5px 10px 5px;
+	margin: 0 var(--tcw-space-3) var(--tcw-space-4) var(--tcw-space-3);
 }
 
 .taskido .tagFilterBar input {
@@ -412,14 +474,15 @@
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
-	background: var(--background-modifier-form-field);
-	border: var(--input-border-width) solid var(--background-modifier-border);
-	color: var(--text-normal);
-	border-radius: 10px;
-	box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.1);
-	margin: 0 5px 20px 5px;
+	background: var(--tcw-entry-bg, var(--background-modifier-form-field));
+	border: var(--tcw-control-border-width, var(--input-border-width)) solid
+		var(--tcw-color-border, var(--background-modifier-border));
+	color: var(--tcw-color-text, var(--text-normal));
+	border-radius: var(--tcw-radius-badge);
+	box-shadow: 0 0 var(--tcw-space-3) 0 var(--tcw-color-shadow);
+	margin: 0 var(--tcw-space-3) var(--tcw-space-5) var(--tcw-space-3);
 	overflow: hidden;
-	padding: 5px;
+	padding: var(--tcw-space-3);
 }
 
 .taskido .quickEntryPanel .left {
@@ -427,11 +490,11 @@
 	flex-shrink: 1;
 	flex-grow: 1;
 	overflow: hidden;
-	border-radius: 5px;
+	border-radius: var(--tcw-radius-control);
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel .left {
-	padding: 0 5px;
+	padding: 0 var(--tcw-space-3);
 }
 
 .taskido .quickEntryPanel .left .actionSelect {
@@ -473,7 +536,7 @@
 	flex-shrink: 1;
 	flex-grow: 1;
 	overflow: hidden;
-	border-radius: 5px;
+	border-radius: var(--tcw-radius-control);
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel select,
@@ -495,42 +558,42 @@
 }
 
 .taskido .quickEntryPanel select {
-	height: 15px;
+	height: var(--tcw-select-height);
 	width: 100%;
-	font-size: 11px;
+	font-size: var(--tcw-font-select);
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	overflow: hidden;
-	color: var(--text-muted);
+	color: var(--tcw-color-muted, var(--text-muted));
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel select {
 	padding: 0;
-	margin: 2.5px 0;
+	margin: calc(var(--tcw-space-3) / 2) 0;
 }
 
 @media (hover: hover) {
 	.taskido .quickEntryPanel select:hover,
 	.taskido .quickEntryPanel button:hover {
-		color: var(--text-normal);
+		color: var(--tcw-color-text, var(--text-normal));
 	}
 }
 
 .taskido .quickEntryPanel select option,
 .taskido .quickEntryPanel select optgroup {
-	background: var(--background-primary);
+	background: var(--tcw-option-bg, var(--background-primary));
 	font-weight: normal;
-	color: var(--text-normal);
+	color: var(--tcw-color-text, var(--text-normal));
 }
 
 .taskido .quickEntryPanel input {
-	height: 20px;
-	line-height: 20px;
+	height: var(--tcw-input-height);
+	line-height: var(--tcw-input-height);
 	width: 100%;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	overflow: hidden;
-	font-size: 14px;
+	font-size: var(--tcw-font-input);
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel input {
@@ -546,11 +609,11 @@
 	align-items: center;
 	height: 100%;
 	width: auto;
-	color: var(--text-muted);
+	color: var(--tcw-color-muted, var(--text-muted));
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel button {
-	padding: 0 5px;
+	padding: 0 var(--tcw-space-3);
 	margin: 0;
 }
 
@@ -605,7 +668,7 @@
 }
 
 .is-mobile .taskido .task .timeline label.icon {
-	margin-block: calc((var(--checkbox-size) - var(--tcw-touch-target)) / 2);
+	margin-block: calc((var(--tcw-checkbox-size, var(--checkbox-size)) - var(--tcw-touch-target)) / 2);
 	position: relative;
 	z-index: 1;
 }
@@ -615,7 +678,7 @@
 }
 
 .is-mobile .taskido .todayHeader {
-	margin-block: calc(10px - max(0px, (var(--tcw-touch-target) - 1lh) / 2));
+	margin-block: calc(var(--tcw-space-4) - max(0px, (var(--tcw-touch-target) - 1lh) / 2));
 }
 
 .is-mobile .taskido .quickEntryPanel select {
@@ -629,7 +692,7 @@
 
 /* Classes */
 .taskido.todayFocus .todayHeader {
-	color: var(--taskido-color-focus);
+	color: var(--tcw-color-focus, var(--taskido-color-focus));
 }
 
 .taskido.todoFocus .counter#todo,
@@ -638,9 +701,9 @@
 .taskido.overdueFilter .counter#overdue,
 .taskido.unplannedFocus .counter#unplanned,
 .taskido.unplannedFilter .counter#unplanned {
-	color: var(--taskido-color-focus);
-	background: var(--background-modifier-hover);
-	box-shadow: var(--input-shadow);
+	color: var(--tcw-color-focus, var(--taskido-color-focus));
+	background: var(--tcw-color-hover-bg, var(--background-modifier-hover));
+	box-shadow: var(--tcw-control-shadow, var(--input-shadow));
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noYear .year,
@@ -666,16 +729,16 @@
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noColor .task .file {
-	color: var(--text-muted);
+	color: var(--tcw-color-muted, var(--text-muted));
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noColor .task .info .file {
-	color: var(--text-muted);
+	color: var(--tcw-color-muted, var(--text-muted));
 }
 
 /* Dim the content and controls without compositing the whole row. */
 .taskido .task[aria-busy="true"] {
-	color: var(--text-faint);
+	color: var(--tcw-color-faint, var(--text-faint));
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task[aria-busy="true"] .content,
@@ -709,12 +772,12 @@
 .taskido.todoFocus .task.start,
 .taskido.overdueFocus .task.overdue,
 .taskido.unplannedFocus .task.unplanned {
-	background: var(--background-modifier-hover);
+	background: var(--tcw-color-hover-bg, var(--background-modifier-hover));
 }
 
 @media (hover: hover) {
 	.taskido .task:hover {
-		background: var(--background-modifier-hover);
+		background: var(--tcw-color-hover-bg, var(--background-modifier-hover));
 	}
 }
 
@@ -724,7 +787,7 @@
 
 /* Warning note in setting descriptions, e.g. the path filters. */
 .tasks-calendar-wrapper-setting-warning {
-	color: var(--text-error);
+	color: var(--tcw-color-warning, var(--text-error));
 }
 
 /* What's new dialog: the star and support buttons wrap and stay centred. */
@@ -732,6 +795,15 @@
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: center;
-	gap: var(--size-4-2);
-	margin-bottom: var(--size-4-4);
+	gap: var(--tcw-support-gap, var(--size-4-2));
+	margin-bottom: var(--tcw-support-margin, var(--size-4-4));
+}
+
+/* These were inline styles; keep their values while components pass only custom properties. */
+.taskido a.tag {
+	z-index: 9999;
+}
+
+.taskido .quickEntryPanel .fileSelect option {
+	white-space: nowrap;
 }
