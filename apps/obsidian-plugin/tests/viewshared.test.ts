@@ -28,7 +28,7 @@ const shownNotices = (Notice as unknown as { shown: string[] }).shown;
 
 /** What reportNoteReads shows for one note that could not be read. */
 const ONE_FAILED =
-	"Tasks Calendar Wrapper: 1 file(s) could not be read, their tasks are missing. See the developer console.";
+	"Tasks Calendar Wrapper: 1 note could not be read. Its tasks are missing from the timeline. See the developer console.";
 
 /** Obsidian's views open and close this way; its typings do not declare it, the stub does. */
 interface Opening {
@@ -273,7 +273,7 @@ test("a timeline closed while its reload waits, which then fails: its reader is 
 	vault.breakListing();
 	release();
 	await settle();
-	assert.deepEqual(shownNotices, ["Error when generating tasks from files: Error: the vault is not ready"]);
+	assert.deepEqual(shownNotices, ["Could not reload tasks from notes: Error: the vault is not ready"]);
 	await a.close();
 	assert.equal(watchers(vault), 0);
 });

@@ -28,7 +28,7 @@ const tasksPlugin = { "obsidian-tasks-plugin": { apiV1: { editTaskLineModal: asy
 const interactive =
 	'[role="button"], a[href], button, input, select, textarea, .task, .counter, .todayHeader, a.modify, a.menu';
 const dateButtons =
-	'a.relative[aria-label^="due at"], a.relative[aria-label^="scheduled to"], a.relative[aria-label^="start at"]';
+	'a.relative[aria-label^="Due: "], a.relative[aria-label^="Scheduled: "], a.relative[aria-label^="Start: "]';
 const rowControls = `[role="button"], a[href], a.modify, a.menu, ${dateButtons}`;
 const all = (root: ParentNode, selector: string) => Array.from(root.querySelectorAll<HTMLElement>(selector));
 function get(root: ParentNode, selector: string): HTMLElement {
@@ -264,8 +264,8 @@ test("every interactive element is focusable and has an accessible name", async 
 					["select.actionName", "Quick entry action"],
 					["select.filterSelector", "Add a filter"],
 					['select[name="priorityFilter"]', "Filter by priority"],
-					[".dateFilter input:first-of-type", "Show tasks from this date"],
-					[".dateFilter input:last-of-type", "Show tasks up to this date"],
+					[".dateFilter input:first-of-type", "Show tasks on or after this date"],
+					[".dateFilter input:last-of-type", "Show tasks on or before this date"],
 				])
 					assert.equal(get(fixture.root(), selector).getAttribute("aria-label"), label);
 			}
@@ -666,7 +666,7 @@ test("Space on a dimmed row or within 300 ms of the list commit writes nothing",
 
 test("Enter and Space on Focus on today toggle it and aria-pressed", async (t) => {
 	const fixture = await mountState(t);
-	const control = get(fixture.root(), '[aria-label="Focus today"]');
+	const control = get(fixture.root(), '[aria-label="Focus on today"]');
 	for (const value of ["Enter", " "])
 		for (const pressed of [true, false]) {
 			const event = await key(control, value);
@@ -810,7 +810,7 @@ test("Enter on Focus on today and on a counter render nothing but the Timeline",
 		providers: Record<string, string>;
 	}[];
 	for (const [operation, selector] of [
-		["Focus on today click", '[aria-label="Focus today"]'],
+		["Focus on today click", '[aria-label="Focus on today"]'],
 		["counter click", "#todo"],
 	])
 		await t.test(operation, async (s) => {

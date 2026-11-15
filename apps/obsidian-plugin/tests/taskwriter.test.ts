@@ -373,7 +373,7 @@ test("the writer's own 60 s timer: a fake process that never returns → failed 
 	if (result.kind === "failed") assert.equal(result.unknownOutcome, true);
 	assert.equal(
 		h.notices[0],
-		"a may not have been saved: the file system didn't answer within 60 s. Check the note before trying again.",
+		"a may not have been saved: the file system did not respond within 60 seconds. Check the note before trying again.",
 	);
 	assert.equal(h.releases.length, 1);
 	const blocked = await h.write();
@@ -610,7 +610,7 @@ test("an impossible date is refused before calling Tasks, with or without Tasks,
 			assert.equal(result.reason, "impossible-date");
 			assert.equal(
 				result.message,
-				"“A” has a due date that does not exist (2026-02-30). Nothing was written. Change it with right-click → Pick due date….",
+				"“A” has a due date that does not exist (2026-02-30). Nothing was written. Use the right-click menu and choose “Pick due date…”.",
 			);
 		}
 		assert.equal(called, 0);
@@ -763,7 +763,7 @@ test('process rejects with "File system operation timed out." → may-not-have-b
 	if (result.kind === "failed") assert.equal(result.unknownOutcome, true);
 	assert.equal(
 		h.notices[0],
-		"a may not have been saved: the file system didn't answer within 60 s. Check the note before trying again.",
+		"a may not have been saved: the file system did not respond within 60 seconds. Check the note before trying again.",
 	);
 	h.onProcess();
 	const next = await h.write();
@@ -791,7 +791,7 @@ test("save-first (check 5) never returns → may-not-have-been-saved at 60 s, ov
 	if (result.kind === "failed") assert.equal(result.unknownOutcome, true);
 	assert.equal(
 		h.notices[0],
-		"a may not have been saved: the file system didn't answer within 60 s. Check the note before trying again.",
+		"a may not have been saved: the file system did not respond within 60 seconds. Check the note before trying again.",
 	);
 	assert.equal(h.events.filter((e) => e.kind === "failed" && e.unknownOutcome).length, 1);
 	assert.equal(h.events.filter((e) => e.kind === "released").length, 1);

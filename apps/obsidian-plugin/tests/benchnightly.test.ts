@@ -8,6 +8,7 @@ import {
 	lowPowerMode,
 	otherBenchProcesses,
 	powerSource,
+	waitForLoadBelow,
 } from "../scripts/bench-host.mjs";
 import {
 	benchablePrs,
@@ -282,4 +283,92 @@ test("the Mac is idle when it is plugged in, quiet, untouched and running no oth
 			"another benchmark is running: 300 node scripts/bench.mjs",
 		],
 	);
+});
+
+function loadClock(loads: readonly number[], overrides: Partial<Parameters<typeof waitForLoadBelow>[0]> = {}) {
+	let time = 1_000;
+	let reads = 0;
+	const pauses: number[] = [];
+	const messages: string[] = [];
+	return {
+		pauses,
+		messages,
+		reads: () => reads,
+		run: () =>
+			waitForLoadBelow({
+				limit: 6,
+				timeoutMs: 12,
+				pollMs: 5,
+				readLoad: () => loads[Math.min(reads++, loads.length - 1)],
+				now: () => time,
+				pause(ms) {
+					pauses.push(ms);
+					time += ms;
+				},
+				log: (message) => messages.push(message),
+				...overrides,
+			}),
+	};
+}
+
+test("the load gate admits the original unrounded sample once, without waiting when already below the limit", () => {
+	const clock = loadClock([5.999999]);
+	const admission = clock.run();
+	assert.equal(admission.sample.loadAverage, 5.999999);
+	assert.deepEqual(admission.samples, [{ atMs: 1_000, loadAverage: 5.999999 }]);
+	assert.equal(admission.waitedMs, 0);
+	assert.equal(clock.reads(), 1);
+	assert.deepEqual(clock.pauses, []);
+});
+
+test("a load of exactly six is refused before a later strictly lower sample is admitted", () => {
+	const clock = loadClock([6, 5.999999]);
+	const admission = clock.run();
+	assert.deepEqual(admission.samples, [
+		{ atMs: 1_000, loadAverage: 6 },
+		{ atMs: 1_005, loadAverage: 5.999999 },
+	]);
+	assert.equal(admission.sample, admission.samples[1]);
+	assert.equal(admission.waitedMs, 5);
+	assert.deepEqual(clock.pauses, [5]);
+	assert.match(clock.messages[0], /waiting.*< 6: 6/);
+	assert.match(clock.messages[1], /admitted.*5\.999999/);
+});
+
+test("the load gate stops at its deadline, shortening the final pause instead of waiting forever", () => {
+	const clock = loadClock([6, 7, 6]);
+	assert.throws(clock.run, /timed out after 12 ms.*< 6; last sample 6/);
+	assert.deepEqual(clock.pauses, [5, 5, 2]);
+	assert.equal(clock.reads(), 4);
+	assert.equal(clock.messages.length, 3);
+});
+
+test("a low sample arriving after the deadline is not admitted", () => {
+	let time = 0;
+	let reads = 0;
+	assert.throws(
+		() =>
+			loadClock([6], {
+				readLoad: () => (reads++ === 0 ? 6 : 5.9),
+				now: () => time,
+				pause: () => (time = 13),
+			}).run(),
+		/timed out after 12 ms/,
+	);
+});
+
+test("invalid load samples, limits and clocks fail without pausing", () => {
+	for (const load of [NaN, Infinity, -1]) {
+		const clock = loadClock([load]);
+		assert.throws(clock.run, /finite and non-negative/);
+		assert.deepEqual(clock.pauses, []);
+	}
+	for (const options of [{ limit: 0 }, { timeoutMs: -1 }, { pollMs: 0 }]) {
+		const clock = loadClock([5], options);
+		assert.throws(clock.run, /must be/);
+		assert.equal(clock.reads(), 0);
+		assert.deepEqual(clock.pauses, []);
+	}
+	let tick = 1;
+	assert.throws(loadClock([5], { now: () => tick-- }).run, /must not move backwards/);
 });

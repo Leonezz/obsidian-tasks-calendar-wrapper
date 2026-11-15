@@ -1,10 +1,13 @@
 /**
  * Copy style guide: use sentence case for names, buttons and titles; keep product names as written:
- * Tasks, Obsidian, Dataview, Tasks Timeline. Names have no full stop; descriptions are full sentences with one.
+ * Tasks, Obsidian, Dataview, Tasks Timeline, Tasks Calendar Wrapper, GitHub. Names have no full stop;
+ * descriptions are full sentences with one. Concatenated prefixes/suffixes retain their required spaces,
+ * and supplied task/note text and error reasons keep their spelling and punctuation.
  * Use the fixed nouns timeline (view), note (file), task, quick entry, and Focus on today.
  * An aria-label describes the action ("Complete task", not "✓"). Use emoji only for task syntax (📅 ⏫ 🔁),
  * never as a button's only label.
- * Enforced for settings from step 14; timeline enforcement follows in step 24.
+ * Settings and timeline copy are checked by text role. Existing task-menu/edit glyphs are visual assets
+ * with descriptive aria-labels, rather than English labels; task-syntax emoji may accompany text.
  *
  * Mobile minimum: every interactive element has a 44 px tap target (--tcw-touch-target).
  * Hover effects belong only inside @media (hover: hover). No long press: ⋯ opens the row menu on touch.
@@ -22,30 +25,31 @@ function freezeCopy<T>(value: T): T {
 
 export const copy = freezeCopy({
 	counters: {
-		todo: "Todo",
-		todoAria: "Todo Tasks",
+		todo: "To-do",
+		todoAria: "Toggle to-do counter",
 		overdue: "Overdue",
-		overdueAria: "Overdue Tasks",
+		overdueAria: "Toggle overdue counter",
 		unplanned: "Unplanned",
-		unplannedAria: "Unplanned Tasks",
+		unplannedAria: "Toggle unplanned counter",
 	},
 	quickEntry: {
-		newTask: "New Task",
+		newTask: "New task",
 		filter: "Filter",
-		selectNoteAria: "Select a note to add a new task to",
+		selectNoteAria: "Select a note for the new task",
 		actionAria: "Quick entry action",
 		filterTypeAria: "Add a filter",
 		priorityAria: "Filter by priority",
-		fromAria: "Show tasks from this date",
-		toAria: "Show tasks up to this date",
-		filterVisual: ["➕", "📆 date", "⏫ priority"],
-		placeholder: "Enter your tasks here",
+		fromAria: "Show tasks on or after this date",
+		toAria: "Show tasks on or before this date",
+		filterVisual: ["Add filter", "📆 Date", "⏫ Priority"],
+		placeholder: "Enter a task",
 		from: "From: ",
-		to: "  To: ",
+		to: "To: ",
 		priorities: "Priorities: ",
-		priorityVisual: ["➕", "Highest", "High", "Medium", "None", "Low", "Lowest"],
-		appendTaskAria: "Append new task to selected note",
-		tagPlaceholder: "🏷️ Filter by tag: #home",
+		priorityVisual: ["Add priority", "Highest", "High", "Medium", "None", "Low", "Lowest"],
+		appendTaskAria: "Add task to selected note",
+		applyFilterAria: "Apply filters",
+		tagPlaceholder: "Filter by tag: #home",
 		tagAria: "Show only tasks with this tag",
 	},
 	row: {
@@ -62,38 +66,38 @@ export const copy = freezeCopy({
 		},
 		summary: (p: { status: string; dates: readonly string[]; note: string }): string =>
 			[p.status, ...p.dates, p.note].join(", "),
-		menuAria: "Task menu",
+		menuAria: "Open task menu",
 		menuGlyph: "⋯",
-		modifyAria: "Modify Task",
+		modifyAria: "Edit task",
 		modifyGlyph: "✏️",
-		createdPrefix: "create at ",
-		startPrefix: "start at ",
-		scheduledPrefix: "scheduled to ",
-		duePrefix: "due at ",
-		donePrefix: "complete at ",
-		recurrencePrefix: "recurrent: ",
-		priorityPrefix: "priority: ",
-		prioritySuffix: " Priority",
+		createdPrefix: "Created: ",
+		startPrefix: "Start: ",
+		scheduledPrefix: "Scheduled: ",
+		duePrefix: "Due: ",
+		donePrefix: "Completed: ",
+		recurrencePrefix: "Repeats: ",
+		priorityPrefix: "Priority: ",
+		prioritySuffix: " priority",
 	},
 	timeline: {
 		displayText: "Tasks Timeline",
-		focusOnToday: "Focus On Today",
-		focusOnTodayAria: "Focus today",
+		focusOnToday: "Focus on today",
+		focusOnTodayAria: "Focus on today",
 	},
 	notices: {
 		impossibleDate: (p: { text: string; field: string | undefined; value: string | undefined }) =>
 			`“${p.text}” has a ${p.field} date that does not exist (${p.value}). Nothing was written.`,
 		changeDateWithMenu: (p: { gesture: string; field: string | undefined }) =>
-			` Change it with ${p.gesture} → Pick ${p.field} date….`,
-		touchMenu: "⋯",
-		rightClick: "right-click",
+			` Use ${p.gesture} and choose “Pick ${p.field} date…”.`,
+		touchMenu: "the task menu (⋯)",
+		rightClick: "the right-click menu",
 		fixInNote: " Fix it in the note.",
 		unreadableReturnedDate: (p: { token: string | undefined; text: string }) =>
 			`Tasks returned a date the timeline cannot read back (“${p.token}”) for “${p.text}”. Nothing was written.`,
 		unreadableChangedDate: (p: { text: string; token: string | undefined }) =>
 			`“${p.text}” would get a date the timeline cannot read back (“${p.token}”). Nothing was written.`,
 		localDigits: (p: { locale: string | undefined }) =>
-			` Tasks wrote it in the digits of Obsidian's language (${p.locale}).`,
+			` Tasks used the numeral system for Obsidian's language (${p.locale}).`,
 		recurrenceLost: (p: { text: string }) =>
 			`Tasks could not read the recurrence rule in “${p.text}” and would drop it. Nothing was written. Fix the rule in the note, then try again.`,
 		recurringNeedsTasks: "Recurring tasks need the Tasks plugin. Nothing was written.",
@@ -118,7 +122,8 @@ export const copy = freezeCopy({
 			`“${p.text}” changed in ${p.note} since the timeline read it. Nothing was written. The timeline updates once Obsidian has re-read the note; then try again.`,
 		notReread: (p: { note: string; text: string }) =>
 			`Obsidian hasn't re-read ${p.note} yet, so the timeline can't change “${p.text}” again. Try again in a moment.`,
-		tasksTooOld: "Completing from the timeline needs Tasks 7.2.0 or newer, so the note was opened at the task.",
+		tasksTooOld:
+			"Completing tasks from the timeline requires Tasks 7.2.0 or later. The note was opened at the task.",
 		tasksError: (p: { text: string; message: string | undefined }) =>
 			`Tasks could not change “${p.text}”: ${p.message}. Nothing was written.`,
 		badOutput: (p: { text: string }) =>
@@ -127,16 +132,16 @@ export const copy = freezeCopy({
 			`Could not undo: “${p.text}” in ${p.note} changed or moved after the timeline wrote it. Nothing was written.`,
 		writeFailure: (p: { note: string; reason: string }) => `Could not write to ${p.note}: ${p.reason}`,
 		mayNotSavedTimeout: (p: { note: string }) =>
-			`${p.note} may not have been saved: the file system didn't answer within 60 s. Check the note before trying again.`,
+			`${p.note} may not have been saved: the file system did not respond within 60 seconds. Check the note before trying again.`,
 		mayNotSavedEditor: (p: { note: string }) =>
 			`${p.note} may not have been saved: Obsidian could not save it, and the line changed in its editor afterwards. The change is still in the open note and is saved with it. Check the note before trying again.`,
 		slow: (p: { note: string }) =>
 			`Saved in ${p.note}. The timeline will show the change once Obsidian has re-read the note.`,
-		tasksDialogTooOld: "Tasks 7.21 or later edits here",
+		tasksDialogTooOld: "Editing tasks here requires Tasks 7.21 or later. The note was opened at the task.",
 		tasksDialogError: (p: { reason: string }) => `Could not reach the Tasks plugin: ${p.reason}`,
-		tasksDialogFailure: (p: { reason: string }) => `Tasks' edit dialog failed: ${p.reason}`,
+		tasksDialogFailure: (p: { reason: string }) => `The Tasks edit dialog failed: ${p.reason}`,
 		tasksDialogDelete:
-			"Nothing was written. If you completed this task in the dialog: Tasks returns nothing for a task set to delete itself, so use the checkbox to complete it.",
+			"Nothing was written. Tasks returns no result when completing a task that deletes itself. Use the checkbox to complete the task.",
 		completed: (p: { task: string; note: string }) => `Completed “${p.task}” in ${p.note}.`,
 		recurringReplaced: (p: { task: string; note: string }) =>
 			`Completed “${p.task}” in ${p.note}; it was replaced by the next occurrence.`,
@@ -166,43 +171,43 @@ export const copy = freezeCopy({
 		redo: "Redo",
 		undo: "Undo",
 		openFailure: (p: { path: string; reason: string }) => "Could not open " + p.path + ": " + p.reason,
-		fileMissing: (p: { path: string }) => "No such file: " + p.path,
-		reloadFailure: (p: { reason: unknown }) => "Error when generating tasks from files: " + p.reason,
+		fileMissing: (p: { path: string }) => "Note not found: " + p.path,
+		reloadFailure: (p: { reason: unknown }) => "Could not reload tasks from notes: " + p.reason,
 		readFailures: (p: { count: number }) =>
-			`Tasks Calendar Wrapper: ${p.count} file(s) could not be read, their tasks are missing. See the developer console.`,
+			`Tasks Calendar Wrapper: ${p.count} ${p.count === 1 ? "note" : "notes"} could not be read. ${p.count === 1 ? "Its" : "Their"} tasks are missing from the timeline. See the developer console.`,
 		settingsUnreadable:
 			"Tasks Calendar Wrapper: data.json changed outside Obsidian but could not be read, so the settings stay as they were; the next change of a setting saves them. See the developer console.",
-		openViewFailure: "Failed to open the timeline view. See the developer console for details.",
+		openViewFailure: "Could not open the timeline. See the developer console for details.",
 		fileSystemTimeout: "File system operation timed out.",
 		pluginUnloaded: "The plugin unloaded.",
 		writeAbandoned: "The write was abandoned.",
 		queuedTargetChanged: "A queued task target changed notes.",
 	},
 	commands: {
-		openTimeline: "Open Tasks Timeline View",
+		openTimeline: "Open Tasks Timeline",
 		showWhatsNew: "Show what's new",
 	},
 	modals: {
 		createNote: "Create note",
-		createNoteMessage: (p: { path: string }) => "No such file: " + p.path + ". Would you like to create it?",
+		createNoteMessage: (p: { path: string }) => "The note " + p.path + " does not exist. Create it?",
 		create: "Create",
 		removeRecurrence: "Remove recurrence?",
 		removeRecurrenceMessage: (p: { expected: string }) =>
-			`The edited task no longer repeats. If you cleared Recurs, save it. If you did not, Tasks could not read the rule in “${p.expected}” and dropped it.`,
+			`The edited task no longer repeats. If you removed the recurrence rule, save the task. Otherwise, Tasks could not read the rule in “${p.expected}” and dropped it.`,
 		saveWithoutRecurrence: "Save without recurrence",
 		cancel: "Cancel",
 		whatsNewTitle: "What's new in Tasks Calendar Wrapper",
 		version: (p: { version: string }) => `Version ${p.version}`,
-		support: "If you find this plugin useful, a star on GitHub or your support for its development helps a lot.",
-		starOnGitHub: "⭐ Star on GitHub",
-		thanks: "Thanks!",
+		support: "If this plugin is useful to you, star it on GitHub or support its development.",
+		starOnGitHub: "Star on GitHub",
+		thanks: "Close",
 		pickDate: (p: { field: string }) => `Pick ${p.field} date`,
 		clear: "Clear",
 		save: "Save",
 	},
 	menus: {
-		dueToday: "Due today",
-		dueTomorrow: "Due tomorrow",
+		dueToday: "Set due date to today",
+		dueTomorrow: "Set due date to tomorrow",
 		pickDate: (p: { field: string }) => `Pick ${p.field} date…`,
 		removeDate: (p: { field: string }) => `Remove ${p.field} date`,
 	},

@@ -248,8 +248,8 @@ test("each row option refreshes the cached model and its visible fields", async 
 			options: { dateFormat: "YYYY/MM/DD" },
 			check: () =>
 				assert.equal(
-					container.querySelector('.task [aria-label^="due at "]')?.getAttribute("aria-label"),
-					"due at 2026/01/16",
+					container.querySelector('.task [aria-label^="Due: "]')?.getAttribute("aria-label"),
+					"Due: 2026/01/16",
 				),
 		},
 		{
@@ -296,7 +296,7 @@ test("row models last within a day and refresh with the locale and next day", as
 	});
 	const focus = container.querySelector<HTMLElement>(".todayHeader");
 	assert.ok(focus);
-	const label = () => container.querySelector('.task [aria-label^="due at "] .label')?.textContent;
+	const label = () => container.querySelector('.task [aria-label^="Due: "] .label')?.textContent;
 	assert.equal(label(), "Tomorrow");
 	moment.now = () => GOLDEN_NOW + 60 * 60 * 1000;
 	resetRenderCounts();

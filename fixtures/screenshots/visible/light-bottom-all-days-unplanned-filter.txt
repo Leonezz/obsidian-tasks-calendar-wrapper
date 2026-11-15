@@ -53,19 +53,19 @@ date Thursday, Jan, 15
   task unplanned: Speech bubble 7 | Markers
   task unplanned: Speech bubble 8 | Markers
   task unplanned: Speech bubble 9 | Markers
-  task unplanned: highest | Highest Priority · Priorities > Priorities
-  task unplanned: high | High Priority · Priorities > Priorities
-  task unplanned: medium | Medium Priority · Priorities > Priorities
-  task unplanned: low | Low Priority · Priorities > Priorities
-  task unplanned: lowest | Lowest Priority · Priorities > Priorities
+  task unplanned: highest | Highest priority · Priorities > Priorities
+  task unplanned: high | High priority · Priorities > Priorities
+  task unplanned: medium | Medium priority · Priorities > Priorities
+  task unplanned: low | Low priority · Priorities > Priorities
+  task unplanned: lowest | Lowest priority · Priorities > Priorities
   task unplanned: no priority | Priorities > Priorities
-  task unplanned: dataview priority | High Priority · Priorities > Priorities
+  task unplanned: dataview priority | High priority · Priorities > Priorities
   task unplanned: dataview priority with an unknown name | Priorities > Priorities
-  task unplanned: unknown text after the priority | High Priority · Priorities > Priorities
-  task unplanned: priority at the start | High Priority · Priorities > Priorities
-  task unplanned: two priorities | High Priority · Priorities > Priorities
-  task unplanned: medium without a space | Medium Priority · Priorities > Priorities
-  task unplanned: see Plan note | High Priority · Priorities > Priorities
+  task unplanned: unknown text after the priority | High priority · Priorities > Priorities
+  task unplanned: priority at the start | High priority · Priorities > Priorities
+  task unplanned: two priorities | High priority · Priorities > Priorities
+  task unplanned: medium without a space | Medium priority · Priorities > Priorities
+  task unplanned: see Plan note | High priority · Priorities > Priorities
   task unplanned: open without a date | Status > Status without dates
   task unplanned: top level | Structure > Lists · single · project
   task unplanned: subtask with four spaces | Structure · single · project
@@ -85,8 +85,8 @@ date Thursday, Jan, 15
   task unplanned: under a heading with a link | Structure > Tasks for Inbox · single · project
   task unplanned: under a heading with an aliased link | Structure > Inbox Alias heading · single · project
   task unplanned: another task in the tagged note | Project note · work
-today header "Focus On Today", color rgb(34, 34, 34)
-counter 65 Todo, color rgb(34, 34, 34), background rgb(228, 228, 228)
+today header "Focus on today", color rgb(34, 34, 34)
+counter 65 To-do, color rgb(34, 34, 34), background rgb(228, 228, 228)
 counter 19 Overdue, color rgb(34, 34, 34), background rgb(228, 228, 228)
 counter 85 Unplanned, color rgb(138, 92, 245), background oklch(0 0 none / 0.067)
 quick entry

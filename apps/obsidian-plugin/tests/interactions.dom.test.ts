@@ -105,9 +105,9 @@ const interactions: Interaction[] = [
 	},
 	...(
 		[
-			["due", "due at"],
-			["scheduled", "scheduled to"],
-			["start", "start at"],
+			["due", "Due: "],
+			["scheduled", "Scheduled: "],
+			["start", "Start: "],
 		] as const
 	).map(([kind, label]) => ({
 		name: `the ${kind} badge calls handleDateBadge and does not open the note`,
@@ -121,7 +121,7 @@ const interactions: Interaction[] = [
 	})),
 	{
 		name: "the relative badge bubbles to handleOpenFile",
-		selector: '.task:has(a.file[aria-label="Done.md"]) a.relative[aria-label^="complete at"]',
+		selector: '.task:has(a.file[aria-label="Done.md"]) a.relative[aria-label^="Completed: "]',
 		event: "click",
 		handler: "handleOpenFile",
 		args: [
@@ -544,7 +544,7 @@ test("a dimmed row ignores its controls", async (t) => {
 test("mobile ⋯ opens the row menu", async (t) => {
 	const fixture = await mountInteractions(t, {}, true);
 	const row = interactions.find((row) => row.mobile)!;
-	assert.equal(fixture.root().querySelector(row.selector)?.getAttribute("aria-label"), "Task menu");
+	assert.equal(fixture.root().querySelector(row.selector)?.getAttribute("aria-label"), "Open task menu");
 	const event = await dispatch(fixture, row);
 	assert.equal(event.defaultPrevented, false);
 	assert.deepEqual(fixture.calls, [{ handler: "handleRowMenu", args: [modelArgs, "click"] }]);

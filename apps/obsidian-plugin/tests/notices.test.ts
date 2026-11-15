@@ -31,12 +31,15 @@ import { writerHarness } from "./writer-harness";
 const context: NoticeContext = { path: "Notes/Home.md", line: 3, text: "Buy milk" };
 
 test("Tasks dialog notice texts are byte-exact", () => {
-	assert.equal(tasksDialogTooOldText(), "Tasks 7.21 or later edits here");
+	assert.equal(
+		tasksDialogTooOldText(),
+		"Editing tasks here requires Tasks 7.21 or later. The note was opened at the task.",
+	);
 	assert.equal(tasksDialogErrorText("unavailable"), "Could not reach the Tasks plugin: unavailable");
-	assert.equal(tasksDialogFailureText("broken"), "Tasks' edit dialog failed: broken");
+	assert.equal(tasksDialogFailureText("broken"), "The Tasks edit dialog failed: broken");
 	assert.equal(
 		tasksDialogDeleteText(),
-		"Nothing was written. If you completed this task in the dialog: Tasks returns nothing for a task set to delete itself, so use the checkbox to complete it.",
+		"Nothing was written. Tasks returns no result when completing a task that deletes itself. Use the checkbox to complete the task.",
 	);
 });
 
@@ -63,7 +66,7 @@ const refusals: readonly [RefuseReason, Partial<NoticeContext>, string][] = [
 	[
 		"impossible-date",
 		{ field: "due", value: "2026-02-30", menuFixable: true },
-		"“Buy milk” has a due date that does not exist (2026-02-30). Nothing was written. Change it with right-click → Pick due date….",
+		"“Buy milk” has a due date that does not exist (2026-02-30). Nothing was written. Use the right-click menu and choose “Pick due date…”.",
 	],
 	[
 		"unreadable-date",
@@ -78,12 +81,12 @@ const refusals: readonly [RefuseReason, Partial<NoticeContext>, string][] = [
 	[
 		"unreadable-date",
 		{ action: "date", token: "۱۲۳۴", localDigits: true, locale: "fa" },
-		"“Buy milk” would get a date the timeline cannot read back (“۱۲۳۴”). Nothing was written. Tasks wrote it in the digits of Obsidian's language (fa).",
+		"“Buy milk” would get a date the timeline cannot read back (“۱۲۳۴”). Nothing was written. Tasks used the numeral system for Obsidian's language (fa).",
 	],
 	[
 		"unreadable-date",
 		{ action: "toggle", token: "۱۲۳۴", localDigits: true, locale: "fa" },
-		"Tasks returned a date the timeline cannot read back (“۱۲۳۴”) for “Buy milk”. Nothing was written. Tasks wrote it in the digits of Obsidian's language (fa).",
+		"Tasks returned a date the timeline cannot read back (“۱۲۳۴”) for “Buy milk”. Nothing was written. Tasks used the numeral system for Obsidian's language (fa).",
 	],
 	[
 		"recurrence-lost",
@@ -141,7 +144,7 @@ const refusals: readonly [RefuseReason, Partial<NoticeContext>, string][] = [
 	[
 		"tasks-too-old",
 		{},
-		"Completing from the timeline needs Tasks 7.2.0 or newer, so the note was opened at the task.",
+		"Completing tasks from the timeline requires Tasks 7.2.0 or later. The note was opened at the task.",
 	],
 	["tasks-error", { message: "broken" }, "Tasks could not change “Buy milk”: broken. Nothing was written."],
 	[
@@ -193,7 +196,7 @@ test("impossible-date menu suffix follows the field and token form", () => {
 				refusalText(prepared.reason, { ...context, ...prepared.details }, touch),
 				`“Buy milk” has a ${field} date that does not exist (2026-02-31). Nothing was written.` +
 					(menuFixable
-						? ` Change it with ${touch ? "⋯" : "right-click"} → Pick ${field} date….`
+						? ` Use ${touch ? "the task menu (⋯)" : "the right-click menu"} and choose “Pick ${field} date…”.`
 						: " Fix it in the note."),
 				token,
 			);
@@ -234,7 +237,7 @@ test("write failure, unknown outcome and slow notice texts", () => {
 	assert.equal(writeFailureText(context, "denied"), "Could not write to Home: denied");
 	assert.equal(
 		mayNotSavedText(context, "timeout"),
-		"Home may not have been saved: the file system didn't answer within 60 s. Check the note before trying again.",
+		"Home may not have been saved: the file system did not respond within 60 seconds. Check the note before trying again.",
 	);
 	assert.equal(
 		mayNotSavedText(context, "editor"),
@@ -317,7 +320,7 @@ test("the presenter uses the touch override for impossible dates", () => {
 	Notice.instances = [];
 	const presenter = createNoticePresenter({} as App, { document: documentStub, touch: () => true });
 	const expected =
-		"“Buy milk” has a due date that does not exist (2026-02-31). Nothing was written. Change it with ⋯ → Pick due date….";
+		"“Buy milk” has a due date that does not exist (2026-02-31). Nothing was written. Use the task menu (⋯) and choose “Pick due date…”.";
 	assert.equal(
 		presenter.refuse("impossible-date", { ...context, field: "due", value: "2026-02-31", menuFixable: true }),
 		expected,
@@ -332,11 +335,11 @@ test("the default presenter reads Platform.isMobile when showing an impossible d
 	const presenter = createNoticePresenter({} as App, { document: documentStub });
 	try {
 		for (const [touch, gesture] of [
-			[false, "right-click"],
-			[true, "⋯"],
+			[false, "the right-click menu"],
+			[true, "the task menu (⋯)"],
 		] as const) {
 			Platform.isMobile = touch;
-			const expected = `“Buy milk” has a due date that does not exist (2026-02-31). Nothing was written. Change it with ${gesture} → Pick due date….`;
+			const expected = `“Buy milk” has a due date that does not exist (2026-02-31). Nothing was written. Use ${gesture} and choose “Pick due date…”.`;
 			assert.equal(
 				presenter.refuse("impossible-date", {
 					...context,

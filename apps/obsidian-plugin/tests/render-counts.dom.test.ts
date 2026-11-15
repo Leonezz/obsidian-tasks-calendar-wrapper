@@ -114,7 +114,7 @@ test("render counts: every operation matches fixtures/markup/render-counts.json"
 					await click(fixture, "#todo");
 					break;
 				case "Focus on today click":
-					await click(fixture, '[aria-label="Focus today"]');
+					await click(fixture, '[aria-label="Focus on today"]');
 					break;
 				case "settings push with equal options":
 					await fixture.pushOptions(structuredClone(fixture.options()));

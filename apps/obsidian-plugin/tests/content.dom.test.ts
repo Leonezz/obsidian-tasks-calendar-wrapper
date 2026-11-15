@@ -136,9 +136,9 @@ test("content renders markdown once per display change", async (t) => {
 	assert.equal(calls.length - before, 0, "reload with the list unchanged");
 
 	before = calls.length;
-	assert.ok(fixture.container.querySelector('[aria-label="due at Thursday, Jan, 15"]'));
+	assert.ok(fixture.container.querySelector('[aria-label="Due: Thursday, Jan, 15"]'));
 	await fixture.pushOptions({ ...fixture.options(), dateFormat: "YYYY/MM/DD" });
-	assert.ok(fixture.container.querySelector('[aria-label="due at 2026/01/15"]'));
+	assert.ok(fixture.container.querySelector('[aria-label="Due: 2026/01/15"]'));
 	assert.equal(calls.length - before, 0, "settings push with different options");
 
 	before = calls.length;
@@ -153,7 +153,7 @@ test("content renders markdown once per display change", async (t) => {
 
 	for (const [operation, selector] of [
 		["counter click", "#todo"],
-		["Focus on today click", '[aria-label="Focus today"]'],
+		["Focus on today click", '[aria-label="Focus on today"]'],
 	]) {
 		before = calls.length;
 		const target = fixture.container.querySelector<HTMLElement>(selector);

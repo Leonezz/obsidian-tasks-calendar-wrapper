@@ -17,9 +17,9 @@ export function themeNames(set: string): ThemeName[];
 
 export const POSITIONS: readonly ["top", "today", "bottom"];
 export const COUNTERS: {
-	readonly todo: "Todo Tasks";
-	readonly overdue: "Overdue Tasks";
-	readonly unplanned: "Unplanned Tasks";
+	readonly todo: "Toggle to-do counter";
+	readonly overdue: "Toggle overdue counter";
+	readonly unplanned: "Toggle unplanned counter";
 };
 
 export type ScreenshotPosition = (typeof POSITIONS)[number];

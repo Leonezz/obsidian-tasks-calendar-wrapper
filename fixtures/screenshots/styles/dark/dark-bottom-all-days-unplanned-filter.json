@@ -802,7 +802,7 @@
 		"text-decoration-line": "none",
 		"visibility": "visible",
 		"white-space": "normal",
-		"width": "82.4609px",
+		"width": "82.2344px",
 		"z-index": "auto"
 	},
 	".task .info .relative": null,
@@ -1095,7 +1095,7 @@
 		"font-size": "15px",
 		"font-style": "normal",
 		"font-weight": "400",
-		"height": "3937.48px",
+		"height": "3977.48px",
 		"justify-content": "normal",
 		"line-height": "19.5px",
 		"margin": "0px 0px 79.7969px",

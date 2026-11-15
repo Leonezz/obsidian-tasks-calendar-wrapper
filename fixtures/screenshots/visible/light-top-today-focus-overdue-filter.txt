@@ -1,5 +1,5 @@
-today header "Focus On Today", color rgb(138, 92, 245)
-counter 65 Todo, color rgb(34, 34, 34), background rgb(228, 228, 228)
+today header "Focus on today", color rgb(138, 92, 245)
+counter 65 To-do, color rgb(34, 34, 34), background rgb(228, 228, 228)
 counter 19 Overdue, color rgb(138, 92, 245), background oklch(0 0 none / 0.067)
 counter 85 Unplanned, color rgb(34, 34, 34), background rgb(228, 228, 228)
 quick entry
@@ -8,7 +8,7 @@ date Thursday, Jan, 15
   task overdue: starts in one year and is due in the next | 15 days ago · 13 days ago · Emoji dates > Emoji dates
   task overdue: leap day | 686 days ago · Emoji dates > Emoji dates
   task overdue: recurring | 3 days ago · Yesterday · every week · Emoji dates > Emoji dates
-  task overdue: write the report | 4 days ago · 2 days ago · every week · High Priority · Emoji dates > Emoji dates · work · home
+  task overdue: write the report | 4 days ago · 2 days ago · every week · High priority · Emoji dates > Emoji dates · work · home
   task overdue: Ten, Nine, Eight, Seven, Six, Five, Four, Three , Two, One, Liftoff | 965 days ago · Inbox
   task overdue: This is Ground Control to Major Tom | 965 days ago · Inbox
   task overdue: You've really made the grade | 965 days ago · Inbox

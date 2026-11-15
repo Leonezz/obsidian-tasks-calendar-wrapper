@@ -41,7 +41,7 @@ test("an equal push on a new day shows the new day when the list shown stays the
 	const { container, store, options, pushOptions } = await mountView(t, {
 		app: notesApp({ "A.md": "- [ ] alpha 📅 2026-03-20" }),
 	});
-	const label = () => container.querySelector('.task [aria-label^="due at "] .label')?.textContent;
+	const label = () => container.querySelector('.task [aria-label^="Due: "] .label')?.textContent;
 	const before = store.getSnapshot();
 	assert.equal(label(), "in 64 days");
 	moment.now = () => GOLDEN_NOW + DAY;

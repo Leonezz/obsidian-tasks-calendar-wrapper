@@ -86,7 +86,11 @@ test("the default set is the two default themes and all adds Blue Topaz", () => 
 	assert.deepEqual(themeNames("all"), ["light", "dark", "blue-topaz-light", "blue-topaz-dark"]);
 	for (const invalid of ["", "blue", "light"]) assert.throws(() => themeNames(invalid));
 	assert.deepEqual(POSITIONS, ["top", "today", "bottom"]);
-	assert.deepEqual(COUNTERS, { todo: "Todo Tasks", overdue: "Overdue Tasks", unplanned: "Unplanned Tasks" });
+	assert.deepEqual(COUNTERS, {
+		todo: "Toggle to-do counter",
+		overdue: "Toggle overdue counter",
+		unplanned: "Toggle unplanned counter",
+	});
 	for (const theme of themeNames("all")) {
 		assert.equal(takesPng({ theme }), true);
 		assert.equal(takesVisible({ theme }), theme === "light");

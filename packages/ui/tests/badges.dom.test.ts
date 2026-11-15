@@ -181,12 +181,12 @@ test("DateStatusBadge click passes the event, and without onClick it is inert", 
 	assert.equal(inertBubbled(), 1);
 });
 
-test("ModifyBadge renders ✏️ labelled Modify Task and passes the click event", async (t) => {
+test("ModifyBadge renders ✏️ labelled Edit task and passes the click event", async (t) => {
 	const { container, root } = mountRoot(t);
 	const calls: (ReactMouseEvent | ReactKeyboardEvent)[][] = [];
 	const bubbled = bodyClicks(t);
 	await act(() => root.render(createElement(ModifyBadge, { onClick: (...args) => calls.push(args) })));
-	assert.equal(container.innerHTML, '<a class="modify" aria-label="Modify Task" role="button" tabindex="-1">✏️</a>');
+	assert.equal(container.innerHTML, '<a class="modify" aria-label="Edit task" role="button" tabindex="-1">✏️</a>');
 	const link = container.querySelector("a");
 	assert.ok(link);
 	await act(() => {

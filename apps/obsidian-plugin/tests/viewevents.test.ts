@@ -276,7 +276,7 @@ test("a note that cannot be read shows the Notice once, and its reason is logged
 	await wait(t, RELOAD_DELAY_MS);
 	assert.equal(timeline.reloads(), 1);
 	const notice =
-		"Tasks Calendar Wrapper: 1 file(s) could not be read, their tasks are missing. See the developer console.";
+		"Tasks Calendar Wrapper: 1 note could not be read. Its tasks are missing from the timeline. See the developer console.";
 	// The view's first reload shows it; the one after Obsidian's first "resolved" and the one after the edit fail the
 	// same note, so they show nothing new.
 	assert.deepEqual(shownNotices, [notice]);
@@ -317,7 +317,7 @@ const ALL = ["Archive/Old.md", "Inbox.md", "Projects/Garden.md"];
 
 /** The notice a reload shows when one note could not be read. */
 const ONE_FAILED =
-	"Tasks Calendar Wrapper: 1 file(s) could not be read, their tasks are missing. See the developer console.";
+	"Tasks Calendar Wrapper: 1 note could not be read. Its tasks are missing from the timeline. See the developer console.";
 
 /** The first line of each task of the note the view holds, which the bridge renders. */
 const linesIn = (view: TasksTimelineView, path: string) =>
@@ -636,10 +636,7 @@ test("filtered out and back a warning says nothing new; renamed it is told under
 	// A reload that rejects between two with the same failing note: no new Notice.
 	vault.breakListing();
 	await first.view.onReloadTasks();
-	assert.deepEqual(shownNotices, [
-		ONE_FAILED,
-		"Error when generating tasks from files: Error: the vault is not ready",
-	]);
+	assert.deepEqual(shownNotices, [ONE_FAILED, "Could not reload tasks from notes: Error: the vault is not ready"]);
 	await first.view.onReloadTasks();
 	assert.equal(shownNotices.length, 2);
 	// A timeline opened again is a new one: it tells what fails and warns now.

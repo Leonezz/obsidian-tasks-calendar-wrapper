@@ -362,7 +362,7 @@ test("a reload that fails says so, and the next reload runs", async () => {
 	const { view, store } = openView(app);
 	shownNotices.length = 0;
 	await view.onUpdateOptions({ ...defaultUserOptions });
-	assert.deepEqual(shownNotices, ["Error when generating tasks from files: Error: the vault is not ready"]);
+	assert.deepEqual(shownNotices, ["Could not reload tasks from notes: Error: the vault is not ready"]);
 	assert.deepEqual(store.getSnapshot().tasks, []);
 	await view.onReloadTasks();
 	assert.ok(store.getSnapshot().tasks.length > 100);
@@ -541,7 +541,7 @@ test("inputs show the applied filter after a reload", async () => {
 	const { bridge } = bridgeOf(opened, app);
 	const markup = () => renderToStaticMarkup(bridge.render() as ReactElement);
 	const unfiltered = markup();
-	assert.match(unfiltered, /<option value="append" selected="">New Task<\/option>/);
+	assert.match(unfiltered, /<option value="append" selected="">New task<\/option>/);
 	assert.doesNotMatch(unfiltered, /<input[^>]*type="date"/);
 
 	// The priority selector passes the task's priority label.

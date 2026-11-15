@@ -365,7 +365,7 @@ async function checkTelling(s: Setup, asked: Asked, update: IndexUpdate): Promis
 	if (changed && paths.length > 0) {
 		expected.push([
 			"notice",
-			`Tasks Calendar Wrapper: ${paths.length} file(s) could not be read, their tasks are missing. See the developer console.`,
+			`Tasks Calendar Wrapper: ${paths.length} ${paths.length === 1 ? "note" : "notes"} could not be read. ${paths.length === 1 ? "Its" : "Their"} tasks are missing from the timeline. See the developer console.`,
 		]);
 		if (failing.length > 0) s.run.count?.("other failures");
 	} else if (paths.length > 0) s.run.count?.("same failures");

@@ -443,14 +443,6 @@ test("timeline: the stylesheet hides nothing the markup reader does not know of"
 			".taskido.noCounters .counters",
 			".taskido.noQuickEntry .quickEntryPanel",
 			".taskido.noYear .year",
-			// Classes the timeline never sets.
-			'.taskido.noDone .details[data-types="done"]',
-			".taskido.noDone .task.done",
-			'.taskido.noDone .year[data-types="done"]',
-			".taskido.noUnplanned .counter#unplanned",
-			'.taskido.noUnplanned .details[data-types="unplanned"]',
-			".taskido.noUnplanned .task.unplanned",
-			'.taskido.noUnplanned .year[data-types="unplanned"]',
 			// Parts of a row: its badges, as the options turn them off, and its checkbox. The screenshots keep the defaults.
 			".taskido .task .info:empty",
 			".taskido .timeline input.icon",

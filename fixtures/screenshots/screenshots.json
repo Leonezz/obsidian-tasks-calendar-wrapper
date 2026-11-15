@@ -1,6 +1,6 @@
 {
 	"note": "Taken by apps/obsidian-plugin/scripts/screenshots.mjs (`pnpm screenshots --update`). Do not edit by hand.",
-	"obsidianVersion": "1.14.5 (installer 1.13.7)",
+	"obsidianVersion": "1.15.1 (installer 1.13.7)",
 	"electron": "43.3.0",
 	"chrome": "150.0.7871.212",
 	"machine": {
@@ -24,9 +24,9 @@
 		"zoom": 1,
 		"timelineFont": "\"??\", \"??\", \"??\", ui-sans-serif, -apple-system, \"system-ui\", system-ui, \"Segoe UI\", \"Google Sans Flex\", Roboto, \"Inter Variable\", Inter, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", sans-serif",
 		"display": {
-			"name": "内建视网膜显示器",
-			"internal": true,
-			"colorSpace": "{primaries:P3, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
+			"name": "P275MV PLUS",
+			"internal": false,
+			"colorSpace": "{r:[0.6835, 0.3066], g:[0.2177, 0.7265], b:[0.1523, 0.0449], w:[0.3127, 0.3290]}, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
 			"scaleFactor": 2
 		}
 	},
@@ -42,18 +42,18 @@
 		"zoom": 1,
 		"timelineFont": "\"??\", \"??\", \"??\", ui-sans-serif, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Inter, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Microsoft YaHei Light\", sans-serif",
 		"display": {
-			"name": "内建视网膜显示器",
-			"internal": true,
-			"colorSpace": "{primaries:P3, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
+			"name": "P275MV PLUS",
+			"internal": false,
+			"colorSpace": "{r:[0.6835, 0.3066], g:[0.2177, 0.7265], b:[0.1523, 0.0449], w:[0.3127, 0.3290]}, transfer:{0.0777*x + 0.0000 if abs(x) < 0.0450 else sign(x)*((0.9495*abs(x) + 0.0495)**2.3955 + 0.0003)}, matrix:RGB, range:FULL}",
 			"scaleFactor": 2
 		},
 		"themeVersion": "2026110201",
 		"themeCssSha256": "fe7500d7203793ab4dafccb067816d916a7d18fe7718b06cd7b51c7c704ac1ff"
 	},
-	"takenAt": "2026-11-02",
+	"takenAt": "2026-11-15",
 	"plugin": {
 		"version": "0.3.7",
-		"commit": "2f4febb",
+		"commit": "ec42bf0",
 		"uncommittedChanges": false
 	},
 	"shots": {
@@ -65,7 +65,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": 202
 		},
@@ -77,7 +77,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4279
+				"height": 4319
 			},
 			"visibleLines": 96
 		},
@@ -89,7 +89,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1449
+				"height": 1489
 			},
 			"visibleLines": 29
 		},
@@ -101,7 +101,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4081
+				"height": 4121
 			},
 			"visibleLines": 92
 		},
@@ -113,7 +113,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": 120
 		},
@@ -125,7 +125,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 797
+				"height": 837
 			},
 			"visibleLines": 16
 		},
@@ -137,7 +137,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1203
+				"height": 1243
 			},
 			"visibleLines": 25
 		},
@@ -149,7 +149,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4022
+				"height": 4062
 			},
 			"visibleLines": 91
 		},
@@ -161,7 +161,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": null
 		},
@@ -173,7 +173,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4279
+				"height": 4319
 			},
 			"visibleLines": null
 		},
@@ -185,7 +185,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1449
+				"height": 1489
 			},
 			"visibleLines": null
 		},
@@ -197,7 +197,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4081
+				"height": 4121
 			},
 			"visibleLines": null
 		},
@@ -209,7 +209,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -221,7 +221,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 797
+				"height": 837
 			},
 			"visibleLines": null
 		},
@@ -233,7 +233,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1203
+				"height": 1243
 			},
 			"visibleLines": null
 		},
@@ -245,7 +245,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4022
+				"height": 4062
 			},
 			"visibleLines": null
 		},
@@ -257,7 +257,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": null
 		},
@@ -269,7 +269,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4279
+				"height": 4319
 			},
 			"visibleLines": null
 		},
@@ -281,7 +281,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1449
+				"height": 1489
 			},
 			"visibleLines": null
 		},
@@ -293,7 +293,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4081
+				"height": 4121
 			},
 			"visibleLines": null
 		},
@@ -305,7 +305,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -317,7 +317,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 797
+				"height": 837
 			},
 			"visibleLines": null
 		},
@@ -329,7 +329,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1203
+				"height": 1243
 			},
 			"visibleLines": null
 		},
@@ -341,7 +341,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4022
+				"height": 4062
 			},
 			"visibleLines": null
 		},
@@ -353,7 +353,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": null
 		},
@@ -365,7 +365,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4279
+				"height": 4319
 			},
 			"visibleLines": null
 		},
@@ -377,7 +377,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1449
+				"height": 1489
 			},
 			"visibleLines": null
 		},
@@ -389,7 +389,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4081
+				"height": 4121
 			},
 			"visibleLines": null
 		},
@@ -401,7 +401,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -413,7 +413,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 797
+				"height": 837
 			},
 			"visibleLines": null
 		},
@@ -425,7 +425,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1203
+				"height": 1243
 			},
 			"visibleLines": null
 		},
@@ -437,7 +437,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4022
+				"height": 4062
 			},
 			"visibleLines": null
 		},
@@ -449,7 +449,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": 202
 		},
@@ -461,7 +461,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": 202
 		},
@@ -473,7 +473,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": 202
 		},
@@ -485,7 +485,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": 120
 		},
@@ -497,7 +497,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": 120
 		},
@@ -509,7 +509,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": 120
 		},
@@ -521,7 +521,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": null
 		},
@@ -533,7 +533,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": null
 		},
@@ -545,7 +545,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": null
 		},
@@ -557,7 +557,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -569,7 +569,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -581,7 +581,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -593,7 +593,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": null
 		},
@@ -605,7 +605,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": null
 		},
@@ -617,7 +617,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": null
 		},
@@ -629,7 +629,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -641,7 +641,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -653,7 +653,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -665,7 +665,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": null
 		},
@@ -677,7 +677,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": null
 		},
@@ -689,7 +689,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8888
+				"height": 8928
 			},
 			"visibleLines": null
 		},
@@ -701,7 +701,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -713,7 +713,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -725,7 +725,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -737,7 +737,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": 202
 		},
@@ -749,7 +749,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4289
+				"height": 4329
 			},
 			"visibleLines": 96
 		},
@@ -761,7 +761,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1449
+				"height": 1489
 			},
 			"visibleLines": 29
 		},
@@ -773,7 +773,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4091
+				"height": 4131
 			},
 			"visibleLines": 92
 		},
@@ -785,7 +785,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": 120
 		},
@@ -797,7 +797,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 797
+				"height": 837
 			},
 			"visibleLines": 16
 		},
@@ -809,7 +809,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1203
+				"height": 1243
 			},
 			"visibleLines": 25
 		},
@@ -821,7 +821,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4022
+				"height": 4062
 			},
 			"visibleLines": 91
 		},
@@ -833,7 +833,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -845,7 +845,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4289
+				"height": 4329
 			},
 			"visibleLines": null
 		},
@@ -857,7 +857,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1449
+				"height": 1489
 			},
 			"visibleLines": null
 		},
@@ -869,7 +869,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4091
+				"height": 4131
 			},
 			"visibleLines": null
 		},
@@ -881,7 +881,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -893,7 +893,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 797
+				"height": 837
 			},
 			"visibleLines": null
 		},
@@ -905,7 +905,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1203
+				"height": 1243
 			},
 			"visibleLines": null
 		},
@@ -917,7 +917,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4022
+				"height": 4062
 			},
 			"visibleLines": null
 		},
@@ -929,7 +929,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -941,7 +941,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4289
+				"height": 4329
 			},
 			"visibleLines": null
 		},
@@ -953,7 +953,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1449
+				"height": 1489
 			},
 			"visibleLines": null
 		},
@@ -965,7 +965,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4091
+				"height": 4131
 			},
 			"visibleLines": null
 		},
@@ -977,7 +977,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -989,7 +989,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 797
+				"height": 837
 			},
 			"visibleLines": null
 		},
@@ -1001,7 +1001,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1203
+				"height": 1243
 			},
 			"visibleLines": null
 		},
@@ -1013,7 +1013,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4022
+				"height": 4062
 			},
 			"visibleLines": null
 		},
@@ -1025,7 +1025,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1037,7 +1037,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4289
+				"height": 4329
 			},
 			"visibleLines": null
 		},
@@ -1049,7 +1049,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1449
+				"height": 1489
 			},
 			"visibleLines": null
 		},
@@ -1061,7 +1061,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4091
+				"height": 4131
 			},
 			"visibleLines": null
 		},
@@ -1073,7 +1073,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -1085,7 +1085,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 797
+				"height": 837
 			},
 			"visibleLines": null
 		},
@@ -1097,7 +1097,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1203
+				"height": 1243
 			},
 			"visibleLines": null
 		},
@@ -1109,7 +1109,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4022
+				"height": 4062
 			},
 			"visibleLines": null
 		},
@@ -1121,7 +1121,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": 202
 		},
@@ -1133,7 +1133,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": 202
 		},
@@ -1145,7 +1145,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": 202
 		},
@@ -1157,7 +1157,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": 120
 		},
@@ -1169,7 +1169,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": 120
 		},
@@ -1181,7 +1181,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": 120
 		},
@@ -1193,7 +1193,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1205,7 +1205,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1217,7 +1217,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1229,7 +1229,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -1241,7 +1241,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -1253,7 +1253,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -1265,7 +1265,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1277,7 +1277,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1289,7 +1289,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1301,7 +1301,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -1313,7 +1313,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -1325,7 +1325,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -1337,7 +1337,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1349,7 +1349,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1361,7 +1361,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1373,7 +1373,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -1385,7 +1385,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -1397,7 +1397,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5288
+				"height": 5328
 			},
 			"visibleLines": null
 		},
@@ -1409,7 +1409,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": 202
 		},
@@ -1421,7 +1421,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4289
+				"height": 4329
 			},
 			"visibleLines": 96
 		},
@@ -1433,7 +1433,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1439
+				"height": 1479
 			},
 			"visibleLines": 29
 		},
@@ -1445,7 +1445,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4081
+				"height": 4121
 			},
 			"visibleLines": 92
 		},
@@ -1457,7 +1457,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": 120
 		},
@@ -1469,7 +1469,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 777
+				"height": 817
 			},
 			"visibleLines": 16
 		},
@@ -1481,7 +1481,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1183
+				"height": 1223
 			},
 			"visibleLines": 25
 		},
@@ -1493,7 +1493,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4002
+				"height": 4042
 			},
 			"visibleLines": 91
 		},
@@ -1505,7 +1505,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1517,7 +1517,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4289
+				"height": 4329
 			},
 			"visibleLines": null
 		},
@@ -1529,7 +1529,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1439
+				"height": 1479
 			},
 			"visibleLines": null
 		},
@@ -1541,7 +1541,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4081
+				"height": 4121
 			},
 			"visibleLines": null
 		},
@@ -1553,7 +1553,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": null
 		},
@@ -1565,7 +1565,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 777
+				"height": 817
 			},
 			"visibleLines": null
 		},
@@ -1577,7 +1577,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1183
+				"height": 1223
 			},
 			"visibleLines": null
 		},
@@ -1589,7 +1589,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4002
+				"height": 4042
 			},
 			"visibleLines": null
 		},
@@ -1601,7 +1601,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1613,7 +1613,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4289
+				"height": 4329
 			},
 			"visibleLines": null
 		},
@@ -1625,7 +1625,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1439
+				"height": 1479
 			},
 			"visibleLines": null
 		},
@@ -1637,7 +1637,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4081
+				"height": 4121
 			},
 			"visibleLines": null
 		},
@@ -1649,7 +1649,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": null
 		},
@@ -1661,7 +1661,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 777
+				"height": 817
 			},
 			"visibleLines": null
 		},
@@ -1673,7 +1673,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1183
+				"height": 1223
 			},
 			"visibleLines": null
 		},
@@ -1685,7 +1685,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4002
+				"height": 4042
 			},
 			"visibleLines": null
 		},
@@ -1697,7 +1697,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1709,7 +1709,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4289
+				"height": 4329
 			},
 			"visibleLines": null
 		},
@@ -1721,7 +1721,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1439
+				"height": 1479
 			},
 			"visibleLines": null
 		},
@@ -1733,7 +1733,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4081
+				"height": 4121
 			},
 			"visibleLines": null
 		},
@@ -1745,7 +1745,7 @@
 			"behavior": null,
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": null
 		},
@@ -1757,7 +1757,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 777
+				"height": 817
 			},
 			"visibleLines": null
 		},
@@ -1769,7 +1769,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 1183
+				"height": 1223
 			},
 			"visibleLines": null
 		},
@@ -1781,7 +1781,7 @@
 			"behavior": "Filter",
 			"png": {
 				"width": 556,
-				"height": 4002
+				"height": 4042
 			},
 			"visibleLines": null
 		},
@@ -1793,7 +1793,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": 202
 		},
@@ -1805,7 +1805,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": 202
 		},
@@ -1817,7 +1817,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": 202
 		},
@@ -1829,7 +1829,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": 120
 		},
@@ -1841,7 +1841,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": 120
 		},
@@ -1853,7 +1853,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": 120
 		},
@@ -1865,7 +1865,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1877,7 +1877,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1889,7 +1889,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1901,7 +1901,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": null
 		},
@@ -1913,7 +1913,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": null
 		},
@@ -1925,7 +1925,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": null
 		},
@@ -1937,7 +1937,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1949,7 +1949,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1961,7 +1961,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -1973,7 +1973,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": null
 		},
@@ -1985,7 +1985,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": null
 		},
@@ -1997,7 +1997,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": null
 		},
@@ -2009,7 +2009,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -2021,7 +2021,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -2033,7 +2033,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 8898
+				"height": 8938
 			},
 			"visibleLines": null
 		},
@@ -2045,7 +2045,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": null
 		},
@@ -2057,7 +2057,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": null
 		},
@@ -2069,7 +2069,7 @@
 			"behavior": "Focus",
 			"png": {
 				"width": 556,
-				"height": 5268
+				"height": 5308
 			},
 			"visibleLines": null
 		}
