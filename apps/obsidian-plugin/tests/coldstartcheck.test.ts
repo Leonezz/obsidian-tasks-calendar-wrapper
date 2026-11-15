@@ -18,6 +18,7 @@ import {
 	assertColdstartInventory,
 	assertColdstartRestorable,
 	assertNoColdstartLeftovers,
+	awaitColdstartHost,
 	backupColdstartFiles,
 	coldstartDriverProcesses,
 	coldstartHost,
@@ -28,6 +29,7 @@ import {
 	compareColdstartSamples,
 	parseColdstartArgs,
 	restoreColdstartFiles,
+	startupNotReady,
 	waitForColdstart,
 	wrapColdstartBundle,
 	type ColdstartInventory,
@@ -297,7 +299,7 @@ test("unknown app windows are rejected before any full snapshot, restoration or 
 				isCrashed: () => false,
 				isLoading: () => false,
 				executeJavaScript: async (code: string) => {
-					if (!code.includes("getLayout")) return `/fixtures/${name}`;
+					if (!code.includes("getLayout")) return JSON.stringify({ ok: true, value: `/fixtures/${name}` });
 					fullReads++;
 					throw new Error("must not read a full snapshot");
 				},
@@ -339,7 +341,8 @@ test("unknown paths with a fixture-looking title are rejected before full reads"
 						isCrashed: () => false,
 						isLoading: () => false,
 						executeJavaScript: async (code: string) => {
-							if (!code.includes("getLayout")) return "/personal/golden-vault";
+							if (!code.includes("getLayout"))
+								return JSON.stringify({ ok: true, value: "/personal/golden-vault" });
 							fullReads++;
 						},
 					},
@@ -370,7 +373,15 @@ test("startup metadata reads report NOT_READY before app/vault globals exist", a
 							isDestroyed: () => false,
 							isCrashed: () => false,
 							isLoading: () => false,
-							executeJavaScript: async (code: string) => runInNewContext(code, page),
+							executeJavaScript: async (code: string) => {
+								try {
+									return await runInNewContext(code, page);
+								} catch {
+									throw new Error(
+										"Script failed to execute, this normally means an error was thrown.",
+									);
+								}
+							},
 						},
 					},
 				],
@@ -384,6 +395,121 @@ test("startup metadata reads report NOT_READY before app/vault globals exist", a
 			/NOT_READY: vault identity/,
 		);
 	}
+});
+
+test("startup-only polling tolerates unregistered eval but preserves identity and actual collector failures", () => {
+	const unregistered = new Error(
+		'code run in Obsidian failed: Error: Command "eval" not found. It may require a plugin to be enabled.',
+	);
+	assert.equal(startupNotReady(unregistered), true);
+	for (const message of [
+		"Unexpected fixture path: personal",
+		"Script failed to execute",
+		"code run in Obsidian failed: Cold-start controls must have no counter",
+		"the Obsidian CLI failed for eval: permission denied",
+	])
+		assert.equal(startupNotReady(new Error(message)), false);
+	const paths = { "golden-vault": "/fixtures/golden-vault", "bench-vault-x10": "/fixtures/bench-vault-x10" };
+	const ready = {
+		mainPid: 88,
+		callerWebContentsId: 1,
+		windows: Object.entries(paths).map(([name, vaultPath], i) => ({
+			name,
+			vaultPath,
+			mainPid: 88,
+			parentPid: 88,
+			webContentsId: i + 1,
+			crashed: false,
+			layoutReady: true,
+			saved: false,
+			jobs: i === 0 ? 1 : 0,
+		})),
+	} as ColdstartInventory;
+	let time = 0;
+	let calls = 0;
+	const clock = {
+		now: () => time,
+		sleep: (ms: number) => {
+			time += ms;
+		},
+	};
+	assert.strictEqual(
+		awaitColdstartHost(
+			() => {
+				calls++;
+				if (calls === 1) throw unregistered;
+				if (calls === 2) throw new Error("NOT_READY: fixture globals not ready");
+				return ready;
+			},
+			paths,
+			77,
+			1000,
+			clock,
+		),
+		ready,
+	);
+	assert.equal(calls, 3, "recovery must wait for the same complete verified host before scheduling quit");
+	calls = 0;
+	assert.throws(
+		() =>
+			awaitColdstartHost(
+				() => {
+					calls++;
+					const foreign = plain(ready);
+					foreign.windows[0].vaultPath = "/personal/golden-vault";
+					return foreign;
+				},
+				paths,
+				77,
+				1000,
+				clock,
+			),
+		/Fixture path changed/,
+	);
+	assert.equal(calls, 1);
+});
+
+test("cross-window JSON transport preserves a real hard page error instead of Electron's generic rejection", async () => {
+	const remote = {
+		BrowserWindow: {
+			getAllWindows: () => [
+				{
+					id: 1,
+					getTitle: () => "golden-vault - Obsidian",
+					webContents: {
+						id: 2,
+						isDestroyed: () => false,
+						isCrashed: () => false,
+						isLoading: () => false,
+						executeJavaScript: async (code: string) => {
+							try {
+								return await runInNewContext(code, {
+									app: {
+										vault: {
+											adapter: {
+												getBasePath: () => {
+													throw new Error("Actual hard identity failure");
+												},
+											},
+										},
+									},
+								});
+							} catch {
+								throw new Error("Script failed to execute");
+							}
+						},
+					},
+				},
+			],
+		},
+	};
+	await assert.rejects(
+		runInNewContext(
+			`(${coldstartHost.toString()})(${JSON.stringify({ action: "inventory", expectedPaths: { "golden-vault": "/fixtures/golden-vault" } })})`,
+			{ require: () => remote },
+		),
+		/Actual hard identity failure/,
+	);
 });
 
 test("the serialized delayed quit rechecks identities, including windows created during its awaited revalidation", async (t) => {
@@ -410,7 +536,10 @@ test("the serialized delayed quit rechecks identities, including windows created
 							inject = false;
 							windows.push(foreign());
 						}
-						return change === "changed-path" && callbacks ? `/personal/${name}` : expectedPaths[name];
+						return JSON.stringify({
+							ok: true,
+							value: change === "changed-path" && callbacks ? `/personal/${name}` : expectedPaths[name],
+						});
 					},
 				},
 			}));
@@ -588,6 +717,22 @@ test("durable backups restore exact plugin/config bytes and absent files; corrup
 	writeFileSync(path.join(backupsDir, "golden-vault", "workspace.json"), "corrupt");
 	assert.throws(() => restoreColdstartFiles(vaults, backupsDir, backup, "test"), /backup changed/);
 	assert.equal(readFileSync(path.join(config, "workspace.json"), "utf8"), '{\r\n\t"x":1\r\n}\r\n');
+});
+
+test("restoration removes an empty plugins directory that did not exist originally", (t) => {
+	const directory = temporary(t);
+	const vault = path.join(directory, "bench-vault-x10");
+	const config = path.join(vault, ".obsidian");
+	mkdirSync(config, { recursive: true });
+	const backupDirectory = path.join(directory, "backup");
+	mkdirSync(backupDirectory);
+	const vaults = { "bench-vault-x10": vault };
+	const backups = backupColdstartFiles(vaults, backupDirectory, "test");
+	const plugin = path.join(config, "plugins", "test");
+	mkdirSync(plugin, { recursive: true });
+	writeFileSync(path.join(plugin, "main.js"), "temporary build");
+	restoreColdstartFiles(vaults, backupDirectory, backups, "test");
+	assert.equal(existsSync(path.join(config, "plugins")), false);
 });
 
 test("inventory rejects a foreign window, pending jobs, stale main PID and duplicate fixture identity", () => {

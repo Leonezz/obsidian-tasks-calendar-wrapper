@@ -111,6 +111,14 @@ export function waitForColdstart<T>(
 		retry?: (error: Error) => boolean;
 	},
 ): T;
+export function startupNotReady(error: Error): boolean;
+export function awaitColdstartHost(
+	read: () => ColdstartInventory,
+	paths: Record<string, string>,
+	previousPid: number,
+	timeoutMs: number,
+	clock?: { now?: () => number; sleep?: (ms: number) => void },
+): ColdstartInventory;
 export function coldstartHost(arg: {
 	action: "inventory" | "quit";
 	pluginId: string;

@@ -9,6 +9,7 @@ import {
 	readdirSync,
 	readFileSync,
 	realpathSync,
+	rmdirSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -335,6 +336,28 @@ export async function coldstartHost({ action, pluginId, viewType, expectedPaths,
 				title,
 			}))
 			.sort((a, b) => a.windowId - b.windowId);
+	async function page(wc, fn, argument = null) {
+		// Electron can replace rejected executeJavaScript errors with "Script failed to execute". Return errors as JSON.
+		let encoded;
+		try {
+			encoded = await wc.executeJavaScript(`(async () => {
+			try { return JSON.stringify({ ok: true, value: await (${fn.toString()})(${JSON.stringify(argument)}) }); }
+			catch (error) { return JSON.stringify({ ok: false, error: String(error?.stack ?? error) }); }
+		})()`);
+		} catch (error) {
+			if (!wc.isDestroyed() && !wc.isCrashed() && wc.isLoading())
+				throw new Error("NOT_READY: fixture page began loading during identity access.");
+			throw error;
+		}
+		const response = JSON.parse(encoded);
+		if (response?.ok !== true) throw new Error(response?.error ?? "Invalid cold-start page response.");
+		return response.value;
+	}
+	function vaultIdentity() {
+		if (typeof app === "undefined" || !app.vault?.adapter)
+			throw new Error("NOT_READY: vault identity is not available.");
+		return app.vault.adapter.getBasePath?.() ?? null;
+	}
 	async function verifyWindows() {
 		const verified = [];
 		const found = new Set();
@@ -346,10 +369,7 @@ export async function coldstartHost({ action, pluginId, viewType, expectedPaths,
 			if (!Object.keys(expectedPaths).some((name) => title.includes(`${name} - Obsidian`)))
 				throw new Error(`Unexpected app window title; refusing full snapshot or mutation: ${title}`);
 			// This first pass reads only vault identity. No private layout, controls, clock or restoration yet.
-			const vaultPath = await wc.executeJavaScript(`(() => {
-				if (typeof app === "undefined" || !app.vault?.adapter) throw new Error("NOT_READY: vault identity is not available.");
-				return app.vault.adapter.getBasePath?.() ?? null;
-			})()`);
+			const vaultPath = await page(wc, vaultIdentity);
 			const name = vaultPath?.split(/[\\/]/).pop();
 			if (
 				!Object.prototype.hasOwnProperty.call(expectedPaths, name) ||
@@ -408,6 +428,8 @@ export async function coldstartHost({ action, pluginId, viewType, expectedPaths,
 	function local({ pluginId, viewType, restore }) {
 		if (typeof app === "undefined" || !app.vault || !app.workspace || !app.plugins)
 			throw new Error("NOT_READY: vault globals are not available.");
+		if (!app.workspace.layoutReady || typeof window.moment?.locale !== "function")
+			throw new Error("NOT_READY: fixture runtime/layout is not ready.");
 		let remote;
 		try {
 			remote = require("@electron/remote");
@@ -464,14 +486,10 @@ export async function coldstartHost({ action, pluginId, viewType, expectedPaths,
 	}
 	const windows = [];
 	for (const { win, wc, title, vaultPath, name } of verified) {
-		const before = await wc.executeJavaScript(`(${local.toString()})(${JSON.stringify({ pluginId, viewType })})`);
+		const before = await page(wc, local, { pluginId, viewType });
 		if (before.vaultPath !== vaultPath) throw new Error("Fixture path changed during the snapshot.");
 		const state = restore?.[vaultPath];
-		const host = state
-			? await wc.executeJavaScript(
-					`(${local.toString()})(${JSON.stringify({ pluginId, viewType, restore: state })})`,
-				)
-			: before;
+		const host = state ? await page(wc, local, { pluginId, viewType, restore: state }) : before;
 		if (host.vaultPath !== vaultPath) throw new Error("Fixture path changed during restoration.");
 		windows.push({ ...host, name, title, windowId: win.id, crashed: false });
 	}
@@ -606,7 +624,7 @@ export function restoreColdstartFiles(vaults, directory, backups, pluginId) {
 			existsSync(path.dirname(plugin)) &&
 			readdirSync(path.dirname(plugin)).length === 0
 		)
-			rmSync(path.dirname(plugin));
+			rmdirSync(path.dirname(plugin));
 	}
 }
 
@@ -784,6 +802,7 @@ async function performColdstartCheck(args, output, report, save) {
 	let appDown = false;
 	let changed = false;
 	let quitFailed = false;
+	let pendingStartup;
 	const notesExact = () => {
 		for (const name of COLDSTART_FIXTURES)
 			assert.deepEqual(
@@ -794,8 +813,16 @@ async function performColdstartCheck(args, output, report, save) {
 	};
 	const quit = (label) => {
 		drivers();
-		const inventory = host();
+		const inventory = pendingStartup
+			? awaitColdstartHost(host, vaults, pendingStartup.previousPid, args.timeoutMs)
+			: host();
 		assertColdstartInventory(inventory, vaults);
+		if (pendingStartup) {
+			current = inventory;
+			pendingStartup = undefined;
+			report.restoration.startupReadyBeforeQuit = inventory;
+			save();
+		}
 		const request = { label, mainPid: inventory.mainPid, status: "requested" };
 		report.quitRequests.push(request);
 		save();
@@ -842,19 +869,9 @@ async function performColdstartCheck(args, output, report, save) {
 		if (launched.error || launched.status !== 0)
 			throw new Error(`Could not start Obsidian once: ${launched.error?.message ?? launched.stderr}`);
 		appDown = false;
-		const inventory = waitForColdstart(
-			() => {
-				const value = host();
-				if (value.windows.length < Object.keys(vaults).length || value.windows.some((win) => !win.layoutReady))
-					throw new Error("NOT_READY: not all fixture layouts have opened.");
-				assertColdstartInventory(value, vaults);
-				assert.notEqual(value.mainPid, previousPid, "The main process did not change");
-				return value;
-			},
-			args.timeoutMs,
-			`startup readiness (${label})`,
-			{ retry: startupNotReady },
-		);
+		pendingStartup = { previousPid, label };
+		const inventory = awaitColdstartHost(host, vaults, previousPid, args.timeoutMs);
+		pendingStartup = undefined;
 		report.restarts.push({
 			label,
 			previousPid,
@@ -1054,8 +1071,31 @@ async function performColdstartCheck(args, output, report, save) {
 	return report.complete ? 0 : 1;
 }
 
-function startupNotReady(error) {
-	return error.message.includes("NOT_READY:") || /the Obsidian CLI (?:did not answer|failed for)/.test(error.message);
+export function startupNotReady(error) {
+	return (
+		error.message.includes("NOT_READY:") ||
+		error.message.includes("the Obsidian CLI did not answer") ||
+		error.message.includes(
+			'code run in Obsidian failed: Error: Command "eval" not found. It may require a plugin to be enabled.',
+		)
+	);
+}
+
+/** Used only while an explicitly launched app is starting, including before a recovery quit. Never relaunches. */
+export function awaitColdstartHost(read, paths, previousPid, timeoutMs, clock = {}) {
+	return waitForColdstart(
+		() => {
+			const value = read();
+			if (value.windows.length < Object.keys(paths).length || value.windows.some((win) => !win.layoutReady))
+				throw new Error("NOT_READY: not all fixture layouts have opened.");
+			assertColdstartInventory(value, paths);
+			assert.notEqual(value.mainPid, previousPid, "The main process did not change");
+			return value;
+		},
+		timeoutMs,
+		"complete verified startup before sampling or recovery quit",
+		{ ...clock, retry: startupNotReady },
+	);
 }
 
 export async function runColdstartCheck(argv) {
