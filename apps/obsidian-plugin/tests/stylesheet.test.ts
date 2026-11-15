@@ -28,6 +28,66 @@ const declarations = (body: string) =>
 			: [[declaration.slice(0, colon).trim(), declaration.slice(colon + 1).trim()] as [string, string]];
 	});
 
+test("legacy classes unused by timeline controls have no stylesheet rules", () => {
+	const css = readFileSync("styles.css", "utf8");
+	assert.doesNotMatch(css, /\.(?:noDone|noUnplanned|noColor)\b/);
+});
+
+test("view scope remains on cascade-sensitive rules rather than every timeline rule", () => {
+	// cssRules normalizes away the view prefix, so inspect the original selectors for this guard.
+	const css = whitespace(readFileSync("styles.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, ""));
+	const view = '.workspace-leaf-content[data-type="tasks_timeline_view"] ';
+	const escapeSelector = (selector: string) => selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	for (const selector of [
+		".taskido a",
+		".taskido .task .internal-link",
+		".taskido .task .external-link",
+		".taskido .task.overdue .timeline .icon svg",
+		".taskido .task.done .timeline .icon svg",
+		".taskido .quickEntryPanel .left",
+		".taskido .details.today",
+	])
+		assert.ok(
+			!new RegExp(`${escapeSelector(view + selector)}(?=,| \\{)`).test(css),
+			`${selector} does not need the view prefix`,
+		);
+
+	const scoped = (selector: string, property: string, value: string) => {
+		const escaped = escapeSelector(view + selector);
+		const rules = [...css.matchAll(new RegExp(`${escaped}(?:, [^{}]*)? \\{([^{}]*)\\}`, "g"))];
+		assert.ok(rules.length > 0, `${selector}: the original view scope must remain`);
+		assert.ok(
+			rules.some((rule) =>
+				declarations(rule[1]).some(([name, actual]) => name === property && whitespace(actual) === value),
+			),
+			`${selector}: the protected declaration ${property}: ${value} must remain`,
+		);
+	};
+	scoped(".taskido.taskido.taskido a", "color", "inherit");
+	for (const status of ["done", "cancelled"])
+		for (const badge of ["tag", "repeat", "priority", "relative", "file"])
+			scoped(`.taskido .task.${status} .info .${badge}`, "color", "var(--tcw-color-muted, var(--text-muted))");
+	for (const badge of ["tag", "repeat", "priority", "relative", "file"])
+		scoped(`.taskido .task .info .${badge}`, "line-height", "1");
+	scoped(".taskido .task .info .tag", "color", "var(--tag-color)");
+	scoped(".taskido .task.overdue .info .relative", "color", "var(--tcw-color-overdue, var(--taskido-color-overdue))");
+	for (const [option, badge] of [
+		["noRepeat", "repeat"],
+		["noModify", "modify"],
+		["noTag", "tag"],
+		["noPriority", "priority"],
+		["noRelative", "relative"],
+	])
+		scoped(`.taskido.${option} .${badge}`, "display", "none");
+	scoped('.taskido .task[aria-busy="true"] .content', "color", "inherit");
+	scoped(
+		'.taskido .task[aria-busy="true"] .info > :is(.tag, .repeat, .priority, .relative, .file)',
+		"color",
+		"inherit",
+	);
+	scoped('.taskido .task[aria-busy="true"] .timeline .icon svg', "stroke", "currentColor");
+});
+
 function timelineTokens(): Map<string, string> {
 	return new Map(
 		cssRules(readFileSync("styles.css", "utf8"))
