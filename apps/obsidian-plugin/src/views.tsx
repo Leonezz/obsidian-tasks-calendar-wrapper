@@ -229,7 +229,16 @@ export class TasksTimelineView extends ItemView {
 		this.closed = true;
 		if (!this.isReloading) this.reader.close();
 		// Runs the components' cleanup, so a reload that finishes after closing renders nothing.
-		this.root?.unmount();
+		const root = this.root;
+		this.root = undefined;
+		if (root) {
+			try {
+				// Commit an empty tree first: React 18 can retain the previous tree in its alternate root.
+				flushSync(() => root.render(null));
+			} finally {
+				root.unmount();
+			}
+		}
 		this.timelineHandle = undefined;
 		// Unloads this view's markdown children, and only them.
 		this.removeChild(this.markdownOwner);

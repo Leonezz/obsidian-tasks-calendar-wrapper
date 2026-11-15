@@ -235,7 +235,7 @@ test("a new window reloads at once", async (t) => {
 	assert.equal(timeline.reloads(), 1);
 });
 
-test("closing a timeline drops the reload it was waiting for, and it hears no more changes", async (t) => {
+test("closing a timeline repeatedly drops the reload it was waiting for, and it hears no more changes", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const vault = fakeVault(notes());
 	const timeline = await openTimeline(t, vault);
@@ -245,6 +245,7 @@ test("closing a timeline drops the reload it was waiting for, and it hears no mo
 	await wait(t, RELOAD_DELAY_MS / 2);
 	await timeline.close();
 	assert.ok(root.unmounted);
+	await timeline.close();
 	await wait(t, 10 * RELOAD_DELAY_MS);
 	assert.equal(timeline.reloads(), 0, "the reload it was waiting for");
 	vault.write("Inbox.md", "- [ ] call the plumber once more");
