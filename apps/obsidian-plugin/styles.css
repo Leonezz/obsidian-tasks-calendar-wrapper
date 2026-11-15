@@ -99,13 +99,13 @@
 	border: 0;
 }
 
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido a {
+.taskido a {
 	text-decoration: none;
 }
 
 /*
- * Links and badges inherit their color unless a scoped rule (tag, overdue, done, noColor) sets one.
- * The repeated class lifts this above the unscoped badge rules such as `.taskido .task .info .file`.
+ * Links and badges inherit their color unless a scoped rule (tag, overdue, done) sets one.
+ * Keep the view prefix and repeated class: together they lift this above the unscoped file-color rule below.
  */
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.taskido.taskido a {
 	color: inherit;
@@ -121,8 +121,8 @@
 	color: var(--tcw-color-link, var(--text-accent, var(--interactive-accent)));
 }
 
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .internal-link,
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .external-link {
+.taskido .task .internal-link,
+.taskido .task .external-link {
 	text-decoration: underline;
 }
 
@@ -293,11 +293,11 @@
 	background-color: var(--tcw-color-process, var(--taskido-color-process));
 }
 
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.overdue .timeline .icon svg {
+.taskido .task.overdue .timeline .icon svg {
 	stroke: var(--tcw-color-overdue, var(--taskido-color-overdue));
 }
 
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.done .timeline .icon svg {
+.taskido .task.done .timeline .icon svg {
 	stroke: var(--tcw-color-done, var(--taskido-color-done));
 }
 
@@ -320,6 +320,7 @@
 	line-height: 0;
 }
 
+/* Keep completed badge colors above the shared link-inherit and per-tag color rules. */
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.done .info .tag,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.done .info .repeat,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.done .info .priority,
@@ -419,6 +420,7 @@
 	padding: 0;
 }
 
+/* The view prefix keeps line-height: 1 above the done/cancelled line-height: 0 rule. */
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .tag,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .repeat,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .priority,
@@ -436,6 +438,7 @@
 	cursor: pointer;
 }
 
+/* Per-tag colors must stay above the shared link-inherit rule. */
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .tag {
 	color: var(--tag-color);
 	background: var(--tcw-badge-bg);
@@ -456,6 +459,7 @@
 	stroke-width: 1.75px;
 }
 
+/* The overdue badge must also stay above the shared link-inherit rule. */
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.overdue .info .relative {
 	color: var(--tcw-color-overdue, var(--taskido-color-overdue));
 }
@@ -493,7 +497,7 @@
 	border-radius: var(--tcw-radius-control);
 }
 
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel .left {
+.taskido .quickEntryPanel .left {
 	padding: 0 var(--tcw-space-3);
 }
 
@@ -539,6 +543,7 @@
 	border-radius: var(--tcw-radius-control);
 }
 
+/* Keep host-scoped resets above the native and community-theme form-control rules. */
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel select,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel input,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel button {
@@ -706,6 +711,7 @@
 	box-shadow: var(--tcw-control-shadow, var(--input-shadow));
 }
 
+/* Keep option hiding above the mobile badge and modify-control display: flex rules. */
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noYear .year,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noRepeat .repeat,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noModify .modify,
@@ -715,25 +721,10 @@
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noHeader .task .header,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noFile .task .info > .file,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noInfo .task .line:nth-child(2),
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noDone .year[data-types="done"],
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noDone .details[data-types="done"],
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noDone .task.done,
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noUnplanned .task.unplanned,
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noUnplanned .counter#unplanned,
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noUnplanned .year[data-types="unplanned"],
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noUnplanned .details[data-types="unplanned"],
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noRelative .relative,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noQuickEntry .quickEntryPanel,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noCounters .counters {
 	display: none;
-}
-
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noColor .task .file {
-	color: var(--tcw-color-muted, var(--text-muted));
-}
-
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noColor .task .info .file {
-	color: var(--tcw-color-muted, var(--text-muted));
 }
 
 /* Dim the content and controls without compositing the whole row. */
@@ -741,6 +732,7 @@
 	color: var(--tcw-color-faint, var(--text-faint));
 }
 
+/* Keep pending colors above the link, status and tag colors they replace. */
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task[aria-busy="true"] .content,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task[aria-busy="true"] .content a,
 .workspace-leaf-content[data-type="tasks_timeline_view"]
@@ -761,7 +753,7 @@
 	padding: 0;
 }
 
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .details.today {
+.taskido .details.today {
 	background: transparent;
 	background-color: transparent;
 }

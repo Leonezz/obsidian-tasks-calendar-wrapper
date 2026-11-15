@@ -1,6 +1,9 @@
 /** Pins the mobile measurement/profile contract and the unchanged desktop screenshot plans. */
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { runInNewContext } from "node:vm";
+import ts from "typescript";
 
 import { parseScreenshotArgs, type ScreenshotArgs } from "../scripts/screenshots-ab.mjs";
 import {
@@ -15,6 +18,7 @@ import {
 	type TouchTargetProblem,
 } from "../scripts/screenshots-mobile.mjs";
 import { THEMES, plan, themeOfState } from "../scripts/screenshots-themes.mjs";
+import { cropPng, decodePng, encodePng, type Image } from "../scripts/png.mjs";
 
 const states = [
 	"mobile-light-today-all-days-no-counter",
@@ -259,4 +263,266 @@ test("the problem report names the state, target, index and size", () => {
 		lines: [`${stateName}: row menu #2 is 43×60 px, below 48`, "Mobile touch targets: 1 problem."],
 		exitCode: 1,
 	});
+});
+
+// Importing screenshots.mjs would run its native entry point. Execute its actual function declarations instead.
+const screenshotSource = ts.createSourceFile(
+	"scripts/screenshots.mjs",
+	readFileSync("scripts/screenshots.mjs", "utf8"),
+	ts.ScriptTarget.Latest,
+	true,
+	ts.ScriptKind.JS,
+);
+
+function declaration(name: string, source = screenshotSource): string {
+	let found: ts.FunctionDeclaration | undefined;
+	const visit = (node: ts.Node): void => {
+		if (ts.isFunctionDeclaration(node) && node.name?.text === name) found = node;
+		ts.forEachChild(node, visit);
+	};
+	visit(source);
+	assert.ok(found, `${source.fileName} must contain ${name}`);
+	return found.getText(source).replace(/^export /u, "");
+}
+
+type CaptureViewport = { width: number; height: number; devicePixelRatio: number };
+type CaptureBox = {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	scrollHeight: number;
+	clientHeight: number;
+	below: number;
+	viewport: CaptureViewport;
+};
+type CaptureCli = {
+	cdp(method: string, params: Record<string, unknown>): { data?: string };
+	evaluate(fn: unknown, argument: { action: string; viewType: string }): CaptureBox;
+};
+type Viewport = (cli: CaptureCli, height: number) => CaptureBox;
+
+function capturePipeline(
+	options: {
+		box?: (width: number, height: number, read: number) => Partial<CaptureBox>;
+		metrics?: Partial<CaptureViewport>;
+		pngSize?: { width: number; height: number };
+		missingData?: boolean;
+	} = {},
+) {
+	const constants: Record<string, number> = {};
+	for (const statement of screenshotSource.statements) {
+		if (!ts.isVariableStatement(statement)) continue;
+		for (const item of statement.declarationList.declarations) {
+			if (ts.isIdentifier(item.name) && item.initializer && ts.isNumericLiteral(item.initializer))
+				constants[item.name.text] = Number(item.initializer.text);
+		}
+	}
+	const events: string[] = [];
+	const calls: { method: string; params: Record<string, unknown> }[] = [];
+	let width = 0;
+	let height = 0;
+	let reads = 0;
+	let surface: Image | undefined;
+	const cli: CaptureCli = {
+		cdp(method, params) {
+			calls.push({ method, params: JSON.parse(JSON.stringify(params)) as Record<string, unknown> });
+			if (method === "Emulation.setDeviceMetricsOverride") {
+				width = Number(params.width);
+				height = Number(params.height);
+				events.push(`resize:${width}x${height}`);
+				return {};
+			}
+			assert.equal(method, "Page.captureScreenshot");
+			events.push("screenshot");
+			if (options.missingData) return {};
+			const size = options.pngSize ?? { width, height };
+			const data = Buffer.alloc(size.width * size.height * 4);
+			for (let y = 0; y < size.height; y++) {
+				for (let x = 0; x < size.width; x++)
+					data.set([x % 256, y % 256, (x + y) % 256, 255], (y * size.width + x) * 4);
+			}
+			surface = { ...size, data };
+			return { data: encodePng(surface).toString("base64") };
+		},
+		evaluate(_fn, argument) {
+			assert.deepEqual(argument.action, "measure");
+			assert.equal(argument.viewType, "tasks_timeline_view");
+			events.push("measure");
+			return {
+				x: 1.4,
+				y: 2.6,
+				width: 4.4,
+				height: 3.4,
+				scrollHeight: 3,
+				clientHeight: 3,
+				below: height - 6,
+				viewport: { width, height, devicePixelRatio: 1, ...options.metrics },
+				...options.box?.(width, height, ++reads),
+			};
+		},
+	};
+	const functions = runInNewContext(
+		`${declaration("setViewport")}\n${declaration("setMobileViewport")}\n${declaration("capture")}\n({ capture, setMobileViewport })`,
+		{
+			...constants,
+			MOBILE_WIDTH,
+			Buffer,
+			cropPng,
+			ScriptError: Error,
+			timeline: () => {},
+			TIMELINE_VIEW: "tasks_timeline_view",
+		},
+	) as {
+		capture(cli: CaptureCli, viewport?: Viewport, beforeScreenshot?: () => void): Buffer;
+		setMobileViewport: Viewport;
+	};
+	return { ...functions, cli, events, calls, surface: () => surface };
+}
+
+test("the actual timeline measurement includes the current CSS viewport and DPR", () => {
+	const box = runInNewContext(`(${declaration("measure")})()`, {
+		content: () => ({
+			getBoundingClientRect: () => ({ left: 5, top: 7, width: 370, height: 740, bottom: 747 }),
+			scrollHeight: 740,
+			clientHeight: 740,
+		}),
+		innerWidth: 390,
+		innerHeight: 800,
+		devicePixelRatio: 1,
+	}) as CaptureBox;
+	assert.deepEqual(JSON.parse(JSON.stringify(box.viewport)), { width: 390, height: 800, devicePixelRatio: 1 });
+	assert.equal(box.below, 53);
+});
+
+test("the actual capture takes one full surface without a clip and crops the original rounded timeline box", () => {
+	const pipeline = capturePipeline();
+	const actual = decodePng(pipeline.capture(pipeline.cli));
+	assert.deepEqual(pipeline.events, ["resize:600x600", "measure", "screenshot"]);
+	assert.deepEqual(
+		pipeline.calls.filter(({ method }) => method === "Page.captureScreenshot"),
+		[
+			{
+				method: "Page.captureScreenshot",
+				params: { format: "png", fromSurface: true, captureBeyondViewport: false },
+			},
+		],
+	);
+	assert.equal(actual.width, 4);
+	assert.equal(actual.height, 3);
+	const surface = pipeline.surface()!;
+	for (let y = 0; y < actual.height; y++)
+		assert.deepEqual(
+			actual.data.subarray(y * 16, (y + 1) * 16),
+			surface.data.subarray(((y + 3) * 600 + 1) * 4, ((y + 3) * 600 + 5) * 4),
+		);
+});
+
+test("capture grows the viewport before the single canonical image and uses its final dimensions", () => {
+	const pipeline = capturePipeline({
+		box: (_width, height) => ({ height: height - 12, scrollHeight: 650, clientHeight: height - 12, below: 9.4 }),
+	});
+	const png = pipeline.capture(pipeline.cli, undefined, () => pipeline.events.push("hook"));
+	assert.deepEqual(pipeline.events, ["resize:600x600", "measure", "resize:600x662", "measure", "hook", "screenshot"]);
+	assert.equal(decodePng(png).height, 650);
+});
+
+test("the mobile custom viewport and touch hook use the same once-only capture path", () => {
+	const pipeline = capturePipeline();
+	pipeline.capture(pipeline.cli, pipeline.setMobileViewport, () => pipeline.events.push("touch-targets"));
+	assert.deepEqual(pipeline.events, ["resize:390x600", "measure", "touch-targets", "screenshot"]);
+	assert.deepEqual(pipeline.calls[0], {
+		method: "Emulation.setDeviceMetricsOverride",
+		params: { width: 390, height: 600, deviceScaleFactor: 1, mobile: true },
+	});
+	assert.equal(pipeline.calls.filter(({ method }) => method === "Page.captureScreenshot").length, 1);
+});
+
+test("capture refuses missing, fractional or nonpositive CSS dimensions and any DPR other than one", () => {
+	for (const metrics of [
+		{ width: 0 },
+		{ height: -1 },
+		{ width: 600.5 },
+		{ height: Number.NaN },
+		{ devicePixelRatio: 2 },
+		{ devicePixelRatio: 0 },
+	]) {
+		const pipeline = capturePipeline({ metrics });
+		assert.throws(() => pipeline.capture(pipeline.cli), /positive integer CSS viewport at DPR 1/u);
+		assert.equal(pipeline.calls.filter(({ method }) => method === "Page.captureScreenshot").length, 0);
+	}
+	const pipeline = capturePipeline({ box: () => ({ viewport: undefined }) });
+	assert.throws(() => pipeline.capture(pipeline.cli), /positive integer CSS viewport at DPR 1/u);
+});
+
+test("capture rejects a PNG whose full surface size disagrees with the measured CSS viewport", () => {
+	const pipeline = capturePipeline({ pngSize: { width: 600, height: 599 } });
+	assert.throws(() => pipeline.capture(pipeline.cli), /viewport|dimensions|size/u);
+	assert.equal(pipeline.calls.filter(({ method }) => method === "Page.captureScreenshot").length, 1);
+});
+
+test("capture refuses a rounded timeline crop that falls outside the full viewport", () => {
+	const pipeline = capturePipeline({ box: () => ({ x: 599.6 }) });
+	assert.throws(() => pipeline.capture(pipeline.cli), /crop|bounds|rectangle|viewport/u);
+	assert.equal(pipeline.calls.filter(({ method }) => method === "Page.captureScreenshot").length, 1);
+});
+
+test("capture keeps the original empty-response, resize and zero-size failure boundaries", () => {
+	const empty = capturePipeline({ missingData: true });
+	assert.throws(() => empty.capture(empty.cli), /returned no image/u);
+	const oversized = capturePipeline({ box: () => ({ scrollHeight: 16_001 }) });
+	assert.throws(() => oversized.capture(oversized.cli), /more than the 16000 px/u);
+	const growing = capturePipeline({ box: (_width, height) => ({ scrollHeight: height + 1 }) });
+	assert.throws(() => growing.capture(growing.cli), /does not fit the page/u);
+	const zero = capturePipeline({ box: () => ({ width: 0 }) });
+	assert.throws(() => zero.capture(zero.cli), /has no size/u);
+	assert.equal(zero.events.filter((event) => event === "measure").length, 4);
+	const recovered = capturePipeline({ box: (_width, _height, read) => (read === 1 ? { width: 0 } : {}) });
+	recovered.capture(recovered.cli);
+	assert.deepEqual(recovered.events, ["resize:600x600", "measure", "measure", "screenshot"]);
+});
+
+test("capture failures propagate through the actual normal undo routine without taking another image", () => {
+	const fixtureSource = ts.createSourceFile(
+		"scripts/fixture-app.mjs",
+		readFileSync("scripts/fixture-app.mjs", "utf8"),
+		ts.ScriptTarget.Latest,
+		true,
+		ts.ScriptKind.JS,
+	);
+	const runAndUndo = runInNewContext(`(${declaration("runAndUndo", fixtureSource)})`, { ScriptError: Error }) as (
+		work: () => unknown,
+		undo: [string, () => void][],
+	) => unknown;
+	const pipeline = capturePipeline({ pngSize: { width: 599, height: 600 } });
+	const restored: string[] = [];
+	assert.throws(
+		() =>
+			runAndUndo(
+				() => pipeline.capture(pipeline.cli),
+				[
+					[
+						"viewport",
+						() => {
+							restored.push("viewport");
+						},
+					],
+					[
+						"plugin",
+						() => {
+							restored.push("plugin");
+						},
+					],
+					[
+						"appearance",
+						() => {
+							restored.push("appearance");
+						},
+					],
+				],
+			),
+		/viewport|dimensions|size/u,
+	);
+	assert.deepEqual(restored, ["viewport", "plugin", "appearance"]);
+	assert.equal(pipeline.calls.filter(({ method }) => method === "Page.captureScreenshot").length, 1);
 });

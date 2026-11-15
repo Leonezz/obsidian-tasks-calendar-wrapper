@@ -179,8 +179,18 @@ describe("Visual", () => {
 		{ skip: "phase 4 step 26: the user approved keeping the current token values for this refactor" },
 		() => {},
 	);
-	// Phase 4 step 23: remove repeated specificity prefixes.
-	it.todo("selectors have no repeated specificity prefixes");
+	// Phase 4 step 23: remove unnecessary prefixes; retain documented cascade protections.
+	it("unnecessary selector prefixes are removed while cascade protections remain", () => {
+		coveredBy(
+			"tests/stylesheet.test.ts",
+			"view scope remains on cascade-sensitive rules rather than every timeline rule",
+		);
+		coveredBy("tests/stylesheet.test.ts", "legacy classes unused by timeline controls have no stylesheet rules");
+		coveredBy(
+			"tests/timeline.test.ts",
+			"timeline: the stylesheet hides nothing the markup reader does not know of",
+		);
+	});
 	// Phase 4 step 0b: compare the default theme screenshots and computed styles against the base.
 	it("default theme screenshots are compared against the base", () => {
 		coveredBy(
