@@ -1,5 +1,5 @@
-today header "Focus On Today", color rgb(138, 92, 245)
-counter 65 Todo, color rgb(138, 92, 245), background oklch(0 0 none / 0.067)
+today header "Focus on today", color rgb(138, 92, 245)
+counter 65 To-do, color rgb(138, 92, 245), background oklch(0 0 none / 0.067)
 counter 19 Overdue, color rgb(34, 34, 34), background rgb(228, 228, 228)
 counter 85 Unplanned, color rgb(34, 34, 34), background rgb(228, 228, 228)
 quick entry
