@@ -59,10 +59,22 @@ async function wait(t: TestContext, ms: number): Promise<void> {
 async function openTimeline(
 	t: TestContext,
 	vault: FakeVault,
-	{ resolved = true, options = {} }: { resolved?: boolean; options?: Partial<UserOption> } = {},
+	{
+		resolved = true,
+		options = {},
+		skipOpenReread,
+	}: { resolved?: boolean; options?: Partial<UserOption>; skipOpenReread?: () => boolean } = {},
 ) {
 	const leaf = vault.app.workspace.addLeaf();
-	const view = new TasksTimelineView(leaf as never, sharedIndexOf(vault), unusedWriter, unusedNotices);
+	const view = new TasksTimelineView(
+		leaf as never,
+		sharedIndexOf(vault),
+		unusedWriter,
+		unusedNotices,
+		undefined,
+		undefined,
+		skipOpenReread,
+	);
 	const loading = view.onUpdateOptions({ ...defaultUserOptions, ...options });
 	leaf.view = view;
 	await (view as unknown as Opening).open();
@@ -401,6 +413,81 @@ test("Obsidian's first resolved after opening reads every note again, also after
 	await wait(t, RELOAD_DELAY_MS);
 	assert.equal(timeline.reloads(), 3);
 	assert.deepEqual(read(), ["Projects/Garden.md"], "a later resolved, which each save brings");
+});
+
+test("skipOpenReread reads only notes marked between construction and opening", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const vault = fakeVault(notes());
+	const leaf = vault.app.workspace.addLeaf();
+	let skip = false;
+	const view = new TasksTimelineView(
+		leaf as never,
+		sharedIndexOf(vault),
+		unusedWriter,
+		unusedNotices,
+		undefined,
+		undefined,
+		() => skip,
+	);
+	await view.onUpdateOptions({ ...defaultUserOptions });
+	const read = readsOf(vault);
+	vault.write("Inbox.md", "- [ ] call the plumber before the view opens");
+	skip = true;
+	leaf.view = view;
+	t.after(() => (view as unknown as Opening).close());
+	await (view as unknown as Opening).open();
+	await view.onReloadTasks();
+	assert.deepEqual(read(), ["Inbox.md"]);
+	assert.deepEqual(linesIn(view, "Inbox.md"), ["- [ ] call the plumber before the view opens"]);
+	assert.deepEqual(linesIn(view, "Projects/Garden.md"), ["- [ ] plant the tulips", "- [x] buy bulbs"]);
+});
+
+test("skipOpenReread first resolved does not compensate for a silent write, while marked saves still update", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const vault = fakeVault(notes());
+	const timeline = await openTimeline(t, vault, { resolved: false, skipOpenReread: () => true });
+	t.after(() => timeline.close());
+	await timeline.view.onReloadTasks();
+	vault.writeSilently("Inbox.md", "- [ ] an unheard startup change");
+	const read = readsOf(vault);
+	vault.resolve();
+	await wait(t, RELOAD_DELAY_MS);
+	assert.deepEqual(read(), []);
+	assert.deepEqual(linesIn(timeline.view, "Inbox.md"), [notes()["Inbox.md"]]);
+	vault.write("Projects/Garden.md", "- [ ] plant the roses");
+	await wait(t, RELOAD_DELAY_MS);
+	assert.deepEqual(read(), ["Projects/Garden.md"]);
+	assert.deepEqual(linesIn(timeline.view, "Projects/Garden.md"), ["- [ ] plant the roses"]);
+	assert.deepEqual(linesIn(timeline.view, "Inbox.md"), [notes()["Inbox.md"]]);
+});
+
+test("skipOpenReread getter is checked again at the first resolved", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const vault = fakeVault(notes());
+	let skip = true;
+	const timeline = await openTimeline(t, vault, { resolved: false, skipOpenReread: () => skip });
+	t.after(() => timeline.close());
+	await timeline.view.onReloadTasks();
+	vault.writeSilently("Inbox.md", "- [ ] a silent change after the debug flag is disabled");
+	const read = readsOf(vault);
+	skip = false;
+	vault.resolve();
+	await wait(t, RELOAD_DELAY_MS);
+	assert.deepEqual(read(), ALL);
+	assert.deepEqual(linesIn(timeline.view, "Inbox.md"), ["- [ ] a silent change after the debug flag is disabled"]);
+});
+
+test("skipOpenReread still reads every note when a window opens", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const vault = fakeVault(notes());
+	const timeline = await openTimeline(t, vault, { skipOpenReread: () => true });
+	t.after(() => timeline.close());
+	vault.writeSilently("Inbox.md", "- [ ] a silent change before a new window");
+	const read = readsOf(vault);
+	vault.openWindow();
+	await settle();
+	assert.deepEqual(read(), ALL);
+	assert.deepEqual(linesIn(timeline.view, "Inbox.md"), ["- [ ] a silent change before a new window"]);
 });
 
 test("a new window reads every note again", async (t) => {
