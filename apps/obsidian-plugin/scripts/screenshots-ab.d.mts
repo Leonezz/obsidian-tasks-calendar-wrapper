@@ -16,15 +16,21 @@ type CommonScreenshotArgs = {
 	themes: "default" | "all";
 	/** Present only for --profile=mobile; a desktop run parses to the same object as before profiles existed. */
 	profile?: "mobile";
+	/** Present only for --force-windowing; sets the per-view debug threshold before its factory runs. */
+	forceWindowing?: true;
+	/** Present only in the standalone --windowing-parity mode; never records a baseline. */
+	windowingReport?: string | null;
 };
 
 export type ScreenshotArgs = CommonScreenshotArgs &
 	(
-		| { mode: "screenshots" | "styles" | "ab" | "pin-theme"; expandedFilter?: never }
+		| { mode: "screenshots" | "styles" | "ab" | "pin-theme" | "windowing-parity"; expandedFilter?: never }
 		| {
 				mode: "expanded-filter";
 				expandedFilter: { action: "review" | "record" | "check"; directory: string | null };
 				profile?: never;
+				forceWindowing?: never;
+				windowingReport?: never;
 		  }
 	);
 
@@ -34,6 +40,9 @@ export type ScreenshotArgs = CommonScreenshotArgs &
  * only "", ab null, themes "default" and no profile (desktop); --styles selects "styles", --ab selects "ab" and
  * --pin-theme selects "pin-theme". Mobile allows --only with --update, but rejects --ab, --styles,
  * --themes=all and --pin-theme. Repeating the same profile is allowed; conflicting or invalid values fail.
+ * --windowing-parity selects its standalone mode, accepts only --report and --profile=desktop, and adds
+ * windowingReport (null by default). --force-windowing adds forceWindowing: true for ordinary desktop
+ * screenshot comparisons, rejects baseline updates and other modes, and leaves --only/--themes available.
  * Unsupported arguments are rejected first, then profile values and mobile combinations, --pin-theme,
  * invalid or conflicting --themes
  * values, missing A/B values or stray A/B options, and the remaining incompatible combinations.
@@ -51,12 +60,14 @@ export type ScreenshotArgs = CommonScreenshotArgs &
  * - --ab compares two builds and records no baseline; leave out --update.
  * - leave out --styles, --ab compares styles already.
  * - --only cannot be combined with --update, which replaces all screenshots.
+ * - --windowing-parity cannot be combined with ${option}.
+ * - --force-windowing cannot be combined with ${option}.
  * A missing value includes an empty = value or a following option. --only and --themes with separate values
  * stay unknown. Repeating the same --themes value is allowed; --pin-theme takes no other option except
  * --profile=desktop, even --themes=default.
  * --expanded-filter selects the independent check, --review <dir> collects review artifacts and --record <dir>
  * promotes approved artifacts offline. Both directory options accept = values. This mode rejects --only, --update,
- * --styles, --pin-theme, mobile and all A/B options; review and record are exclusive. Record rejects --themes because
+ * --styles, --pin-theme, mobile, windowing modes and all A/B options; review and record are exclusive. Record rejects --themes because
  * its manifest supplies the exact reviewed theme set. The new property is absent from every ordinary parse result.
  */
 export function parseScreenshotArgs(argv: readonly string[]): ScreenshotArgs;

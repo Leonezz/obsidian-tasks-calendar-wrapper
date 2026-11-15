@@ -8,6 +8,7 @@ import { DayHeader } from "./DayHeader";
 import { DayContent } from "./DayContent";
 import { QuickEntryHandlerContext } from "../contexts";
 import { recordRender } from "../renderprobe";
+import { WindowGap, type WindowDayPlan } from "./Windowed";
 
 declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
@@ -27,22 +28,25 @@ type DayProps = {
 	readonly yearLabel: string;
 	readonly entry?: EntryProps;
 	readonly modelFor: (task: ResolvedTask) => TaskRowModel;
+	readonly window?: WindowDayPlan;
 };
 
 // The comparator is the negation of the old shouldComponentUpdate.
 export const sameDayProps = (prev: DayProps, next: DayProps): boolean =>
+	next.window === prev.window &&
 	next.yearLabel === prev.yearLabel &&
 	next.modelFor === prev.modelFor &&
 	next.entry === prev.entry &&
-	next.day.key === prev.day.key &&
-	next.day.label === prev.day.label &&
-	next.day.isToday === prev.day.isToday &&
-	next.day.isEntry === prev.day.isEntry &&
-	next.day.dated === prev.day.dated &&
-	next.day.statuses.length === prev.day.statuses.length &&
-	next.day.statuses.every((status, index) => status === prev.day.statuses[index]) &&
-	next.day.tasks.length === prev.day.tasks.length &&
-	next.day.tasks.every((task, index) => task === prev.day.tasks[index]);
+	(next.day === prev.day ||
+		(next.day.key === prev.day.key &&
+			next.day.label === prev.day.label &&
+			next.day.isToday === prev.day.isToday &&
+			next.day.isEntry === prev.day.isEntry &&
+			next.day.dated === prev.day.dated &&
+			next.day.statuses.length === prev.day.statuses.length &&
+			next.day.statuses.every((status, index) => status === prev.day.statuses[index]) &&
+			next.day.tasks.length === prev.day.tasks.length &&
+			next.day.tasks.every((task, index) => task === prev.day.tasks[index])));
 
 // Keep the former Consumer's subscription here so a filter change does not render an unchanged day.
 function EntryFilters({ entry }: { readonly entry: EntryProps }) {
@@ -63,11 +67,11 @@ function EntryFilters({ entry }: { readonly entry: EntryProps }) {
 export const Day = React.memo(function Day(props: DayProps) {
 	// Counted for the tests only; the production build drops the call and the probe.
 	process.env.NODE_ENV !== "production" && recordRender("DateView", props.day.key);
-	const { day, yearLabel, entry, modelFor } = props;
+	const { day, yearLabel, entry, modelFor, window } = props;
 	const className = day.isToday ? "details today" : "details";
 	const types = day.statuses.join(" ");
 	return (
-		<div>
+		<div ref={window?.ref} {...(window ? { "data-tcw-day": day.key } : {})}>
 			{entry && <TodayFocus visual={copy.timeline.focusOnToday} />}
 			{entry && <Counters counters={entry.counters} />}
 			{entry && <EntryFilters entry={entry} />}
@@ -84,9 +88,13 @@ export const Day = React.memo(function Day(props: DayProps) {
 							: undefined
 					}
 				>
-					<DayHeader thisDate={day.label} />
+					{!window || window.showHeader ? (
+						<DayHeader thisDate={day.label} />
+					) : (
+						<WindowGap height={window.headerHeight} />
+					)}
 					<div className={className} data-year={yearLabel} data-types={types}>
-						<DayContent dayKey={day.key} tasks={day.tasks} modelFor={modelFor} />
+						<DayContent dayKey={day.key} tasks={day.tasks} modelFor={modelFor} window={window} />
 					</div>
 				</div>
 			)}

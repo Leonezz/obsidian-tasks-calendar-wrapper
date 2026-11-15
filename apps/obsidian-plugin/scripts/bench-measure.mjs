@@ -67,6 +67,7 @@ export async function measure({
 		const seen = {
 			first: null,
 			last: null,
+			mutationVersion: 0,
 			token: null,
 			times: [],
 			rowsAt: rowsPresent ? performance.now() : null,
@@ -95,6 +96,7 @@ export async function measure({
 			const now = performance.now();
 			const relevant = changes.filter((change) => inView(change.target));
 			if (relevant.length === 0) return;
+			seen.mutationVersion++;
 			seen.first ??= now;
 			seen.last = now;
 			seen.times.push(now);
@@ -301,25 +303,64 @@ export async function measure({
 						120_000,
 						"pending toggle writes to finish",
 					);
-				if (toggleReady)
-					await until(
-						() => {
-							const root = document.querySelector(leafSelector);
-							return (
-								root &&
-								toggleTasks.every((text) => {
-									const matches = toggleRows(root, text);
-									return (
-										matches.length === 1 &&
-										matches[0].dataset.task === " " &&
-										!matches[0].hasAttribute("aria-busy")
+				if (toggleReady) {
+					let readyRows = [];
+					const ready = () => {
+						const root = document.querySelector(leafSelector);
+						const checked = [];
+						const open =
+							root &&
+							toggleTasks.every((text) => {
+								const matches = toggleRows(root, text);
+								const valid =
+									matches.length === 1 &&
+									matches[0].dataset.task === " " &&
+									!matches[0].hasAttribute("aria-busy");
+								if (valid) checked.push(matches[0]);
+								return valid;
+							});
+						readyRows = open ? checked : [];
+						return open;
+					};
+					const start = performance.now();
+					const limit = 30_000 * slowness;
+					let open = false;
+					let checkedVersion = -1;
+					for (;;) {
+						// Full selectors over a large legacy DOM can themselves be long tasks. Cache a successful strict scan
+						// while it goes quiet, but invalidate on every real DOM mutation, including equal-timestamp batches.
+						if (
+							!open ||
+							checkedVersion !== recorder.seen.mutationVersion ||
+							readyRows.some(
+								(row) => !row.isConnected || row.dataset.task !== " " || row.hasAttribute("aria-busy"),
+							)
+						) {
+							open = ready();
+							checkedVersion = recorder.seen.mutationVersion;
+						}
+						if (open && (recorder.seen.last === null || quietFor(recorder, quietMs)())) break;
+						if (!open) {
+							const view = app.workspace.getLeavesOfType(viewType)[0]?.view;
+							// A one-off reveal can find the previous done row before the restored open tasks commit and reorder.
+							if (
+								typeof view?.revealTask === "function" &&
+								taskPath !== undefined &&
+								taskLine !== undefined
+							)
+								try {
+									await view.revealTask(`${taskPath}:${taskLine}`);
+								} catch (error) {
+									throw new Error(
+										`settle: revealTask("${taskPath}:${taskLine}") failed: ${error?.message ?? String(error)}`,
 									);
-								})
-							);
-						},
-						30_000,
-						"the five open toggle tasks",
-					);
+								}
+						}
+						if (performance.now() - start > limit)
+							throw new Error(`timed out after ${limit / 1000} s waiting for the five open toggle tasks`);
+						await sleep(20);
+					}
+				}
 				await until(
 					() => recorder.seen.last === null || quietFor(recorder, quietMs)(),
 					30_000,
@@ -334,10 +375,21 @@ export async function measure({
 			const view = app.workspace.getLeavesOfType(viewType)[0]?.view;
 			if (typeof view?.revealTask !== "function") return { revealed: false };
 			const id = `${taskPath}:${taskLine}`;
-			try {
-				await view.revealTask(id);
-			} catch (error) {
-				throw new Error(`reveal: revealTask("${id}") failed: ${error?.message ?? String(error)}`);
+			const start = performance.now();
+			const limit = 5_000 * slowness;
+			for (;;) {
+				let revealed;
+				try {
+					revealed = await view.revealTask(id);
+				} catch (error) {
+					throw new Error(`reveal: revealTask("${id}") failed: ${error?.message ?? String(error)}`);
+				}
+				// A restored note can reach the metadata cache before its new task reaches the committed arrangement.
+				// Only retry a refused reveal; a successful reveal still has to mount the requested row below.
+				if (revealed !== false) break;
+				if (performance.now() - start > limit)
+					throw new Error(`timed out after ${limit / 1000} s waiting for reveal: the arranged task ${id}`);
+				await sleep(20);
 			}
 			await until(
 				() =>
@@ -574,8 +626,12 @@ export async function measure({
 			// Stamp overlays before the recorder does its work, including changes between polling intervals.
 			const observer = new MutationObserver((changes) => {
 				for (const entry of clicks) {
-					if (entry.abandoned) continue;
-					if (!entry.row.isConnected) entry.row = findRow(entry.text);
+					if (entry.abandoned || entry.realAt !== null) continue;
+					if (!entry.row.isConnected) {
+						const matches = toggleRows(root, entry.text);
+						if (!matches.length) continue;
+						entry.row = findRow(entry.text);
+					}
 					const row = entry.row;
 					if (
 						row.getAttribute("aria-busy") === "true" ||
@@ -607,6 +663,24 @@ export async function measure({
 					throw new Error(`toggle: "${text}" is not open and idle before its click`);
 				const checkbox = row.querySelector(":scope > .timeline > label.icon");
 				if (!checkbox) throw new Error(`toggle: "${text}" has no built-in checkbox label`);
+				// dispatchEvent has no browser focus default action. Keep the clicked instance resident as a real user does.
+				const doc = row.ownerDocument;
+				const previousFocus = doc.activeElement;
+				let focusIn = false;
+				const focused = () => {
+					focusIn = true;
+				};
+				row.addEventListener("focusin", focused);
+				try {
+					row.focus({ preventScroll: true });
+				} finally {
+					row.removeEventListener("focusin", focused);
+				}
+				// A background Obsidian document may update activeElement without emitting focusin for React's onFocus.
+				if (!focusIn && row.contains(doc.activeElement))
+					row.dispatchEvent(
+						new doc.defaultView.FocusEvent("focusin", { bubbles: true, relatedTarget: previousFocus }),
+					);
 				const entry = { text, row, clickAt: null, overlayAt: null, realAt: null, abandoned: false };
 				clicks.push(entry);
 				// Constructed in this page, immediately before dispatch, with the same clock as the click guard.
@@ -620,8 +694,28 @@ export async function measure({
 				while (entry.overlayAt === null && performance.now() - entry.clickAt < 200) await sleep(5);
 				return entry.overlayAt !== null && entry.overlayAt - entry.clickAt <= 200;
 			};
-			const real = (entry) =>
-				until(() => entry.realAt !== null, 30_000, `the written marker for "${entry.text}" without an overlay`);
+			const real = async (entry, revealOffWindow = false) => {
+				const started = performance.now();
+				const limit = 30_000 * slowness;
+				while (entry.realAt === null) {
+					// Burst is an untimed counts check. Earlier clicks may leave the window after focus moves to the next row.
+					if (revealOffWindow && !entry.row.isConnected) {
+						const line = entry.row.getAttribute("data-line");
+						if (!/^\d+$/.test(line ?? ""))
+							throw new Error(`toggle: "${entry.text}" has no task line to reveal`);
+						await measure({ action: "reveal", viewType, taskPath: path, taskLine: Number(line), slowness });
+						entry.row = findRow(entry.text);
+						if (entry.row.dataset.task === "x" && !entry.row.hasAttribute("aria-busy"))
+							entry.realAt ??= performance.now();
+					}
+					if (entry.realAt !== null) break;
+					if (performance.now() - started > limit)
+						throw new Error(
+							`timed out after ${limit / 1000} s waiting for the written marker for "${entry.text}" without an overlay`,
+						);
+					await sleep(20);
+				}
+			};
 			try {
 				if (toggleMode === "burst") {
 					for (const text of toggleTasks) {
@@ -629,11 +723,24 @@ export async function measure({
 						click(text);
 					}
 					await overlay(clicks.at(-1));
-					for (const entry of clicks) if (entry.overlayAt !== null) await real(entry);
+					for (const entry of clicks) if (entry.overlayAt !== null) await real(entry, true);
 				} else {
 					for (const text of toggleMode === "idle" ? toggleTasks.slice(0, 1) : toggleTasks) {
 						let entry;
 						for (let attempt = 0; attempt < 10; attempt++) {
+							// Sequence is an untimed counts check. A preceding write can move the next open target outside the window.
+							if (toggleMode === "sequence" && toggleRows(root, text).length === 0) {
+								const line = initialRows[toggleTasks.indexOf(text)].getAttribute("data-line");
+								if (!/^\d+$/.test(line ?? ""))
+									throw new Error(`toggle: "${text}" has no task line to reveal`);
+								await measure({
+									action: "reveal",
+									viewType,
+									taskPath: path,
+									taskLine: Number(line),
+									slowness,
+								});
+							}
 							entry = click(text);
 							if (toggleMode === "idle") {
 								await until(() => entry.overlayAt !== null, 30_000, `the idle overlay for "${text}"`);

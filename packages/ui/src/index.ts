@@ -3,7 +3,8 @@
  * restructuring. This package may depend on @tasks-calendar-wrapper/core, never on obsidian.
  * The plugin imports ui only through this public entry.
  */
-export type { UiHost } from "./host";
+export type { UiHost, TimelineHandle, TimelineWindowHost, TimelineWindowingInfo } from "./host";
+export { WINDOW_MIN_ROWS, WINDOW_RELEASE_ROWS } from "@tasks-calendar-wrapper/core";
 export {
 	HostContext,
 	QuickEntryHandlerContext,

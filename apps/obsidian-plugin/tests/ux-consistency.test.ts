@@ -159,9 +159,20 @@ describe("Visual", () => {
 		);
 	});
 	// Phase 4 step 22: define the status, spacing and badge tokens.
-	it.todo("status colors, spacing and badges have defined tokens");
+	it("status colors, spacing and badges have defined tokens", () => {
+		coveredBy("tests/stylesheet.test.ts", "status colors, spacing and badge tokens preserve their initial values");
+		coveredBy(
+			"tests/stylesheet.test.ts",
+			"every tcw token reference is defined in a scoped rule or by the day component",
+		);
+	});
 	// Phase 4 step 22: replace component literals with tokens.
-	it.todo("components use only tokens");
+	it("components use only tokens", () => {
+		coveredBy(
+			"../../packages/ui/tests/inlinestyle.test.ts",
+			"components set only custom properties in inline styles",
+		);
+	});
 	// Phase 4 steps 22 and 26: use Obsidian variables; record the open question 19 exception if 26 is declined.
 	it.todo("tokens are defined with Obsidian CSS variables");
 	// Phase 4 step 23: remove repeated specificity prefixes.
