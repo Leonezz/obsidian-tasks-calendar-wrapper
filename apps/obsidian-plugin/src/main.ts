@@ -84,7 +84,7 @@ export default class TasksCalendarWrapper extends Plugin {
 				this.writerNotices,
 				this.viewSession,
 				() => this.debug.windowMinRows,
-				() => !this.indexDisposed && this.debug.skipOpenReread === true,
+				() => !this.indexDisposed && this.debug.skipOpenReread !== false,
 			);
 			view.onUpdateOptions(this.userOptions);
 			return view;

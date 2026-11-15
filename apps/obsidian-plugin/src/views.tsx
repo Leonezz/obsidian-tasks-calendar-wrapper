@@ -139,6 +139,7 @@ export class TasksTimelineView extends ItemView {
 		/** A view made outside the plugin has its own session and opens with On Load values. */
 		private readonly session: ViewSession = createViewSession(),
 		private readonly windowMinRows: () => number | undefined = () => undefined,
+		/** Independent views cannot assume their reader is watched; the plugin supplies its current policy. */
 		private readonly skipOpenReread: () => boolean = () => false,
 	) {
 		super(leaf);
@@ -163,8 +164,8 @@ export class TasksTimelineView extends ItemView {
 		// have or had tasks reload the list, see issue #63.
 		for (const ref of watchChanges(this.app, (paths, cache) => this.onFileChanged(paths, cache)))
 			this.registerEvent(ref);
-		// Keep the full-read defence by default. The debug experiment instead trusts the changes the shared index
-		// has marked since construction; an unwatched reader must still use the defence after plugin unload.
+		// The plugin's watched shared index marks startup changes. Independent views, and views that open after
+		// their plugin unloads, keep the full-read defence through the policy callback.
 		if (!this.skipOpenReread()) this.reader.rereadAll();
 		// When the view opens while Obsidian starts, the metadata of some files may not be read yet.
 		const firstResolved = this.app.metadataCache.on("resolved", () => {
