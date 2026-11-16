@@ -677,6 +677,108 @@ function noteHandlers(vault: FakeVault): number {
 	);
 }
 
+for (const skip of [undefined, false, true]) {
+	test(`the real factory startup read policy is ${skip === undefined ? "skip by default" : `debug ${skip}`}`, async (t) => {
+		t.mock.timers.enable({ apis: ["setTimeout"] });
+		const { vault, plugin } = await startPlugin(readFixture("quiet.json"), { layoutReady: true });
+		t.after(() => plugin.unload());
+		assert.equal(plugin.debug.skipOpenReread, undefined);
+		if (skip !== undefined) plugin.debug.skipOpenReread = skip;
+		vault.write("Other.md", "- [ ] keep the other note");
+		const leaf = vault.app.workspace.addLeaf();
+		const factory = vault.app.viewRegistry.creatorOf(TIMELINE_VIEW);
+		assert.ok(factory);
+		const view = factory(leaf) as TasksTimelineView;
+		await settle();
+		const from = vault.reads.length;
+		vault.write("Inbox.md", "- [ ] marked between construction and opening");
+		leaf.view = view;
+		await (view as unknown as { open(): Promise<void> }).open();
+		await view.onReloadTasks();
+		const expected = skip === false ? ["Inbox.md", "Other.md"] : ["Inbox.md"];
+		assert.deepEqual(
+			vault.reads.slice(from).sort(),
+			expected,
+			"opening reads the marked note, unless explicitly forced to reread all",
+		);
+		const state = view as unknown as { store: { getSnapshot(): { tasks: readonly { sourceLine: string }[] } } };
+		assert.deepEqual(
+			state.store
+				.getSnapshot()
+				.tasks.map((task) => task.sourceLine)
+				.sort(),
+			["- [ ] keep the other note", "- [ ] marked between construction and opening"],
+		);
+		const beforeResolved = vault.reads.length;
+		vault.resolve();
+		await wait(t, 500);
+		assert.deepEqual(
+			vault.reads.slice(beforeResolved).sort(),
+			skip === false ? expected : [],
+			"first resolved keeps the same policy",
+		);
+	});
+}
+
+test("skipOpenReread is a dynamic, nonpersistent factory debug flag", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { vault, plugin } = await startPlugin(readFixture("quiet.json"), { layoutReady: true });
+	t.after(() => plugin.unload());
+	assert.equal(plugin.debug.skipOpenReread, undefined);
+	plugin.debug.skipOpenReread = false;
+	const leaf = vault.app.workspace.addLeaf();
+	const factory = vault.app.viewRegistry.creatorOf(TIMELINE_VIEW);
+	assert.ok(factory);
+	const view = factory(leaf) as TasksTimelineView;
+	await settle();
+	plugin.debug.skipOpenReread = true;
+	leaf.view = view;
+	const from = vault.reads.length;
+	await (view as unknown as { open(): Promise<void> }).open();
+	await view.onReloadTasks();
+	assert.deepEqual(vault.reads.slice(from), []);
+	plugin.debug.skipOpenReread = false;
+	vault.writeSilently("Inbox.md", "- [ ] reread after the debug flag is disabled");
+	vault.resolve();
+	await wait(t, 500);
+	assert.deepEqual(vault.reads.slice(from), ["Inbox.md"]);
+	await plugin.writeOptions({});
+	assert.equal(Object.prototype.hasOwnProperty.call(plugin.userOptions, "skipOpenReread"), false);
+	assert.equal(Object.prototype.hasOwnProperty.call(JSON.parse(plugin.dataJson ?? "null"), "skipOpenReread"), false);
+});
+
+for (const skip of [undefined, true]) {
+	test(`a factory view with ${skip === undefined ? "the default policy" : "debug skip"} falls back to full reads after plugin unload`, async (t) => {
+		t.mock.timers.enable({ apis: ["setTimeout"] });
+		const { vault, plugin } = await startPlugin(readFixture("quiet.json"), { layoutReady: true });
+		t.after(() => plugin.unload());
+		if (skip !== undefined) plugin.debug.skipOpenReread = skip;
+		const leaf = vault.app.workspace.addLeaf();
+		const factory = vault.app.viewRegistry.creatorOf(TIMELINE_VIEW);
+		assert.ok(factory);
+		const view = factory(leaf) as TasksTimelineView;
+		const opening = view as unknown as { open(): Promise<void>; close(): Promise<void> };
+		t.after(() => opening.close());
+		await settle();
+		plugin.unload();
+		await settle();
+		vault.writeSilently("Inbox.md", "- [ ] changed while the constructed view was unwatched");
+		leaf.view = view;
+		const from = vault.reads.length;
+		await opening.open();
+		await view.onReloadTasks();
+		assert.deepEqual(vault.reads.slice(from), ["Inbox.md"]);
+		vault.writeSilently("Inbox.md", "- [ ] changed again with no plugin watching");
+		await view.onReloadTasks();
+		assert.deepEqual(vault.reads.slice(from), ["Inbox.md", "Inbox.md"]);
+		const state = view as unknown as { store: { getSnapshot(): { tasks: readonly { sourceLine: string }[] } } };
+		assert.deepEqual(
+			state.store.getSnapshot().tasks.map((task) => task.sourceLine),
+			["- [ ] changed again with no plugin watching"],
+		);
+	});
+}
+
 test("the plugin's timelines share one task index, which stops watching when the plugin unloads", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const { vault, plugin } = await startPlugin(readFixture("quiet.json"), { layoutReady: true });

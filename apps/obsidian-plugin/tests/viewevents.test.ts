@@ -59,10 +59,22 @@ async function wait(t: TestContext, ms: number): Promise<void> {
 async function openTimeline(
 	t: TestContext,
 	vault: FakeVault,
-	{ resolved = true, options = {} }: { resolved?: boolean; options?: Partial<UserOption> } = {},
+	{
+		resolved = true,
+		options = {},
+		skipOpenReread,
+	}: { resolved?: boolean; options?: Partial<UserOption>; skipOpenReread?: () => boolean } = {},
 ) {
 	const leaf = vault.app.workspace.addLeaf();
-	const view = new TasksTimelineView(leaf as never, sharedIndexOf(vault), unusedWriter, unusedNotices);
+	const view = new TasksTimelineView(
+		leaf as never,
+		sharedIndexOf(vault),
+		unusedWriter,
+		unusedNotices,
+		undefined,
+		undefined,
+		skipOpenReread,
+	);
 	const loading = view.onUpdateOptions({ ...defaultUserOptions, ...options });
 	leaf.view = view;
 	await (view as unknown as Opening).open();
@@ -223,16 +235,33 @@ test("a new window reloads at once", async (t) => {
 	assert.equal(timeline.reloads(), 1);
 });
 
-test("closing a timeline drops the reload it was waiting for, and it hears no more changes", async (t) => {
+test("closing a timeline repeatedly drops the reload it was waiting for, and it hears no more changes", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const vault = fakeVault(notes());
 	const timeline = await openTimeline(t, vault);
 	const root = roots[roots.length - 1];
 	assert.equal(root.rendered.length, 1, "opening mounts the bridge");
+	const { view } = timeline;
+	const header = view.containerEl.children[0];
+	const content = view.contentEl;
+	assert.equal(content, view.containerEl.children[1]);
+	content.setAttribute("data-view-state", "timeline");
+	content.textContent = "rendered timeline";
 	vault.write("Inbox.md", "- [ ] call the plumber again");
 	await wait(t, RELOAD_DELAY_MS / 2);
 	await timeline.close();
 	assert.ok(root.unmounted);
+	assert.equal(view.containerEl.children.length, 2, "closing preserves the header and content slots");
+	assert.equal(view.containerEl.children[0], header, "closing preserves the header");
+	assert.equal(view.contentEl, view.containerEl.children[1], "the public content element stays in its slot");
+	assert.equal(view.contentEl.getAttribute("class"), content.getAttribute("class"));
+	assert.equal(view.contentEl.getAttribute("data-view-state"), "timeline", "content attributes survive closing");
+	assert.equal(view.contentEl.textContent, "", "the closed view has no rendered content");
+	assert.equal(view.contentEl.children.length, 0);
+	assert.equal(content.parentElement, null, "the old React container no longer reaches the host view");
+	const closedContent = view.contentEl;
+	await timeline.close();
+	assert.equal(view.contentEl, closedContent, "closing again keeps the empty content element");
 	await wait(t, 10 * RELOAD_DELAY_MS);
 	assert.equal(timeline.reloads(), 0, "the reload it was waiting for");
 	vault.write("Inbox.md", "- [ ] call the plumber once more");
@@ -242,6 +271,28 @@ test("closing a timeline drops the reload it was waiting for, and it hears no mo
 	await wait(t, 10 * RELOAD_DELAY_MS);
 	assert.equal(timeline.reloads(), 0, "changes, deletions, renames and new windows after closing");
 });
+
+for (const failing of ["render", "unmount"] as const) {
+	test(`closing a timeline detaches its old content even when React ${failing} fails`, async (t) => {
+		t.mock.timers.enable({ apis: ["setTimeout"] });
+		const timeline = await openTimeline(t, fakeVault(notes()));
+		const root = roots[roots.length - 1];
+		const { view } = timeline;
+		const header = view.containerEl.children[0];
+		const content = view.contentEl;
+		const failure = new Error(`React ${failing} failed`);
+		t.mock.method(root, failing, () => {
+			throw failure;
+		});
+		await assert.rejects(timeline.close(), failure);
+		assert.equal(content.parentElement, null, "a React failure still detaches its container");
+		assert.equal(view.containerEl.children[0], header);
+		assert.equal(view.contentEl, view.containerEl.children[1]);
+		assert.equal(view.contentEl.textContent, "");
+		if (failing === "render") assert.ok(root.unmounted, "a failed empty commit still unmounts");
+		await timeline.close();
+	});
+}
 
 test("a timeline closed before Obsidian's first resolved does not reload on it", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
@@ -367,7 +418,7 @@ test("counted as the benchmark counts them, a save with tasks reloads once and r
 	assert.deepEqual({ reloadCalls, reads }, { reloadCalls: 2, reads: 2 }, "the next save with tasks");
 });
 
-test("the first reload after the view opens reads every note again, as a change before it listened went unheard", async (t) => {
+test("an independently constructed timeline keeps a full read when it opens", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const vault = fakeVault(notes());
 	const leaf = vault.app.workspace.addLeaf();
@@ -383,7 +434,7 @@ test("the first reload after the view opens reads every note again, as a change 
 	assert.deepEqual(linesIn(view, "Inbox.md"), ["- [ ] call the plumber, before the view listened"]);
 });
 
-test("Obsidian's first resolved after opening reads every note again, also after a reload before it; later ones do not", async (t) => {
+test("an independently constructed timeline rereads every note at first resolved; later ones do not", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const vault = fakeVault(notes());
 	const timeline = await openTimeline(t, vault, { resolved: false });
@@ -401,6 +452,81 @@ test("Obsidian's first resolved after opening reads every note again, also after
 	await wait(t, RELOAD_DELAY_MS);
 	assert.equal(timeline.reloads(), 3);
 	assert.deepEqual(read(), ["Projects/Garden.md"], "a later resolved, which each save brings");
+});
+
+test("opening reads only what the shared index marked", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const vault = fakeVault(notes());
+	const leaf = vault.app.workspace.addLeaf();
+	let skip = false;
+	const view = new TasksTimelineView(
+		leaf as never,
+		sharedIndexOf(vault),
+		unusedWriter,
+		unusedNotices,
+		undefined,
+		undefined,
+		() => skip,
+	);
+	await view.onUpdateOptions({ ...defaultUserOptions });
+	const read = readsOf(vault);
+	vault.write("Inbox.md", "- [ ] call the plumber before the view opens");
+	skip = true;
+	leaf.view = view;
+	t.after(() => (view as unknown as Opening).close());
+	await (view as unknown as Opening).open();
+	await view.onReloadTasks();
+	assert.deepEqual(read(), ["Inbox.md"]);
+	assert.deepEqual(linesIn(view, "Inbox.md"), ["- [ ] call the plumber before the view opens"]);
+	assert.deepEqual(linesIn(view, "Projects/Garden.md"), ["- [ ] plant the tulips", "- [x] buy bulbs"]);
+});
+
+test("first resolved reloads without rereading all", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const vault = fakeVault(notes());
+	const timeline = await openTimeline(t, vault, { resolved: false, skipOpenReread: () => true });
+	t.after(() => timeline.close());
+	await timeline.view.onReloadTasks();
+	vault.writeSilently("Inbox.md", "- [ ] an unheard startup change");
+	const read = readsOf(vault);
+	vault.resolve();
+	await wait(t, RELOAD_DELAY_MS);
+	assert.deepEqual(read(), []);
+	assert.deepEqual(linesIn(timeline.view, "Inbox.md"), [notes()["Inbox.md"]]);
+	vault.write("Projects/Garden.md", "- [ ] plant the roses");
+	await wait(t, RELOAD_DELAY_MS);
+	assert.deepEqual(read(), ["Projects/Garden.md"]);
+	assert.deepEqual(linesIn(timeline.view, "Projects/Garden.md"), ["- [ ] plant the roses"]);
+	assert.deepEqual(linesIn(timeline.view, "Inbox.md"), [notes()["Inbox.md"]]);
+});
+
+test("skipOpenReread getter is checked again at the first resolved", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const vault = fakeVault(notes());
+	let skip = true;
+	const timeline = await openTimeline(t, vault, { resolved: false, skipOpenReread: () => skip });
+	t.after(() => timeline.close());
+	await timeline.view.onReloadTasks();
+	vault.writeSilently("Inbox.md", "- [ ] a silent change after the debug flag is disabled");
+	const read = readsOf(vault);
+	skip = false;
+	vault.resolve();
+	await wait(t, RELOAD_DELAY_MS);
+	assert.deepEqual(read(), ALL);
+	assert.deepEqual(linesIn(timeline.view, "Inbox.md"), ["- [ ] a silent change after the debug flag is disabled"]);
+});
+
+test("skipOpenReread still reads every note when a window opens", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const vault = fakeVault(notes());
+	const timeline = await openTimeline(t, vault, { skipOpenReread: () => true });
+	t.after(() => timeline.close());
+	vault.writeSilently("Inbox.md", "- [ ] a silent change before a new window");
+	const read = readsOf(vault);
+	vault.openWindow();
+	await settle();
+	assert.deepEqual(read(), ALL);
+	assert.deepEqual(linesIn(timeline.view, "Inbox.md"), ["- [ ] a silent change before a new window"]);
 });
 
 test("a new window reads every note again", async (t) => {

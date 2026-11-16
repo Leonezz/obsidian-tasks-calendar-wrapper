@@ -139,6 +139,8 @@ export class TasksTimelineView extends ItemView {
 		/** A view made outside the plugin has its own session and opens with On Load values. */
 		private readonly session: ViewSession = createViewSession(),
 		private readonly windowMinRows: () => number | undefined = () => undefined,
+		/** Independent views cannot assume their reader is watched; the plugin supplies its current policy. */
+		private readonly skipOpenReread: () => boolean = () => false,
 	) {
 		super(leaf);
 		this.reader = notes.openReader();
@@ -162,13 +164,13 @@ export class TasksTimelineView extends ItemView {
 		// have or had tasks reload the list, see issue #63.
 		for (const ref of watchChanges(this.app, (paths, cache) => this.onFileChanged(paths, cache)))
 			this.registerEvent(ref);
-		// The next reload reads every note, as it always has. The shared index has heard every change since the view
-		// was made, so this is now only a defence, in case one went unheard.
-		this.reader.rereadAll();
+		// The plugin's watched shared index marks startup changes. Independent views, and views that open after
+		// their plugin unloads, keep the full-read defence through the policy callback.
+		if (!this.skipOpenReread()) this.reader.rereadAll();
 		// When the view opens while Obsidian starts, the metadata of some files may not be read yet.
 		const firstResolved = this.app.metadataCache.on("resolved", () => {
 			this.app.metadataCache.offref(firstResolved);
-			this.reader.rereadAll();
+			if (!this.skipOpenReread()) this.reader.rereadAll();
 			this.requestReload();
 		});
 		this.registerEvent(firstResolved);
@@ -227,10 +229,29 @@ export class TasksTimelineView extends ItemView {
 		this.closed = true;
 		if (!this.isReloading) this.reader.close();
 		// Runs the components' cleanup, so a reload that finishes after closing renders nothing.
-		this.root?.unmount();
-		this.timelineHandle = undefined;
-		// Unloads this view's markdown children, and only them.
-		this.removeChild(this.markdownOwner);
+		const root = this.root;
+		this.root = undefined;
+		try {
+			if (root) {
+				try {
+					// Commit an empty tree first: React 18 can retain the previous tree in its alternate root.
+					flushSync(() => root.render(null));
+				} finally {
+					root.unmount();
+				}
+			}
+		} finally {
+			if (root) {
+				// React can retain its unmounted container. Detach it from the host view and keep an empty content slot.
+				const content = this.contentEl;
+				const replacement = content.cloneNode(false) as HTMLElement;
+				content.replaceWith(replacement);
+				this.contentEl = replacement;
+			}
+			this.timelineHandle = undefined;
+			// Unloads this view's markdown children, and only them.
+			this.removeChild(this.markdownOwner);
+		}
 	}
 
 	getState(): Record<string, unknown> {

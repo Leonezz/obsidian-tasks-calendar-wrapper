@@ -25,11 +25,13 @@ import { debounceOptionUpdates } from "../utils/refresh";
 
 export default class TasksCalendarWrapper extends Plugin {
 	/** Fixture controls, never part of the options saved to data.json. */
-	readonly debug: { windowMinRows?: number } = {};
+	readonly debug: { windowMinRows?: number; skipOpenReread?: boolean } = {};
 	private readonly settingsStore = createSettingsStore();
 	private readonly viewSession = createViewSession();
 	/** The notes the timelines read, shared, see SharedTaskIndex: made with the first timeline, gone after the last. */
 	private readonly taskIndex = timelineTaskIndex(this.app);
+	/** A view constructed before unload can open later, when its detached reader must still ask for full reads. */
+	private indexDisposed = false;
 	private readonly writerNotices = createNoticePresenter(this.app);
 	/** Every timeline hands its writes to this queue; its holds and timers belong to the plugin. */
 	private readonly writer = createTaskWriter({
@@ -65,7 +67,10 @@ export default class TasksCalendarWrapper extends Plugin {
 	async onload() {
 		this.register(() => this.pushOptionsToViews.cancel());
 		// Registered before the view type, so it runs after the timelines closed: whatever is left, nothing is watched.
-		this.register(() => this.taskIndex.dispose());
+		this.register(() => {
+			this.indexDisposed = true;
+			this.taskIndex.dispose();
+		});
 		this.register(() => {
 			this.writer.dispose();
 			this.writerNotices.dispose();
@@ -79,6 +84,7 @@ export default class TasksCalendarWrapper extends Plugin {
 				this.writerNotices,
 				this.viewSession,
 				() => this.debug.windowMinRows,
+				() => !this.indexDisposed && this.debug.skipOpenReread !== false,
 			);
 			view.onUpdateOptions(this.userOptions);
 			return view;
