@@ -153,12 +153,17 @@ test("content renders markdown once per display change", async (t) => {
 
 	for (const [operation, selector] of [
 		["counter click", "#todo"],
-		["Focus on today click", '[aria-label="Focus on today"]'],
+		["Focus on today change", "select.dateScope"],
 	]) {
 		before = calls.length;
 		const target = fixture.container.querySelector<HTMLElement>(selector);
 		assert.ok(target, selector);
-		await act(() => target.click());
+		await act(() => {
+			if (target instanceof window.HTMLSelectElement) {
+				target.value = "today";
+				target.dispatchEvent(new Event("change", { bubbles: true }));
+			} else target.click();
+		});
 		assert.equal(calls.length - before, 0, operation);
 	}
 });
@@ -189,9 +194,12 @@ test("turning Focus on today off within one list renders no markdown again", asy
 	]);
 	const rendered = calls.length;
 	for (const focused of [true, false]) {
-		const focus = fixture.container.querySelector<HTMLElement>(".todayHeader");
+		const focus = fixture.container.querySelector<HTMLSelectElement>(".dateScope");
 		assert.ok(focus);
-		await act(() => focus.click());
+		await act(() => {
+			focus.value = focused ? "today" : "all";
+			focus.dispatchEvent(new Event("change", { bubbles: true }));
+		});
 		assert.equal(fixture.root().classList.contains("todayFocus"), focused);
 		assert.equal(calls.length - rendered, 0, `focus ${focused}`);
 	}

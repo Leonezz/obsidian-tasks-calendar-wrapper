@@ -142,7 +142,7 @@ test("timeline: Focus on today renders only today's rows", async () => {
 			allWithClass(markup, "details").every((element) => classesOf(element).includes("today")),
 			`${name}: only today's details`,
 		);
-		for (const panel of ["todayHeader", "counters", "quickEntryPanel"])
+		for (const panel of ["quickFilterBar", "counters", "quickEntryPanel"])
 			assert.equal(allWithClass(markup, panel).length, 1, `${name}: ${panel}`);
 	}
 });

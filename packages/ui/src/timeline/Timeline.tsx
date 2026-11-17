@@ -13,6 +13,7 @@ import {
 	type CounterFilter,
 	type Counts,
 	type DateValue,
+	type NewDateStyle,
 	type QueryEnv,
 	type QueryResult,
 	type QuickFilter,
@@ -31,6 +32,7 @@ import {
 	type RowOverlayStore,
 	type ViewState,
 	type ViewActions,
+	type CounterId,
 } from "../contexts";
 import { useStore } from "../hooks/useStore";
 import { recordProvider, timelineRendered } from "../renderprobe";
@@ -38,6 +40,7 @@ import { sameJsonValue } from "../sameJsonValue";
 import { Year } from "./Year";
 import type { EntryProps } from "./Day";
 import { useWindowed, type TimelineWindow } from "./Windowed";
+import { createQuickEntryDraft } from "../entry/QuickEntry";
 
 declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
@@ -65,6 +68,7 @@ export type TimelineOptions = ResolveSettings &
 		readonly dateFormat: string;
 		readonly inbox: string;
 		readonly useBuiltinStyle: boolean;
+		readonly newDateStyle?: NewDateStyle;
 	};
 
 export type TimelineProps = {
@@ -128,6 +132,7 @@ interface TimelineMemo {
 	readonly counterHandlers: Readonly<Record<"todo" | "overdue" | "unplanned", () => void>>;
 	userOptionValue?: UserOptionValue;
 	entry?: EntryProps;
+	readonly entryDraft: ReturnType<typeof createQuickEntryDraft>;
 	tags?: { readonly tasks: readonly Task[]; readonly tags: readonly string[] };
 	rows?: {
 		readonly options: RowOptions;
@@ -220,6 +225,11 @@ function entryFor(
 	counts: Counts,
 	taskFiles: readonly string[],
 	tags: readonly string[],
+	todayFocus: boolean,
+	activeCounter: CounterId | undefined,
+	defaultFile: string,
+	todayKey: string,
+	newDateStyle: NewDateStyle,
 ): EntryProps {
 	const previous = memo.entry;
 	const counters =
@@ -251,8 +261,28 @@ function entryFor(
 						ariaLabel: copy.counters.unplannedAria,
 					},
 				];
-	if (!previous || previous.counters !== counters || previous.taskFiles !== taskFiles || previous.tags !== tags)
-		memo.entry = { counters, taskFiles, tags };
+	if (
+		!previous ||
+		previous.counters !== counters ||
+		previous.taskFiles !== taskFiles ||
+		previous.tags !== tags ||
+		previous.todayFocus !== todayFocus ||
+		previous.activeCounter !== activeCounter ||
+		previous.defaultFile !== defaultFile ||
+		previous.todayKey !== todayKey ||
+		previous.newDateStyle !== newDateStyle
+	)
+		memo.entry = {
+			counters,
+			taskFiles,
+			tags,
+			todayFocus,
+			todayKey,
+			activeCounter,
+			defaultFile,
+			newDateStyle,
+			draft: memo.entryDraft,
+		};
 	return memo.entry!;
 }
 
@@ -318,6 +348,7 @@ export function Timeline(props: TimelineProps) {
 	const ref = React.useRef<TimelineMemo>();
 	const memo: TimelineMemo = (ref.current ??= {
 		query: createQuery(),
+		entryDraft: createQuickEntryDraft(),
 		committedIds: [],
 		committedInstanceIds: [],
 		committed: false,
@@ -396,7 +427,6 @@ export function Timeline(props: TimelineProps) {
 		memo.committedInstanceIds = instanceIds;
 		memo.committedTodayFocus = todayFocus;
 		if (!root.current) return;
-		root.current.querySelector(".todayHeader")?.setAttribute("aria-pressed", String(todayFocus));
 		const classes = counterFilter.split(/\s+/);
 		for (const counter of root.current.querySelectorAll<HTMLElement>(".counter"))
 			counter.setAttribute(
@@ -468,7 +498,19 @@ export function Timeline(props: TimelineProps) {
 	const counterFilter = counterClass(counterFilterValue, props.userOptions.counterBehavior);
 	const todayFocusClass = todayFocus ? "todayFocus" : "";
 	const userOptionValue = optionsFor(memo, userOptions, now);
-	const entry = entryFor(memo, counts, userOptionValue.taskFiles, tagsFor(memo, props.tasks));
+	const selectedCounter = counterFilterOf(counterFilterValue, "Filter");
+	const activeCounter = (["todo", "overdue", "unplanned"] as const).find((id) => selectedCounter === `${id}Filter`);
+	const entry = entryFor(
+		memo,
+		counts,
+		userOptionValue.taskFiles,
+		tagsFor(memo, props.tasks),
+		todayFocus,
+		activeCounter,
+		userOptionValue.select,
+		dayKey(now),
+		userOptions.newDateStyle ?? "emoji",
+	);
 	const { dateFormat, hideTags, tagPalette, useBuiltinStyle } = userOptionValue;
 	const modelFor = modelsFor(
 		memo,

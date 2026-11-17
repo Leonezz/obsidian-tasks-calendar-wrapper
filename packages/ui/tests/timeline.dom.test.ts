@@ -11,7 +11,7 @@ import {
 	type MomentFactory,
 	type Task,
 } from "@tasks-calendar-wrapper/core";
-import { HostContext, type ViewActions, type ViewState } from "../src/contexts";
+import { HostContext, QuickEntryHandlerContext, type ViewActions, type ViewState } from "../src/contexts";
 import type { ListChangeClock } from "../src/clickguard";
 import type { UiHost } from "../src/host";
 import { onTimelineRender, providerValues } from "../src/renderprobe";
@@ -22,7 +22,7 @@ class FakeDate {
 	private value: Date;
 
 	constructor(input: string | number) {
-		this.value = new Date(typeof input === "string" ? input + "T00:00:00Z" : input);
+		this.value = new Date(typeof input === "string" ? input.trim() + "T00:00:00Z" : input);
 	}
 
 	year(value?: number): number | this {
@@ -51,6 +51,20 @@ class FakeDate {
 	clone() {
 		return new FakeDate(this.valueOf());
 	}
+	add(amount: number, unit: string) {
+		assert.match(unit, /^days?$/);
+		this.value.setUTCDate(this.date() + amount);
+		return this;
+	}
+	startOf(unit: string) {
+		assert.equal(unit, "day");
+		this.value.setUTCHours(0, 0, 0, 0);
+		return this;
+	}
+	diff(other: DateValue, unit: string) {
+		assert.equal(unit, "days");
+		return (this.valueOf() - other.valueOf()) / 86_400_000;
+	}
 	format(format = "YYYY-MM-DD") {
 		const year = String(this.year()).padStart(4, "0");
 		const month = String(this.month() + 1).padStart(2, "0");
@@ -63,6 +77,12 @@ class FakeDate {
 	isSame(other: DateValue, unit: string) {
 		assert.equal(unit, "day");
 		return this.year() === other.year() && this.month() === other.month() && this.date() === other.date();
+	}
+	isBefore(other: DateValue) {
+		return this.valueOf() < other.valueOf();
+	}
+	isAfter(other: DateValue) {
+		return this.valueOf() > other.valueOf();
 	}
 	from() {
 		return assert.fail("undated tasks have no relative date badges");
@@ -121,7 +141,11 @@ const options: TimelineOptions = {
 	useBuiltinStyle: true,
 };
 
-function timelineHarness(t: TestContext, parentLayout?: () => void) {
+function timelineHarness(
+	t: TestContext,
+	parentLayout?: () => void,
+	createTask: (path: string, text: string) => Promise<boolean> = async () => true,
+) {
 	const container = document.body.appendChild(document.createElement("div"));
 	const root = createRoot(container);
 	let locale = "en";
@@ -174,6 +198,7 @@ function timelineHarness(t: TestContext, parentLayout?: () => void) {
 			})),
 	};
 	let opened = false;
+	const quickHandlers = { handleCreateNewTask: createTask, handleFilterEnable: () => {} };
 	let props: TimelineProps = {
 		userOptions: options,
 		viewState,
@@ -192,7 +217,17 @@ function timelineHarness(t: TestContext, parentLayout?: () => void) {
 			opened = true;
 		}
 		await act(() =>
-			root.render(createElement(HostContext.Provider, { value: host }, createElement(Parent, props))),
+			root.render(
+				createElement(
+					HostContext.Provider,
+					{ value: host },
+					createElement(
+						QuickEntryHandlerContext.Provider,
+						{ value: quickHandlers },
+						createElement(Parent, props),
+					),
+				),
+			),
 		);
 	};
 	return {
@@ -215,6 +250,14 @@ function timelineHarness(t: TestContext, parentLayout?: () => void) {
 			assert.ok(element, selector);
 			await act(() => element.click());
 		},
+		toggleToday: async () => {
+			const select = container.querySelector<HTMLSelectElement>(".dateScope");
+			assert.ok(select);
+			await act(() => {
+				select.value = select.value === "today" ? "all" : "today";
+				select.dispatchEvent(new Event("change", { bubbles: true }));
+			});
+		},
 	};
 }
 
@@ -231,16 +274,76 @@ test("models reused across a counter click", async (t) => {
 	assert.equal(timeline.model.mock.callCount(), 0);
 });
 
+test("filter-driven year remounts keep creation metadata, pending state and the next draft", async (t) => {
+	let resolve!: (added: boolean) => void;
+	const pending = new Promise<boolean>((yes) => {
+		resolve = yes;
+	});
+	const calls: [string, string][] = [];
+	const timeline = timelineHarness(t, undefined, (path, text) => {
+		calls.push([path, text]);
+		return pending;
+	});
+	const past: Task = {
+		...task(0, " "),
+		tags: ["#past"],
+		dates: { due: new FakeDate("2025-12-01") as unknown as DateValue },
+	};
+	const current: Task = { ...task(1), tags: ["#now"] };
+	await timeline.render({
+		tasks: [past, current],
+		userOptions: {
+			...options,
+			forward: false,
+			useRelative: false,
+			taskFiles: ["Tasks.md", "Inbox.md"],
+			newDateStyle: "dataview",
+		},
+	});
+	const input = () => timeline.container.querySelector<HTMLInputElement>(".newTask")!;
+	const original = input();
+	const edit = async (target: HTMLInputElement, value: string) =>
+		act(() => {
+			Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(target, value);
+			target.dispatchEvent(new Event("input", { bubbles: true }));
+		});
+	const choose = async (selector: string, value: string) =>
+		act(() => {
+			const select = timeline.container.querySelector<HTMLSelectElement>(selector)!;
+			select.value = value;
+			select.dispatchEvent(new Event("change", { bubbles: true }));
+		});
+	await edit(original, "first draft");
+	await choose(".fileSelect", "Inbox.md");
+	await edit(timeline.container.querySelector<HTMLInputElement>(".taskDue")!, "2026-01-20");
+	await choose(".taskPriority", "High");
+	await timeline.click(".quickEntryPanel button.ok");
+	assert.deepEqual(calls, [["Inbox.md", "first draft [priority:: high]  [due:: 2026-01-20]"]]);
+	await edit(input(), "next draft");
+	await timeline.render({ quickFilter: { priorities: [], tags: ["#now"] } });
+	assert.notEqual(input(), original, "removing the earlier year remounts the indexed entry year");
+	assert.equal(input().value, "next draft");
+	assert.equal(timeline.container.querySelector<HTMLSelectElement>(".fileSelect")!.value, "Inbox.md");
+	assert.equal(timeline.container.querySelector<HTMLInputElement>(".taskDue")!.value, "2026-01-20");
+	assert.equal(timeline.container.querySelector<HTMLSelectElement>(".taskPriority")!.value, "High");
+	assert.equal(timeline.container.querySelector<HTMLButtonElement>("button.ok")!.disabled, true);
+	await act(() => input().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+	assert.equal(calls.length, 1, "the remounted composer cannot duplicate a pending write");
+	await act(async () => resolve(true));
+	assert.equal(input().value, "next draft", "completion does not erase text typed for the next task");
+	assert.match(timeline.container.querySelector(".entryStatus")!.textContent!, /Added to Inbox/);
+});
+
 test("a new day discards models", async (t) => {
 	const timeline = timelineHarness(t);
 	await timeline.render();
 	timeline.model.mock.resetCalls();
 	timeline.setDay("2026-01-16");
-	await timeline.click(".todayHeader");
+	await timeline.toggleToday();
 	assert.ok(timeline.rows() > 0);
 	assert.equal(timeline.model.mock.callCount(), timeline.rows());
 	timeline.model.mock.resetCalls();
-	await timeline.click(".todayHeader");
+	await timeline.toggleToday();
 	assert.equal(timeline.model.mock.callCount(), 0);
 });
 
@@ -249,11 +352,11 @@ test("a locale change discards models", async (t) => {
 	await timeline.render();
 	timeline.model.mock.resetCalls();
 	timeline.setLocale("fr");
-	await timeline.click(".todayHeader");
+	await timeline.toggleToday();
 	assert.ok(timeline.rows() > 0);
 	assert.equal(timeline.model.mock.callCount(), timeline.rows());
 	timeline.model.mock.resetCalls();
-	await timeline.click(".todayHeader");
+	await timeline.toggleToday();
 	assert.equal(timeline.model.mock.callCount(), 0);
 });
 
@@ -264,7 +367,7 @@ test("the click clock stays at mount and moves only when the rendered ids change
 	const timeline = timelineHarness(t);
 	await timeline.render();
 	assert.equal(timeline.clock().lastListChangeAt, -Infinity);
-	await timeline.click(".todayHeader");
+	await timeline.toggleToday();
 	assert.equal(timeline.clock().lastListChangeAt, -Infinity);
 	await timeline.render();
 	assert.equal(timeline.clock().lastListChangeAt, -Infinity);
@@ -311,11 +414,11 @@ test("cached logical lists refresh for tasks, dates and Focus while stable commi
 	row(1).querySelector(".lines > .content")!.append(link);
 	await timeline.render();
 	assert.equal(link.tabIndex, 0, "a stable result still initializes newly mounted Markdown links");
-	await timeline.click(".todayHeader");
+	await timeline.toggleToday();
 	assert.equal(timeline.rows(), 1);
 	assert.equal(row(1).tabIndex, 0);
 	assert.equal(timeline.clock().lastListChangeAt, -Infinity, "Focus does not change the full-list click clock");
-	await timeline.click(".todayHeader");
+	await timeline.toggleToday();
 	assert.equal(timeline.rows(), 2);
 	await act(() => row(0).focus());
 	await timeline.render({ tasks: [dated("2026-01-15"), task(1), task(2)] });
@@ -330,7 +433,7 @@ test("cached logical lists refresh for tasks, dates and Focus while stable commi
 	await timeline.render();
 	assert.match(row(1).getAttribute("aria-labelledby")!, /2026-01-16/);
 	assert.equal(timeline.clock().lastListChangeAt, 1000, "equal full-list IDs retain the clock across a new result");
-	await timeline.click(".todayHeader");
+	await timeline.toggleToday();
 	assert.equal(timeline.rows(), 2);
 	assert.equal(timeline.container.querySelector('.task[data-line="0"]'), null);
 });
@@ -346,7 +449,7 @@ test("handlers and provider values keep their identity", async (t) => {
 	};
 	await timeline.click("#todo");
 	sameProviders();
-	await timeline.click(".todayHeader");
+	await timeline.toggleToday();
 	sameProviders();
 	await timeline.render({ userOptions: { ...options, hideTags: [], tagColorPalette: {}, taskFiles: ["Tasks.md"] } });
 	sameProviders();

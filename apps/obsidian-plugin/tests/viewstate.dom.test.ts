@@ -113,7 +113,10 @@ function control(container: HTMLElement, selector: string) {
 }
 
 async function click(view: RenderedView, selector: string) {
-	await act(() => control(view.container, selector).click());
+	if (selector === "select.dateScope") {
+		const input = control(view.container, selector) as HTMLSelectElement;
+		await select(view, selector, input.value === "today" ? "all" : "today");
+	} else await act(() => control(view.container, selector).click());
 }
 
 function assertState(view: RenderedView, counter: boolean, focus: boolean, message: string) {
@@ -121,7 +124,7 @@ function assertState(view: RenderedView, counter: boolean, focus: boolean, messa
 	assert.equal(root.classList.contains("todoFilter"), counter, `${message}: Todo filter`);
 	assert.equal(root.classList.contains("todayFocus"), focus, `${message}: Focus on today`);
 	assert.equal(control(view.container, ".counter#todo").getAttribute("aria-pressed"), String(counter));
-	assert.equal(control(view.container, ".todayHeader").getAttribute("aria-pressed"), String(focus));
+	assert.equal((control(view.container, "select.dateScope") as HTMLSelectElement).value === "today", focus);
 }
 
 async function close(view: RenderedView) {
@@ -151,9 +154,8 @@ async function select(view: RenderedView, selector: string, value: string) {
 }
 
 async function applyFilter(view: RenderedView) {
-	await select(view, "select.actionName", "filter");
-	await select(view, "select.filterSelector", "date");
-	const inputs = view.container.querySelectorAll<HTMLInputElement>('input[type="date"]');
+	await select(view, "select.dateScope", "custom");
+	const inputs = view.container.querySelectorAll<HTMLInputElement>('.dateRange input[type="date"]');
 	assert.equal(inputs.length, 2);
 	const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
 	assert.ok(setter);
@@ -163,9 +165,9 @@ async function applyFilter(view: RenderedView) {
 			inputs[index].dispatchEvent(new Event("input", { bubbles: true }));
 		}
 	});
-	await click(view, ".quickEntryPanel button.ok");
+	await click(view, ".applyDateRange");
 	const filter = quickFilter();
-	assert.ok(filter, "the Filter button applies a quick filter");
+	assert.ok(filter, "the date-range Apply button applies a quick filter");
 	assert.deepEqual(rows(view), ["visible"]);
 	return filter;
 }
@@ -193,10 +195,12 @@ function writeEntries(h: ReturnType<typeof pluginHarness>) {
 }
 
 async function quickEntry(view: RenderedView) {
-	await select(view, "select.actionName", "append");
 	const input = view.container.querySelector<HTMLInputElement>("input.newTask");
 	assert.ok(input);
-	input.value = "new task";
+	await act(() => {
+		Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(input, "new task");
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+	});
 	await act(async () => {
 		control(view.container, ".quickEntryPanel button.ok").click();
 		await settle();
@@ -210,13 +214,13 @@ test("reopening a view in the same session restores counter and focus", async (t
 	const first = await h.command(plugin);
 	assertState(first, false, false, "On Load");
 	await click(first, "#todo");
-	await click(first, ".todayHeader");
+	await click(first, "select.dateScope");
 	assertState(first, true, true, "before closing");
 	await close(first);
 	const reopened = await h.command(plugin);
 	assertState(reopened, true, true, "reopened view restores the last closed state");
 	const second = await h.open();
-	await click(second, ".todayHeader");
+	await click(second, "select.dateScope");
 	assertState(second, true, false, "second view differs");
 	await close(reopened);
 	await close(second);
@@ -228,7 +232,7 @@ test("a moved view restores from getState", async (t) => {
 	const plugin = await h.load();
 	const source = await h.command(plugin);
 	await click(source, "#todo");
-	await click(source, ".todayHeader");
+	await click(source, "select.dateScope");
 	const other = await h.open();
 	assertState(other, false, false, "the other view has different state");
 	await close(other);
@@ -244,7 +248,7 @@ test("a new plugin session uses the On Load settings", async (t) => {
 	const firstPlugin = await h.load();
 	const first = await h.command(firstPlugin);
 	await click(first, "#todo");
-	await click(first, ".todayHeader");
+	await click(first, "select.dateScope");
 	assertState(first, true, true, "saved workspace state");
 	const saved = first.leaf.getViewState();
 	await unload(firstPlugin);
@@ -259,7 +263,7 @@ test("disabling and enabling the plugin forgets the last closed state", async (t
 	const firstPlugin = await h.load();
 	const first = await h.command(firstPlugin);
 	await click(first, "#todo");
-	await click(first, ".todayHeader");
+	await click(first, "select.dateScope");
 	assertState(first, true, true, "before disabling");
 	await close(first);
 	await unload(firstPlugin);
@@ -329,26 +333,28 @@ test("the quick filter survives a reload", async (t) => {
 	await act(() => opened.view.onReloadTasks());
 	assert.strictEqual(quickFilter(), filter, "an options push and reload keep the same filter object");
 	assert.deepEqual(rows(opened), ["visible edited"]);
-	assert.equal(opened.container.querySelector<HTMLSelectElement>("select.actionName")?.value, "filter");
+	assert.equal(opened.container.querySelector<HTMLSelectElement>("select.dateScope")?.value, "custom");
 	assert.deepEqual(
-		[...opened.container.querySelectorAll<HTMLInputElement>('input[type="date"]')].map((input) => input.value),
+		[...opened.container.querySelectorAll<HTMLInputElement>('.dateRange input[type="date"]')].map(
+			(input) => input.value,
+		),
 		["2026-01-14", "2026-01-16"],
 	);
 });
 
-test("quick entry still clears the quick filter", async (t) => {
+test("quick entry preserves the quick filter", async (t) => {
 	const h = pluginHarness(t);
 	const plugin = await h.load();
 	const opened = await h.command(plugin);
 	writeEntries(h);
-	await applyFilter(opened);
+	const filter = await applyFilter(opened);
 	await quickEntry(opened);
-	assert.equal(quickFilter(), undefined, "quick entry clears the applied filter");
-	assert.deepEqual(rows(opened).sort(), ["hidden", "new task", "visible"]);
+	assert.strictEqual(quickFilter(), filter, "quick entry preserves the applied filter");
+	assert.deepEqual(rows(opened).sort(), ["new task", "visible"], "forwarding places the new undated task on today");
 	assert.match(h.vault.contentOf("Inbox.md") ?? "", /- \[ \] new task/);
 	await act(() => opened.view.onReloadTasks());
-	assert.equal(quickFilter(), undefined, "the reload keeps the filter cleared");
-	assert.deepEqual(rows(opened).sort(), ["hidden", "new task", "visible"]);
+	assert.strictEqual(quickFilter(), filter, "the reload keeps the same filter");
+	assert.deepEqual(rows(opened).sort(), ["new task", "visible"]);
 });
 
 test("changing an On Load setting leaves open views as they are", async (t) => {
@@ -374,7 +380,7 @@ test("popout window views keep their own state", async (t) => {
 	await click(first, "#todo");
 	assertState(first, true, false, "first view");
 	assertState(second, false, false, "the second view ignores the first's toggle");
-	await click(second, ".todayHeader");
+	await click(second, "select.dateScope");
 	assertState(first, true, false, "the first view ignores the second's toggle");
 	assertState(second, false, true, "second view");
 	const firstState = first.view.getState();
@@ -399,7 +405,7 @@ test("a later setState without this session's state leaves an open view as it is
 	const plugin = await h.load();
 	const source = await h.command(plugin);
 	await click(source, "#todo");
-	await click(source, ".todayHeader");
+	await click(source, "select.dateScope");
 	for (const state of [{}, { v: 1, session: "other", counter: "", todayFocus: false }]) {
 		await act(() => source.view.setState(state, { history: false }));
 		assertState(source, true, true, "a later foreign or absent state leaves the view unchanged");
@@ -427,12 +433,12 @@ test("getState holds exactly v, session, counter and todayFocus", async (t) => {
 	const plugin = await h.load();
 	const first = await h.command(plugin);
 	await click(first, "#todo");
-	await click(first, ".todayHeader");
+	await click(first, "select.dateScope");
 	await applyFilter(first);
 	const firstState = first.view.getState();
 	assert.deepEqual(Object.keys(firstState).sort(), ["counter", "session", "todayFocus", "v"], "saved state keys");
 	assert.ok(typeof firstState.session === "string" && firstState.session.length > 0, "session is a non-empty string");
-	assert.deepEqual(firstState, { v: 1, session: firstState.session, counter: "todoFilter", todayFocus: true });
+	assert.deepEqual(firstState, { v: 1, session: firstState.session, counter: "todoFilter", todayFocus: false });
 	assert.deepEqual(first.leaf.getViewState(), { type: TIMELINE_VIEW, state: firstState });
 	const second = await h.open();
 	assert.deepEqual(second.view.getState(), { v: 1, session: firstState.session, counter: "", todayFocus: false });
@@ -553,8 +559,8 @@ test("view state actions keep their identity and change only what they name", ()
 		assert.equal(restoredViewState(raw, session), undefined, `invalid saved state ${JSON.stringify(raw)}`);
 });
 
-// Brief-derived: a filter clear and the written list must be visible in the same commit.
-test("quick entry clears the filter and shows the new list in one commit", async (t) => {
+// Every commit keeps the selected filter while the writer refreshes the task list.
+test("quick entry refreshes the list without briefly clearing the filter", async (t) => {
 	const h = pluginHarness(t);
 	const plugin = await h.load();
 	const commits: (string | undefined)[][] = [];
@@ -565,7 +571,10 @@ test("quick entry clears the filter and shows the new list in one commit", async
 			{
 				id: "quick-entry",
 				onRender: () => {
-					if (recording && props.quickFilter === undefined) commits.push(rows(opened));
+					if (recording) {
+						assert.strictEqual(props.quickFilter, filter);
+						commits.push(rows(opened));
+					}
 				},
 			},
 			rendered,
@@ -573,10 +582,11 @@ test("quick entry clears the filter and shows the new list in one commit", async
 	);
 	const opened = await h.command(plugin);
 	writeEntries(h);
-	await applyFilter(opened);
+	const filter = await applyFilter(opened);
 	const frames: (string | undefined)[][] = [];
 	const observer = new window.MutationObserver(() => {
-		if (quickFilter() === undefined) frames.push(rows(opened));
+		assert.strictEqual(quickFilter(), filter);
+		frames.push(rows(opened));
 	});
 	observer.observe(opened.container, { subtree: true, attributes: true, childList: true, characterData: true });
 	try {
@@ -586,13 +596,16 @@ test("quick entry clears the filter and shows the new list in one commit", async
 		recording = false;
 		observer.disconnect();
 	}
-	assert.equal(quickFilter(), undefined);
-	assert.ok(frames.length > 0, "MutationObserver sees the cleared filter's list");
-	assert.ok(commits.length > 0, "the commit probe sees the cleared filter's list");
-	for (const frame of [...frames, ...commits])
-		assert.deepEqual(
-			frame.slice().sort(),
-			["hidden", "new task", "visible"],
-			"no unfiltered old list is committed",
+	assert.strictEqual(quickFilter(), filter);
+	assert.ok(frames.length > 0, "MutationObserver sees the input and list update");
+	assert.ok(commits.length > 0, "the commit probe sees the preserved filter");
+	for (const frame of [...frames, ...commits]) {
+		assert.ok(frame.includes("visible"));
+		assert.ok(
+			frame.every((text) => text === "visible" || text === "new task"),
+			"no unfiltered row is shown",
 		);
+	}
+	assert.deepEqual(rows(opened).sort(), ["new task", "visible"]);
+	assert.match(h.vault.contentOf("Inbox.md") ?? "", /- \[ \] new task/);
 });

@@ -501,21 +501,22 @@ test("quick filter survives a reload that changes the list", async () => {
 	assert.deepEqual(rows().sort(), ["Done.md:0", "Inbox.md:0"]);
 });
 
-test("quick entry clears the quick filter", async () => {
+test("quick entry refreshes the list while preserving the quick filter", async () => {
 	const notes = { "Inbox.md": "- [ ] beta 📅 2026-01-20", "Later.md": "- [ ] alpha 📅 2026-01-25" };
 	const app = notesApp(notes);
 	const opened = openView(app);
 	await opened.view.onUpdateOptions({ ...defaultUserOptions });
 	const { bridge, rows } = bridgeOf(opened, app);
 	bridge.handleFilterEnable("2026-01-19", "2026-01-21", []);
-	assert.ok(bridge.state.quickFilter);
+	const filter = bridge.state.quickFilter;
+	assert.ok(filter);
 	assert.deepEqual(rows(), ["Inbox.md:0"]);
 	await opened.view.onReloadTasks();
 	assert.notEqual(bridge.state.tasks, opened.store.getSnapshot().tasks);
 	bridge.onUpdateTasks();
-	assert.equal(bridge.state.quickFilter, undefined);
+	assert.strictEqual(bridge.state.quickFilter, filter);
 	assert.equal(bridge.state.tasks, opened.store.getSnapshot().tasks);
-	assert.deepEqual(rows().sort(), ["Inbox.md:0", "Later.md:0"]);
+	assert.deepEqual(rows(), ["Inbox.md:0"]);
 });
 
 test("clearing the input clears the filter", async () => {
@@ -541,8 +542,9 @@ test("inputs show the applied filter after a reload", async () => {
 	const { bridge } = bridgeOf(opened, app);
 	const markup = () => renderToStaticMarkup(bridge.render() as ReactElement);
 	const unfiltered = markup();
-	assert.match(unfiltered, /<option value="append" selected="">New task<\/option>/);
-	assert.doesNotMatch(unfiltered, /<input[^>]*type="date"/);
+	assert.match(unfiltered, /<option value="all" selected="">All dates<\/option>/);
+	assert.match(unfiltered, /class="newTask"/);
+	assert.doesNotMatch(unfiltered, /class="dateRange"/);
 
 	// The priority selector passes the task's priority label.
 	bridge.handleFilterEnable("2026-01-19", "2026-01-21", ["High"]);
@@ -551,12 +553,13 @@ test("inputs show the applied filter after a reload", async () => {
 	await opened.view.onReloadTasks();
 	const filtered = markup();
 	assert.deepEqual(
-		[...filtered.matchAll(/<input\b[^>]*type="date"[^>]*>/g)].map((match) => /value="([^"]*)"/.exec(match[0])?.[1]),
+		[...filtered.matchAll(/<input\b[^>]*type="date"[^>]*>/g)]
+			.filter((match) => !match[0].includes('class="taskDue"'))
+			.map((match) => /value="([^"]*)"/.exec(match[0])?.[1]),
 		["2026-01-19", "2026-01-21"],
 	);
-	assert.match(filtered, /<option value="filter" selected="">Filter<\/option>/);
-	assert.match(filtered, /<option value="High">High🎯<\/option>/);
-	assert.match(filtered, /<a>High🎯<\/a>/);
+	assert.match(filtered, /<option value="custom" selected="">/);
+	assert.match(filtered, /<input(?=[^>]*type="checkbox")(?=[^>]*value="High")(?=[^>]*checked="")[^>]*>/);
 });
 
 test("new options reach the bridge at once, and keep the quick filter while the list shown stays", async () => {
@@ -1432,21 +1435,22 @@ test("closing the view before indexed: no reload", async (t) => {
 	assert.deepEqual(f.h.errors, []);
 });
 
-test("quick entry still clears the quick filter, and the reload keeps it cleared", async (t) => {
+test("quick entry preserves the quick filter through indexed reloads", async (t) => {
 	const f = await writingViews(t, "## Tasks\n- [ ] a");
 	const first = f.opened[0];
 	first.bridge.handleFilterEnable("2026-01-19", "2026-01-21", []);
-	assert.ok(first.bridge.state.quickFilter);
+	const filter = first.bridge.state.quickFilter;
+	assert.ok(filter);
 	assert.equal(await first.bridge.handleCreateNewTask("Note.md", "new"), true);
-	assert.equal(first.bridge.state.quickFilter, undefined);
+	assert.strictEqual(first.bridge.state.quickFilter, filter);
 	assert.deepEqual(reloadCounts(f), [0, 0]);
 	await f.h.deliver();
 	assert.deepEqual(reloadCounts(f), [1, 0]);
-	assert.equal(first.bridge.state.quickFilter, undefined);
+	assert.strictEqual(first.bridge.state.quickFilter, filter);
 	assert.ok(first.bridge.state.tasks.some((task) => task.visual === "new"));
 	await f.h.clock.advance(600);
 	assert.deepEqual(reloadCounts(f), [1, 1]);
-	assert.equal(first.bridge.state.quickFilter, undefined);
+	assert.strictEqual(first.bridge.state.quickFilter, filter);
 });
 
 /** A writer feed whose releases and reader pins can be placed between a render and its commit. */
@@ -1600,12 +1604,14 @@ test("queued clears apply in order", async (t) => {
 	assert.equal(f.view.ledger.shift("Note.md", 3), 4, "only the second write's shift remains");
 });
 
-test("quick entry while a list transition is pending clears what its list shows", async (t) => {
+test("quick entry while a list transition is pending preserves filtering and releases the current list", async (t) => {
 	const f = await transitionWrites(t);
 	const b = deferredBridgeOf(f, f.h.app);
 	t.after(() => b.bridge.unmount());
 	b.bridge.handleFilterEnable("2026-01-19", "2026-01-21", []);
 	b.flush();
+	const filter = b.bridge.state.quickFilter;
+	assert.ok(filter);
 	const write = f.pending(1);
 	f.view.ledger.recordWrite(1, "Note.md", 0, 1);
 	write.release();
@@ -1616,11 +1622,11 @@ test("quick entry while a list transition is pending clears what its list shows"
 	b.bridge.onUpdateTasks();
 	b.flushLatest();
 	assert.equal(b.bridge.state.tasks, f.store.getSnapshot().tasks);
-	assert.equal(b.bridge.state.quickFilter, undefined);
+	assert.strictEqual(b.bridge.state.quickFilter, filter);
 	assert.equal(f.view.pendingWrites.getSnapshot("Note.md:0"), undefined);
 	assert.equal(f.view.ledger.shift("Note.md", 1), 1);
 	b.flush();
-	assert.equal(b.bridge.state.quickFilter, undefined, "the transition cannot restore the quick filter");
+	assert.strictEqual(b.bridge.state.quickFilter, filter, "the transition preserves the quick filter");
 });
 
 test("closing the view while a list transition is pending clears nothing afterwards and renders nothing", async (t) => {

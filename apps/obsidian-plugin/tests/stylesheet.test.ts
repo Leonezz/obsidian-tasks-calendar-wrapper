@@ -44,7 +44,7 @@ test("view scope remains on cascade-sensitive rules rather than every timeline r
 		".taskido .task .external-link",
 		".taskido .task.overdue .timeline .icon svg",
 		".taskido .task.done .timeline .icon svg",
-		".taskido .quickEntryPanel .left",
+		".taskido .entryMain",
 		".taskido .details.today",
 	])
 		assert.ok(
@@ -483,7 +483,7 @@ test("mobile rules do not change glyph sizes or the strip width", () => {
 	);
 });
 
-test("the hover rules keep their selectors and declarations", () => {
+test("hover feedback keeps native task and entry controls within the hover media query", () => {
 	const hover = cssRules(readFileSync("styles.css", "utf8"))
 		.filter(({ selectors }) => selectors.some((selector) => selector.includes(":hover")))
 		.map(({ selectors, body }) => ({ selectors, body: whitespace(resolvedTokens(body)) }));
@@ -496,9 +496,20 @@ test("the hover rules keep their selectors and declarations", () => {
 `),
 		},
 		{
-			selectors: [".taskido .quickEntryPanel select:hover", ".taskido .quickEntryPanel button:hover"],
+			selectors: [
+				".taskido .quickEntryPanel select:hover",
+				".taskido .quickEntryPanel button:hover",
+				".taskido .quickFilterBar summary:hover",
+				".taskido .clearFilters:hover",
+			],
 			body: whitespace(`
 	color: var(--text-normal);
+`),
+		},
+		{
+			selectors: [".taskido .priorityOptions label:hover"],
+			body: whitespace(`
+	background: var(--background-modifier-hover);
 `),
 		},
 		{

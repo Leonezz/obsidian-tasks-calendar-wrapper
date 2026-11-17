@@ -1,5 +1,4 @@
-// Pins Enter keyup submission during IME composition and the panel's focus class following its text input.
-// The move into packages/ui must preserve both behaviors.
+// IME confirmation must not submit a task; the panel's focus class follows its text input.
 import "./golden-clock";
 import "./setup";
 
@@ -60,7 +59,7 @@ async function mountQuickEntry(t: TestContext) {
 	return { ...fixture, calls, panel, input };
 }
 
-test("an Enter keyup during IME composition submits, as on master (known issue)", async (t) => {
+test("Enter confirms IME composition without submitting the draft", async (t) => {
 	const { calls, input } = await mountQuickEntry(t);
 	const text = "输入中的任务";
 	const { CompositionEvent } = window;
@@ -69,11 +68,17 @@ test("an Enter keyup during IME composition submits, as on master (known issue)"
 		input.dispatchEvent(new Event("input", { bubbles: true }));
 		input.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
 		input.dispatchEvent(
-			new KeyboardEvent("keyup", { key: "Enter", isComposing: true, bubbles: true, cancelable: true }),
+			new KeyboardEvent("keydown", { key: "Enter", isComposing: true, bubbles: true, cancelable: true }),
 		);
 	});
 	await act(async () => {});
-	// Known issue kept on purpose: the move must preserve this submission; a later step adds the IME guard.
+	assert.deepEqual(calls, []);
+	assert.equal(input.value, text);
+	await act(() => {
+		input.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+		input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+	});
+	await act(async () => {});
 	assert.deepEqual(calls, [{ handler: "handleCreateNewTask", args: ["Note.md", text] }]);
 });
 

@@ -1,262 +1,260 @@
 import * as React from "react";
-import { copy, expandShortcuts, getFileTitle, type QuickFilter } from "@tasks-calendar-wrapper/core";
-import * as Icons from "../icons";
+import {
+	copy,
+	createStore,
+	expandShortcuts,
+	getFileTitle,
+	setTaskDate,
+	TasksPrioritySymbolToLabel,
+	type MomentFactory,
+	type NewDateStyle,
+	type QuickFilter,
+	type Store,
+} from "@tasks-calendar-wrapper/core";
 import { QuickEntryHandlerContext, useHost } from "../contexts";
-import { MultiSelect } from "./MultiSelect";
+import { useStore } from "../hooks/useStore";
+
+export type QuickEntryDraft = {
+	readonly text: string;
+	readonly filePath: string;
+	readonly due: string;
+	readonly priority: string;
+	readonly pending: boolean;
+	readonly error: string;
+	readonly savedTo: string;
+};
+
+/** The view owns this store, outside the keyed years/days which filters can remount. */
+export function createQuickEntryDraft(): Store<QuickEntryDraft> {
+	return createStore<QuickEntryDraft>({
+		text: "",
+		filePath: "",
+		due: "",
+		priority: "",
+		pending: false,
+		error: "",
+		savedTo: "",
+	});
+}
 
 type QuickEntryProps = {
 	readonly applied?: QuickFilter;
 	readonly taskFiles: readonly string[];
-};
-type QuickEntryState = {
-	gen: number;
-	draft: { from: string; to: string; priorities: readonly string[] };
+	readonly defaultFile?: string;
+	readonly draft?: Store<QuickEntryDraft>;
+	readonly newDateStyle?: NewDateStyle;
 };
 
-function draftOf(applied?: QuickFilter): QuickEntryState["draft"] {
-	return {
-		from: applied?.from ?? "",
-		to: applied?.to ?? "",
-		// None is one control for both a missing emoji priority and an explicit Dataview none.
-		priorities: [...new Set((applied?.priorities ?? []).map((priority) => (priority === "" ? "No" : priority)))],
-	};
+const priorityNames = ["Highest", "High", "Medium", "No", "Low", "Lowest"];
+const priorityText = (name: string) => (name === "No" ? copy.quickEntry.none : name);
+
+/** Changes one visible priority, retaining comments, field style and a trailing block ID. */
+function withPriority(text: string, priority: string, newDateStyle: NewDateStyle): string | undefined {
+	if (!priority) return text;
+	const visible = text.replace(/%%[\s\S]*?%%/g, (comment) => "\0".repeat(comment.length));
+	const emoji = [...visible.matchAll(/[🔺⏫🔼🔽⏬]\uFE0F?/gu)];
+	const fields = [...visible.matchAll(/(\[+)\s*priority\s*::[^\]]*\]/gu)];
+	if (emoji.length + fields.length > 1 || /\(\s*priority\s*::[^)]*\)/u.test(visible)) return undefined;
+	const symbol = Object.entries(TasksPrioritySymbolToLabel).find(([, label]) => label === priority)?.[0];
+	if (symbol === undefined) return undefined;
+	if (emoji[0]) {
+		const at = emoji[0].index!;
+		return text.slice(0, at) + symbol + text.slice(at + emoji[0][0].length);
+	}
+	if (fields[0]) {
+		const field = fields[0];
+		const at = field.index!;
+		let end = at + field[0].length;
+		for (let extra = 1; extra < field[1].length && text[end] === "]"; extra++) end++;
+		return (
+			text.slice(0, at) +
+			`${"[".repeat(field[1].length)}priority:: ${priority === "No" ? "none" : priority.toLowerCase()}${"]".repeat(field[1].length)}` +
+			text.slice(end)
+		);
+	}
+	if (priority === "No") return text;
+	const existingDataview = /\[+[^[\]]+::/u.test(visible);
+	const existingEmoji = /📅|📆|🗓|⏳|⌛|🛫|➕|✅|❌|🔁|🏁|🆔|⛔/u.test(visible);
+	const dataview = existingDataview || (!existingEmoji && newDateStyle === "dataview");
+	const token = dataview ? ` [priority:: ${priority.toLowerCase()}]` : ` ${symbol}`;
+	const at = / \^[a-zA-Z0-9-]+\s*$/u.exec(text)?.index ?? text.length;
+	return text.slice(0, at) + token + text.slice(at);
 }
 
-export function QuickEntry({ applied, taskFiles }: QuickEntryProps) {
+function taskText(draft: QuickEntryDraft, moment: MomentFactory, newDateStyle: NewDateStyle): string | undefined {
+	let text = withPriority(draft.text.trim(), draft.priority, newDateStyle);
+	if (text === undefined) return undefined;
+	if (draft.due) {
+		try {
+			const result = setTaskDate(`- [ ] ${text}`, "due", draft.due, { newFieldStyle: newDateStyle, moment });
+			if (result.kind === "refused") return undefined;
+			if (result.kind === "line") text = result.line.slice(6);
+		} catch {
+			return undefined;
+		}
+	}
+	return text;
+}
+
+export function QuickEntry({ taskFiles, defaultFile, draft: suppliedDraft, newDateStyle = "emoji" }: QuickEntryProps) {
 	const host = useHost();
 	const callback = React.useContext(QuickEntryHandlerContext);
+	const fallback = React.useRef<Store<QuickEntryDraft>>();
+	if (!fallback.current) fallback.current = createQuickEntryDraft();
+	const store = suppliedDraft ?? fallback.current;
+	const draft = useStore(store);
 	const textInput = React.useRef<HTMLInputElement>(null);
-	const fileSelect = React.useRef<HTMLSelectElement>(null);
-	const okButton = React.useRef<HTMLButtonElement>(null);
-	const appendPending = React.useRef(false);
-	const [action, setAction] = React.useState(() => (applied ? "filter" : "append"));
-	const [filters, setFilters] = React.useState(() => [
-		...(applied?.from || applied?.to ? ["date"] : []),
-		...(applied?.priorities.length ? ["priority"] : []),
-	]);
-	/** A newly applied filter replaces the draft; a reload keeps the filter's identity and the edits in progress. */
-	const [draftState, setDraftState] = React.useState(() => ({ gen: 0, draft: draftOf(applied) }));
-	const committed = React.useRef({ applied, gen: 0 });
-	const gen = applied === committed.current.applied ? committed.current.gen : committed.current.gen + 1;
-	const draft = draftState.gen === gen ? draftState.draft : draftOf(applied);
-	React.useLayoutEffect(() => {
-		committed.current = { applied, gen };
-	});
+	const composing = React.useRef(false);
 	const [focused, setFocused] = React.useState(false);
+	const filePath = taskFiles.includes(draft.filePath)
+		? draft.filePath
+		: defaultFile && taskFiles.includes(defaultFile)
+			? defaultFile
+			: (taskFiles[0] ?? "");
 
-	function onQuickEntryFileSelectChange() {
-		if (!fileSelect.current) return;
-		textInput.current?.focus();
+	function change(next: Partial<QuickEntryDraft>): void {
+		store.setState((current) => ({ ...current, ...next, error: "", savedTo: "" }));
+	}
+	function changeDue(due: string): void {
+		if (store.getSnapshot().due !== due) change({ due });
 	}
 
-	function onQuickEntryNewTaskKeyUp(e: React.KeyboardEvent<HTMLInputElement>) {
-		if (e.key !== "Enter") return;
-		okButton.current?.click();
+	async function submit(): Promise<void> {
+		const submitted = store.getSnapshot();
+		if (submitted.pending || composing.current || !submitted.text.trim() || !filePath) return;
+		const content = taskText(submitted, host.moment, newDateStyle);
+		if (content === undefined) {
+			store.setState((current) => ({ ...current, error: copy.quickEntry.metadataConflict, savedTo: "" }));
+			return;
+		}
+		change({ pending: true });
+		try {
+			const added = await callback.handleCreateNewTask(filePath, content);
+			store.setState((current) => {
+				const unchanged =
+					current.text === submitted.text &&
+					current.filePath === submitted.filePath &&
+					current.due === submitted.due &&
+					current.priority === submitted.priority;
+				return {
+					...current,
+					pending: false,
+					text: added && unchanged ? "" : current.text,
+					due: added && unchanged && current.due === submitted.due ? "" : current.due,
+					priority: added && unchanged && current.priority === submitted.priority ? "" : current.priority,
+					savedTo: added ? getFileTitle(filePath) : "",
+				};
+			});
+		} catch {
+			store.setState((current) => ({ ...current, pending: false, error: copy.quickEntry.createFailed }));
+		}
 	}
 
-	function onQuickEntryNewTaskInput() {
-		const input = textInput.current;
-		if (!input) return;
-		const expanded = expandShortcuts(input.value, host.now());
-		// The input is left alone when there was nothing to replace.
-		if (expanded !== input.value) input.value = expanded;
-		input.focus();
-	}
-
-	function onQuickEntryPanelFocus() {
-		setFocused(true);
-	}
-
-	function onQuickEntryPanelBlur() {
-		setFocused(false);
-	}
-
-	const filterNames = ["+", "date", "priority"];
-	const submitAria = action === "append" ? copy.quickEntry.appendTaskAria : copy.quickEntry.applyFilterAria;
 	return (
 		<div className={focused ? "quickEntryPanel focus" : "quickEntryPanel"}>
-			<div className="left">
-				<div className="actionSelect">
-					<select
-						name="Action"
-						className="actionName"
-						aria-label={copy.quickEntry.actionAria}
-						value={action}
-						onChange={(event) => {
-							setAction(event.target.value);
-							if (textInput.current) textInput.current.value = "";
-						}}
-					>
-						<option value={"append"} key={1}>
-							{copy.quickEntry.newTask}
-						</option>
-						<option value={"filter"} key={2}>
-							{copy.quickEntry.filter}
-						</option>
-					</select>
-					{action === "append" ? (
-						<select
-							name="File name"
-							className="fileSelect"
-							ref={fileSelect}
-							aria-label={copy.quickEntry.selectNoteAria}
-							onChange={onQuickEntryFileSelectChange}
-							defaultValue={taskFiles[0]}
-						>
-							{[...taskFiles].map((f, i) => {
-								const secondParentFolder = !f.split("/")[f.split("/").length - 3] ? "" : "… / ";
-								const parentFolder = !f.split("/")[f.split("/").length - 2]
-									? ""
-									: secondParentFolder + "📂 " + f.split("/")[f.split("/").length - 2] + " / ";
-								const filePath = parentFolder + "📄 " + getFileTitle(f);
-								return (
-									<option value={f} title={f} key={i}>
-										{filePath}
-									</option>
-								);
-							})}
-						</select>
-					) : (
-						<MultiSelect
-							key={0}
-							name="Filter Type"
-							ariaLabel={copy.quickEntry.filterTypeAria}
-							className="filterSelector"
-							options={filterNames}
-							selected={filters}
-							fallbackValueIndex={0}
-							selectChangeHandler={(res) => {
-								setFilters(res);
-							}}
-							visual={copy.quickEntry.filterVisual}
-						/>
-					)}
-				</div>
-
-				<div className="left">
-					{action === "append" ? (
-						<input
-							className="newTask"
-							type="text"
-							placeholder={copy.quickEntry.placeholder}
-							ref={textInput}
-							onInput={onQuickEntryNewTaskInput}
-							onKeyUp={onQuickEntryNewTaskKeyUp}
-							onFocus={onQuickEntryPanelFocus}
-							onBlur={onQuickEntryPanelBlur}
-						/>
-					) : (
-						<div className="left">
-							{filters.map((f, i) => {
-								if (f === "date") {
-									return (
-										<div key={i} className="dateFilter">
-											<a key={0}>{copy.quickEntry.from}</a>
-											<input
-												key={1}
-												type="date"
-												value={draft.from}
-												aria-label={copy.quickEntry.fromAria}
-												onChange={(e) => {
-													const from = e.target.value;
-													setDraftState((s) => ({
-														gen,
-														draft: {
-															...(s.gen === gen ? s.draft : draftOf(applied)),
-															from,
-														},
-													}));
-												}}
-											/>
-											<a key={2}>{copy.quickEntry.to}</a>
-											<input
-												key={3}
-												type="date"
-												value={draft.to}
-												aria-label={copy.quickEntry.toAria}
-												onChange={(e) => {
-													const to = e.target.value;
-													setDraftState((s) => ({
-														gen,
-														draft: { ...(s.gen === gen ? s.draft : draftOf(applied)), to },
-													}));
-												}}
-											/>
-										</div>
-									);
-								} else if (f === "priority") {
-									return (
-										<div key={i} className="actionSelect">
-											<a>{copy.quickEntry.priorities}</a>
-											<MultiSelect
-												key={1}
-												name="priorityFilter"
-												ariaLabel={copy.quickEntry.priorityAria}
-												className=""
-												options={["+", "Highest", "High", "Medium", "No", "Low", "Lowest"]}
-												selected={draft.priorities}
-												visual={copy.quickEntry.priorityVisual}
-												fallbackValueIndex={0}
-												selectChangeHandler={(res) => {
-													setDraftState((s) => ({
-														gen,
-														draft: {
-															...(s.gen === gen ? s.draft : draftOf(applied)),
-															priorities: res,
-														},
-													}));
-												}}
-											/>
-										</div>
-									);
-								}
-								return <div key={i} />;
-							})}
-						</div>
-					)}
-				</div>
-			</div>
-
-			<div className="right">
+			<div className="entryMain">
+				<span className="entryPlus" aria-hidden="true">
+					{copy.quickEntry.addGlyph}
+				</span>
+				<input
+					className="newTask"
+					type="text"
+					placeholder={copy.quickEntry.placeholder}
+					aria-label={copy.quickEntry.newTask}
+					ref={textInput}
+					value={draft.text}
+					onCompositionStart={() => {
+						composing.current = true;
+					}}
+					onCompositionEnd={() => {
+						composing.current = false;
+					}}
+					onInput={(event) => {
+						const input = event.currentTarget;
+						const text = composing.current ? input.value : expandShortcuts(input.value, host.now());
+						change({ text });
+					}}
+					onKeyDown={(event) => {
+						if (
+							event.key !== "Enter" ||
+							event.nativeEvent.isComposing ||
+							composing.current ||
+							event.keyCode === 229
+						)
+							return;
+						event.preventDefault();
+						void submit();
+					}}
+					onFocus={() => setFocused(true)}
+					onBlur={() => setFocused(false)}
+				/>
 				<button
 					className="ok"
-					ref={okButton}
-					aria-label={submitAria}
-					onClick={() => {
-						if (action === "append") {
-							if (appendPending.current) return;
-							// Read the selected note from the DOM, including its initial default value.
-							const filePath = fileSelect.current?.value;
-							const newTask = textInput.current?.value;
-							if (!newTask || !filePath) return;
-							if (newTask.length > 1) {
-								appendPending.current = true;
-								void callback.handleCreateNewTask(filePath, newTask).then(
-									(added) => {
-										appendPending.current = false;
-										if (added && textInput.current) textInput.current.value = "";
-									},
-									(error: unknown) => {
-										appendPending.current = false;
-										throw error;
-									},
-								);
-							} else {
-								textInput.current?.focus();
-							}
-						} else {
-							callback.handleFilterEnable(
-								draft.from,
-								draft.to,
-								draft.priorities.flatMap((priority) => (priority === "No" ? ["No", ""] : [priority])),
-								[...(applied?.tags ?? [])],
-							);
-						}
-					}}
+					type="button"
+					aria-label={copy.quickEntry.appendTaskAria}
+					disabled={draft.pending || !filePath}
+					onClick={() => void submit()}
 				>
-					{Icons.buttonIcon}
+					{copy.quickEntry.add}
 				</button>
 			</div>
+			<div className="entryMeta">
+				<label>
+					{copy.quickEntry.saveTo}
+					<select
+						className="fileSelect"
+						aria-label={copy.quickEntry.selectNoteAria}
+						value={filePath}
+						onChange={(event) => {
+							change({ filePath: event.target.value });
+							textInput.current?.focus();
+						}}
+					>
+						{taskFiles.map((file) => (
+							<option value={file} key={file}>
+								{file.replace(/\.md$/i, "")}
+							</option>
+						))}
+					</select>
+				</label>
+				<label>
+					{copy.quickEntry.due}
+					<input
+						className="taskDue"
+						type="date"
+						aria-label={copy.quickEntry.dueAria}
+						value={draft.due}
+						onInput={(event) => changeDue(event.currentTarget.value)}
+						onChange={(event) => changeDue(event.currentTarget.value)}
+					/>
+				</label>
+				<label>
+					<span className="tcw-sr-only">{copy.quickEntry.priority}</span>
+					<select
+						className="taskPriority"
+						aria-label={copy.quickEntry.taskPriorityAria}
+						value={draft.priority}
+						onChange={(event) => change({ priority: event.target.value })}
+					>
+						<option value="">{copy.quickEntry.priority}</option>
+						{priorityNames.map((priority) => (
+							<option value={priority} key={priority}>
+								{priorityText(priority)}
+							</option>
+						))}
+					</select>
+				</label>
+			</div>
+			{draft.error && (
+				<div className="entryError" role="alert">
+					{draft.error}
+				</div>
+			)}
+			{draft.savedTo && (
+				<div className="entryStatus" role="status">
+					{copy.quickEntry.addedTo({ note: draft.savedTo })}
+				</div>
+			)}
 		</div>
 	);
 }

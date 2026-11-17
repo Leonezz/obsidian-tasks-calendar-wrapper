@@ -48,6 +48,11 @@ class FakeDate {
 	clone() {
 		return new FakeDate(this.valueOf());
 	}
+	add(amount: number, unit: string) {
+		assert.match(unit, /^days?$/);
+		this.value.setUTCDate(this.date() + amount);
+		return this;
+	}
 	format(format = "YYYY-MM-DD") {
 		const year = String(this.year()).padStart(4, "0");
 		const month = String(this.month() + 1).padStart(2, "0");
@@ -215,10 +220,15 @@ function harness(t: TestContext, count = 2_000, popup = false) {
 		}
 		if (this.classList.contains("year"))
 			return rect((collapsedMargins ? 20 : 0) + flowOffset - viewport.scrollTop, 22);
-		if (this.classList.contains("todayHeader"))
-			return rect((collapsedMargins ? 62 : 22) + flowOffset - viewport.scrollTop, 30);
+		if (this.classList.contains("entryControls"))
+			return rect(
+				(collapsedMargins ? 62 : 22) + flowOffset - viewport.scrollTop,
+				180 + entryExtraHeight + (collapsedMargins ? 40 : 0),
+			);
 		if (this.classList.contains("counters"))
-			return rect((collapsedMargins ? 112 : 52) + flowOffset - viewport.scrollTop, 90);
+			return rect((collapsedMargins ? 62 : 22) + flowOffset - viewport.scrollTop, 90);
+		if (this.classList.contains("quickFilterBar"))
+			return rect((collapsedMargins ? 172 : 112) + flowOffset - viewport.scrollTop, 30);
 		if (this.classList.contains("quickEntryPanel"))
 			return rect((collapsedMargins ? 222 : 142) + flowOffset - viewport.scrollTop, 60 + entryExtraHeight);
 		if (this.classList.contains("dateLine"))
@@ -372,7 +382,7 @@ function harness(t: TestContext, count = 2_000, popup = false) {
 			contentPadding = padding;
 			const style = doc.createElement("style");
 			style.textContent =
-				".year{margin:20px 0}.todayHeader{margin:10px 0}.counters{margin:20px 0}.quickEntryPanel{margin:0 0 20px}.dateLine{margin:10px 0}";
+				".year{margin:20px 0}.quickFilterBar{margin:10px 0}.counters{margin:20px 0}.quickEntryPanel{margin:0 0 20px}.dateLine{margin:10px 0}";
 			doc.head.append(style);
 			t.after(() => style.remove());
 		},
@@ -430,7 +440,10 @@ test("the entry panel stays mounted when scrolled away and modes change", async 
 	const f = harness(t);
 	await f.render();
 	const input = f.container.querySelector<HTMLInputElement>("input.newTask")!;
-	input.value = "keep the draft";
+	await act(() => {
+		input.value = "keep the draft";
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+	});
 	await act(() => input.focus());
 	await f.scrollTo(60_240);
 	assert.strictEqual(f.container.querySelector("input.newTask"), input);
@@ -604,7 +617,7 @@ test("an entry at geometry zero preserves its escaped margin and content padding
 	f.useCollapsedMargins(true, 12);
 	await f.render(f.items(), { useYearHeader: false });
 	assert.equal(f.viewport.scrollTop, 0);
-	assert.equal(f.container.querySelector(".todayHeader")!.getBoundingClientRect().top, 22);
+	assert.equal(f.container.querySelector(".entryControls")!.getBoundingClientRect().top, 22);
 	await f.scrollTo(5);
 	await f.resize(400);
 	await f.render([task(-1), ...f.items()]);
@@ -690,7 +703,7 @@ test("a popout with no window dimensions bounds zero and oversized temporary lay
 test("adopting the same viewport cancels its pending reveal and rebinds to the new owner window", async (t) => {
 	const f = harness(t);
 	await f.render(f.items(), { useYearHeader: false });
-	const prefix = [".todayHeader", ".counters", ".tagFilterBar", ".quickEntryPanel"].map((selector) => {
+	const prefix = [".entryControls"].map((selector) => {
 		const element = f.container.querySelector<HTMLElement>(selector);
 		assert.ok(element);
 		return element;
@@ -833,7 +846,7 @@ test("a small empty view reveals only its own entry day", async (t) => {
 	assert.equal(f.viewport.scrollTop, 22, "the empty entry is reachable without a quick-entry panel");
 	assert.equal(await f.handle().revealDay("2026-01-14"), false);
 	assert.equal(f.viewport.scrollTop, 22, "a missing day does not scroll the entry");
-	const header = f.container.querySelector<HTMLElement>(".todayHeader")!;
+	const header = f.container.querySelector<HTMLElement>(".entryControls")!;
 	const rect = header.getBoundingClientRect();
 	t.mock.method(header, "getBoundingClientRect", () => ({ ...rect, height: 0 }));
 	assert.equal(await f.handle().revealDay("2026-01-15"), false, "an entry hidden by CSS is not reported as revealed");

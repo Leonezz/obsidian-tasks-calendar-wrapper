@@ -248,7 +248,7 @@ test("a quick filter change renders the entry panel, not the day", async (t) => 
 	assert.deepEqual(renderedDays(), before);
 	assert.equal(day.container.querySelector<HTMLInputElement>(".tagFilterBar input")?.value, "#work");
 	assert.deepEqual(
-		[...day.container.querySelectorAll<HTMLInputElement>('.quickEntryPanel input[type="date"]')].map(
+		[...day.container.querySelectorAll<HTMLInputElement>('.dateRange input[type="date"]')].map(
 			(input) => input.value,
 		),
 		["2026-02-10", "2026-02-20"],

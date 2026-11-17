@@ -1,5 +1,4 @@
 // Pins the state a timeline opens with across pushes, and the entry day's keys.
-// Must stay green, unchanged, when TimelineView becomes a function component.
 import "./golden-clock";
 import "./setup";
 
@@ -57,7 +56,7 @@ test("an open timeline keeps the filter and today focus it opened with, and take
 		{ id: "overdue", active: false },
 		{ id: "unplanned", active: false },
 	]);
-	assert.ok(container.querySelector(".taskido.todayFocus .todayHeader"));
+	assert.equal(container.querySelector<HTMLSelectElement>("select.dateScope")?.value, "today");
 
 	await render({ userOptions: pushed, tasks: [] });
 	assert.equal(container.querySelector(".taskido"), timeline);
@@ -66,7 +65,7 @@ test("an open timeline keeps the filter and today focus it opened with, and take
 	assert.match(timeline.className, /noCounters/, "an option read on every push");
 	assert.deepEqual(stateClasses(), beforeClasses, "the counter and Focus classes survive the push");
 	assert.deepEqual(counters(), beforeCounters, "the counters keep their active state even when hidden by CSS");
-	assert.ok(container.querySelector(".taskido.todayFocus .todayHeader"));
+	assert.equal(container.querySelector<HTMLSelectElement>("select.dateScope")?.value, "today");
 
 	const reopened = await mountTimeline(t, { userOptions: pushed, tasks: [] });
 	const newTimeline = reopened.container.querySelector(".taskido");
@@ -89,6 +88,13 @@ test("the entry day is rebuilt when a year is inserted before it and kept when o
 	assert.ok(originalYears.includes(moment().year()), "the entry's year is present in the golden timeline");
 	assert.ok(container.querySelectorAll(".task").length > 0, "the golden tasks are rendered");
 	const originalEntry = entryPanel();
+	const draft = "preserve this task while the entry remounts";
+	await act(() => {
+		const input = originalEntry.querySelector<HTMLInputElement>("input.newTask");
+		assert.ok(input);
+		Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(input, draft);
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+	});
 	const beforeYear = Math.min(...originalYears) - 1;
 	const before = parseTaskLine(`- [ ] before all years 📅 ${beforeYear}-01-01`, { moment, path: "Before.md" });
 	assert.ok(before);
@@ -105,6 +111,7 @@ test("the entry day is rebuilt when a year is inserted before it and kept when o
 	);
 	const rebuiltEntry = entryPanel();
 	assert.notEqual(rebuiltEntry, originalEntry, "inserting a year before the entry rebuilds it");
+	assert.equal(rebuiltEntry.querySelector<HTMLInputElement>("input.newTask")?.value, draft);
 
 	const afterYear = Math.max(...years()) + 1;
 	const after = parseTaskLine(`- [ ] after all years 📅 ${afterYear}-01-01`, { moment, path: "After.md" });
@@ -120,4 +127,5 @@ test("the entry day is rebuilt when a year is inserted before it and kept when o
 		"after all years",
 	);
 	assert.equal(entryPanel(), rebuiltEntry, "appending a year keeps the entry day");
+	assert.equal(rebuiltEntry.querySelector<HTMLInputElement>("input.newTask")?.value, draft);
 });

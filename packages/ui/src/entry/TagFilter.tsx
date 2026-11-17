@@ -20,7 +20,8 @@ type TagFilterProps = { readonly applied?: QuickFilter; readonly tags: readonly 
 export function TagFilter({ applied, tags }: TagFilterProps) {
 	const callback = React.useContext(QuickEntryHandlerContext);
 	const input = React.useRef<HTMLInputElement>(null);
-	/** A filter applied or cleared elsewhere, such as by adding a task, shows its own tag. */
+	const composing = React.useRef(false);
+	/** A filter applied or cleared elsewhere shows its own tag. */
 	const [state, setState] = React.useState(() => ({ gen: 0, text: applied?.tags?.join(" ") ?? "" }));
 	const committed = React.useRef({ applied, gen: 0 });
 	const gen = applied === committed.current.applied ? committed.current.gen : committed.current.gen + 1;
@@ -56,13 +57,22 @@ export function TagFilter({ applied, tags }: TagFilterProps) {
 				placeholder={copy.quickEntry.tagPlaceholder}
 				aria-label={copy.quickEntry.tagAria}
 				value={effectiveText}
+				onCompositionStart={() => {
+					composing.current = true;
+				}}
+				onCompositionEnd={() => {
+					composing.current = false;
+				}}
 				onChange={(e) => {
 					const text = e.target.value;
 					setState({ gen, text });
 					if (text.trim() === "") apply("");
 				}}
-				onKeyUp={(e) => {
-					if (e.key === "Enter") apply(effectiveText);
+				onKeyDown={(e) => {
+					if (e.key === "Enter" && !e.nativeEvent.isComposing && !composing.current && e.keyCode !== 229) {
+						e.preventDefault();
+						apply(effectiveText);
+					}
 				}}
 			/>
 		</div>

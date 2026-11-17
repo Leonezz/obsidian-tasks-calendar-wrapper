@@ -378,9 +378,12 @@ type TimelineCopyRole =
 
 /** These fragments are composed by callers; trimming or capitalising them would change the resulting message. */
 const fragmentRoles: Readonly<Record<string, TimelineCopyRole>> = {
-	"quickEntry.from": "prefix",
-	"quickEntry.to": "prefix",
-	"quickEntry.priorities": "prefix",
+	"quickEntry.addGlyph": "glyph",
+	"quickEntry.rangeIncomplete": "sentence",
+	"quickEntry.rangeReversed": "sentence",
+	"quickEntry.metadataConflict": "sentence",
+	"quickEntry.createFailed": "sentence",
+	"quickEntry.addedTo": "sentence",
 	"row.createdPrefix": "prefix",
 	"row.startPrefix": "prefix",
 	"row.scheduledPrefix": "prefix",
@@ -483,7 +486,7 @@ function assertTimelineText(text: string, role: TimelineCopyRole, name: string):
 		return;
 	}
 	assert.ok(
-		name === "row.menuGlyph" || name === "row.modifyGlyph",
+		name === "quickEntry.addGlyph" || name === "row.menuGlyph" || name === "row.modifyGlyph",
 		`${name}: only declared visual glyphs are exempt`,
 	);
 }

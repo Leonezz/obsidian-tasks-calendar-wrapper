@@ -58,7 +58,7 @@ async function edit(input: HTMLInputElement, value: string) {
 }
 
 async function enter(input: HTMLInputElement) {
-	await act(() => input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true })));
+	await act(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
 }
 
 test("a newly applied filter shows its own tag; the same filter keeps the typed text", async (t) => {

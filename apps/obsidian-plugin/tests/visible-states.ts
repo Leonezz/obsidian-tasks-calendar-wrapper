@@ -86,7 +86,6 @@ export const rowLine = (status: string, highlighted: boolean, badges: readonly s
 
 /** The lines of the entry panel. */
 export const entryLines = (counts: { readonly todo: number; readonly overdue: number; readonly unplanned: number }) => [
-	`today header "Focus on today"`,
 	`counter ${counts.todo} To-do`,
 	`counter ${counts.overdue} Overdue`,
 	`counter ${counts.unplanned} Unplanned`,
@@ -97,15 +96,19 @@ const taskPattern = /^( {2}task [^:]+): (.*) \| (.*)$/;
 
 /** A snapshot's lines, without the colours. */
 function snapshotLines(text: string): Line[] {
-	return text
-		.split("\n")
-		.filter((line) => line !== "")
-		.map((line) => {
-			if (line.startsWith("today header ") || line.startsWith("counter "))
-				return { line: line.replace(/, color .*$/, "") };
-			const task = taskPattern.exec(line);
-			return task ? { line: `${task[1]}: … | ${task[3]}`, text: task[2] } : { line };
-		});
+	return (
+		text
+			.split("\n")
+			.filter((line) => line !== "")
+			// The historical recordings precede the date toolbar that replaced this heading.
+			.filter((line) => !line.startsWith("today header "))
+			.map((line) => {
+				if (line.startsWith("today header ") || line.startsWith("counter "))
+					return { line: line.replace(/, color .*$/, "") };
+				const task = taskPattern.exec(line);
+				return task ? { line: `${task[1]}: … | ${task[3]}`, text: task[2] } : { line };
+			})
+	);
 }
 
 /** The names of the states that have a snapshot, sorted. */

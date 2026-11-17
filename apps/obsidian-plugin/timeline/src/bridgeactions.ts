@@ -68,7 +68,7 @@ export interface BridgeState {
 	readonly userOptions: UserOption;
 	/** The reload whose tasks this bridge is showing. */
 	readonly reloadId?: number;
-	/** The quick entry panel's filter, kept until the user clears it or adds a task through the quick entry. */
+	/** The toolbar's filter, kept until the user changes or clears it. */
 	readonly quickFilter?: QuickFilter;
 }
 
@@ -150,9 +150,8 @@ export function createBridgeActions(
 	let taskItemHandlers: TaskItemHandlers | undefined;
 	let quickEntryHandlers: QuickEntryHandlers | undefined;
 	const actions: BridgeActions = {
-		/** The quick filter clear and the new list render together when quick entry adds a task. */
+		/** Refresh the written list without changing the view's filters. */
 		onUpdateTasks() {
-			props.viewState.actions.clearQuickFilter();
 			setState(() => {
 				const snap = props.store.getSnapshot();
 				return { tasks: snap.tasks, reloadId: snap.reloadId };

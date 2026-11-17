@@ -31,6 +31,7 @@ export { StatusMarker } from "./row/StatusMarker";
 export { TagBadge, FileBadge, DateStatusBadge, ModifyBadge } from "./row/Badges";
 export { Counters, CounterItem } from "./entry/Counters";
 export { QuickEntry } from "./entry/QuickEntry";
+export { QuickFilters } from "./entry/QuickFilters";
 export { MultiSelect } from "./entry/MultiSelect";
 export { TodayFocus } from "./entry/TodayFocus";
 export { getTaskStatusIcon } from "./icons";
