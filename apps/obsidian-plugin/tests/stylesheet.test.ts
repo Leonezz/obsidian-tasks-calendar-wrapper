@@ -381,7 +381,7 @@ test("focus rings use :focus-visible while the enclosing entry field follows foc
 	);
 });
 
-test("capture and metadata keep native field borders and the add action keeps its accent contrast", () => {
+test("capture and progressive metadata retain field affordances and the add action keeps its accent contrast", () => {
 	const rules = cssRules(readFileSync("styles.css", "utf8"));
 	const rule = (selector: string) => {
 		const match = rules.find(({ selectors }) => selectors.includes(selector));
@@ -398,8 +398,10 @@ test("capture and metadata keep native field borders and the add action keeps it
 	const reset = rule(".taskido .quickEntryPanel :is(input, select, button)");
 	for (const property of ["border", "background", "box-shadow"])
 		assert.ok(!reset.has(property), `${property}: shared geometry must not erase control affordances`);
-	const metadata = rule(".taskido .entryMeta :is(input, select)");
+	const metadata = rule(".taskido .entryMeta label");
 	assert.match(metadata.get("border") ?? "", /solid\s+var\(--tcw-color-border,/);
+	assert.equal(metadata.get("border-radius"), "var(--tcw-radius-tool)");
+	assert.equal(rule(".taskido .entryMeta[hidden]").get("display"), "none");
 	assert.equal(rule(".taskido .entryMeta select").get("appearance"), "auto");
 	const add = rule(".taskido .quickEntryPanel .ok");
 	assert.equal(add.get("background"), "var(--tcw-action-bg, var(--interactive-accent))");
@@ -412,6 +414,31 @@ test("capture and metadata keep native field borders and the add action keeps it
 	assert.equal(resolvedTokens(heading.get("font-size") ?? ""), "24px");
 	assert.equal(heading.get("font-weight"), "bold");
 	assert.equal(heading.get("text-align"), "center");
+});
+
+test("priority uses a custom disclosure icon and visible keyboard feedback for its native checkbox rows", () => {
+	const rules = cssRules(readFileSync("styles.css", "utf8"));
+	const body = (selector: string) => {
+		const match = rules.find(({ selectors }) => selectors.includes(selector));
+		assert.ok(match, selector);
+		return new Map(declarations(match.body));
+	};
+	assert.equal(body(".taskido .priorityFilter summary").get("list-style"), "none");
+	assert.equal(body(".taskido .priorityFilter summary::-webkit-details-marker").get("display"), "none");
+	const checkbox = body(".taskido .priorityOptions input");
+	assert.equal(checkbox.get("position"), "absolute");
+	assert.equal(checkbox.get("opacity"), "0");
+	assert.ok(!checkbox.has("display"), "the native checkbox remains keyboard- and screen-reader-accessible");
+	assert.ok(!checkbox.has("pointer-events"), "the native checkbox remains the pointer target");
+	assert.equal(body(".taskido .priorityOption:has(input:focus-visible)").get("outline"), "var(--tcw-focus-ring)");
+	assert.equal(body('.taskido .priorityOption[data-selected="true"] .priorityCheck').get("visibility"), "visible");
+	assert.equal(body(".taskido .priorityOptions").get("max-height"), "var(--tcw-priority-menu-max-height)");
+	assert.equal(body(".taskido .priorityOptions").get("overflow-y"), "auto");
+	assert.equal(body('.taskido .priorityOptions[data-placement="above"]').get("top"), "auto");
+	assert.equal(
+		body('.taskido .priorityOptions[data-placement="above"]').get("bottom"),
+		"calc(100% + var(--tcw-space-3))",
+	);
 });
 
 test("every :hover rule is inside @media (hover: hover)", () => {

@@ -461,13 +461,15 @@ test("Tab order follows the DOM: Today heading, counters, filters, quick entry, 
 	const fixture = await mountState(t);
 	const root = fixture.root();
 	const stop = defaultStop(root)!;
-	const expected = [
+	const panel = get(root, ".quickEntryPanel");
+	const metadata = get(panel, ".entryMeta");
+	const expected = () => [
 		get(root, ".todayHeader"),
 		...all(root, ".counter"),
 		...all(get(root, ".quickFilterBar"), "select, input, summary, button").filter(
 			(el) => el.tabIndex >= 0 && exposedControl(el),
 		),
-		...all(get(root, ".quickEntryPanel"), "select, input, button"),
+		...all(panel, "select, input, button").filter(exposedControl),
 		stop,
 		...all(stop, rowControls),
 	];
@@ -475,12 +477,69 @@ test("Tab order follows the DOM: Today heading, counters, filters, quick entry, 
 		all(root, "*").every((el) => el.tabIndex <= 0),
 		"no positive tabIndex changes DOM order",
 	);
-	assert.deepEqual(
-		tabOrder(root).map(describe),
-		expected.map(describe),
-		"Tab visits the Today heading, counters, filters, quick entry, then one row and its controls",
-	);
+	assert.equal(metadata.hidden, true);
+	for (const [state, target] of [
+		["collapsed", undefined],
+		["expanded", get(panel, "input.newTask")],
+		["collapsed after external focus", get(root, ".todayHeader")],
+	] as const) {
+		if (target) await focus(target);
+		assert.equal(metadata.hidden, state !== "expanded", state);
+		assert.deepEqual(
+			tabOrder(root).map(describe),
+			expected().map(describe),
+			`${state}: Tab follows the heading, counters, filters, exposed entry controls, then one row`,
+		);
+	}
 	assertRoving(root, stop, "default Tab order");
+});
+
+test("quick entry reveals named metadata on focus, retains it within the panel and collapses outside", async (t) => {
+	const fixture = await mountWritingTimeline(t, "- [ ] Existing task 📅 2026-01-15", {
+		taskFiles: ["Note.md"],
+	});
+	const root = get(fixture.container, ".taskido");
+	const panel = get(root, ".quickEntryPanel");
+	const metadata = get(panel, ".entryMeta");
+	const input = get(panel, "input.newTask") as HTMLInputElement;
+	const due = get(metadata, "input.taskDue") as HTMLInputElement;
+	const priority = get(metadata, "select.taskPriority") as HTMLSelectElement;
+	const controls = all(metadata, "select, input");
+	assert.equal(controls.length, 3);
+	assert.equal(metadata.hidden, true);
+	assert.ok(controls.every((control) => !tabOrder(root).includes(control)));
+	assertNames(root, "collapsed quick entry");
+	await focus(input);
+	assert.equal(metadata.hidden, false);
+	assert.ok(panel.classList.contains("focus"));
+	assert.ok(controls.every((control) => tabOrder(root).includes(control)));
+	assertNames(root, "expanded quick entry");
+	await act(() => {
+		const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+		setter.call(input, "Keep the draft");
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+		setter.call(due, "2026-01-20");
+		due.dispatchEvent(new Event("input", { bubbles: true }));
+		priority.value = "High";
+		priority.dispatchEvent(new Event("change", { bubbles: true }));
+	});
+	for (const control of [...controls, get(panel, "button.ok"), input]) {
+		await focus(control);
+		assert.strictEqual(document.activeElement, control);
+		assert.equal(metadata.hidden, false, `${describe(control)} keeps metadata expanded`);
+		assert.ok(panel.classList.contains("focus"));
+	}
+	await focus(get(root, ".todayHeader"));
+	assert.equal(metadata.hidden, true);
+	assert.ok(!panel.classList.contains("focus"));
+	assert.ok(controls.every((control) => !tabOrder(root).includes(control)));
+	assert.equal(input.value, "Keep the draft");
+	assert.equal(due.value, "2026-01-20");
+	assert.equal(priority.value, "High");
+	await focus(input);
+	assert.equal(metadata.hidden, false);
+	assert.strictEqual(get(panel, ".entryMeta"), metadata, "the same metadata controls are retained");
+	assert.equal(fixture.write.mock.callCount(), 0, "focus changes never submit the task");
 });
 
 test("axe-core finds no violation of the six rules in any of the 42 states", async (t) => {
@@ -728,6 +787,10 @@ test("the native priority disclosure exposes named checkboxes and Escape returns
 	const summary = get(details, "summary");
 	const options = all(details, 'input[type="checkbox"]');
 	assert.equal(options.length, 6);
+	assert.equal(get(details, ".priorityOptions").getAttribute("role"), "group");
+	assert.equal(get(details, ".priorityOptions").getAttribute("aria-label"), "Filter by priority");
+	assert.equal(get(summary, ".priorityChevron").getAttribute("aria-hidden"), "true");
+	assert.equal(all(details, '.priorityCheck[aria-hidden="true"]').length, 6);
 	assert.equal(summary.tagName, "SUMMARY", "the browser supplies native disclosure keyboard behavior");
 	for (const value of ["Enter", " "])
 		assert.equal((await key(summary, value)).defaultPrevented, false, `${value} keeps native activation`);
@@ -754,6 +817,10 @@ test("the native priority disclosure exposes named checkboxes and Escape returns
 	assert.equal(details.open, false);
 	assert.strictEqual(document.activeElement, summary);
 	assert.ok(options.every((option) => !tabOrder(root).includes(option)));
+	await act(() => summary.click());
+	assert.equal(details.open, true);
+	await act(() => get(root, ".todayHeader").dispatchEvent(new Event("pointerdown", { bubbles: true })));
+	assert.equal(details.open, false, "a pointer outside the disclosure closes it");
 });
 
 test("badges without their own handler have no role and are not focusable", async (t) => {

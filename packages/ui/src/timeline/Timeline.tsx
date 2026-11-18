@@ -3,6 +3,7 @@ import {
 	copy,
 	counterClass,
 	createQuery,
+	createStore,
 	dayKey,
 	focusToday,
 	taskRowModel,
@@ -41,6 +42,7 @@ import { Year } from "./Year";
 import type { EntryProps } from "./Day";
 import { useWindowed, type TimelineWindow } from "./Windowed";
 import { createQuickEntryDraft } from "../entry/QuickEntry";
+import { createTagFilterDraft } from "../entry/TagFilter";
 
 declare const process: { readonly env: { readonly NODE_ENV?: string } };
 
@@ -133,6 +135,8 @@ interface TimelineMemo {
 	userOptionValue?: UserOptionValue;
 	entry?: EntryProps;
 	readonly entryDraft: ReturnType<typeof createQuickEntryDraft>;
+	readonly tagDraft: ReturnType<typeof createTagFilterDraft>;
+	readonly priorityMenu: Store<boolean>;
 	tags?: { readonly tasks: readonly Task[]; readonly tags: readonly string[] };
 	rows?: {
 		readonly options: RowOptions;
@@ -282,6 +286,8 @@ function entryFor(
 			defaultFile,
 			newDateStyle,
 			draft: memo.entryDraft,
+			tagDraft: memo.tagDraft,
+			priorityMenu: memo.priorityMenu,
 		};
 	return memo.entry!;
 }
@@ -349,6 +355,8 @@ export function Timeline(props: TimelineProps) {
 	const memo: TimelineMemo = (ref.current ??= {
 		query: createQuery(),
 		entryDraft: createQuickEntryDraft(),
+		tagDraft: createTagFilterDraft(),
+		priorityMenu: createStore(false),
 		committedIds: [],
 		committedInstanceIds: [],
 		committed: false,

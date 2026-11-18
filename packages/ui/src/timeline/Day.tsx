@@ -4,11 +4,13 @@ import {
 	type DayGroup,
 	type NewDateStyle,
 	type ResolvedTask,
+	type Store,
 	type TaskRowModel,
 } from "@tasks-calendar-wrapper/core";
 import { Counters, type CounterProps } from "../entry/Counters";
 import { QuickEntry, type createQuickEntryDraft } from "../entry/QuickEntry";
 import { QuickFilters } from "../entry/QuickFilters";
+import type { createTagFilterDraft } from "../entry/TagFilter";
 import { TodayFocus } from "../entry/TodayFocus";
 import { DayHeader } from "./DayHeader";
 import { DayContent } from "./DayContent";
@@ -30,6 +32,8 @@ export type EntryProps = {
 	readonly todayKey?: string;
 	readonly activeCounter?: CounterId;
 	readonly draft?: ReturnType<typeof createQuickEntryDraft>;
+	readonly tagDraft?: ReturnType<typeof createTagFilterDraft>;
+	readonly priorityMenu?: Store<boolean>;
 	readonly defaultFile?: string;
 	readonly newDateStyle?: NewDateStyle;
 };
@@ -72,6 +76,8 @@ function EntryFilters({ entry }: { readonly entry: EntryProps }) {
 				todayFocus={entry.todayFocus}
 				todayKey={entry.todayKey}
 				activeCounter={entry.activeCounter}
+				tagDraft={entry.tagDraft}
+				priorityMenu={entry.priorityMenu}
 			/>
 			<QuickEntry
 				taskFiles={entry.taskFiles}

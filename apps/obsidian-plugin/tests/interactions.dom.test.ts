@@ -11,6 +11,7 @@ import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "@tasks-c
 import { mountView, onTimelineRender } from "./component-harness";
 import { notesApp } from "./view-harness";
 import { AbstractInputSuggest, Platform } from "./stubs/obsidian";
+import { TagSuggest } from "../timeline/src/tagsuggest";
 
 // Inline Note.md has the action badges; Done.md supplies a noninteractive relative badge, Other.md an unplanned row.
 const sourceLine = "- [ ] all badges #work ⏫ 🔁 every day 🛫 2026-01-13 ⏳ 2026-01-14 📅 2026-01-16";
@@ -496,8 +497,82 @@ test("the tag filter suggests the tasks' tags and applies the one picked", async
 	assert.deepEqual(await suggest.suggestions(), []);
 	await act(() => suggest.selectSuggestion("#work"));
 	assert.deepEqual(fixture.calls, [{ handler: "handleFilterEnable", args: [undefined, undefined, [], ["#work"]] }]);
-	assert.equal(input!.value, "#work");
+	assert.equal(input!.value, "#work ");
+	assert.equal(document.activeElement, input);
+	assert.equal(input!.selectionStart, input!.value.length);
 	assert.equal(suggest.isOpen, false);
+});
+
+test("native tag suggestions continue through second and third tags without replacing earlier picks", async (t) => {
+	const input = document.body.appendChild(document.createElement("input"));
+	input.type = "search";
+	t.after(() => input.remove());
+	const picks: string[] = [];
+	const native = new TagSuggest(
+		{} as never,
+		input,
+		() => ["#home", "#work", "#项目/阶段"],
+		(text) => picks.push(text),
+	);
+	const suggest = native as unknown as AbstractInputSuggest<string>;
+	input.focus();
+	for (const [prefix, tag, text] of [
+		["#ho", "#home", "#home "],
+		["#home #wo", "#work", "#home #work "],
+		["#home #work #项目/阶", "#项目/阶段", "#home #work #项目/阶段 "],
+	]) {
+		input.value = prefix;
+		input.setSelectionRange(prefix.length, prefix.length);
+		assert.deepEqual(await suggest.suggestions(), [tag]);
+		native.selectSuggestion(tag);
+		assert.equal(input.value, text);
+		assert.equal(input.selectionStart, text.length);
+		assert.equal(document.activeElement, input);
+	}
+	assert.deepEqual(picks, ["#home ", "#home #work ", "#home #work #项目/阶段 "]);
+});
+
+test("native tag selection replaces the token at the caret and preserves surrounding tags and separators", async (t) => {
+	const input = document.body.appendChild(document.createElement("input"));
+	input.type = "search";
+	t.after(() => input.remove());
+	const picks: string[] = [];
+	const native = new TagSuggest(
+		{} as never,
+		input,
+		() => ["#home", "#work", "#项目/阶段"],
+		(text) => picks.push(text),
+	);
+	const suggest = native as unknown as AbstractInputSuggest<string>;
+	input.value = "#home  #woSuffix \t#项目/阶段";
+	const caret = input.value.indexOf("Suffix");
+	input.setSelectionRange(caret, caret);
+	assert.deepEqual(await suggest.suggestions(), ["#work"]);
+	native.selectSuggestion("#work");
+	assert.equal(input.value, "#home  #work \t#项目/阶段");
+	assert.equal(input.selectionStart, "#home  #work".length);
+	assert.deepEqual(picks, ["#home  #work \t#项目/阶段"]);
+	input.setSelectionRange(3, 3);
+	assert.deepEqual(await suggest.suggestions(), ["#home"]);
+	native.selectSuggestion("#home");
+	assert.equal(input.value, "#home  #work \t#项目/阶段");
+});
+
+test("native tag selection ignores an Enter that confirms IME composition", (t) => {
+	const input = document.body.appendChild(document.createElement("input"));
+	input.type = "search";
+	t.after(() => input.remove());
+	input.value = "#home #项目/阶";
+	const picks: string[] = [];
+	const suggest = new TagSuggest(
+		{} as never,
+		input,
+		() => ["#项目/阶段"],
+		(text) => picks.push(text),
+	);
+	suggest.selectSuggestion("#项目/阶段", new KeyboardEvent("keydown", { key: "Enter", isComposing: true }));
+	assert.equal(input.value, "#home #项目/阶");
+	assert.deepEqual(picks, []);
 });
 
 test("a click within 300 ms of the list commit is ignored", async (t) => {

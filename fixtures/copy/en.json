@@ -14,6 +14,7 @@
 		"due": "Due",
 		"dueAria": "Due date for the new task",
 		"priority": "Priority",
+		"selectedPriorities": "Priority ({count})",
 		"taskPriorityAria": "Priority for the new task",
 		"none": "None",
 		"dateScopeAria": "Filter by date",
@@ -37,8 +38,8 @@
 		"from": "From:",
 		"to": "To:",
 		"appendTaskAria": "Add task to selected note",
-		"tagPlaceholder": "Filter by tag: #home",
-		"tagAria": "Show only tasks with this tag"
+		"tagPlaceholder": "Tags: #work #home",
+		"tagAria": "Filter by tags"
 	},
 	"row": {
 		"checkboxAria": "Complete task",

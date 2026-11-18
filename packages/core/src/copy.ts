@@ -39,6 +39,7 @@ export const copy = freezeCopy({
 		due: "Due",
 		dueAria: "Due date for the new task",
 		priority: "Priority",
+		selectedPriorities: ({ count }: { count: number }) => `Priority (${count})`,
 		taskPriorityAria: "Priority for the new task",
 		none: "None",
 		dateScopeAria: "Filter by date",
@@ -62,8 +63,8 @@ export const copy = freezeCopy({
 		from: "From:",
 		to: "To:",
 		appendTaskAria: "Add task to selected note",
-		tagPlaceholder: "Filter by tag: #home",
-		tagAria: "Show only tasks with this tag",
+		tagPlaceholder: "Tags: #work #home",
+		tagAria: "Filter by tags",
 	},
 	row: {
 		checkboxAria: "Complete task",

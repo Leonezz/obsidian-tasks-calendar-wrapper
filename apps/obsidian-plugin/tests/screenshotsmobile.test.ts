@@ -153,7 +153,6 @@ test("a required target with no element fails, a missing ✏️ does not", () =>
 			".task .timeline label.icon",
 			".task a.menu",
 			".counter",
-			".quickEntryPanel select",
 			".quickEntryPanel input",
 			".quickEntryPanel button",
 			".quickFilterBar select",
@@ -167,6 +166,7 @@ test("a required target with no element fails, a missing ✏️ does not", () =>
 		[
 			".task a.modify",
 			".task .info > :is(.tag, .relative, .repeat, .priority, .file)",
+			".quickEntryPanel select",
 			".priorityOptions label",
 			".dateRange input",
 			".applyDateRange",

@@ -51,36 +51,92 @@
               </option>
             </select>
             <div class="tagFilterBar">
-              <input aria-label="Show only tasks with this tag" placeholder="Filter by tag: #home" type="search" value="">
+              <input aria-label="Filter by tags" placeholder="Tags: #work #home" type="search" value="">
             </div>
             <details class="priorityFilter">
-              <summary aria-label="Filter by priority">
-                Priority
+              <summary aria-label="Filter by priority" data-active="false">
+                <span class="prioritySummary">
+                  Priority
+                </span>
+                <span aria-hidden="true" class="priorityChevron">
+                  <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="m6 9 6 6 6-6">
+                    </path>
+                  </svg>
+                </span>
               </summary>
-              <div class="priorityOptions">
-                <label>
+              <div aria-label="Filter by priority" class="priorityOptions" role="group">
+                <label class="priorityOption" data-selected="false">
                   <input type="checkbox" value="Highest">
-                  Highest
+                  <span class="priorityOptionLabel">
+                    Highest
+                  </span>
+                  <span aria-hidden="true" class="priorityCheck">
+                    <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="m5 12 4 4L19 6">
+                      </path>
+                    </svg>
+                  </span>
                 </label>
-                <label>
+                <label class="priorityOption" data-selected="false">
                   <input type="checkbox" value="High">
-                  High
+                  <span class="priorityOptionLabel">
+                    High
+                  </span>
+                  <span aria-hidden="true" class="priorityCheck">
+                    <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="m5 12 4 4L19 6">
+                      </path>
+                    </svg>
+                  </span>
                 </label>
-                <label>
+                <label class="priorityOption" data-selected="false">
                   <input type="checkbox" value="Medium">
-                  Medium
+                  <span class="priorityOptionLabel">
+                    Medium
+                  </span>
+                  <span aria-hidden="true" class="priorityCheck">
+                    <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="m5 12 4 4L19 6">
+                      </path>
+                    </svg>
+                  </span>
                 </label>
-                <label>
+                <label class="priorityOption" data-selected="false">
                   <input type="checkbox" value="No">
-                  None
+                  <span class="priorityOptionLabel">
+                    None
+                  </span>
+                  <span aria-hidden="true" class="priorityCheck">
+                    <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="m5 12 4 4L19 6">
+                      </path>
+                    </svg>
+                  </span>
                 </label>
-                <label>
+                <label class="priorityOption" data-selected="false">
                   <input type="checkbox" value="Low">
-                  Low
+                  <span class="priorityOptionLabel">
+                    Low
+                  </span>
+                  <span aria-hidden="true" class="priorityCheck">
+                    <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="m5 12 4 4L19 6">
+                      </path>
+                    </svg>
+                  </span>
                 </label>
-                <label>
+                <label class="priorityOption" data-selected="false">
                   <input type="checkbox" value="Lowest">
-                  Lowest
+                  <span class="priorityOptionLabel">
+                    Lowest
+                  </span>
+                  <span aria-hidden="true" class="priorityCheck">
+                    <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="m5 12 4 4L19 6">
+                      </path>
+                    </svg>
+                  </span>
                 </label>
               </div>
             </details>
@@ -98,7 +154,7 @@
                 Add
               </button>
             </div>
-            <div class="entryMeta">
+            <div class="entryMeta" hidden="">
               <label>
                 Save to
                 <select aria-label="Select a note for the new task" class="fileSelect">

@@ -9,7 +9,7 @@ export const TOUCH_TARGETS = [
 		selector: ".task .info > :is(.tag, .relative, .repeat, .priority, .file)",
 		required: false,
 	},
-	{ name: "quick entry select", selector: ".quickEntryPanel select", required: true },
+	{ name: "quick entry select", selector: ".quickEntryPanel select", required: false },
 	{ name: "quick entry input", selector: ".quickEntryPanel input", required: true },
 	{ name: "quick entry button", selector: ".quickEntryPanel button", required: true },
 	{ name: "date scope", selector: ".quickFilterBar select", required: true },

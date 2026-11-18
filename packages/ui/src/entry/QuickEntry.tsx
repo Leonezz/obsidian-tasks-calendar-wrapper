@@ -151,7 +151,13 @@ export function QuickEntry({ taskFiles, defaultFile, draft: suppliedDraft, newDa
 	}
 
 	return (
-		<div className={focused ? "quickEntryPanel focus" : "quickEntryPanel"}>
+		<div
+			className={focused ? "quickEntryPanel focus" : "quickEntryPanel"}
+			onFocusCapture={() => setFocused(true)}
+			onBlurCapture={(event) => {
+				if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
+			}}
+		>
 			<div className="entryMain">
 				<span className="entryPlus" aria-hidden="true">
 					{copy.quickEntry.addGlyph}
@@ -185,8 +191,6 @@ export function QuickEntry({ taskFiles, defaultFile, draft: suppliedDraft, newDa
 						event.preventDefault();
 						void submit();
 					}}
-					onFocus={() => setFocused(true)}
-					onBlur={() => setFocused(false)}
 				/>
 				<button
 					className="ok"
@@ -198,7 +202,7 @@ export function QuickEntry({ taskFiles, defaultFile, draft: suppliedDraft, newDa
 					{copy.quickEntry.add}
 				</button>
 			</div>
-			<div className="entryMeta">
+			<div className="entryMeta" hidden={!focused}>
 				<label>
 					{copy.quickEntry.saveTo}
 					<select

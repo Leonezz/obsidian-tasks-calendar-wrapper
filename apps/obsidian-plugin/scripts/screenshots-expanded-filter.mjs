@@ -187,11 +187,11 @@ export function collectExpandedFilter({ viewType }) {
 				dates: [...filters.querySelectorAll(".dateRange input")].map((input) => input.value),
 				priorityOptions: [...(priority?.querySelectorAll('input[type="checkbox"]') ?? [])].map((input) => ({
 					value: input.value,
-					label: input.closest("label")?.textContent.trim() ?? "",
+					label: input.closest("label")?.querySelector(".priorityOptionLabel")?.textContent.trim() ?? "",
 					checked: input.checked,
 				})),
 				priorityOpen: Boolean(priority?.open),
-				prioritySummary: priority?.querySelector("summary")?.textContent.trim(),
+				prioritySummary: priority?.querySelector(".prioritySummary")?.textContent.trim(),
 				entryText: panel.querySelector("input.newTask")?.value,
 			},
 			applied: applied
@@ -236,7 +236,7 @@ export function assertExpandedFilter({ semantic, geometry }) {
 			{ value: "Lowest", label: "Lowest", checked: false },
 		],
 		priorityOpen: false,
-		prioritySummary: "High, None",
+		prioritySummary: "Priority (2)",
 		entryText: "",
 	});
 	assert.equal(geometry.viewport.width, 600);

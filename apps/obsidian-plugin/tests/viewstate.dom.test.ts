@@ -19,6 +19,7 @@ import { TasksTimelineView, TIMELINE_VIEW } from "../src/views";
 import { onTimelineRender } from "./component-harness";
 import { fakeVault, type FakeLeaf } from "./fakevault";
 import { MANIFEST, type StartedPlugin } from "./settings-fixtures";
+import { AbstractInputSuggest } from "./stubs/obsidian";
 
 const notes = {
 	"Inbox.md": "- [ ] visible 📅 2026-01-15\n- [ ] hidden 📅 2026-01-20",
@@ -27,8 +28,8 @@ const onLoad = { defaultFilters: "", defaultTodayFocus: false };
 const settle = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 /** Keeps the plugin's factory and leaf lifecycle, supplying only the DOM Obsidian normally creates. */
-function pluginHarness(t: TestContext) {
-	const vault = fakeVault(notes, { layoutReady: false });
+function pluginHarness(t: TestContext, content: Record<string, string> = notes) {
+	const vault = fakeVault(content, { layoutReady: false });
 	Object.assign(vault.app, { plugins: { plugins: {} } });
 	const containers = new Map<TasksTimelineView, HTMLElement>();
 	const plugins: StartedPlugin[] = [];
@@ -264,6 +265,89 @@ test("the restored Today heading preserves applied dates, tags, priorities and t
 		priorities: ["No", ""],
 		tags: ["#work"],
 	});
+});
+
+test("priority multi-selection stays open when filtering removes and restores an earlier year", async (t) => {
+	const h = pluginHarness(t, {
+		"Earlier.md": "- [ ] Earlier 📅 2025-12-31",
+		"Today.md": "- [ ] Today ⏫ 📅 2026-01-15",
+	});
+	const plugin = await h.load({ forward: false, entryPosition: "today" });
+	const opened = await h.command(plugin);
+	const years = () => [...opened.container.querySelectorAll(".year")].map((year) => year.textContent);
+	const menu = () => control(opened.container, "details.priorityFilter") as HTMLDetailsElement;
+	assert.deepEqual(years(), ["2025", "2026"]);
+	await click(opened, ".priorityFilter summary");
+	const original = menu();
+	assert.equal(original.open, true);
+	await click(opened, '.priorityOptions input[value="High"]');
+	assert.deepEqual(years(), ["2026"], "the first priority removes the preceding year");
+	const remounted = menu();
+	assert.notStrictEqual(remounted, original, "the entry actually remounts under its new year position");
+	assert.equal(original.isConnected, false);
+	assert.equal(remounted.open, true, "the remounted menu stays open for the next choice");
+	assert.strictEqual(
+		document.activeElement,
+		control(remounted, "summary"),
+		"keyboard access follows the remounted menu",
+	);
+	assert.equal(control(remounted, ".prioritySummary").textContent, "High");
+	await click(opened, '.priorityOptions input[value="No"]');
+	assert.deepEqual(years(), ["2025", "2026"], "adding None restores the preceding year");
+	assert.equal(menu().open, true, "the second remount also keeps the multi-select open");
+	assert.strictEqual(document.activeElement, control(menu(), "summary"));
+	assert.deepEqual(quickFilter()?.priorities, ["High", "No", ""]);
+	assert.equal(control(menu(), ".prioritySummary").textContent, "Priority (2)");
+	for (const value of ["High", "No"])
+		assert.equal((control(menu(), `input[value="${value}"]`) as HTMLInputElement).checked, true);
+});
+
+test("native tag selection restores the editor and caret after a year remount for another suggestion", async (t) => {
+	const h = pluginHarness(t, {
+		"Earlier.md": "- [ ] Earlier #old 📅 2025-12-31",
+		"Today.md": "- [ ] Today #one #two 📅 2026-01-15",
+	});
+	const plugin = await h.load({ forward: false, entryPosition: "today" });
+	const opened = await h.command(plugin);
+	const editor = () => control(opened.container, '.tagFilterBar input[type="search"]') as HTMLInputElement;
+	const suggestion = () => {
+		const adapter = AbstractInputSuggest.made.at(-1) as AbstractInputSuggest<string>;
+		assert.strictEqual(adapter.textInputEl, editor(), "the native suggester follows the current mounted editor");
+		return adapter;
+	};
+	async function type(text: string) {
+		await act(() => {
+			const input = editor();
+			input.focus();
+			Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(input, text);
+			input.setSelectionRange(text.length, text.length);
+			input.dispatchEvent(new Event("input", { bubbles: true }));
+		});
+	}
+	const original = editor();
+	await type("#o");
+	assert.ok((await suggestion().suggestions()).includes("#one"));
+	await act(() => suggestion().selectSuggestion("#one"));
+	const remounted = editor();
+	assert.notStrictEqual(remounted, original, "removing the earlier year remounts the entry");
+	assert.equal(original.isConnected, false);
+	assert.strictEqual(document.activeElement, remounted);
+	assert.equal(remounted.value, "#one ");
+	assert.equal(remounted.selectionStart, remounted.value.length);
+	assert.equal(remounted.selectionEnd, remounted.value.length);
+	assert.deepEqual(quickFilter()?.tags, ["#one"]);
+	assert.deepEqual(
+		[...opened.container.querySelectorAll(".year")].map((year) => year.textContent),
+		["2026"],
+	);
+	await type("#one #t");
+	assert.deepEqual(await suggestion().suggestions(), ["#two"]);
+	await act(() => suggestion().selectSuggestion("#two"));
+	assert.strictEqual(document.activeElement, editor());
+	assert.equal(editor().value, "#one #two ");
+	assert.equal(editor().selectionStart, editor().value.length);
+	assert.equal(editor().selectionEnd, editor().value.length);
+	assert.deepEqual(quickFilter()?.tags, ["#one", "#two"]);
 });
 
 test("a moved view restores from getState", async (t) => {

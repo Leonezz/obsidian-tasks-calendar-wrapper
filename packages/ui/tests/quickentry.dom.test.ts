@@ -393,17 +393,53 @@ test("shortcuts read the current clock for each non-composing input, not for ren
 	assert.equal(entry.nowCalls(), 2);
 });
 
-test("focus and note selection return keyboard capture to its title", async (t) => {
+test("metadata stays open through composer focus changes and collapses without losing selected values", async (t) => {
 	const entry = entryHarness(t);
 	await entry.render();
 	const panel = element<HTMLElement>(entry.container, ".quickEntryPanel");
+	const metadata = element<HTMLElement>(entry.container, ".entryMeta");
 	const input = element<HTMLInputElement>(entry.container, ".newTask");
+	const file = element<HTMLSelectElement>(entry.container, ".fileSelect");
+	const due = element<HTMLInputElement>(entry.container, ".taskDue");
+	const priority = element<HTMLSelectElement>(entry.container, ".taskPriority");
+	const add = element<HTMLButtonElement>(entry.container, "button.ok");
+	assert.equal(metadata.hidden, true, "the idle composer exposes only the task title and Add");
 	await act(() => input.focus());
 	assert.equal(panel.className, "quickEntryPanel focus");
-	await act(() => input.blur());
-	assert.equal(panel.className, "quickEntryPanel");
-	await changeSelect(element(entry.container, ".fileSelect"), "Inbox.md");
+	assert.equal(metadata.hidden, false);
+	await edit(input, "buy milk");
+	await act(() => file.focus());
+	assert.equal(metadata.hidden, false, "moving keyboard focus to metadata keeps the controls available");
+	await changeSelect(file, "Inbox.md");
 	assert.equal(document.activeElement, input);
+	await act(() => due.focus());
+	await edit(due, "2026-01-20");
+	assert.equal(metadata.hidden, false);
+	await act(() => priority.focus());
+	await changeSelect(priority, "High");
+	assert.equal(metadata.hidden, false);
+	await act(() => add.focus());
+	assert.equal(metadata.hidden, false, "moving from metadata to Add retains the expanded composer");
+	assert.equal(panel.className, "quickEntryPanel focus");
+	await act(() => element<HTMLInputElement>(entry.container, ".tagFilterBar input").focus());
+	assert.equal(metadata.hidden, true, "focus leaving the entire composer hides its options");
+	assert.equal(panel.className, "quickEntryPanel");
+	assert.equal(input.value, "buy milk");
+	assert.equal(file.value, "Inbox.md");
+	assert.equal(due.value, "2026-01-20");
+	assert.equal(priority.value, "High");
+	await act(() => input.focus());
+	assert.equal(metadata.hidden, false);
+	assert.equal(file.value, "Inbox.md");
+	assert.equal(due.value, "2026-01-20");
+	assert.equal(priority.value, "High");
+	await act(async () => {
+		add.focus();
+		add.click();
+	});
+	assert.deepEqual(entry.createCalls, [["Inbox.md", "buy milk ⏫ 📅 2026-01-20"]]);
+	assert.equal(metadata.hidden, false, "Add remains actionable while focus moves from the task input");
+	assert.equal(input.value, "");
 });
 
 test("priority filters retain six levels and None includes both stored representations", async (t) => {
@@ -425,6 +461,76 @@ test("priority filters retain six levels and None includes both stored represent
 		assert.equal(element<HTMLInputElement>(entry.container, '.priorityOptions input[value="No"]').checked, true);
 		assert.equal(element(entry.container, ".priorityFilter summary").textContent, "None");
 	}
+});
+
+async function priorityPlacementHarness(t: TestContext, clipTop: number, clipHeight: number, triggerTop: number) {
+	const entry = entryHarness(t);
+	await entry.render();
+	const details = element<HTMLDetailsElement>(entry.container, ".priorityFilter");
+	const trigger = element<HTMLElement>(entry.container, ".priorityFilter summary");
+	const options = element<HTMLElement>(entry.container, ".priorityOptions");
+	const geometry = { clipTop, clipHeight, triggerTop, measurements: 0 };
+	entry.container.style.overflowY = "hidden";
+	entry.container.getBoundingClientRect = () => new window.DOMRect(0, geometry.clipTop, 300, geometry.clipHeight + 4);
+	Object.defineProperty(entry.container, "clientTop", { configurable: true, value: 2 });
+	Object.defineProperty(entry.container, "clientHeight", { configurable: true, get: () => geometry.clipHeight });
+	trigger.getBoundingClientRect = () => {
+		geometry.measurements++;
+		return new window.DOMRect(180, geometry.triggerTop, 100, 32);
+	};
+	details.getBoundingClientRect = () => new window.DOMRect(180, geometry.triggerTop, 100, 32);
+	options.getBoundingClientRect = () => new window.DOMRect(100, geometry.triggerTop + 37, 180, 202);
+	Object.defineProperty(options, "scrollHeight", { configurable: true, value: 200 });
+	const computedStyle = window.getComputedStyle.bind(window);
+	t.mock.method(window, "getComputedStyle", (target: Element, pseudo?: string | null) => {
+		const style = computedStyle(target, pseudo);
+		if (target !== options) return style;
+		return new Proxy(style, {
+			get(value, property) {
+				if (property === "top" || property === "bottom") return "37px";
+				if (property === "borderTopWidth" || property === "borderBottomWidth") return "1px";
+				return Reflect.get(value, property, value);
+			},
+		});
+	});
+	return { ...entry, details, trigger, options, geometry };
+}
+
+test("priority popup flips above a lower trigger within its clipping ancestor and follows resize", async (t) => {
+	const entry = await priorityPlacementHarness(t, 40, 300, 250);
+	await act(() => entry.trigger.click());
+	assert.equal(entry.details.open, true);
+	assert.equal(entry.options.dataset.placement, "above");
+	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), "203px");
+	entry.geometry.triggerTop = 80;
+	await act(() => window.dispatchEvent(new Event("resize")));
+	assert.equal(entry.options.dataset.placement, "below");
+	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), "225px");
+});
+
+test("priority popup bounds its scrolling surface when neither side fits all six options", async (t) => {
+	const entry = await priorityPlacementHarness(t, 100, 140, 150);
+	await act(() => entry.trigger.click());
+	assert.equal(entry.options.dataset.placement, "below");
+	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), "55px");
+	assert.ok(entry.options.scrollHeight > 55);
+	assert.equal(entry.options.querySelectorAll('input[type="checkbox"]').length, 6);
+	entry.geometry.clipHeight = 240;
+	await act(() => entry.container.dispatchEvent(new Event("scroll")));
+	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), "155px");
+});
+
+test("closed priority popup leaves placement untouched and removes its open geometry", async (t) => {
+	const entry = await priorityPlacementHarness(t, 40, 300, 250);
+	assert.equal(entry.options.hasAttribute("data-placement"), false);
+	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), "");
+	await act(() => window.dispatchEvent(new Event("resize")));
+	assert.equal(entry.geometry.measurements, 0);
+	await act(() => entry.trigger.click());
+	assert.equal(entry.options.dataset.placement, "above");
+	await act(() => entry.trigger.click());
+	assert.equal(entry.options.hasAttribute("data-placement"), false);
+	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), "");
 });
 
 test("date presets preserve other dimensions and Next 7 days keeps its selected label", async (t) => {

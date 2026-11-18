@@ -185,6 +185,7 @@ test("serialized browser driver applies dates, selects High and None immediately
 	assertExpandedFilter(record);
 	assert.equal(record.semantic.controls.priorityOpen, false);
 	assert.equal(record.semantic.controls.dateScope, "custom");
+	assert.equal(record.semantic.controls.prioritySummary, "Priority (2)");
 	assert.deepEqual(record.semantic.controls.priorityOptions, [
 		{ value: "Highest", label: "Highest", checked: false },
 		{ value: "High", label: "High", checked: true },

@@ -52,6 +52,7 @@
 	--tcw-radius-info: 3px;
 	--tcw-radius-control: 5px;
 	--tcw-radius-entry: 6px;
+	--tcw-radius-tool: 16px;
 	--tcw-entry-border-width: 1px;
 	--tcw-entry-height: 40px;
 	--tcw-row-line-height: 22px;
@@ -59,7 +60,11 @@
 	--tcw-counter-min-width: 70px;
 	--tcw-counter-max-width: none;
 	--tcw-counter-height: 48px;
-	--tcw-priority-menu-width: 160px;
+	--tcw-priority-menu-width: 180px;
+	--tcw-priority-menu-max-height: none;
+	--tcw-priority-trigger-width: 96px;
+	--tcw-tool-icon-size: 14px;
+	--tcw-tool-icon-stroke: 1.75px;
 	--tcw-entry-note-width: 180px;
 	--tcw-date-input-width: 140px;
 	--tcw-font-entry-plus: 20px;
@@ -481,7 +486,7 @@
 /* One compact filter row remains available when quick entry is hidden. */
 .taskido .quickFilterBar {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(var(--tcw-priority-trigger-width), 1fr);
 	align-items: center;
 	gap: var(--tcw-space-3);
 	margin: 0 var(--tcw-space-3) var(--tcw-space-4);
@@ -490,7 +495,7 @@
 }
 
 .taskido .quickFilterBar:has(.clearFilters) {
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr) auto;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(var(--tcw-priority-trigger-width), 1fr) auto;
 }
 
 .taskido .quickFilterBar > :is(.dateRange, .filterError) {
@@ -532,8 +537,51 @@
 }
 
 .taskido .priorityFilter summary {
-	line-height: calc(var(--tcw-select-height) - var(--tcw-space-1));
-	list-style-position: inside;
+	display: flex;
+	align-items: center;
+	gap: var(--tcw-space-3);
+	line-height: normal;
+	list-style: none;
+}
+
+.taskido .priorityFilter summary::-webkit-details-marker {
+	display: none;
+}
+
+.taskido .priorityFilter summary::marker {
+	content: "";
+}
+
+.taskido .priorityFilter summary[data-active="true"] {
+	color: var(--tcw-color-focus, var(--taskido-color-focus));
+}
+
+.taskido .prioritySummary {
+	flex: 1;
+	min-width: 0;
+	text-overflow: ellipsis;
+	overflow: hidden;
+}
+
+.taskido .priorityChevron,
+.taskido .priorityCheck {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: var(--tcw-tool-icon-size);
+	height: var(--tcw-tool-icon-size);
+}
+
+.taskido .priorityFilter svg {
+	display: block;
+	width: var(--tcw-tool-icon-size);
+	height: var(--tcw-tool-icon-size);
+	stroke-width: var(--tcw-tool-icon-stroke);
+}
+
+.taskido .priorityFilter[open] .priorityChevron {
+	transform: rotate(180deg);
 }
 
 .taskido .priorityOptions {
@@ -542,29 +590,66 @@
 	right: 0;
 	z-index: 10000;
 	min-width: var(--tcw-priority-menu-width);
+	max-height: var(--tcw-priority-menu-max-height);
+	overflow-y: auto;
+	overscroll-behavior: contain;
 	box-sizing: border-box;
 	padding: var(--tcw-space-3);
 	border: var(--tcw-control-border-width, var(--input-border-width)) solid
 		var(--tcw-color-border, var(--background-modifier-border));
-	border-radius: var(--tcw-radius-control);
+	border-radius: var(--tcw-radius-badge);
 	background: var(--tcw-option-bg, var(--background-primary));
 	box-shadow: var(--tcw-control-shadow, var(--input-shadow));
 	color: var(--tcw-color-text, var(--text-normal));
 }
 
+.taskido .priorityOptions[data-placement="above"] {
+	top: auto;
+	bottom: calc(100% + var(--tcw-space-3));
+}
+
 .taskido .priorityOptions label {
+	position: relative;
 	display: flex;
 	align-items: center;
 	gap: var(--tcw-space-4);
 	min-height: var(--tcw-select-height);
-	padding: 0 var(--tcw-space-3);
+	padding: 0 var(--tcw-space-4);
+	border-radius: var(--tcw-radius-control);
 	white-space: nowrap;
 	cursor: pointer;
 }
 
 .taskido .priorityOptions input {
-	flex-shrink: 0;
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
 	margin: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+
+.taskido .priorityOptionLabel {
+	flex: 1;
+}
+
+.taskido .priorityCheck {
+	visibility: hidden;
+	color: var(--tcw-color-focus, var(--taskido-color-focus));
+}
+
+.taskido .priorityOption[data-selected="true"] {
+	background: var(--tcw-color-hover-bg, var(--background-modifier-hover));
+}
+
+.taskido .priorityOption[data-selected="true"] .priorityCheck {
+	visibility: visible;
+}
+
+.taskido .priorityOption:has(input:focus-visible) {
+	outline: var(--tcw-focus-ring);
+	outline-offset: calc(-1 * var(--tcw-space-1));
 }
 
 .taskido .dateRange {
@@ -700,21 +785,29 @@
 	color: var(--tcw-color-muted, var(--text-muted));
 }
 
+.taskido .entryMeta[hidden] {
+	display: none;
+}
+
 .taskido .entryMeta label {
 	display: flex;
 	align-items: center;
 	gap: var(--tcw-space-3);
 	min-width: 0;
 	max-width: 100%;
+	padding: 0 var(--tcw-space-3);
+	border: max(var(--tcw-control-border-width, var(--input-border-width)), var(--tcw-entry-border-width)) solid
+		var(--tcw-color-border, var(--background-modifier-border));
+	border-radius: var(--tcw-radius-tool);
+	background: var(--tcw-control-bg, var(--interactive-normal));
 	white-space: nowrap;
 }
 
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .entryMeta :is(input, select) {
 	width: auto;
 	padding: 0 var(--tcw-space-3);
-	border: max(var(--tcw-control-border-width, var(--input-border-width)), var(--tcw-entry-border-width)) solid
-		var(--tcw-color-border, var(--background-modifier-border));
-	background: var(--tcw-entry-bg, var(--background-modifier-form-field));
+	border: none;
+	background: transparent;
 	box-shadow: none;
 	font-size: inherit;
 	text-overflow: ellipsis;
@@ -837,10 +930,6 @@
 
 .is-mobile .taskido .quickEntryPanel select {
 	height: auto;
-}
-
-.is-mobile .taskido .entryMeta label:first-child {
-	flex-basis: 100%;
 }
 
 /* Classes */
