@@ -91,7 +91,11 @@ export function pendingMarkupEvent(fixture: ViewFixture): WriteEvent {
 export async function reachMarkupState(fixture: ViewFixture, name: string) {
 	if (name.startsWith("light-")) {
 		const state = stateOf(name);
-		if (state.todayFocus) await select(fixture, "select.dateScope", "today");
+		if (state.todayFocus) {
+			const today = fixture.root().querySelector<HTMLButtonElement>(".todayToggle");
+			assert.ok(today);
+			await act(() => today.click());
+		}
 		for (const selector of state.counter ? [`#${state.counter}`] : []) {
 			const control = fixture.root().querySelector<HTMLElement>(selector);
 			assert.ok(control, selector);

@@ -125,6 +125,7 @@ function assertState(view: RenderedView, counter: boolean, focus: boolean, messa
 	assert.equal(root.classList.contains("todayFocus"), focus, `${message}: Focus on today`);
 	assert.equal(control(view.container, ".counter#todo").getAttribute("aria-pressed"), String(counter));
 	assert.equal((control(view.container, "select.dateScope") as HTMLSelectElement).value === "today", focus);
+	assert.equal(control(view.container, ".todayToggle").getAttribute("aria-pressed"), String(focus));
 }
 
 async function close(view: RenderedView) {

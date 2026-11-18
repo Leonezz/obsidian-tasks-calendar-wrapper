@@ -433,6 +433,39 @@ test("date presets preserve other dimensions and Next 7 days keeps its selected 
 	assert.equal(entry.todayFocus(), false);
 });
 
+test("Today stays visible and toggles focus without replacing other filters or the capture draft", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render({ from: "2026-01-10", to: "2026-01-20", priorities: ["High", "No", ""], tags: ["#work"] });
+	await entry.counter("todo");
+	await edit(element(entry.container, ".newTask"), "keep this capture draft");
+	await edit(element(entry.container, ".taskDue"), "2026-01-25");
+	const today = element<HTMLButtonElement>(entry.container, ".dateFilter button.todayToggle");
+	assert.equal(today.textContent, "Today");
+	assert.equal(today.getAttribute("aria-label"), "Focus on today");
+	assert.equal(today.getAttribute("aria-pressed"), "false");
+	assert.equal(today.hidden, false);
+	assert.equal(today.closest("details"), null, "the toggle is outside collapsed menus");
+	assert.equal(
+		element<HTMLSelectElement>(entry.container, ".dateFilter .dateScope").getAttribute("aria-label"),
+		"Filter by date",
+	);
+	await act(() => today.click());
+	assert.equal(entry.todayFocus(), true);
+	assert.equal(today.getAttribute("aria-pressed"), "true");
+	assert.equal(element<HTMLSelectElement>(entry.container, ".dateScope").value, "today");
+	assert.deepEqual(entry.filterCalls.at(-1), [undefined, undefined, ["High", "No", ""], ["#work"]]);
+	assert.deepEqual(entry.counterCalls, [], "focusing today retains the selected status card");
+	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, "keep this capture draft");
+	assert.equal(element<HTMLInputElement>(entry.container, ".taskDue").value, "2026-01-25");
+	await act(() => today.click());
+	assert.equal(entry.todayFocus(), false);
+	assert.equal(today.getAttribute("aria-pressed"), "false");
+	assert.equal(element<HTMLSelectElement>(entry.container, ".dateScope").value, "all");
+	assert.deepEqual(entry.filterCalls.at(-1), [undefined, undefined, ["High", "No", ""], ["#work"]]);
+	assert.deepEqual(entry.counterCalls, []);
+	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, "keep this capture draft");
+});
+
 test("custom ranges validate both endpoints and do not apply reversed or incomplete dates", async (t) => {
 	const entry = entryHarness(t);
 	await entry.render({ priorities: ["High"], tags: ["#work"] });

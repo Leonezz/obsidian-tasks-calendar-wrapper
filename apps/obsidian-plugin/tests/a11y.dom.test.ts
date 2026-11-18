@@ -183,6 +183,7 @@ function assertNames(root: HTMLElement, name: string) {
 		(get(root, ".dateScope") as HTMLSelectElement).value === "today",
 		root.classList.contains("todayFocus"),
 	);
+	assert.equal(get(root, ".todayToggle").getAttribute("aria-pressed"), String(root.classList.contains("todayFocus")));
 }
 
 async function assertFocusable(root: HTMLElement, name: string) {
@@ -464,6 +465,10 @@ test("Tab order follows the DOM: counters, filters, quick entry, then the list",
 	const fixture = await mountState(t);
 	const root = fixture.root();
 	const stop = defaultStop(root)!;
+	assert.deepEqual(all(get(root, ".dateFilter"), "button, select").map(describe), [
+		"button.todayToggle",
+		"select.dateScope",
+	]);
 	const expected = [
 		...all(root, ".counter"),
 		...all(get(root, ".quickFilterBar"), "select, input, summary, button").filter(
@@ -674,6 +679,33 @@ test("Space on a dimmed row or within 300 ms of the list commit writes nothing",
 	assert.deepEqual(fixture.h.events, events);
 });
 
+test("the Today button exposes its pressed state and keeps native keyboard activation", async (t) => {
+	const fixture = await mountState(t);
+	const root = fixture.root();
+	const button = get(root, ".dateFilter button.todayToggle") as HTMLButtonElement;
+	const scope = get(root, ".dateFilter select.dateScope") as HTMLSelectElement;
+	assert.equal(button.tagName, "BUTTON");
+	assert.equal(button.type, "button");
+	assert.equal(button.textContent, "Today", "today remains visible without opening the date menu");
+	assert.equal(button.getAttribute("aria-label"), "Focus on today");
+	assert.equal(scope.getAttribute("aria-label"), "Filter by date");
+	assert.equal(button.getAttribute("aria-pressed"), "false");
+	assert.ok(tabOrder(root).includes(button));
+	for (const value of ["Enter", " "])
+		assert.equal((await key(button, value)).defaultPrevented, false, `${value} keeps native button activation`);
+	for (const focused of [true, false]) {
+		// jsdom does not synthesize a button click from keyboard default actions.
+		await act(() => button.click());
+		assert.equal(root.classList.contains("todayFocus"), focused);
+		assert.equal(button.getAttribute("aria-pressed"), String(focused));
+		assert.equal(scope.value, focused ? "today" : "all");
+		assert.strictEqual(document.activeElement, button);
+		const stop = rows(root).find((row) => row.tabIndex === 0);
+		assertRoving(root, stop, "Today button activation");
+		if (focused && stop) assert.ok(stop.closest(".details.today"));
+	}
+});
+
 test("the native date scope changes Focus on today and retains keyboard focus", async (t) => {
 	const fixture = await mountState(t);
 	const control = get(fixture.root(), "select.dateScope") as HTMLSelectElement;
@@ -686,6 +718,7 @@ test("the native date scope changes Focus on today and retains keyboard focus", 
 		});
 		assert.equal(fixture.root().classList.contains("todayFocus"), focused);
 		assert.equal(control.value, focused ? "today" : "all");
+		assert.equal(get(fixture.root(), ".todayToggle").getAttribute("aria-pressed"), String(focused));
 		assert.strictEqual(document.activeElement, control);
 		const stop = rows(fixture.root()).find((row) => row.tabIndex === 0);
 		assertRoving(fixture.root(), stop, "Focus today selection");
@@ -852,14 +885,14 @@ test("the Tab stop stays on its row when the list reorders", async (t) => {
 		assert.equal(row.outerHTML, markup, "an untouched row's attributes do not change");
 });
 
-test("date selection and counter activation retain the recorded render and provider behavior", async (t) => {
+test("Today and counter activation retain the recorded render and provider behavior", async (t) => {
 	const expected = JSON.parse(readFileSync(path.join(FIXTURES, "markup", "render-counts.json"), "utf8")) as {
 		operation: string;
 		renders: Record<string, number>;
 		providers: Record<string, string>;
 	}[];
 	for (const [operation, selector] of [
-		["Focus on today click", "select.dateScope"],
+		["Focus on today click", ".todayToggle"],
 		["counter click", "#todo"],
 	])
 		await t.test(operation, async (s) => {
@@ -867,11 +900,7 @@ test("date selection and counter activation retain the recorded render and provi
 			const fixture = await mountState(s);
 			counts.reset();
 			const control = get(fixture.root(), selector);
-			if (control instanceof window.HTMLSelectElement)
-				await act(() => {
-					control.value = "today";
-					control.dispatchEvent(new Event("change", { bubbles: true }));
-				});
+			if (control instanceof window.HTMLButtonElement) await click(control);
 			else await key(control, "Enter");
 			const baseline = expected.find((entry) => entry.operation === operation)!;
 			assert.deepEqual(

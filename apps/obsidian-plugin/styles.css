@@ -33,6 +33,9 @@
 	--tcw-control-shadow: initial;
 	--tcw-control-border-width: initial;
 	--tcw-entry-bg: initial;
+	--tcw-action-bg: initial;
+	--tcw-action-fg: initial;
+	--tcw-action-hover-bg: initial;
 	--tcw-option-bg: initial;
 	--tcw-badge-bg: none;
 	--tcw-badge-fg: initial;
@@ -48,6 +51,9 @@
 	--tcw-radius-badge: 10px;
 	--tcw-radius-info: 3px;
 	--tcw-radius-control: 5px;
+	--tcw-radius-entry: 6px;
+	--tcw-entry-border-width: 1px;
+	--tcw-entry-height: 40px;
 	--tcw-row-line-height: 22px;
 	--tcw-checkbox-size: initial;
 	--tcw-counter-min-width: 70px;
@@ -473,9 +479,13 @@
 }
 
 /* One compact filter row remains available when quick entry is hidden. */
+.taskido .entryControls {
+	container-type: inline-size;
+}
+
 .taskido .quickFilterBar {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);
+	grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.35fr) minmax(0, 1fr);
 	align-items: center;
 	gap: var(--tcw-space-3);
 	margin: 0 var(--tcw-space-3) var(--tcw-space-4);
@@ -484,7 +494,35 @@
 }
 
 .taskido .quickFilterBar:has(.clearFilters) {
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr) auto;
+	grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.35fr) minmax(0, 1fr) auto;
+}
+
+.taskido .dateFilter {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: center;
+	gap: var(--tcw-space-3);
+	min-width: 0;
+}
+
+.taskido .todayToggle {
+	box-sizing: border-box;
+	min-height: var(--tcw-select-height);
+	margin: 0;
+	padding: 0 var(--tcw-space-4);
+	border: var(--tcw-control-border-width, var(--input-border-width)) solid
+		var(--tcw-color-border, var(--background-modifier-border));
+	border-radius: var(--tcw-radius-control);
+	background: var(--tcw-control-bg, var(--interactive-normal));
+	box-shadow: none;
+	font: inherit;
+	color: var(--tcw-color-text, var(--text-normal));
+	cursor: pointer;
+}
+
+.taskido .todayToggle[aria-pressed="true"] {
+	border-color: var(--tcw-color-focus, var(--taskido-color-focus));
+	color: var(--tcw-color-focus, var(--taskido-color-focus));
 }
 
 .taskido .quickFilterBar > :is(.dateRange, .filterError) {
@@ -621,19 +659,28 @@
 	margin: 0;
 }
 
-/* Quick entry shares the task rows' gutter instead of adding another card. */
+/* One native field encloses the capture action; metadata stays outside it. */
 .taskido .quickEntryPanel {
 	color: var(--tcw-color-text, var(--text-normal));
 	margin: 0 var(--tcw-space-3) var(--tcw-space-5);
-	padding-top: var(--tcw-space-4);
-	border-top: var(--tcw-control-border-width, var(--input-border-width)) solid
-		var(--tcw-color-border, var(--background-modifier-border));
 }
 
 .taskido .entryMain {
 	display: grid;
 	grid-template-columns: var(--tcw-strip-width) minmax(0, 1fr) auto;
 	align-items: center;
+	box-sizing: border-box;
+	min-width: 0;
+	min-height: var(--tcw-entry-height);
+	padding: var(--tcw-space-2) var(--tcw-space-2) var(--tcw-space-2) 0;
+	border: max(var(--tcw-control-border-width, var(--input-border-width)), var(--tcw-entry-border-width)) solid
+		var(--tcw-color-border, var(--background-modifier-border));
+	border-radius: var(--tcw-radius-entry);
+	background: var(--tcw-entry-bg, var(--background-modifier-form-field));
+}
+
+.taskido .entryMain:focus-within {
+	border-color: var(--tcw-color-focus, var(--taskido-color-focus));
 }
 
 .taskido .entryPlus {
@@ -648,27 +695,30 @@
 	max-width: 100%;
 	min-height: var(--tcw-select-height);
 	margin: 0;
-	border: none;
 	border-radius: var(--tcw-radius-control);
-	background: transparent;
-	box-shadow: none;
 	font: inherit;
 }
 
-.taskido .quickEntryPanel .newTask {
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel .newTask {
 	width: 100%;
 	min-height: var(--tcw-input-height);
 	padding: 0;
+	border: none;
+	background: transparent;
+	box-shadow: none;
 	font-size: var(--tcw-font-input);
 	text-overflow: ellipsis;
 	color: var(--tcw-color-text, var(--text-normal));
 }
 
-.taskido .quickEntryPanel .ok {
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel .ok {
 	padding: 0 var(--tcw-space-4);
 	margin-left: var(--tcw-space-3);
+	border: none;
+	background: var(--tcw-action-bg, var(--interactive-accent));
+	box-shadow: none;
 	font-size: var(--tcw-font-select);
-	color: var(--tcw-color-focus, var(--taskido-color-focus));
+	color: var(--tcw-action-fg, var(--text-on-accent));
 	cursor: pointer;
 }
 
@@ -676,8 +726,8 @@
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: 0 var(--tcw-space-4);
-	margin-left: var(--tcw-strip-width);
+	gap: var(--tcw-space-3) var(--tcw-space-4);
+	margin-top: var(--tcw-space-3);
 	font-size: var(--tcw-font-select);
 	color: var(--tcw-color-muted, var(--text-muted));
 }
@@ -691,12 +741,21 @@
 	white-space: nowrap;
 }
 
-.taskido .entryMeta :is(input, select) {
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .entryMeta :is(input, select) {
 	width: auto;
-	padding: 0 var(--tcw-space-2);
+	padding: 0 var(--tcw-space-3);
+	border: max(var(--tcw-control-border-width, var(--input-border-width)), var(--tcw-entry-border-width)) solid
+		var(--tcw-color-border, var(--background-modifier-border));
+	background: var(--tcw-entry-bg, var(--background-modifier-form-field));
+	box-shadow: none;
 	font-size: inherit;
 	text-overflow: ellipsis;
 	color: inherit;
+}
+
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .entryMeta select {
+	appearance: auto;
+	background-image: none;
 }
 
 .taskido .entryMeta .fileSelect {
@@ -725,14 +784,36 @@
 
 @media (hover: hover) {
 	.taskido .quickEntryPanel select:hover,
-	.taskido .quickEntryPanel button:hover,
 	.taskido .quickFilterBar summary:hover,
 	.taskido .clearFilters:hover {
 		color: var(--tcw-color-text, var(--text-normal));
 	}
 
+	.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel .ok:hover {
+		background: var(--tcw-action-hover-bg, var(--interactive-accent-hover));
+		color: var(--tcw-action-fg, var(--text-on-accent));
+	}
+
+	.taskido .todayToggle:hover {
+		background: var(--tcw-color-hover-bg, var(--background-modifier-hover));
+	}
+
 	.taskido .priorityOptions label:hover {
 		background: var(--tcw-color-hover-bg, var(--background-modifier-hover));
+	}
+}
+
+@container (max-width: 440px) {
+	.taskido .quickFilterBar {
+		grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+	}
+
+	.taskido .quickFilterBar:has(.clearFilters) {
+		grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) auto;
+	}
+
+	.taskido .dateFilter {
+		grid-column: 1 / -1;
 	}
 }
 
@@ -750,7 +831,8 @@
 .is-mobile .taskido .priorityOptions label,
 .is-mobile .taskido .dateRange input,
 .is-mobile .taskido .clearFilters,
-.is-mobile .taskido .applyDateRange {
+.is-mobile .taskido .applyDateRange,
+.is-mobile .taskido .todayToggle {
 	min-height: var(--tcw-touch-target);
 	box-sizing: border-box;
 	display: flex;
@@ -770,7 +852,8 @@
 .is-mobile .taskido .priorityOptions label,
 .is-mobile .taskido .dateRange input,
 .is-mobile .taskido .clearFilters,
-.is-mobile .taskido .applyDateRange {
+.is-mobile .taskido .applyDateRange,
+.is-mobile .taskido .todayToggle {
 	min-width: var(--tcw-touch-target);
 }
 

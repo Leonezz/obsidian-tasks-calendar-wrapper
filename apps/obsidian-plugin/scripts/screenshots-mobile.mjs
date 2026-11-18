@@ -13,6 +13,7 @@ export const TOUCH_TARGETS = [
 	{ name: "quick entry input", selector: ".quickEntryPanel input", required: true },
 	{ name: "quick entry button", selector: ".quickEntryPanel button", required: true },
 	{ name: "date scope", selector: ".quickFilterBar select", required: true },
+	{ name: "Today", selector: ".todayToggle", required: true },
 	{ name: "tag filter", selector: ".tagFilterBar input", required: true },
 	{ name: "priority filter", selector: ".priorityFilter summary", required: true },
 	{ name: "priority choice", selector: ".priorityOptions label", required: false },

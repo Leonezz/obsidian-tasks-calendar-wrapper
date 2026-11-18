@@ -49,6 +49,8 @@ export const STYLE_PROBES = Object.freeze(
 		".task .info .tag",
 		".task .modify",
 		".quickFilterBar",
+		".dateFilter",
+		".todayToggle",
 		".quickFilterBar .dateScope",
 		".tagFilterBar input",
 		".priorityFilter summary",

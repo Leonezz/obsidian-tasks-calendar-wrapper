@@ -465,6 +465,23 @@ test("the date scope toggles existing Focus on today without submitting a task",
 	}
 });
 
+test("the visible Today button toggles focus without submitting or opening a task", async (t) => {
+	const fixture = await mountInteractions(t);
+	const button = fixture.root().querySelector<HTMLButtonElement>(".dateFilter button.todayToggle");
+	const scope = fixture.root().querySelector<HTMLSelectElement>(".dateFilter select.dateScope");
+	assert.ok(button && scope);
+	assert.equal(button.textContent, "Today");
+	for (const focused of [true, false]) {
+		await act(() => button.click());
+		assert.equal(fixture.root().classList.contains("todayFocus"), focused);
+		assert.equal(button.getAttribute("aria-pressed"), String(focused));
+		assert.equal(scope.value, focused ? "today" : "all");
+		assert.deepEqual(fixture.calls.splice(0), [
+			{ handler: "handleFilterEnable", args: [undefined, undefined, [], []] },
+		]);
+	}
+});
+
 test("the tag filter suggests the tasks' tags and applies the one picked", async (t) => {
 	const fixture = await mountInteractions(t, { useQuickEntry: false });
 	const input = fixture.root().querySelector<HTMLInputElement>(".tagFilterBar input");

@@ -183,6 +183,9 @@ test("live legacy and Obsidian defaults resolve on their consuming element", () 
 			"--tcw-control-shadow": "var(--input-shadow)",
 			"--tcw-control-border-width": "var(--input-border-width)",
 			"--tcw-entry-bg": "var(--background-modifier-form-field)",
+			"--tcw-action-bg": "var(--interactive-accent)",
+			"--tcw-action-fg": "var(--text-on-accent)",
+			"--tcw-action-hover-bg": "var(--interactive-accent-hover)",
 			"--tcw-option-bg": "var(--background-primary)",
 			"--tcw-checkbox-size": "var(--checkbox-size)",
 			"--tcw-badge-fg": "var(--tcw-color-muted, var(--text-muted))",
@@ -339,13 +342,25 @@ test("windowed gaps preserve measured height without receiving input", () => {
 	assert.match(root.body, /(?:^|[;\s])overflow-anchor\s*:\s*none\s*;/);
 });
 
-test("the focus ring is drawn only on :focus-visible from --tcw-focus-ring", () => {
+test("focus rings use :focus-visible while the enclosing entry field follows focus-within", () => {
 	const rules = cssRules(readFileSync("styles.css", "utf8"));
 	const scoped = rules.filter(({ selectors }) => selectors.some((selector) => /\.taskido\b/.test(selector)));
 	assert.deepEqual(
-		scoped.flatMap(({ selectors }) => selectors.filter((selector) => /:focus(?!-visible)/.test(selector))),
+		scoped.flatMap(({ selectors }) => selectors.filter((selector) => /:focus(?!-visible|-within)/.test(selector))),
 		[],
-		"timeline focus styles must use :focus-visible, never :focus",
+		"timeline controls must use :focus-visible, never :focus",
+	);
+	const containers = scoped.filter(({ selectors }) =>
+		selectors.some((selector) => selector.includes(":focus-within")),
+	);
+	assert.deepEqual(
+		containers.map(({ selectors }) => selectors),
+		[[".taskido .entryMain:focus-within"]],
+	);
+	assert.deepEqual(
+		properties(containers[0].body),
+		["border-color"],
+		"the container changes its border, not the focus ring",
 	);
 	assert.ok(
 		rules.some(
@@ -362,6 +377,35 @@ test("the focus ring is drawn only on :focus-visible from --tcw-focus-ring", () 
 				/(?:^|[;\s])outline\s*:[^;{}]*var\(\s*--tcw-focus-ring\s*\)/.test(body),
 		),
 		"a timeline :focus-visible outline must use var(--tcw-focus-ring)",
+	);
+});
+
+test("capture and metadata keep native field borders and the add action keeps its accent contrast", () => {
+	const rules = cssRules(readFileSync("styles.css", "utf8"));
+	const rule = (selector: string) => {
+		const match = rules.find(({ selectors }) => selectors.includes(selector));
+		assert.ok(match, selector);
+		return new Map(declarations(match.body));
+	};
+	const main = rule(".taskido .entryMain");
+	assert.match(main.get("border") ?? "", /solid\s+var\(--tcw-color-border,\s*var\(--background-modifier-border\)\)/);
+	assert.equal(main.get("border-radius"), "var(--tcw-radius-entry)");
+	assert.equal(main.get("background"), "var(--tcw-entry-bg, var(--background-modifier-form-field))");
+	assert.equal(resolvedTokens(main.get("min-height") ?? ""), "40px");
+	const panel = rule(".taskido .quickEntryPanel");
+	assert.ok(!panel.has("border-top"), "a second separator must not compete with the input boundary");
+	const reset = rule(".taskido .quickEntryPanel :is(input, select, button)");
+	for (const property of ["border", "background", "box-shadow"])
+		assert.ok(!reset.has(property), `${property}: shared geometry must not erase control affordances`);
+	const metadata = rule(".taskido .entryMeta :is(input, select)");
+	assert.match(metadata.get("border") ?? "", /solid\s+var\(--tcw-color-border,/);
+	assert.equal(rule(".taskido .entryMeta select").get("appearance"), "auto");
+	const add = rule(".taskido .quickEntryPanel .ok");
+	assert.equal(add.get("background"), "var(--tcw-action-bg, var(--interactive-accent))");
+	assert.equal(add.get("color"), "var(--tcw-action-fg, var(--text-on-accent))");
+	assert.equal(
+		rule('.taskido .todayToggle[aria-pressed="true"]').get("color"),
+		"var(--tcw-color-focus, var(--taskido-color-focus))",
 	);
 });
 
@@ -498,12 +542,24 @@ test("hover feedback keeps native task and entry controls within the hover media
 		{
 			selectors: [
 				".taskido .quickEntryPanel select:hover",
-				".taskido .quickEntryPanel button:hover",
 				".taskido .quickFilterBar summary:hover",
 				".taskido .clearFilters:hover",
 			],
 			body: whitespace(`
 	color: var(--text-normal);
+`),
+		},
+		{
+			selectors: [".taskido .quickEntryPanel .ok:hover"],
+			body: whitespace(`
+	background: var(--interactive-accent-hover);
+	color: var(--text-on-accent);
+`),
+		},
+		{
+			selectors: [".taskido .todayToggle:hover"],
+			body: whitespace(`
+	background: var(--background-modifier-hover);
 `),
 		},
 		{

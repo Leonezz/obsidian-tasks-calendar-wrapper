@@ -114,12 +114,7 @@ test("render counts: every operation matches fixtures/markup/render-counts.json"
 					await click(fixture, "#todo");
 					break;
 				case "Focus on today click":
-					await act(() => {
-						const scope = fixture.container.querySelector<HTMLSelectElement>(".dateScope");
-						assert.ok(scope);
-						scope.value = "today";
-						scope.dispatchEvent(new Event("change", { bubbles: true }));
-					});
+					await click(fixture, ".todayToggle");
 					break;
 				case "settings push with equal options":
 					await fixture.pushOptions(structuredClone(fixture.options()));

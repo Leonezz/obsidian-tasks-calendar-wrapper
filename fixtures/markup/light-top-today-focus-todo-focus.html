@@ -30,20 +30,25 @@
             </div>
           </div>
           <div class="quickFilterBar">
-            <select aria-label="Choose which task dates to show" class="dateScope">
-              <option value="all">
-                All dates
-              </option>
-              <option value="today">
-                Focus on today
-              </option>
-              <option value="week">
-                Next 7 days
-              </option>
-              <option value="custom">
-                Custom range
-              </option>
-            </select>
+            <div class="dateFilter">
+              <button aria-label="Focus on today" aria-pressed="true" class="todayToggle" type="button">
+                Today
+              </button>
+              <select aria-label="Filter by date" class="dateScope">
+                <option value="all">
+                  All dates
+                </option>
+                <option value="today">
+                  Focus on today
+                </option>
+                <option value="week">
+                  Next 7 days
+                </option>
+                <option value="custom">
+                  Custom range
+                </option>
+              </select>
+            </div>
             <div class="tagFilterBar">
               <input aria-label="Show only tasks with this tag" placeholder="Filter by tag: #home" type="search" value="">
             </div>

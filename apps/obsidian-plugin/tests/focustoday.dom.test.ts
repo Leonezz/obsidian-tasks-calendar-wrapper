@@ -58,9 +58,10 @@ test("toggling Focus on today keeps the entry panel mounted, its draft and the k
 			},
 		});
 		const panel = fixture.container.querySelector<HTMLElement>(".quickEntryPanel");
-		const focus = fixture.container.querySelector<HTMLSelectElement>("select.dateScope");
+		const focus = fixture.container.querySelector<HTMLButtonElement>("button.todayToggle");
+		const scope = fixture.container.querySelector<HTMLSelectElement>("select.dateScope");
 		const input = panel?.querySelector<HTMLInputElement>('input[type="text"]');
-		assert.ok(panel && focus && input, entryPosition);
+		assert.ok(panel && focus && scope && input, entryPosition);
 		const draft = "keep this draft";
 		await act(() => {
 			const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
@@ -70,14 +71,13 @@ test("toggling Focus on today keeps the entry panel mounted, its draft and the k
 		await act(() => focus.focus());
 		assert.equal(document.activeElement, focus, entryPosition);
 		for (const focused of [true, false]) {
-			await act(() => {
-				focus.value = focused ? "today" : "all";
-				focus.dispatchEvent(new Event("change", { bubbles: true }));
-			});
+			await act(() => focus.click());
 			const message = `${entryPosition}, focus ${focused}`;
 			assert.equal(fixture.root().classList.contains("todayFocus"), focused, message);
 			assert.strictEqual(fixture.container.querySelector(".quickEntryPanel"), panel, message);
-			assert.strictEqual(fixture.container.querySelector("select.dateScope"), focus, message);
+			assert.strictEqual(fixture.container.querySelector("button.todayToggle"), focus, message);
+			assert.equal(focus.getAttribute("aria-pressed"), String(focused), message);
+			assert.equal(scope.value, focused ? "today" : "all", message);
 			assert.strictEqual(panel.querySelector('input[type="text"]'), input, message);
 			assert.equal(panel.isConnected, true, message);
 			assert.equal(focus.isConnected, true, message);
