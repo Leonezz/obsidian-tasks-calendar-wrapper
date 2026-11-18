@@ -628,7 +628,7 @@ export class TimelineWindow implements TimelineHandle {
 						?.closest(".details")
 						?.parentElement?.querySelector<HTMLElement>(":scope > .dateLine")
 				: day.isEntry && day.key === this.result?.entryDay
-					? this.root.querySelector<HTMLElement>(".entryControls")
+					? this.root.querySelector<HTMLElement>(".todayHeader")
 					: undefined;
 			if (!element) return false;
 			const rect = element.getBoundingClientRect();

@@ -69,6 +69,7 @@ test("the probes have unique names and the properties are the fixed list", () =>
 			".dateLine",
 			".date",
 			".weekday",
+			".todayHeader",
 			".counters",
 			".counter#todo",
 			".counter#overdue",
@@ -106,8 +107,6 @@ test("the probes have unique names and the properties are the fixed list", () =>
 			".task .info .tag",
 			".task .modify",
 			".quickFilterBar",
-			".dateFilter",
-			".todayToggle",
 			".quickFilterBar .dateScope",
 			".tagFilterBar input",
 			".priorityFilter summary",
@@ -128,8 +127,8 @@ test("the probes have unique names and the properties are the fixed list", () =>
 			'.task[aria-busy="true"] .timeline .icon svg',
 		],
 	);
-	assert.equal(STYLE_PROBES.length, 65);
-	assert.equal(new Set(STYLE_PROBES.map(({ name }) => name)).size, 65);
+	assert.equal(STYLE_PROBES.length, 64);
+	assert.equal(new Set(STYLE_PROBES.map(({ name }) => name)).size, 64);
 	assert.deepEqual(STYLE_PROBES[0], { name: ".taskido", selector: ".taskido" });
 	for (const probe of STYLE_PROBES) assert.equal(probe.name, probe.selector + (probe.pseudo ?? ""));
 	assert.deepEqual(

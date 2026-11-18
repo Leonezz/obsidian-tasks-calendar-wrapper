@@ -153,7 +153,7 @@ test("content renders markdown once per display change", async (t) => {
 
 	for (const [operation, selector] of [
 		["counter click", "#todo"],
-		["Focus on today click", ".todayToggle"],
+		["Focus on today click", ".todayHeader"],
 	]) {
 		before = calls.length;
 		const target = fixture.container.querySelector<HTMLElement>(selector);
@@ -189,7 +189,7 @@ test("turning Focus on today off within one list renders no markdown again", asy
 	]);
 	const rendered = calls.length;
 	for (const focused of [true, false]) {
-		const focus = fixture.container.querySelector<HTMLButtonElement>(".todayToggle");
+		const focus = fixture.container.querySelector<HTMLElement>(".todayHeader");
 		assert.ok(focus);
 		await act(() => focus.click());
 		assert.equal(fixture.root().classList.contains("todayFocus"), focused);

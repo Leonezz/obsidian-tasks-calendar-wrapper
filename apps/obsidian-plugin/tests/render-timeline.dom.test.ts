@@ -196,14 +196,14 @@ test("changed counts update the entry while its counter and focus handlers still
 	assert.equal(rendersOf("TaskItemView"), 0);
 	assert.deepEqual(renderedDays(), ["2026-01-15"]);
 	const timeline = container.querySelector(".taskido");
-	const focus = container.querySelector<HTMLSelectElement>("select.dateScope");
+	const focus = container.querySelector<HTMLElement>(".todayHeader");
 	const unplanned = container.querySelector<HTMLElement>("#unplanned");
 	const todo = container.querySelector<HTMLElement>("#todo");
 	assert.ok(timeline && focus && unplanned && todo);
 	const before = providerValues().ViewActions;
-	await select(container, "select.dateScope", focus.value === "today" ? "all" : "today");
+	await act(() => focus.click());
 	assert.ok(timeline.classList.contains("todayFocus"));
-	await select(container, "select.dateScope", focus.value === "today" ? "all" : "today");
+	await act(() => focus.click());
 	assert.ok(!timeline.classList.contains("todayFocus"));
 	assert.strictEqual(providerValues().ViewActions, before);
 	await act(() => unplanned.click());
@@ -288,24 +288,24 @@ test("row models last within a day and refresh with the locale and next day", as
 		moment.now = previousNow;
 		moment.locale(previousLocale);
 	});
-	const focus = container.querySelector<HTMLSelectElement>("select.dateScope");
+	const focus = container.querySelector<HTMLElement>(".todayHeader");
 	assert.ok(focus);
 	const label = () => container.querySelector('.task [aria-label^="Due: "] .label')?.textContent;
 	assert.equal(label(), "Tomorrow");
 	moment.now = () => GOLDEN_NOW + 60 * 60 * 1000;
 	resetRenderCounts();
-	await select(container, "select.dateScope", focus.value === "today" ? "all" : "today");
+	await act(() => focus.click());
 	assert.equal(rendersOf("TaskItemView"), 0);
-	assert.equal(rendersOf("DateView"), 1, "the entry day updates its date-scope control");
+	assert.equal(rendersOf("DateView"), 1, "the entry day updates its Focus on today heading");
 	assert.deepEqual(renderedDays(), ["2026-01-15"]);
 	moment.locale("zh-cn");
 	resetRenderCounts();
-	await select(container, "select.dateScope", focus.value === "today" ? "all" : "today");
+	await act(() => focus.click());
 	assert.equal(label(), "明天");
 	assert.equal(rendersOf("TaskItemView"), 1);
 	moment.now = () => GOLDEN_NOW + 24 * 60 * 60 * 1000;
 	resetRenderCounts();
-	await select(container, "select.dateScope", focus.value === "today" ? "all" : "today");
+	await act(() => focus.click());
 	assert.equal(label(), "今天");
 	assert.equal(rendersOf("TaskItemView"), 1);
 	const dailyNote = moment().format(defaultUserOptions.dailyNoteFormat) + ".md";
@@ -439,7 +439,7 @@ test("a row click right after a Focus toggle is not guarded", async (t) => {
 		[true, "Today.md"],
 		[false, "Later.md"],
 	] as const) {
-		await select(container, "select.dateScope", focused ? "today" : "all");
+		await click(".todayHeader");
 		assert.equal(container.querySelector(".taskido")?.classList.contains("todayFocus"), focused);
 		assert.equal(observed.clock().lastListChangeAt, before, `focus ${focused}`);
 		const row = `.task:has(a.file[aria-label="${path}"])`;

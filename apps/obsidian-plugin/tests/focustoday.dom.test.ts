@@ -58,7 +58,7 @@ test("toggling Focus on today keeps the entry panel mounted, its draft and the k
 			},
 		});
 		const panel = fixture.container.querySelector<HTMLElement>(".quickEntryPanel");
-		const focus = fixture.container.querySelector<HTMLButtonElement>("button.todayToggle");
+		const focus = fixture.container.querySelector<HTMLElement>(".todayHeader");
 		const scope = fixture.container.querySelector<HTMLSelectElement>("select.dateScope");
 		const input = panel?.querySelector<HTMLInputElement>('input[type="text"]');
 		assert.ok(panel && focus && scope && input, entryPosition);
@@ -75,9 +75,9 @@ test("toggling Focus on today keeps the entry panel mounted, its draft and the k
 			const message = `${entryPosition}, focus ${focused}`;
 			assert.equal(fixture.root().classList.contains("todayFocus"), focused, message);
 			assert.strictEqual(fixture.container.querySelector(".quickEntryPanel"), panel, message);
-			assert.strictEqual(fixture.container.querySelector("button.todayToggle"), focus, message);
+			assert.strictEqual(fixture.container.querySelector(".todayHeader"), focus, message);
 			assert.equal(focus.getAttribute("aria-pressed"), String(focused), message);
-			assert.equal(scope.value, focused ? "today" : "all", message);
+			assert.equal(scope.value, "all", message);
 			assert.strictEqual(panel.querySelector('input[type="text"]'), input, message);
 			assert.equal(panel.isConnected, true, message);
 			assert.equal(focus.isConnected, true, message);

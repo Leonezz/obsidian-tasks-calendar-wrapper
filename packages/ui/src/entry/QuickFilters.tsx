@@ -41,7 +41,7 @@ export function QuickFilters({ applied, tags, todayFocus = false, activeCounter,
 		if (!todayKey) return appliedRange === selectedWeek.current;
 		return applied.from === todayKey && applied.to === dayKeyAfter(host.moment(todayKey), 6, "days");
 	}, [host, todayKey, appliedRange, applied?.from, applied?.to]);
-	const scope = todayFocus ? "today" : custom ? "custom" : hasRange ? (isWeek ? "week" : "custom") : "all";
+	const scope = custom ? "custom" : hasRange ? (isWeek ? "week" : "custom") : "all";
 	const hasFilters =
 		todayFocus || hasRange || priorities.length > 0 || Boolean(applied?.tags?.length) || Boolean(activeCounter);
 
@@ -53,11 +53,9 @@ export function QuickFilters({ applied, tags, todayFocus = false, activeCounter,
 		setRangeError("");
 		if (value === "custom") {
 			setCustom(true);
-			if (todayFocus) actions.toggleTodayFocus();
 			return;
 		}
 		setCustom(false);
-		if (todayFocus !== (value === "today")) actions.toggleTodayFocus();
 		if (value === "week") {
 			const now = host.now();
 			const from = dayKey(now);
@@ -77,7 +75,6 @@ export function QuickFilters({ applied, tags, todayFocus = false, activeCounter,
 			return;
 		}
 		setRangeError("");
-		if (todayFocus) actions.toggleTodayFocus();
 		applyDates(range.from, range.to);
 	}
 	function editRange(field: "from" | "to", value: string): void {
@@ -87,28 +84,16 @@ export function QuickFilters({ applied, tags, todayFocus = false, activeCounter,
 
 	return (
 		<div className="quickFilterBar">
-			<div className="dateFilter">
-				<button
-					className="todayToggle"
-					type="button"
-					aria-label={copy.timeline.focusOnToday}
-					aria-pressed={todayFocus}
-					onClick={() => chooseScope(todayFocus ? "all" : "today")}
-				>
-					{copy.quickEntry.today}
-				</button>
-				<select
-					className="dateScope"
-					aria-label={copy.quickEntry.dateScopeAria}
-					value={scope}
-					onChange={(event) => chooseScope(event.target.value)}
-				>
-					<option value="all">{copy.quickEntry.allDates}</option>
-					<option value="today">{copy.timeline.focusOnToday}</option>
-					<option value="week">{copy.quickEntry.nextWeek}</option>
-					<option value="custom">{copy.quickEntry.customRange}</option>
-				</select>
-			</div>
+			<select
+				className="dateScope"
+				aria-label={copy.quickEntry.dateScopeAria}
+				value={scope}
+				onChange={(event) => chooseScope(event.target.value)}
+			>
+				<option value="all">{copy.quickEntry.allDates}</option>
+				<option value="week">{copy.quickEntry.nextWeek}</option>
+				<option value="custom">{copy.quickEntry.customRange}</option>
+			</select>
 			<TagFilter applied={applied} tags={tags} />
 			<details
 				className="priorityFilter"

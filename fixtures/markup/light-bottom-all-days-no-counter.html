@@ -12298,6 +12298,9 @@
         </div>
       </div>
       <div>
+        <div aria-label="Focus on today" aria-pressed="false" class="todayHeader" role="button" tabindex="0">
+          Focus on today
+        </div>
         <div class="entryControls">
           <div class="counters">
             <div aria-label="Toggle to-do counter" aria-pressed="false" class="counter" id="todo" role="button" tabindex="0">
@@ -12326,25 +12329,17 @@
             </div>
           </div>
           <div class="quickFilterBar">
-            <div class="dateFilter">
-              <button aria-label="Focus on today" aria-pressed="false" class="todayToggle" type="button">
-                Today
-              </button>
-              <select aria-label="Filter by date" class="dateScope">
-                <option value="all">
-                  All dates
-                </option>
-                <option value="today">
-                  Focus on today
-                </option>
-                <option value="week">
-                  Next 7 days
-                </option>
-                <option value="custom">
-                  Custom range
-                </option>
-              </select>
-            </div>
+            <select aria-label="Filter by date" class="dateScope">
+              <option value="all">
+                All dates
+              </option>
+              <option value="week">
+                Next 7 days
+              </option>
+              <option value="custom">
+                Custom range
+              </option>
+            </select>
             <div class="tagFilterBar">
               <input aria-label="Show only tasks with this tag" placeholder="Filter by tag: #home" type="search" value="">
             </div>

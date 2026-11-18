@@ -251,12 +251,9 @@ function timelineHarness(
 			await act(() => element.click());
 		},
 		toggleToday: async () => {
-			const select = container.querySelector<HTMLSelectElement>(".dateScope");
-			assert.ok(select);
-			await act(() => {
-				select.value = select.value === "today" ? "all" : "today";
-				select.dispatchEvent(new Event("change", { bubbles: true }));
-			});
+			const heading = container.querySelector<HTMLElement>(".todayHeader");
+			assert.ok(heading);
+			await act(() => heading.click());
 		},
 	};
 }
@@ -464,9 +461,19 @@ test("the open filter and focus come from the first render only", async (t) => {
 	assert.ok(root);
 	assert.match(root.className, /todoFilter/);
 	assert.match(root.className, /todayFocus/);
+	const heading = root.querySelector<HTMLElement>(".todayHeader");
+	assert.ok(heading);
+	assert.equal(heading.textContent, "Focus on today");
+	assert.equal(heading.getAttribute("aria-pressed"), "true");
+	assert.equal(
+		heading.nextElementSibling?.className,
+		"entryControls",
+		"the original title precedes the status cards",
+	);
 	await timeline.render({ userOptions: { ...options, defaultFilters: "", defaultTodayFocus: false } });
 	assert.match(root.className, /todoFilter/);
 	assert.match(root.className, /todayFocus/);
+	assert.equal(heading.getAttribute("aria-pressed"), "true");
 });
 
 test("Timeline is a plain function component", () => {

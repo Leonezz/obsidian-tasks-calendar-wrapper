@@ -3,11 +3,18 @@ import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { act, createElement, type ContextType } from "react";
 import { createRoot } from "react-dom/client";
-import type { DateValue, MomentFactory, NewDateStyle, QuickFilter } from "@tasks-calendar-wrapper/core";
+import {
+	copy,
+	type DateValue,
+	type MomentFactory,
+	type NewDateStyle,
+	type QuickFilter,
+} from "@tasks-calendar-wrapper/core";
 import { HostContext, QuickEntryHandlerContext, ViewActionsContext, type CounterId } from "../src/contexts";
 import type { UiHost } from "../src/host";
 import { createQuickEntryDraft, QuickEntry } from "../src/entry/QuickEntry";
 import { QuickFilters } from "../src/entry/QuickFilters";
+import { TodayFocus } from "../src/entry/TodayFocus";
 import { MultiSelect, type MultiSelectProps } from "../src/entry/MultiSelect";
 
 function mountRoot(t: TestContext) {
@@ -113,6 +120,7 @@ function entryHarness(
 					createElement(
 						QuickEntryHandlerContext.Provider,
 						{ value: handlers },
+						createElement(TodayFocus, { visual: copy.timeline.focusOnToday, active: todayFocus }),
 						createElement(QuickFilters, {
 							applied,
 							tags: ["#work", "#home"],
@@ -201,11 +209,11 @@ test("the composer stays available while filters change and submits through its 
 	assert.equal(submit.textContent, "Add");
 	assert.equal(submit.getAttribute("aria-label"), "Add task to selected note");
 	await edit(input, "buy milk");
-	await changeSelect(element(entry.container, ".dateScope"), "today");
+	await act(() => element<HTMLElement>(entry.container, ".todayHeader").click());
 	assert.equal(input.value, "buy milk");
 	await enter(input);
 	assert.deepEqual(entry.createCalls, [["Notes/Work.md", "buy milk"]]);
-	assert.deepEqual(entry.filterCalls.at(-1), [undefined, undefined, ["High"], ["#work"]]);
+	assert.deepEqual(entry.filterCalls, []);
 	assert.equal(input.value, "");
 });
 
@@ -355,7 +363,7 @@ test("input-only date edits survive another control before the browser commits c
 		due.value = "2026-01-20";
 		due.dispatchEvent(new Event("input", { bubbles: true }));
 	});
-	await changeSelect(element(entry.container, ".dateScope"), "today");
+	await act(() => element<HTMLElement>(entry.container, ".todayHeader").click());
 	assert.equal(due.value, "2026-01-20");
 	assert.equal(entry.draft.getSnapshot().due, "2026-01-20");
 	await changeSelect(element(entry.container, ".dateScope"), "custom");
@@ -368,6 +376,7 @@ test("input-only date edits survive another control before the browser commits c
 	});
 	await act(() => element<HTMLButtonElement>(entry.container, ".applyDateRange").click());
 	assert.deepEqual(entry.filterCalls.at(-1), ["2026-01-10", "2026-01-20", [], []]);
+	assert.equal(entry.todayFocus(), true, "applying a range retains the independent focus mode");
 });
 
 test("shortcuts read the current clock for each non-composing input, not for rendering", async (t) => {
@@ -426,44 +435,64 @@ test("date presets preserve other dimensions and Next 7 days keeps its selected 
 	assert.equal(element<HTMLSelectElement>(entry.container, ".dateScope").value, "week");
 	await entry.remount();
 	assert.equal(element<HTMLSelectElement>(entry.container, ".dateScope").value, "week");
-	await changeSelect(element(entry.container, ".dateScope"), "today");
+	await act(() => element<HTMLElement>(entry.container, ".todayHeader").click());
 	assert.equal(entry.todayFocus(), true);
-	assert.deepEqual(entry.filterCalls.at(-1), [undefined, undefined, ["High"], ["#work"]]);
+	assert.deepEqual(entry.filterCalls.at(-1), ["2026-01-15", "2026-01-21", ["High"], ["#work"]]);
+	assert.equal(element<HTMLSelectElement>(entry.container, ".dateScope").value, "week");
 	await changeSelect(element(entry.container, ".dateScope"), "all");
-	assert.equal(entry.todayFocus(), false);
+	assert.equal(entry.todayFocus(), true, "date presets do not turn focus off");
+	assert.deepEqual(entry.filterCalls.at(-1), [undefined, undefined, ["High"], ["#work"]]);
+	await changeSelect(element(entry.container, ".dateScope"), "week");
+	assert.equal(entry.todayFocus(), true, "date presets do not turn focus on or off");
+	assert.deepEqual(entry.filterCalls.at(-1), ["2026-01-15", "2026-01-21", ["High"], ["#work"]]);
 });
 
-test("Today stays visible and toggles focus without replacing other filters or the capture draft", async (t) => {
+test("the original Focus on today heading preserves the explicit range and capture draft", async (t) => {
 	const entry = entryHarness(t);
 	await entry.render({ from: "2026-01-10", to: "2026-01-20", priorities: ["High", "No", ""], tags: ["#work"] });
 	await entry.counter("todo");
 	await edit(element(entry.container, ".newTask"), "keep this capture draft");
 	await edit(element(entry.container, ".taskDue"), "2026-01-25");
-	const today = element<HTMLButtonElement>(entry.container, ".dateFilter button.todayToggle");
-	assert.equal(today.textContent, "Today");
+	const today = element<HTMLElement>(entry.container, ".todayHeader");
+	assert.equal(today.textContent, "Focus on today");
 	assert.equal(today.getAttribute("aria-label"), "Focus on today");
+	assert.equal(today.getAttribute("role"), "button");
+	assert.equal(today.tabIndex, 0);
 	assert.equal(today.getAttribute("aria-pressed"), "false");
 	assert.equal(today.hidden, false);
 	assert.equal(today.closest("details"), null, "the toggle is outside collapsed menus");
 	assert.equal(
-		element<HTMLSelectElement>(entry.container, ".dateFilter .dateScope").getAttribute("aria-label"),
+		element<HTMLSelectElement>(entry.container, ".dateScope").getAttribute("aria-label"),
 		"Filter by date",
+	);
+	assert.deepEqual(
+		[...element<HTMLSelectElement>(entry.container, ".dateScope").options].map((option) => option.value),
+		["all", "week", "custom"],
 	);
 	await act(() => today.click());
 	assert.equal(entry.todayFocus(), true);
 	assert.equal(today.getAttribute("aria-pressed"), "true");
-	assert.equal(element<HTMLSelectElement>(entry.container, ".dateScope").value, "today");
-	assert.deepEqual(entry.filterCalls.at(-1), [undefined, undefined, ["High", "No", ""], ["#work"]]);
+	assert.equal(element<HTMLSelectElement>(entry.container, ".dateScope").value, "custom");
+	assert.deepEqual(entry.filterCalls, [], "the original focus action leaves the date/tag/priority query intact");
+	assert.deepEqual(
+		[...entry.container.querySelectorAll<HTMLInputElement>(".dateRange input")].map((input) => input.value),
+		["2026-01-10", "2026-01-20"],
+	);
 	assert.deepEqual(entry.counterCalls, [], "focusing today retains the selected status card");
 	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, "keep this capture draft");
 	assert.equal(element<HTMLInputElement>(entry.container, ".taskDue").value, "2026-01-25");
-	await act(() => today.click());
+	await act(() => today.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
 	assert.equal(entry.todayFocus(), false);
 	assert.equal(today.getAttribute("aria-pressed"), "false");
-	assert.equal(element<HTMLSelectElement>(entry.container, ".dateScope").value, "all");
-	assert.deepEqual(entry.filterCalls.at(-1), [undefined, undefined, ["High", "No", ""], ["#work"]]);
+	assert.equal(element<HTMLSelectElement>(entry.container, ".dateScope").value, "custom");
+	assert.deepEqual(entry.filterCalls, []);
 	assert.deepEqual(entry.counterCalls, []);
 	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, "keep this capture draft");
+	const space = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
+	await act(() => today.dispatchEvent(space));
+	assert.equal(entry.todayFocus(), true);
+	assert.equal(space.defaultPrevented, true, "Space activates the heading without scrolling the page");
+	assert.deepEqual(entry.filterCalls, []);
 });
 
 test("custom ranges validate both endpoints and do not apply reversed or incomplete dates", async (t) => {
@@ -489,7 +518,7 @@ test("clear resets capture-independent filters, today focus and the selected cat
 	await entry.render({ priorities: ["High"], tags: ["#work"] });
 	await edit(element(entry.container, ".newTask"), "keep my draft");
 	await entry.counter("todo");
-	await changeSelect(element(entry.container, ".dateScope"), "today");
+	await act(() => element<HTMLElement>(entry.container, ".todayHeader").click());
 	await act(() => element<HTMLButtonElement>(entry.container, ".clearFilters").click());
 	assert.equal(entry.todayFocus(), false);
 	assert.deepEqual(entry.counterCalls, ["todo"]);

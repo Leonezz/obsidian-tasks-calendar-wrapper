@@ -225,10 +225,7 @@ export async function measure({
 		const recorder = record(leaf, { rowsPresent: true });
 		const start = performance.now();
 		try {
-			if (selector === ".dateScope") {
-				control.value = on ? "today" : "all";
-				control.dispatchEvent(new Event("change", { bubbles: true }));
-			} else control.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+			control.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
 			await until(() => root.classList.contains(className) === on, 10_000, `${name} to turn ${direction}`);
 			await until(quietFor(recorder, quietMs), 30_000, "the timeline to stop changing");
 			if (root.classList.contains(className) !== on)
@@ -407,17 +404,13 @@ export async function measure({
 		case "controls": {
 			const { root } = viewElements();
 			return {
-				todayHeader: Boolean(root.querySelector(".dateScope") ?? root.querySelector(".todayHeader")),
+				todayHeader: Boolean(root.querySelector(".todayHeader")),
 				todoCounter: Boolean(root.querySelector(".counter#todo")),
 				viewContent: Boolean(document.querySelector(contentSelector)),
 			};
 		}
 		case "focusToday":
-			return await clickView(
-				viewElements().root.querySelector(".dateScope") ? ".dateScope" : ".todayHeader",
-				"todayFocus",
-				"Focus on today",
-			);
+			return await clickView(".todayHeader", "todayFocus", "Focus on today");
 		case "counterFilter":
 			return await clickView(".counter#todo", "todoFilter", "the Todo filter");
 		case "viewRestore": {
@@ -427,20 +420,14 @@ export async function measure({
 			const restored = [];
 			await settleView(async () => {
 				for (const [className, selector] of [
-					["todayFocus", root.querySelector(".dateScope") ? ".dateScope" : ".todayHeader"],
+					["todayFocus", ".todayHeader"],
 					["todoFilter", ".counter#todo"],
 				]) {
 					if (!root.classList.contains(className)) continue;
 					const control = root.querySelector(selector);
 					if (!control)
 						throw new Error(`viewRestore: ${className} is on but its control ${selector} is missing.`);
-					if (selector === ".dateScope") {
-						control.value = "all";
-						control.dispatchEvent(new Event("change", { bubbles: true }));
-					} else
-						control.dispatchEvent(
-							new MouseEvent("click", { bubbles: true, cancelable: true, view: window }),
-						);
+					control.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
 					await until(() => !root.classList.contains(className), 10_000, `${className} to turn off`);
 					restored.push(className);
 				}

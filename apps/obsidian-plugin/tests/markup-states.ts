@@ -92,7 +92,7 @@ export async function reachMarkupState(fixture: ViewFixture, name: string) {
 	if (name.startsWith("light-")) {
 		const state = stateOf(name);
 		if (state.todayFocus) {
-			const today = fixture.root().querySelector<HTMLButtonElement>(".todayToggle");
+			const today = fixture.root().querySelector<HTMLElement>(".todayHeader");
 			assert.ok(today);
 			await act(() => today.click());
 		}

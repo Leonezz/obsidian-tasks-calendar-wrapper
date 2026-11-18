@@ -56,7 +56,7 @@ test("an open timeline keeps the filter and today focus it opened with, and take
 		{ id: "overdue", active: false },
 		{ id: "unplanned", active: false },
 	]);
-	assert.equal(container.querySelector<HTMLSelectElement>("select.dateScope")?.value, "today");
+	assert.equal(container.querySelector(".todayHeader")?.getAttribute("aria-pressed"), "true");
 
 	await render({ userOptions: pushed, tasks: [] });
 	assert.equal(container.querySelector(".taskido"), timeline);
@@ -65,7 +65,7 @@ test("an open timeline keeps the filter and today focus it opened with, and take
 	assert.match(timeline.className, /noCounters/, "an option read on every push");
 	assert.deepEqual(stateClasses(), beforeClasses, "the counter and Focus classes survive the push");
 	assert.deepEqual(counters(), beforeCounters, "the counters keep their active state even when hidden by CSS");
-	assert.equal(container.querySelector<HTMLSelectElement>("select.dateScope")?.value, "today");
+	assert.equal(container.querySelector(".todayHeader")?.getAttribute("aria-pressed"), "true");
 
 	const reopened = await mountTimeline(t, { userOptions: pushed, tasks: [] });
 	const newTimeline = reopened.container.querySelector(".taskido");

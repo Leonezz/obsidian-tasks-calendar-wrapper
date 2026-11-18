@@ -1,8 +1,15 @@
 import * as React from "react";
-import { type DayGroup, type NewDateStyle, type ResolvedTask, type TaskRowModel } from "@tasks-calendar-wrapper/core";
+import {
+	copy,
+	type DayGroup,
+	type NewDateStyle,
+	type ResolvedTask,
+	type TaskRowModel,
+} from "@tasks-calendar-wrapper/core";
 import { Counters, type CounterProps } from "../entry/Counters";
 import { QuickEntry, type createQuickEntryDraft } from "../entry/QuickEntry";
 import { QuickFilters } from "../entry/QuickFilters";
+import { TodayFocus } from "../entry/TodayFocus";
 import { DayHeader } from "./DayHeader";
 import { DayContent } from "./DayContent";
 import { QuickEntryHandlerContext, type CounterId } from "../contexts";
@@ -89,7 +96,12 @@ export const Day = React.memo(function Day(props: DayProps) {
 	const types = day.statuses.join(" ");
 	return (
 		<div ref={window?.ref} {...(window ? { "data-tcw-day": day.key } : {})}>
-			{entry && <EntryFilters entry={entry} />}
+			{entry && (
+				<>
+					<TodayFocus visual={copy.timeline.focusOnToday} active={entry.todayFocus} />
+					<EntryFilters entry={entry} />
+				</>
+			)}
 			{day.tasks.length > 0 && (
 				<div
 					className={className + (entry === undefined ? " tcw-day" : "")}

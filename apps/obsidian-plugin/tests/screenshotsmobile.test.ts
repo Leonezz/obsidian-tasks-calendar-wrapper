@@ -157,7 +157,7 @@ test("a required target with no element fails, a missing ✏️ does not", () =>
 			".quickEntryPanel input",
 			".quickEntryPanel button",
 			".quickFilterBar select",
-			".todayToggle",
+			".todayHeader",
 			".tagFilterBar input",
 			".priorityFilter summary",
 		],

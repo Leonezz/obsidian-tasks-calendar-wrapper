@@ -43,7 +43,6 @@ export const copy = freezeCopy({
 		none: "None",
 		dateScopeAria: "Filter by date",
 		allDates: "All dates",
-		today: "Today",
 		nextWeek: "Next 7 days",
 		customRange: "Custom range",
 		applyDates: "Apply dates",

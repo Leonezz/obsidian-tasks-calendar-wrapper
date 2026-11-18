@@ -31,6 +31,7 @@ const declarations = (body: string) =>
 test("legacy classes unused by timeline controls have no stylesheet rules", () => {
 	const css = readFileSync("styles.css", "utf8");
 	assert.doesNotMatch(css, /\.(?:noDone|noUnplanned|noColor)\b/);
+	assert.doesNotMatch(css, /\.(?:todayToggle|dateFilter)\b/);
 });
 
 test("view scope remains on cascade-sensitive rules rather than every timeline rule", () => {
@@ -404,9 +405,13 @@ test("capture and metadata keep native field borders and the add action keeps it
 	assert.equal(add.get("background"), "var(--tcw-action-bg, var(--interactive-accent))");
 	assert.equal(add.get("color"), "var(--tcw-action-fg, var(--text-on-accent))");
 	assert.equal(
-		rule('.taskido .todayToggle[aria-pressed="true"]').get("color"),
+		rule(".taskido.todayFocus .todayHeader").get("color"),
 		"var(--tcw-color-focus, var(--taskido-color-focus))",
 	);
+	const heading = rule(".taskido .todayHeader");
+	assert.equal(resolvedTokens(heading.get("font-size") ?? ""), "24px");
+	assert.equal(heading.get("font-weight"), "bold");
+	assert.equal(heading.get("text-align"), "center");
 });
 
 test("every :hover rule is inside @media (hover: hover)", () => {
@@ -554,12 +559,6 @@ test("hover feedback keeps native task and entry controls within the hover media
 			body: whitespace(`
 	background: var(--interactive-accent-hover);
 	color: var(--text-on-accent);
-`),
-		},
-		{
-			selectors: [".taskido .todayToggle:hover"],
-			body: whitespace(`
-	background: var(--background-modifier-hover);
 `),
 		},
 		{

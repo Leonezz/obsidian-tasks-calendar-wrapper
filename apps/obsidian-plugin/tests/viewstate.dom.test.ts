@@ -113,10 +113,7 @@ function control(container: HTMLElement, selector: string) {
 }
 
 async function click(view: RenderedView, selector: string) {
-	if (selector === "select.dateScope") {
-		const input = control(view.container, selector) as HTMLSelectElement;
-		await select(view, selector, input.value === "today" ? "all" : "today");
-	} else await act(() => control(view.container, selector).click());
+	await act(() => control(view.container, selector).click());
 }
 
 function assertState(view: RenderedView, counter: boolean, focus: boolean, message: string) {
@@ -124,8 +121,7 @@ function assertState(view: RenderedView, counter: boolean, focus: boolean, messa
 	assert.equal(root.classList.contains("todoFilter"), counter, `${message}: Todo filter`);
 	assert.equal(root.classList.contains("todayFocus"), focus, `${message}: Focus on today`);
 	assert.equal(control(view.container, ".counter#todo").getAttribute("aria-pressed"), String(counter));
-	assert.equal((control(view.container, "select.dateScope") as HTMLSelectElement).value === "today", focus);
-	assert.equal(control(view.container, ".todayToggle").getAttribute("aria-pressed"), String(focus));
+	assert.equal(control(view.container, ".todayHeader").getAttribute("aria-pressed"), String(focus));
 }
 
 async function close(view: RenderedView) {
@@ -215,17 +211,59 @@ test("reopening a view in the same session restores counter and focus", async (t
 	const first = await h.command(plugin);
 	assertState(first, false, false, "On Load");
 	await click(first, "#todo");
-	await click(first, "select.dateScope");
+	await click(first, ".todayHeader");
 	assertState(first, true, true, "before closing");
 	await close(first);
 	const reopened = await h.command(plugin);
 	assertState(reopened, true, true, "reopened view restores the last closed state");
 	const second = await h.open();
-	await click(second, "select.dateScope");
+	await click(second, ".todayHeader");
 	assertState(second, true, false, "second view differs");
 	await close(reopened);
 	await close(second);
 	assertState(await h.command(plugin), true, false, "the last of two closed views wins");
+});
+
+test("the restored Today heading preserves applied dates, tags, priorities and the status card", async (t) => {
+	const h = pluginHarness(t);
+	const plugin = await h.load();
+	const opened = await h.command(plugin);
+	await applyFilter(opened);
+	await click(opened, "#todo");
+	await click(opened, '.priorityOptions input[value="No"]');
+	const tag = control(opened.container, '.tagFilterBar input[type="search"]') as HTMLInputElement;
+	await act(() => {
+		Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(tag, "#work");
+		tag.dispatchEvent(new Event("input", { bubbles: true }));
+	});
+	await act(() => tag.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+	const applied = quickFilter();
+	assert.deepEqual(applied, {
+		from: "2026-01-14",
+		to: "2026-01-16",
+		priorities: ["No", ""],
+		tags: ["#work"],
+	});
+	for (const focused of [true, false]) {
+		await click(opened, ".todayHeader");
+		assertState(opened, true, focused, `heading focus ${focused}`);
+		assert.strictEqual(quickFilter(), applied, "the heading preserves the exact applied filter");
+		assert.equal((control(opened.container, "select.dateScope") as HTMLSelectElement).value, "custom");
+		assert.equal(tag.value, "#work");
+		assert.equal(
+			(control(opened.container, '.priorityOptions input[value="No"]') as HTMLInputElement).checked,
+			true,
+		);
+	}
+	await click(opened, ".todayHeader");
+	await select(opened, "select.dateScope", "week");
+	assertState(opened, true, true, "a date preset preserves independent Today focus");
+	assert.deepEqual(quickFilter(), {
+		from: "2026-01-15",
+		to: "2026-01-21",
+		priorities: ["No", ""],
+		tags: ["#work"],
+	});
 });
 
 test("a moved view restores from getState", async (t) => {
@@ -233,7 +271,7 @@ test("a moved view restores from getState", async (t) => {
 	const plugin = await h.load();
 	const source = await h.command(plugin);
 	await click(source, "#todo");
-	await click(source, "select.dateScope");
+	await click(source, ".todayHeader");
 	const other = await h.open();
 	assertState(other, false, false, "the other view has different state");
 	await close(other);
@@ -249,7 +287,7 @@ test("a new plugin session uses the On Load settings", async (t) => {
 	const firstPlugin = await h.load();
 	const first = await h.command(firstPlugin);
 	await click(first, "#todo");
-	await click(first, "select.dateScope");
+	await click(first, ".todayHeader");
 	assertState(first, true, true, "saved workspace state");
 	const saved = first.leaf.getViewState();
 	await unload(firstPlugin);
@@ -264,7 +302,7 @@ test("disabling and enabling the plugin forgets the last closed state", async (t
 	const firstPlugin = await h.load();
 	const first = await h.command(firstPlugin);
 	await click(first, "#todo");
-	await click(first, "select.dateScope");
+	await click(first, ".todayHeader");
 	assertState(first, true, true, "before disabling");
 	await close(first);
 	await unload(firstPlugin);
@@ -381,7 +419,7 @@ test("popout window views keep their own state", async (t) => {
 	await click(first, "#todo");
 	assertState(first, true, false, "first view");
 	assertState(second, false, false, "the second view ignores the first's toggle");
-	await click(second, "select.dateScope");
+	await click(second, ".todayHeader");
 	assertState(first, true, false, "the first view ignores the second's toggle");
 	assertState(second, false, true, "second view");
 	const firstState = first.view.getState();
@@ -406,7 +444,7 @@ test("a later setState without this session's state leaves an open view as it is
 	const plugin = await h.load();
 	const source = await h.command(plugin);
 	await click(source, "#todo");
-	await click(source, "select.dateScope");
+	await click(source, ".todayHeader");
 	for (const state of [{}, { v: 1, session: "other", counter: "", todayFocus: false }]) {
 		await act(() => source.view.setState(state, { history: false }));
 		assertState(source, true, true, "a later foreign or absent state leaves the view unchanged");
@@ -434,12 +472,12 @@ test("getState holds exactly v, session, counter and todayFocus", async (t) => {
 	const plugin = await h.load();
 	const first = await h.command(plugin);
 	await click(first, "#todo");
-	await click(first, "select.dateScope");
+	await click(first, ".todayHeader");
 	await applyFilter(first);
 	const firstState = first.view.getState();
 	assert.deepEqual(Object.keys(firstState).sort(), ["counter", "session", "todayFocus", "v"], "saved state keys");
 	assert.ok(typeof firstState.session === "string" && firstState.session.length > 0, "session is a non-empty string");
-	assert.deepEqual(firstState, { v: 1, session: firstState.session, counter: "todoFilter", todayFocus: false });
+	assert.deepEqual(firstState, { v: 1, session: firstState.session, counter: "todoFilter", todayFocus: true });
 	assert.deepEqual(first.leaf.getViewState(), { type: TIMELINE_VIEW, state: firstState });
 	const second = await h.open();
 	assert.deepEqual(second.view.getState(), { v: 1, session: firstState.session, counter: "", todayFocus: false });

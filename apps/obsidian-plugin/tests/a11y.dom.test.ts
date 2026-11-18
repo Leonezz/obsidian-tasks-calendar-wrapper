@@ -172,18 +172,14 @@ function assertNames(root: HTMLElement, name: string) {
 	}
 	for (const box of all(root, '.task input[type="checkbox"]'))
 		assert.equal(box.getAttribute("aria-label"), "Complete task");
-	for (const control of all(root, `.counter, a.modify, a.menu, ${dateButtons}`))
+	for (const control of all(root, `.todayHeader, .counter, a.modify, a.menu, ${dateButtons}`))
 		assert.equal(control.getAttribute("role"), "button", `${name}: ${describe(control)} has button semantics`);
 	for (const tag of all(root, "a.tag")) assert.equal(tag.hasAttribute("role"), false);
 	for (const counter of all(root, ".counter")) {
 		const pressed = root.classList.contains(`${counter.id}Filter`) || root.classList.contains(`${counter.id}Focus`);
 		assert.equal(counter.getAttribute("aria-pressed"), String(pressed), `${name}: ${counter.id} pressed state`);
 	}
-	assert.equal(
-		(get(root, ".dateScope") as HTMLSelectElement).value === "today",
-		root.classList.contains("todayFocus"),
-	);
-	assert.equal(get(root, ".todayToggle").getAttribute("aria-pressed"), String(root.classList.contains("todayFocus")));
+	assert.equal(get(root, ".todayHeader").getAttribute("aria-pressed"), String(root.classList.contains("todayFocus")));
 }
 
 async function assertFocusable(root: HTMLElement, name: string) {
@@ -461,15 +457,12 @@ test("the ContextMenu keydown alone opens no menu; the native contextmenu event 
 	assert.equal(show.mock.callCount(), 1, "the native contextmenu event opens it once");
 });
 
-test("Tab order follows the DOM: counters, filters, quick entry, then the list", async (t) => {
+test("Tab order follows the DOM: Today heading, counters, filters, quick entry, then the list", async (t) => {
 	const fixture = await mountState(t);
 	const root = fixture.root();
 	const stop = defaultStop(root)!;
-	assert.deepEqual(all(get(root, ".dateFilter"), "button, select").map(describe), [
-		"button.todayToggle",
-		"select.dateScope",
-	]);
 	const expected = [
+		get(root, ".todayHeader"),
 		...all(root, ".counter"),
 		...all(get(root, ".quickFilterBar"), "select, input, summary, button").filter(
 			(el) => el.tabIndex >= 0 && exposedControl(el),
@@ -485,7 +478,7 @@ test("Tab order follows the DOM: counters, filters, quick entry, then the list",
 	assert.deepEqual(
 		tabOrder(root).map(describe),
 		expected.map(describe),
-		"Tab visits counters, filters, quick entry, then one row and its controls",
+		"Tab visits the Today heading, counters, filters, quick entry, then one row and its controls",
 	);
 	assertRoving(root, stop, "default Tab order");
 });
@@ -591,11 +584,7 @@ test("rows sharing a task id keep distinct names and keyboard stops for each day
 		labels,
 	);
 	assertRoving(root, instances[2], "reload keeps the exact day instance as the stop");
-	await act(() => {
-		const scope = get(root, ".dateScope") as HTMLSelectElement;
-		scope.value = "today";
-		scope.dispatchEvent(new Event("change", { bubbles: true }));
-	});
+	await act(() => get(root, ".todayHeader").click());
 	const today = instances[1];
 	assert.ok(today.closest(".details.today"));
 	assertRoving(root, today, "Focus today chooses today's instance of the same task");
@@ -679,50 +668,56 @@ test("Space on a dimmed row or within 300 ms of the list commit writes nothing",
 	assert.deepEqual(fixture.h.events, events);
 });
 
-test("the Today button exposes its pressed state and keeps native keyboard activation", async (t) => {
+test("the restored Today heading exposes its pressed state and supports Enter and Space", async (t) => {
 	const fixture = await mountState(t);
 	const root = fixture.root();
-	const button = get(root, ".dateFilter button.todayToggle") as HTMLButtonElement;
-	const scope = get(root, ".dateFilter select.dateScope") as HTMLSelectElement;
-	assert.equal(button.tagName, "BUTTON");
-	assert.equal(button.type, "button");
-	assert.equal(button.textContent, "Today", "today remains visible without opening the date menu");
-	assert.equal(button.getAttribute("aria-label"), "Focus on today");
+	const heading = get(root, ".todayHeader");
+	const scope = get(root, "select.dateScope") as HTMLSelectElement;
+	assert.equal(heading.textContent, "Focus on today");
+	assert.equal(heading.getAttribute("role"), "button");
+	assert.equal(heading.getAttribute("aria-label"), "Focus on today");
 	assert.equal(scope.getAttribute("aria-label"), "Filter by date");
-	assert.equal(button.getAttribute("aria-pressed"), "false");
-	assert.ok(tabOrder(root).includes(button));
-	for (const value of ["Enter", " "])
-		assert.equal((await key(button, value)).defaultPrevented, false, `${value} keeps native button activation`);
-	for (const focused of [true, false]) {
-		// jsdom does not synthesize a button click from keyboard default actions.
-		await act(() => button.click());
+	assert.equal(heading.getAttribute("aria-pressed"), "false");
+	assert.ok(tabOrder(root).includes(heading));
+	assert.ok(heading.compareDocumentPosition(get(root, ".counters")) & Node.DOCUMENT_POSITION_FOLLOWING);
+	assert.equal(root.querySelector(".todayToggle, .dateFilter"), null);
+	for (const [value, focused] of [
+		["Enter", true],
+		[" ", false],
+	] as const) {
+		assert.equal((await key(heading, value)).defaultPrevented, true, `${value} activates the heading once`);
 		assert.equal(root.classList.contains("todayFocus"), focused);
-		assert.equal(button.getAttribute("aria-pressed"), String(focused));
-		assert.equal(scope.value, focused ? "today" : "all");
-		assert.strictEqual(document.activeElement, button);
+		assert.equal(heading.getAttribute("aria-pressed"), String(focused));
+		assert.equal(scope.value, "all", "Focus on today does not change the date filter");
+		assert.strictEqual(document.activeElement, heading);
 		const stop = rows(root).find((row) => row.tabIndex === 0);
-		assertRoving(root, stop, "Today button activation");
+		assertRoving(root, stop, "Today heading activation");
 		if (focused && stop) assert.ok(stop.closest(".details.today"));
 	}
 });
 
-test("the native date scope changes Focus on today and retains keyboard focus", async (t) => {
+test("the native date filter preserves independent Today focus and retains keyboard focus", async (t) => {
 	const fixture = await mountState(t);
 	const control = get(fixture.root(), "select.dateScope") as HTMLSelectElement;
 	assert.equal(control.tagName, "SELECT", "the browser supplies native keyboard selection");
+	assert.deepEqual(
+		[...control.options].map((option) => option.value),
+		["all", "week", "custom"],
+	);
+	await key(get(fixture.root(), ".todayHeader"), "Enter");
 	await focus(control);
-	for (const focused of [true, false]) {
+	for (const value of ["week", "custom", "all"]) {
 		await act(() => {
-			control.value = focused ? "today" : "all";
+			control.value = value;
 			control.dispatchEvent(new Event("change", { bubbles: true }));
 		});
-		assert.equal(fixture.root().classList.contains("todayFocus"), focused);
-		assert.equal(control.value, focused ? "today" : "all");
-		assert.equal(get(fixture.root(), ".todayToggle").getAttribute("aria-pressed"), String(focused));
+		assert.equal(fixture.root().classList.contains("todayFocus"), true);
+		assert.equal(control.value, value);
+		assert.equal(get(fixture.root(), ".todayHeader").getAttribute("aria-pressed"), "true");
 		assert.strictEqual(document.activeElement, control);
 		const stop = rows(fixture.root()).find((row) => row.tabIndex === 0);
-		assertRoving(fixture.root(), stop, "Focus today selection");
-		if (focused && stop) assert.ok(stop.closest(".details.today"));
+		assertRoving(fixture.root(), stop, "date selection preserves Today focus");
+		if (stop) assert.ok(stop.closest(".details.today"));
 	}
 });
 
@@ -892,7 +887,7 @@ test("Today and counter activation retain the recorded render and provider behav
 		providers: Record<string, string>;
 	}[];
 	for (const [operation, selector] of [
-		["Focus on today click", ".todayToggle"],
+		["Focus on today click", ".todayHeader"],
 		["counter click", "#todo"],
 	])
 		await t.test(operation, async (s) => {
@@ -900,8 +895,7 @@ test("Today and counter activation retain the recorded render and provider behav
 			const fixture = await mountState(s);
 			counts.reset();
 			const control = get(fixture.root(), selector);
-			if (control instanceof window.HTMLButtonElement) await click(control);
-			else await key(control, "Enter");
+			await key(control, "Enter");
 			const baseline = expected.find((entry) => entry.operation === operation)!;
 			assert.deepEqual(
 				counts.snapshot(),

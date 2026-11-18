@@ -450,35 +450,36 @@ for (const row of interactions) {
 	});
 }
 
-test("the date scope toggles existing Focus on today without submitting a task", async (t) => {
+test("choosing custom dates preserves the independent Focus on today state", async (t) => {
 	const fixture = await mountInteractions(t);
 	const scope = fixture.root().querySelector<HTMLSelectElement>("select.dateScope");
-	assert.ok(scope);
-	for (const focused of [true, false]) {
-		await act(() => {
-			scope.value = focused ? "today" : "all";
-			scope.dispatchEvent(new Event("change", { bubbles: true }));
-		});
-		assert.equal(fixture.root().classList.contains("todayFocus"), focused);
-		assert.equal(scope.value, focused ? "today" : "all");
-		assert.ok(fixture.calls.every((call) => call.handler === "handleFilterEnable"));
-	}
+	const heading = fixture.root().querySelector<HTMLElement>(".todayHeader");
+	assert.ok(scope && heading);
+	assert.deepEqual(
+		[...scope.options].map((option) => option.value),
+		["all", "week", "custom"],
+	);
+	await act(() => heading.click());
+	await select(fixture, "select.dateScope", "custom");
+	assert.equal(fixture.root().classList.contains("todayFocus"), true);
+	assert.equal(heading.getAttribute("aria-pressed"), "true");
+	assert.equal(scope.value, "custom");
+	assert.equal(fixture.root().querySelectorAll(".dateRange input").length, 2);
+	assert.deepEqual(fixture.calls, [], "neither focus nor an unsubmitted date draft calls the writer or filter");
 });
 
-test("the visible Today button toggles focus without submitting or opening a task", async (t) => {
+test("the restored Today heading toggles focus without submitting, clearing filters or opening a task", async (t) => {
 	const fixture = await mountInteractions(t);
-	const button = fixture.root().querySelector<HTMLButtonElement>(".dateFilter button.todayToggle");
-	const scope = fixture.root().querySelector<HTMLSelectElement>(".dateFilter select.dateScope");
-	assert.ok(button && scope);
-	assert.equal(button.textContent, "Today");
+	const heading = fixture.root().querySelector<HTMLElement>(".todayHeader");
+	const scope = fixture.root().querySelector<HTMLSelectElement>("select.dateScope");
+	assert.ok(heading && scope);
+	assert.equal(heading.textContent, "Focus on today");
 	for (const focused of [true, false]) {
-		await act(() => button.click());
+		await act(() => heading.click());
 		assert.equal(fixture.root().classList.contains("todayFocus"), focused);
-		assert.equal(button.getAttribute("aria-pressed"), String(focused));
-		assert.equal(scope.value, focused ? "today" : "all");
-		assert.deepEqual(fixture.calls.splice(0), [
-			{ handler: "handleFilterEnable", args: [undefined, undefined, [], []] },
-		]);
+		assert.equal(heading.getAttribute("aria-pressed"), String(focused));
+		assert.equal(scope.value, "all");
+		assert.deepEqual(fixture.calls, []);
 	}
 });
 

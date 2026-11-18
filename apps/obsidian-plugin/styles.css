@@ -479,13 +479,9 @@
 }
 
 /* One compact filter row remains available when quick entry is hidden. */
-.taskido .entryControls {
-	container-type: inline-size;
-}
-
 .taskido .quickFilterBar {
 	display: grid;
-	grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.35fr) minmax(0, 1fr);
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);
 	align-items: center;
 	gap: var(--tcw-space-3);
 	margin: 0 var(--tcw-space-3) var(--tcw-space-4);
@@ -494,35 +490,7 @@
 }
 
 .taskido .quickFilterBar:has(.clearFilters) {
-	grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.35fr) minmax(0, 1fr) auto;
-}
-
-.taskido .dateFilter {
-	display: grid;
-	grid-template-columns: auto minmax(0, 1fr);
-	align-items: center;
-	gap: var(--tcw-space-3);
-	min-width: 0;
-}
-
-.taskido .todayToggle {
-	box-sizing: border-box;
-	min-height: var(--tcw-select-height);
-	margin: 0;
-	padding: 0 var(--tcw-space-4);
-	border: var(--tcw-control-border-width, var(--input-border-width)) solid
-		var(--tcw-color-border, var(--background-modifier-border));
-	border-radius: var(--tcw-radius-control);
-	background: var(--tcw-control-bg, var(--interactive-normal));
-	box-shadow: none;
-	font: inherit;
-	color: var(--tcw-color-text, var(--text-normal));
-	cursor: pointer;
-}
-
-.taskido .todayToggle[aria-pressed="true"] {
-	border-color: var(--tcw-color-focus, var(--taskido-color-focus));
-	color: var(--tcw-color-focus, var(--taskido-color-focus));
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr) auto;
 }
 
 .taskido .quickFilterBar > :is(.dateRange, .filterError) {
@@ -794,26 +762,8 @@
 		color: var(--tcw-action-fg, var(--text-on-accent));
 	}
 
-	.taskido .todayToggle:hover {
-		background: var(--tcw-color-hover-bg, var(--background-modifier-hover));
-	}
-
 	.taskido .priorityOptions label:hover {
 		background: var(--tcw-color-hover-bg, var(--background-modifier-hover));
-	}
-}
-
-@container (max-width: 440px) {
-	.taskido .quickFilterBar {
-		grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-	}
-
-	.taskido .quickFilterBar:has(.clearFilters) {
-		grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) auto;
-	}
-
-	.taskido .dateFilter {
-		grid-column: 1 / -1;
 	}
 }
 
@@ -831,8 +781,7 @@
 .is-mobile .taskido .priorityOptions label,
 .is-mobile .taskido .dateRange input,
 .is-mobile .taskido .clearFilters,
-.is-mobile .taskido .applyDateRange,
-.is-mobile .taskido .todayToggle {
+.is-mobile .taskido .applyDateRange {
 	min-height: var(--tcw-touch-target);
 	box-sizing: border-box;
 	display: flex;
@@ -852,8 +801,7 @@
 .is-mobile .taskido .priorityOptions label,
 .is-mobile .taskido .dateRange input,
 .is-mobile .taskido .clearFilters,
-.is-mobile .taskido .applyDateRange,
-.is-mobile .taskido .todayToggle {
+.is-mobile .taskido .applyDateRange {
 	min-width: var(--tcw-touch-target);
 }
 
