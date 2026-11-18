@@ -516,8 +516,9 @@ test("quick-entry due choices survive year remounts and write the selected custo
 	assert.equal(control(opened.container, ".entryMetaReveal").getAttribute("aria-hidden"), "true");
 	await act(() => input().focus());
 	assert.equal(choice().value, "tomorrow");
-	await select(opened, "select.taskDuePreset", "");
+	await select(opened, "select.taskDuePreset", "none");
 	assert.equal(due().value, "", "No date clears the stored due date");
+	assert.equal(choice().value, "none");
 	await select(opened, "select.taskDuePreset", "custom");
 	assert.strictEqual(document.activeElement, due());
 	assert.equal(due().hidden, false);
@@ -543,6 +544,58 @@ test("quick-entry due choices survive year remounts and write the selected custo
 	});
 	assert.match(h.vault.contentOf("Inbox.md") ?? "", /- \[ \] Due draft 📅 2026-02-24/);
 	assert.strictEqual(quickFilter(), filter, "creating the dated task preserves the active priority filter");
+});
+
+test("quick-entry No date removes inline metadata through the real writer and preserves the filter", async (t) => {
+	for (const [style, token] of [
+		["emoji", "📅 2026-01-20"],
+		["dataview", "[due:: 2026-01-20]"],
+	] as const) {
+		for (const route of ["direct", "after Today"] as const) {
+			await t.test(`${style}: ${route}`, async (t) => {
+				const h = pluginHarness(t);
+				const plugin = await h.load({ newDateStyle: style });
+				const opened = await h.command(plugin);
+				writeEntries(h);
+				const filter = await applyFilter(opened);
+				const title = `Cleared capture ${style} ${route}`;
+				const input = control(opened.container, "input.newTask") as HTMLInputElement;
+				await act(() => {
+					input.focus();
+					Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(
+						input,
+						`${title} ${token}`,
+					);
+					input.dispatchEvent(new Event("input", { bubbles: true }));
+				});
+				const choice = control(opened.container, "select.taskDuePreset") as HTMLSelectElement;
+				assert.equal(choice.value, "");
+				if (route === "after Today") {
+					await select(opened, "select.taskDuePreset", "today");
+					assert.equal((control(opened.container, "input.taskDue") as HTMLInputElement).value, "2026-01-15");
+				}
+				await select(opened, "select.taskDuePreset", "none");
+				assert.equal(choice.value, "none");
+				assert.doesNotMatch(
+					h.vault.contentOf("Inbox.md") ?? "",
+					/Cleared capture/,
+					"choosing No date does not write",
+				);
+				await act(async () => {
+					control(opened.container, ".quickEntryPanel button.ok").click();
+					await settle();
+				});
+				const written = (h.vault.contentOf("Inbox.md") ?? "").split("\n").find((line) => line.includes(title));
+				assert.ok(written, "the real plugin writer creates the capture");
+				assert.equal(
+					written.trim(),
+					`- [ ] ${title}`,
+					"the raw inline due date must not return after clearing",
+				);
+				assert.strictEqual(quickFilter(), filter, "clearing and submitting preserve the active filter object");
+			});
+		}
+	}
 });
 
 test("changing an On Load setting leaves open views as they are", async (t) => {

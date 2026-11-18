@@ -20,6 +20,8 @@ export type QuickEntryDraft = {
 	readonly text: string;
 	readonly filePath: string;
 	readonly due: string;
+	/** An explicit clear overrides an inline due field; an untouched empty control preserves it. */
+	readonly clearDue?: boolean;
 	/** Retain an empty custom-date editor across keyed timeline remounts. */
 	readonly customDue?: boolean;
 	/** Keep preset labels current until the timeline's day snapshot catches up with the selection clock. */
@@ -91,9 +93,12 @@ function withPriority(text: string, priority: string, newDateStyle: NewDateStyle
 function taskText(draft: QuickEntryDraft, moment: MomentFactory, newDateStyle: NewDateStyle): string | undefined {
 	let text = withPriority(draft.text.trim(), draft.priority, newDateStyle);
 	if (text === undefined) return undefined;
-	if (draft.due) {
+	if (draft.due || draft.clearDue) {
 		try {
-			const result = setTaskDate(`- [ ] ${text}`, "due", draft.due, { newFieldStyle: newDateStyle, moment });
+			const result = setTaskDate(`- [ ] ${text}`, "due", draft.due || null, {
+				newFieldStyle: newDateStyle,
+				moment,
+			});
 			if (result.kind === "refused") return undefined;
 			if (result.kind === "line") text = result.line.slice(6);
 		} catch {
@@ -125,7 +130,9 @@ export function QuickEntry({
 	const dueChoice = draft.customDue
 		? "custom"
 		: !draft.due
-			? ""
+			? draft.clearDue
+				? "none"
+				: ""
 			: draft.due === dueToday
 				? "today"
 				: dueToday && draft.due === dayKeyAfter(host.moment(dueToday), 1, "days")
@@ -147,8 +154,9 @@ export function QuickEntry({
 	}
 	function changeDue(due: string): void {
 		const current = store.getSnapshot();
-		if (current.due !== due || !current.customDue || current.dueBasis)
-			change({ due, customDue: true, dueBasis: undefined });
+		const clearDue = due === "";
+		if (current.due !== due || Boolean(current.clearDue) !== clearDue || !current.customDue || current.dueBasis)
+			change({ due, clearDue, customDue: true, dueBasis: undefined });
 	}
 	function chooseDue(choice: string): void {
 		if (choice === "custom") {
@@ -160,12 +168,13 @@ export function QuickEntry({
 			const day = dayKey(now);
 			change({
 				due: choice === "today" ? day : dayKeyAfter(now, 1, "days"),
+				clearDue: false,
 				customDue: false,
 				dueBasis: { viewDay: todayKey, day },
 			});
-		} else {
+		} else if (choice === "none") {
 			focusDue.current = false;
-			change({ due: "", customDue: false, dueBasis: undefined });
+			change({ due: "", clearDue: true, customDue: false, dueBasis: undefined });
 		}
 	}
 
@@ -185,6 +194,7 @@ export function QuickEntry({
 					current.text === submitted.text &&
 					current.filePath === submitted.filePath &&
 					current.due === submitted.due &&
+					Boolean(current.clearDue) === Boolean(submitted.clearDue) &&
 					Boolean(current.customDue) === Boolean(submitted.customDue) &&
 					current.priority === submitted.priority;
 				return {
@@ -192,6 +202,7 @@ export function QuickEntry({
 					pending: false,
 					text: added && unchanged ? "" : current.text,
 					due: added && unchanged && current.due === submitted.due ? "" : current.due,
+					clearDue: added && unchanged ? false : current.clearDue,
 					customDue: added && unchanged ? false : current.customDue,
 					dueBasis: added && unchanged ? undefined : current.dueBasis,
 					priority: added && unchanged && current.priority === submitted.priority ? "" : current.priority,
@@ -278,14 +289,16 @@ export function QuickEntry({
 							</select>
 						</label>
 						<div className="entryDue" role="group" aria-label={copy.quickEntry.dueAria}>
-							<span aria-hidden="true">{copy.quickEntry.due}</span>
 							<select
 								className="taskDuePreset"
 								aria-label={copy.quickEntry.dueChoiceAria}
 								value={dueChoice}
 								onChange={(event) => chooseDue(event.currentTarget.value)}
 							>
-								<option value="">{copy.quickEntry.noDate}</option>
+								<option value="" disabled hidden>
+									{copy.quickEntry.due}
+								</option>
+								<option value="none">{copy.quickEntry.noDate}</option>
 								<option value="today">{copy.quickEntry.today}</option>
 								<option value="tomorrow">{copy.quickEntry.tomorrow}</option>
 								<option value="custom">{copy.quickEntry.chooseDate}</option>

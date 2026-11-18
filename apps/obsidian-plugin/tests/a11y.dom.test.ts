@@ -515,11 +515,20 @@ test("quick entry reveals named metadata on focus, retains it within the panel a
 	assert.deepEqual(
 		[...dueChoice.options].map((option) => [option.value, option.textContent]),
 		[
-			["", "No date"],
+			["", "Due"],
+			["none", "No date"],
 			["today", "Today"],
 			["tomorrow", "Tomorrow"],
 			["custom", "Choose date…"],
 		],
+	);
+	assert.equal(dueChoice.value, "", "an untouched Due control has no clearing intent");
+	assert.equal(dueChoice.options[0].disabled, true);
+	assert.equal(dueChoice.options[0].hidden, true);
+	assert.deepEqual(
+		[...dueChoice.options].filter((option) => !option.disabled).map((option) => option.value),
+		["none", "today", "tomorrow", "custom"],
+		"No date remains selectable as the first direct action",
 	);
 	assert.equal(reveal.getAttribute("aria-hidden"), "true");
 	assert.equal(reveal.hasAttribute("inert"), true);

@@ -316,6 +316,26 @@ test("completion preserves the title when creation metadata changes during a pen
 	}
 });
 
+test("a clear-only due change during a pending write preserves the newer draft and its intent", async (t) => {
+	const pending = deferred<boolean>();
+	const entry = entryHarness(t, () => pending.promise);
+	await entry.render();
+	const text = "dated task 📅 2026-01-16";
+	await edit(element(entry.container, ".newTask"), text);
+	await enter(element(entry.container, ".newTask"));
+	assert.equal(entry.createCalls[0][1], text);
+	await changeSelect(element(entry.container, ".taskDuePreset"), "none");
+	await entry.remount();
+	await act(async () => pending.resolve(true));
+	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, text);
+	assert.equal(entry.draft.getSnapshot().due, "");
+	assert.equal(entry.draft.getSnapshot().clearDue, true);
+	await enter(element(entry.container, ".newTask"));
+	assert.equal(entry.createCalls[1][1], "dated task");
+	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, "");
+	assert.equal(entry.draft.getSnapshot().clearDue, false);
+});
+
 test("title, destination and creation metadata survive an explicit remount", async (t) => {
 	const entry = entryHarness(t);
 	await entry.render();
@@ -345,6 +365,94 @@ test("creation controls replace existing date and priority rather than duplicati
 	await changeSelect(element(entry.container, ".taskPriority"), "Lowest");
 	await enter(element(entry.container, ".newTask"));
 	assert.equal(entry.createCalls[1][1], "buy milk [due:: 2026-01-21] [priority:: lowest]");
+});
+
+test("No date removes an inline due field while preserving comments, other metadata and the block ID", async (t) => {
+	for (const style of ["emoji", "dataview"] as const) {
+		for (const todayFirst of [false, true]) {
+			await t.test(`${style}, after Today ${todayFirst}`, async (t) => {
+				const entry = entryHarness(t, undefined, style);
+				await entry.render();
+				const comment = "%% 📅 2040-01-01 [due:: 2040-01-02] %%";
+				const other = style === "emoji" ? "⏳ 2026-01-14 ⏫" : "[scheduled:: 2026-01-14] [priority:: high]";
+				const due = style === "emoji" ? "📅 2026-01-16" : "[due:: 2026-01-16]";
+				await edit(element(entry.container, ".newTask"), `dated task ${comment} ${due} ${other} #work ^dated`);
+				if (todayFirst) await changeSelect(element(entry.container, ".taskDuePreset"), "today");
+				await changeSelect(element(entry.container, ".taskDuePreset"), "none");
+				await entry.remount();
+				await enter(element(entry.container, ".newTask"));
+				assert.equal(entry.createCalls[0][1], `dated task ${comment} ${other} #work ^dated`);
+				assert.equal(
+					entry.draft.getSnapshot().clearDue,
+					false,
+					"an unchanged success resets explicit clear intent",
+				);
+			});
+		}
+	}
+});
+
+test("untouched due controls and opening a custom editor preserve the title's inline date", async (t) => {
+	for (const style of ["emoji", "dataview"] as const) {
+		for (const custom of [false, true]) {
+			await t.test(`${style}, custom ${custom}`, async (t) => {
+				const entry = entryHarness(t, undefined, style);
+				await entry.render();
+				const text = style === "emoji" ? "dated task 📅 2026-01-16" : "dated task [due:: 2026-01-16]";
+				await edit(element(entry.container, ".newTask"), text);
+				if (custom) await changeSelect(element(entry.container, ".taskDuePreset"), "custom");
+				await enter(element(entry.container, ".newTask"));
+				assert.equal(entry.createCalls[0][1], text);
+			});
+		}
+	}
+});
+
+test("custom date clearing removes inline dates and opening custom after No date retains that intent", async (t) => {
+	for (const style of ["emoji", "dataview"] as const) {
+		await t.test(style, async (t) => {
+			const entry = entryHarness(t, undefined, style);
+			await entry.render();
+			const text = style === "emoji" ? "dated task 📅 2026-01-16" : "dated task [due:: 2026-01-16]";
+			await edit(element(entry.container, ".newTask"), text);
+			await changeSelect(element(entry.container, ".taskDuePreset"), "custom");
+			await edit(element(entry.container, ".taskDue"), "");
+			await enter(element(entry.container, ".newTask"));
+			assert.equal(entry.createCalls[0][1], "dated task", "an explicit empty input clears the inline field");
+			await edit(element(entry.container, ".newTask"), text);
+			await changeSelect(element(entry.container, ".taskDuePreset"), "none");
+			await changeSelect(element(entry.container, ".taskDuePreset"), "custom");
+			await enter(element(entry.container, ".newTask"));
+			assert.equal(entry.createCalls[1][1], "dated task", "changing presentation does not revoke No date");
+			await edit(element(entry.container, ".newTask"), text);
+			await changeSelect(element(entry.container, ".taskDuePreset"), "none");
+			await editDue(entry, "2026-01-21");
+			assert.equal(entry.draft.getSnapshot().clearDue, false, "a nonempty custom date replaces clear intent");
+			await edit(element(entry.container, ".taskDue"), "");
+			await enter(element(entry.container, ".newTask"));
+			assert.equal(
+				entry.createCalls[2][1],
+				"dated task",
+				"clearing a populated custom input also clears inline metadata",
+			);
+		});
+	}
+});
+
+test("No date refuses ambiguous or unreadable inline due metadata without losing its clear intent", async (t) => {
+	for (const text of ["dated task 📅 2026-01-16 [due:: 2026-01-17]", "dated task [due:: tomorrow]"]) {
+		await t.test(text, async (t) => {
+			const entry = entryHarness(t);
+			await entry.render();
+			await edit(element(entry.container, ".newTask"), text);
+			await changeSelect(element(entry.container, ".taskDuePreset"), "none");
+			await enter(element(entry.container, ".newTask"));
+			assert.deepEqual(entry.createCalls, []);
+			assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, text);
+			assert.equal(entry.draft.getSnapshot().clearDue, true);
+			assert.match(element(entry.container, '[role="alert"]').textContent!, /cannot be changed safely/);
+		});
+	}
 });
 
 test("ambiguous metadata refuses capture and preserves the complete draft", async (t) => {
@@ -419,7 +527,14 @@ test("due choices set absolute dates without submitting or changing filters", as
 	const due = element<HTMLInputElement>(entry.container, ".taskDue");
 	assert.deepEqual(
 		[...choice.options].map((option) => option.value),
-		["", "today", "tomorrow", "custom"],
+		["", "none", "today", "tomorrow", "custom"],
+	);
+	assert.equal(choice.options[0].textContent, "Due");
+	assert.equal(choice.options[0].disabled, true);
+	assert.equal(choice.options[0].hidden, true);
+	assert.deepEqual(
+		[...choice.options].filter((option) => !option.disabled).map((option) => option.textContent),
+		["No date", "Today", "Tomorrow", "Choose date…"],
 	);
 	assert.equal(choice.value, "");
 	assert.equal(due.hidden, true);
@@ -442,7 +557,8 @@ test("due choices set absolute dates without submitting or changing filters", as
 	await edit(due, "2030-07-04");
 	assert.equal(entry.draft.getSnapshot().due, "2030-07-04");
 	assert.equal(choice.value, "custom");
-	await changeSelect(choice, "");
+	await changeSelect(choice, "none");
+	assert.equal(choice.value, "none");
 	assert.equal(entry.draft.getSnapshot().due, "");
 	assert.equal(entry.draft.getSnapshot().customDue, false);
 	assert.equal(entry.draft.getSnapshot().dueBasis, undefined);
