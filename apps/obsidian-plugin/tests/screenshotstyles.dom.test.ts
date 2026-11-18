@@ -15,7 +15,7 @@ import { FIXTURES } from "./golden-vault";
 const MARKUP = path.join(FIXTURES, "markup");
 
 test("every probe finds an element in some markup golden, except the listed ones", () => {
-	assert.equal(STYLE_PROBES.length, 66);
+	assert.equal(STYLE_PROBES.length, 67);
 	const goldens = readdirSync(MARKUP)
 		.filter((name) => name.endsWith(".html"))
 		.sort()
@@ -62,7 +62,7 @@ test("collectStyles reads the first element in document order and the ::after of
 			rootCustomProperties: ROOT_CUSTOM_PROPERTIES,
 		};
 		const record = collectStyles(arg);
-		assert.equal(STYLE_PROBES.length, 66);
+		assert.equal(STYLE_PROBES.length, 67);
 		assert.deepEqual(Object.keys(record).sort(), STYLE_PROBES.map(({ name }) => name).sort());
 		let strips = 0;
 		for (const probe of STYLE_PROBES) {

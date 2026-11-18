@@ -459,6 +459,8 @@ test("timeline: the stylesheet hides nothing the markup reader does not know of"
 			// Decorative priority chrome is aria-hidden, or is a pseudo-element absent from parsed markup.
 			".taskido .priorityCheck",
 			".taskido .priorityFilter summary::-webkit-details-marker",
+			// The custom date stays mounted for draft continuity; the reader recognizes its hidden attribute.
+			".taskido .entryMeta .taskDue[hidden]",
 			// Settings are outside the timeline's markup.
 			".tasks-calendar-wrapper-settings [hidden]",
 		].sort(),

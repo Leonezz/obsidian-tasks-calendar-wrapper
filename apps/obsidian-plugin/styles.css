@@ -805,7 +805,8 @@
 	color: var(--tcw-color-muted, var(--text-muted));
 }
 
-.taskido .entryMeta label {
+.taskido .entryMeta label,
+.taskido .entryMeta .entryDue {
 	display: flex;
 	align-items: center;
 	gap: var(--tcw-space-3);
@@ -843,6 +844,14 @@
 .taskido .entryMeta .taskDue {
 	width: var(--tcw-date-input-width);
 	flex-shrink: 1;
+}
+
+.taskido .entryMeta .entryDue {
+	flex-wrap: wrap;
+}
+
+.taskido .entryMeta .taskDue[hidden] {
+	display: none;
 }
 
 .taskido .quickFilterBar select option,

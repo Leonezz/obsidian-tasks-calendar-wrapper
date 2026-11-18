@@ -401,6 +401,8 @@ test("capture and progressive metadata retain field affordances and the add acti
 	const metadata = rule(".taskido .entryMeta label");
 	assert.match(metadata.get("border") ?? "", /solid\s+var\(--tcw-color-border,/);
 	assert.equal(metadata.get("border-radius"), "var(--tcw-radius-tool)");
+	assert.match(rule(".taskido .entryMeta .entryDue").get("border") ?? "", /solid\s+var\(--tcw-color-border,/);
+	assert.equal(rule(".taskido .entryMeta .taskDue[hidden]").get("display"), "none");
 	assert.equal(rule(".taskido .t-acc-panel").get("grid-template-rows"), "0fr");
 	assert.equal(rule('.taskido .t-acc[data-open="true"] .t-acc-panel').get("grid-template-rows"), "1fr");
 	assert.equal(rule(".taskido .t-acc-panel-inner").get("overflow"), "hidden");

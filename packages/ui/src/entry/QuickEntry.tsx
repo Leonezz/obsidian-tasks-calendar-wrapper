@@ -2,6 +2,8 @@ import * as React from "react";
 import {
 	copy,
 	createStore,
+	dayKey,
+	dayKeyAfter,
 	expandShortcuts,
 	getFileTitle,
 	setTaskDate,
@@ -18,6 +20,10 @@ export type QuickEntryDraft = {
 	readonly text: string;
 	readonly filePath: string;
 	readonly due: string;
+	/** Retain an empty custom-date editor across keyed timeline remounts. */
+	readonly customDue?: boolean;
+	/** Keep preset labels current until the timeline's day snapshot catches up with the selection clock. */
+	readonly dueBasis?: { readonly viewDay?: string; readonly day: string };
 	readonly priority: string;
 	readonly pending: boolean;
 	readonly error: string;
@@ -43,6 +49,7 @@ type QuickEntryProps = {
 	readonly defaultFile?: string;
 	readonly draft?: Store<QuickEntryDraft>;
 	readonly newDateStyle?: NewDateStyle;
+	readonly todayKey?: string;
 };
 
 const priorityNames = ["Highest", "High", "Medium", "No", "Low", "Lowest"];
@@ -96,7 +103,13 @@ function taskText(draft: QuickEntryDraft, moment: MomentFactory, newDateStyle: N
 	return text;
 }
 
-export function QuickEntry({ taskFiles, defaultFile, draft: suppliedDraft, newDateStyle = "emoji" }: QuickEntryProps) {
+export function QuickEntry({
+	taskFiles,
+	defaultFile,
+	draft: suppliedDraft,
+	newDateStyle = "emoji",
+	todayKey,
+}: QuickEntryProps) {
 	const host = useHost();
 	const callback = React.useContext(QuickEntryHandlerContext);
 	const fallback = React.useRef<Store<QuickEntryDraft>>();
@@ -104,8 +117,25 @@ export function QuickEntry({ taskFiles, defaultFile, draft: suppliedDraft, newDa
 	const store = suppliedDraft ?? fallback.current;
 	const draft = useStore(store);
 	const textInput = React.useRef<HTMLInputElement>(null);
+	const dueInput = React.useRef<HTMLInputElement>(null);
+	const focusDue = React.useRef(false);
 	const composing = React.useRef(false);
 	const [focused, setFocused] = React.useState(false);
+	const dueToday = draft.dueBasis && draft.dueBasis.viewDay === todayKey ? draft.dueBasis.day : todayKey;
+	const dueChoice = draft.customDue
+		? "custom"
+		: !draft.due
+			? ""
+			: draft.due === dueToday
+				? "today"
+				: dueToday && draft.due === dayKeyAfter(host.moment(dueToday), 1, "days")
+					? "tomorrow"
+					: "custom";
+	React.useEffect(() => {
+		if (!focusDue.current || dueChoice !== "custom") return;
+		focusDue.current = false;
+		if (focused) dueInput.current?.focus();
+	}, [draft.customDue, dueChoice, focused]);
 	const filePath = taskFiles.includes(draft.filePath)
 		? draft.filePath
 		: defaultFile && taskFiles.includes(defaultFile)
@@ -116,7 +146,27 @@ export function QuickEntry({ taskFiles, defaultFile, draft: suppliedDraft, newDa
 		store.setState((current) => ({ ...current, ...next, error: "", savedTo: "" }));
 	}
 	function changeDue(due: string): void {
-		if (store.getSnapshot().due !== due) change({ due });
+		const current = store.getSnapshot();
+		if (current.due !== due || !current.customDue || current.dueBasis)
+			change({ due, customDue: true, dueBasis: undefined });
+	}
+	function chooseDue(choice: string): void {
+		if (choice === "custom") {
+			focusDue.current = !store.getSnapshot().customDue;
+			change({ customDue: true, dueBasis: undefined });
+		} else if (choice === "today" || choice === "tomorrow") {
+			focusDue.current = false;
+			const now = host.now();
+			const day = dayKey(now);
+			change({
+				due: choice === "today" ? day : dayKeyAfter(now, 1, "days"),
+				customDue: false,
+				dueBasis: { viewDay: todayKey, day },
+			});
+		} else {
+			focusDue.current = false;
+			change({ due: "", customDue: false, dueBasis: undefined });
+		}
 	}
 
 	async function submit(): Promise<void> {
@@ -135,12 +185,15 @@ export function QuickEntry({ taskFiles, defaultFile, draft: suppliedDraft, newDa
 					current.text === submitted.text &&
 					current.filePath === submitted.filePath &&
 					current.due === submitted.due &&
+					Boolean(current.customDue) === Boolean(submitted.customDue) &&
 					current.priority === submitted.priority;
 				return {
 					...current,
 					pending: false,
 					text: added && unchanged ? "" : current.text,
 					due: added && unchanged && current.due === submitted.due ? "" : current.due,
+					customDue: added && unchanged ? false : current.customDue,
+					dueBasis: added && unchanged ? undefined : current.dueBasis,
 					priority: added && unchanged && current.priority === submitted.priority ? "" : current.priority,
 					savedTo: added ? getFileTitle(filePath) : "",
 				};
@@ -224,17 +277,30 @@ export function QuickEntry({ taskFiles, defaultFile, draft: suppliedDraft, newDa
 								))}
 							</select>
 						</label>
-						<label>
-							{copy.quickEntry.due}
+						<div className="entryDue" role="group" aria-label={copy.quickEntry.dueAria}>
+							<span aria-hidden="true">{copy.quickEntry.due}</span>
+							<select
+								className="taskDuePreset"
+								aria-label={copy.quickEntry.dueChoiceAria}
+								value={dueChoice}
+								onChange={(event) => chooseDue(event.currentTarget.value)}
+							>
+								<option value="">{copy.quickEntry.noDate}</option>
+								<option value="today">{copy.quickEntry.today}</option>
+								<option value="tomorrow">{copy.quickEntry.tomorrow}</option>
+								<option value="custom">{copy.quickEntry.chooseDate}</option>
+							</select>
 							<input
 								className="taskDue"
 								type="date"
+								ref={dueInput}
+								hidden={dueChoice !== "custom"}
 								aria-label={copy.quickEntry.dueAria}
 								value={draft.due}
 								onInput={(event) => changeDue(event.currentTarget.value)}
 								onChange={(event) => changeDue(event.currentTarget.value)}
 							/>
-						</label>
+						</div>
 						<label>
 							<span className="tcw-sr-only">{copy.quickEntry.priority}</span>
 							<select

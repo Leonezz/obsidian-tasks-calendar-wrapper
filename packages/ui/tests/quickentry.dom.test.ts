@@ -84,6 +84,8 @@ function entryHarness(
 	let activeCounter: CounterId | undefined;
 	let key = 0;
 	let nowCalls = 0;
+	let nowDay = "2026-01-15";
+	let todayKey = nowDay;
 	const moment = Object.assign(
 		(value: Parameters<MomentFactory>[0]) => new TestDate(value as string) as unknown as ReturnType<MomentFactory>,
 		{ locale: () => "en" },
@@ -92,7 +94,7 @@ function entryHarness(
 		isMobile: false,
 		now: () => {
 			nowCalls++;
-			return new TestDate("2026-01-15") as unknown as DateValue;
+			return new TestDate(nowDay) as unknown as DateValue;
 		},
 		moment,
 		renderMarkdown: () => assert.fail("quick capture does not render markdown"),
@@ -126,7 +128,7 @@ function entryHarness(
 							tags: ["#work", "#home"],
 							todayFocus,
 							activeCounter,
-							todayKey: "2026-01-15",
+							todayKey,
 						}),
 						createElement(QuickEntry, {
 							applied,
@@ -134,6 +136,7 @@ function entryHarness(
 							draft,
 							key,
 							newDateStyle,
+							todayKey,
 						}),
 					),
 				),
@@ -158,6 +161,14 @@ function entryHarness(
 		filterCalls,
 		counterCalls,
 		nowCalls: () => nowCalls,
+		setClock: (day: string) => {
+			nowDay = day;
+		},
+		setDay: async (day: string) => {
+			nowDay = day;
+			todayKey = day;
+			await act(paint);
+		},
 		todayFocus: () => todayFocus,
 		render: async (filter?: QuickFilter) => {
 			applied = filter;
@@ -192,6 +203,11 @@ async function changeSelect(select: HTMLSelectElement, value: string) {
 		select.value = value;
 		select.dispatchEvent(new Event("change", { bubbles: true }));
 	});
+}
+
+async function editDue(entry: ReturnType<typeof entryHarness>, value: string) {
+	await changeSelect(element(entry.container, ".taskDuePreset"), "custom");
+	await edit(element(entry.container, ".taskDue"), value);
 }
 
 async function enter(input: HTMLInputElement, isComposing = false) {
@@ -278,6 +294,7 @@ test("completion preserves the title when creation metadata changes during a pen
 	for (const [selector, value] of [
 		[".fileSelect", "Inbox.md"],
 		[".taskDue", "2026-01-21"],
+		[".taskDuePreset", "custom"],
 		[".taskPriority", "High"],
 	]) {
 		await t.test(selector, async (t) => {
@@ -288,7 +305,7 @@ test("completion preserves the title when creation metadata changes during a pen
 			await enter(element(entry.container, ".newTask"));
 			const control = element<HTMLInputElement | HTMLSelectElement>(entry.container, selector);
 			if (control instanceof window.HTMLSelectElement) await changeSelect(control, value);
-			else await edit(control, value);
+			else await editDue(entry, value);
 			await act(async () => pending.resolve(true));
 			assert.equal(
 				element<HTMLInputElement>(entry.container, ".newTask").value,
@@ -304,7 +321,7 @@ test("title, destination and creation metadata survive an explicit remount", asy
 	await entry.render();
 	await edit(element(entry.container, "input.newTask"), "write a proposal");
 	await changeSelect(element(entry.container, ".fileSelect"), "Inbox.md");
-	await edit(element(entry.container, ".taskDue"), "2026-01-20");
+	await editDue(entry, "2026-01-20");
 	await changeSelect(element(entry.container, ".taskPriority"), "Highest");
 	await entry.remount();
 	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, "write a proposal");
@@ -319,12 +336,12 @@ test("creation controls replace existing date and priority rather than duplicati
 	const entry = entryHarness(t);
 	await entry.render();
 	await edit(element(entry.container, ".newTask"), "buy milk 📅 2026-01-16 ⏫ #work ^milk");
-	await edit(element(entry.container, ".taskDue"), "2026-01-20");
+	await editDue(entry, "2026-01-20");
 	await changeSelect(element(entry.container, ".taskPriority"), "Low");
 	await enter(element(entry.container, ".newTask"));
 	assert.deepEqual(entry.createCalls, [["Notes/Work.md", "buy milk 📅 2026-01-20 🔽 #work ^milk"]]);
 	await edit(element(entry.container, ".newTask"), "buy milk [due:: 2026-01-16] [priority:: high]");
-	await edit(element(entry.container, ".taskDue"), "2026-01-21");
+	await editDue(entry, "2026-01-21");
 	await changeSelect(element(entry.container, ".taskPriority"), "Lowest");
 	await enter(element(entry.container, ".newTask"));
 	assert.equal(entry.createCalls[1][1], "buy milk [due:: 2026-01-21] [priority:: lowest]");
@@ -345,12 +362,12 @@ test("new metadata follows the configured Dataview style while existing emoji fi
 	const entry = entryHarness(t, undefined, "dataview");
 	await entry.render();
 	await edit(element(entry.container, ".newTask"), "new task");
-	await edit(element(entry.container, ".taskDue"), "2026-01-20");
+	await editDue(entry, "2026-01-20");
 	await changeSelect(element(entry.container, ".taskPriority"), "High");
 	await enter(element(entry.container, ".newTask"));
 	assert.equal(entry.createCalls[0][1], "new task [priority:: high]  [due:: 2026-01-20]");
 	await edit(element(entry.container, ".newTask"), "keep emoji 📅 2026-01-16");
-	await edit(element(entry.container, ".taskDue"), "2026-01-21");
+	await editDue(entry, "2026-01-21");
 	await changeSelect(element(entry.container, ".taskPriority"), "Low");
 	await enter(element(entry.container, ".newTask"));
 	assert.equal(entry.createCalls[1][1], "keep emoji 📅 2026-01-21 🔽");
@@ -359,6 +376,7 @@ test("new metadata follows the configured Dataview style while existing emoji fi
 test("input-only date edits survive another control before the browser commits change", async (t) => {
 	const entry = entryHarness(t);
 	await entry.render();
+	await changeSelect(element(entry.container, ".taskDuePreset"), "custom");
 	const due = element<HTMLInputElement>(entry.container, ".taskDue");
 	await act(() => {
 		due.value = "2026-01-20";
@@ -394,6 +412,164 @@ test("shortcuts read the current clock for each non-composing input, not for ren
 	assert.equal(entry.nowCalls(), 2);
 });
 
+test("due choices set absolute dates without submitting or changing filters", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render({ from: "2026-01-10", to: "2026-01-20", priorities: ["High"], tags: ["#work"] });
+	const choice = element<HTMLSelectElement>(entry.container, ".taskDuePreset");
+	const due = element<HTMLInputElement>(entry.container, ".taskDue");
+	assert.deepEqual(
+		[...choice.options].map((option) => option.value),
+		["", "today", "tomorrow", "custom"],
+	);
+	assert.equal(choice.value, "");
+	assert.equal(due.hidden, true);
+	assert.equal(entry.nowCalls(), 0);
+	await act(() => element<HTMLInputElement>(entry.container, ".newTask").focus());
+	await changeSelect(choice, "today");
+	assert.equal(entry.draft.getSnapshot().due, "2026-01-15");
+	assert.equal(choice.value, "today");
+	assert.equal(due.hidden, true);
+	assert.equal(entry.nowCalls(), 1);
+	await changeSelect(choice, "tomorrow");
+	assert.equal(entry.draft.getSnapshot().due, "2026-01-16");
+	assert.equal(choice.value, "tomorrow");
+	assert.equal(entry.nowCalls(), 2);
+	await changeSelect(choice, "custom");
+	assert.equal(entry.draft.getSnapshot().dueBasis, undefined);
+	assert.equal(due.hidden, false);
+	assert.equal(due.value, "2026-01-16", "custom editing starts from the selected absolute date");
+	assert.equal(document.activeElement, due);
+	await edit(due, "2030-07-04");
+	assert.equal(entry.draft.getSnapshot().due, "2030-07-04");
+	assert.equal(choice.value, "custom");
+	await changeSelect(choice, "");
+	assert.equal(entry.draft.getSnapshot().due, "");
+	assert.equal(entry.draft.getSnapshot().customDue, false);
+	assert.equal(entry.draft.getSnapshot().dueBasis, undefined);
+	assert.equal(due.value, "");
+	assert.equal(due.hidden, true);
+	assert.equal(entry.nowCalls(), 2, "custom editing, clearing and rendering do not read the clock");
+	assert.deepEqual(entry.filterCalls, []);
+	assert.deepEqual(entry.createCalls, []);
+});
+
+test("due shortcuts use the action clock and calendar-day arithmetic across boundaries", async (t) => {
+	for (const [day, tomorrow] of [
+		["2026-01-31", "2026-02-01"],
+		["2026-12-31", "2027-01-01"],
+		["2028-02-28", "2028-02-29"],
+	]) {
+		await t.test(day, async (t) => {
+			const entry = entryHarness(t);
+			await entry.setDay(day);
+			assert.equal(entry.nowCalls(), 0);
+			await changeSelect(element(entry.container, ".taskDuePreset"), "tomorrow");
+			assert.equal(entry.draft.getSnapshot().due, tomorrow);
+			assert.equal(element<HTMLSelectElement>(entry.container, ".taskDuePreset").value, "tomorrow");
+			entry.setClock(tomorrow);
+			await changeSelect(element(entry.container, ".taskDuePreset"), "today");
+			assert.equal(
+				entry.draft.getSnapshot().due,
+				tomorrow,
+				"Today reads the clock at selection, not the render day",
+			);
+			assert.equal(entry.nowCalls(), 2);
+			assert.equal(element<HTMLSelectElement>(entry.container, ".taskDuePreset").value, "today");
+		});
+	}
+});
+
+test("preset labels follow the selection clock through a stale timeline day and keyed remount", async (t) => {
+	const entry = entryHarness(t);
+	await entry.setDay("2026-12-31");
+	entry.setClock("2027-01-01");
+	await changeSelect(element(entry.container, ".taskDuePreset"), "today");
+	const original = element<HTMLSelectElement>(entry.container, ".taskDuePreset");
+	assert.equal(original.value, "today");
+	assert.equal(entry.draft.getSnapshot().due, "2027-01-01");
+	await entry.remount();
+	const remounted = element<HTMLSelectElement>(entry.container, ".taskDuePreset");
+	assert.notEqual(remounted, original);
+	assert.equal(remounted.value, "today");
+	await entry.setDay("2027-01-01");
+	assert.equal(remounted.value, "today");
+	assert.equal(entry.draft.getSnapshot().due, "2027-01-01");
+	await entry.setDay("2027-01-02");
+	assert.equal(remounted.value, "custom");
+	assert.equal(entry.draft.getSnapshot().due, "2027-01-01");
+	assert.equal(entry.nowCalls(), 1);
+});
+
+test("refreshing only a due preset label does not turn an unchanged pending capture into a new draft", async (t) => {
+	const pending = deferred<boolean>();
+	const entry = entryHarness(t, () => pending.promise);
+	await entry.render();
+	await edit(element(entry.container, ".newTask"), "same absolute due date");
+	await changeSelect(element(entry.container, ".taskDuePreset"), "tomorrow");
+	await enter(element(entry.container, ".newTask"));
+	entry.setClock("2026-01-16");
+	await changeSelect(element(entry.container, ".taskDuePreset"), "today");
+	assert.equal(entry.draft.getSnapshot().due, "2026-01-16");
+	assert.equal(element<HTMLSelectElement>(entry.container, ".taskDuePreset").value, "today");
+	await act(async () => pending.resolve(true));
+	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, "");
+	assert.equal(entry.draft.getSnapshot().due, "");
+	assert.equal(entry.draft.getSnapshot().dueBasis, undefined);
+});
+
+test("a changed timeline day updates relative labels without moving the chosen due date", async (t) => {
+	const entry = entryHarness(t);
+	await entry.setDay("2026-12-31");
+	await changeSelect(element(entry.container, ".taskDuePreset"), "tomorrow");
+	await entry.setDay("2027-01-01");
+	assert.equal(entry.draft.getSnapshot().due, "2027-01-01");
+	assert.equal(element<HTMLSelectElement>(entry.container, ".taskDuePreset").value, "today");
+	await entry.setDay("2027-01-02");
+	assert.equal(entry.draft.getSnapshot().due, "2027-01-01");
+	assert.equal(element<HTMLSelectElement>(entry.container, ".taskDuePreset").value, "custom");
+	assert.equal(element<HTMLInputElement>(entry.container, ".taskDue").hidden, false);
+	assert.equal(entry.nowCalls(), 1);
+});
+
+test("empty custom date editing survives a keyed remount and closes only when another choice is made", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render();
+	await changeSelect(element(entry.container, ".taskDuePreset"), "custom");
+	const original = element<HTMLInputElement>(entry.container, ".taskDue");
+	assert.equal(original.value, "");
+	assert.equal(original.hidden, false);
+	await entry.remount();
+	const remounted = element<HTMLInputElement>(entry.container, ".taskDue");
+	assert.notEqual(remounted, original);
+	assert.equal(remounted.value, "");
+	assert.equal(remounted.hidden, false);
+	assert.equal(element<HTMLSelectElement>(entry.container, ".taskDuePreset").value, "custom");
+	await changeSelect(element(entry.container, ".taskDuePreset"), "today");
+	assert.equal(remounted.hidden, true);
+	assert.equal(entry.draft.getSnapshot().customDue, false);
+});
+
+test("due presets are written in the selected metadata format and reset after an unchanged successful capture", async (t) => {
+	for (const style of ["emoji", "dataview"] as const) {
+		await t.test(style, async (t) => {
+			const entry = entryHarness(t, undefined, style);
+			await entry.render();
+			await edit(element(entry.container, ".newTask"), "a dated task");
+			await changeSelect(element(entry.container, ".taskDuePreset"), "tomorrow");
+			await enter(element(entry.container, ".newTask"));
+			assert.equal(
+				entry.createCalls[0][1],
+				style === "emoji" ? "a dated task 📅 2026-01-16" : "a dated task  [due:: 2026-01-16]",
+			);
+			assert.equal(entry.draft.getSnapshot().due, "");
+			assert.equal(entry.draft.getSnapshot().customDue, false);
+			assert.equal(entry.draft.getSnapshot().dueBasis, undefined);
+			assert.equal(element<HTMLSelectElement>(entry.container, ".taskDuePreset").value, "");
+			assert.equal(element<HTMLInputElement>(entry.container, ".taskDue").hidden, true);
+		});
+	}
+});
+
 test("metadata stays open through composer focus changes and collapses without losing selected values", async (t) => {
 	const entry = entryHarness(t);
 	await entry.render();
@@ -421,6 +597,7 @@ test("metadata stays open through composer focus changes and collapses without l
 	);
 	await changeSelect(file, "Inbox.md");
 	assert.equal(document.activeElement, input);
+	await changeSelect(element(entry.container, ".taskDuePreset"), "custom");
 	await act(() => due.focus());
 	await edit(due, "2026-01-20");
 	assert.equal(metadata.getAttribute("aria-hidden"), "false");

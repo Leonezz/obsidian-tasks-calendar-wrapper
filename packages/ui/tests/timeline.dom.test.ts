@@ -312,6 +312,7 @@ test("filter-driven year remounts keep creation metadata, pending state and the 
 		});
 	await edit(original, "first draft");
 	await choose(".fileSelect", "Inbox.md");
+	await choose(".taskDuePreset", "custom");
 	await edit(timeline.container.querySelector<HTMLInputElement>(".taskDue")!, "2026-01-20");
 	await choose(".taskPriority", "High");
 	await timeline.click(".quickEntryPanel button.ok");
@@ -322,6 +323,8 @@ test("filter-driven year remounts keep creation metadata, pending state and the 
 	assert.equal(input().value, "next draft");
 	assert.equal(timeline.container.querySelector<HTMLSelectElement>(".fileSelect")!.value, "Inbox.md");
 	assert.equal(timeline.container.querySelector<HTMLInputElement>(".taskDue")!.value, "2026-01-20");
+	assert.equal(timeline.container.querySelector<HTMLInputElement>(".taskDue")!.hidden, false);
+	assert.equal(timeline.container.querySelector<HTMLSelectElement>(".taskDuePreset")!.value, "custom");
 	assert.equal(timeline.container.querySelector<HTMLSelectElement>(".taskPriority")!.value, "High");
 	assert.equal(timeline.container.querySelector<HTMLButtonElement>("button.ok")!.disabled, true);
 	await act(() => input().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));

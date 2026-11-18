@@ -480,6 +480,71 @@ test("quick entry preserves the quick filter", async (t) => {
 	assert.deepEqual(rows(opened).sort(), ["new task", "visible"]);
 });
 
+test("quick-entry due choices survive year remounts and write the selected custom date", async (t) => {
+	const h = pluginHarness(t, {
+		"Earlier.md": "- [ ] Earlier 📅 2025-12-31",
+		"Inbox.md": "- [ ] Today ⏫ 📅 2026-01-15",
+	});
+	const plugin = await h.load({ forward: false, entryPosition: "today" });
+	const opened = await h.command(plugin);
+	writeEntries(h);
+	const input = () => control(opened.container, "input.newTask") as HTMLInputElement;
+	const due = () => control(opened.container, "input.taskDue") as HTMLInputElement;
+	const choice = () => control(opened.container, "select.taskDuePreset") as HTMLSelectElement;
+	const years = () => [...opened.container.querySelectorAll(".year")].map((year) => year.textContent);
+	const original = input();
+	await act(() => {
+		original.focus();
+		Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(original, "Due draft");
+		original.dispatchEvent(new Event("input", { bubbles: true }));
+	});
+	await select(opened, "select.taskDuePreset", "today");
+	assert.equal(due().value, "2026-01-15");
+	assert.equal(due().hidden, true);
+	assert.equal(choice().value, "today");
+	await click(opened, ".priorityFilter summary");
+	await click(opened, '.priorityOptions input[value="High"]');
+	assert.deepEqual(years(), ["2026"]);
+	assert.notStrictEqual(input(), original, "the first priority really remounts the composer under another year");
+	assert.equal(input().value, "Due draft");
+	assert.equal(choice().value, "today");
+	assert.equal(due().value, "2026-01-15", "Today is retained as an absolute due date");
+	await act(() => input().focus());
+	await select(opened, "select.taskDuePreset", "tomorrow");
+	assert.equal(due().value, "2026-01-16");
+	await act(() => control(opened.container, ".todayHeader").focus());
+	assert.equal(control(opened.container, ".entryMetaReveal").getAttribute("aria-hidden"), "true");
+	await act(() => input().focus());
+	assert.equal(choice().value, "tomorrow");
+	await select(opened, "select.taskDuePreset", "");
+	assert.equal(due().value, "", "No date clears the stored due date");
+	await select(opened, "select.taskDuePreset", "custom");
+	assert.strictEqual(document.activeElement, due());
+	assert.equal(due().hidden, false);
+	await act(() => {
+		Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(due(), "2026-02-24");
+		due().dispatchEvent(new Event("input", { bubbles: true }));
+	});
+	const beforeSecondRemount = input();
+	await click(opened, ".priorityFilter summary");
+	await click(opened, '.priorityOptions input[value="No"]');
+	assert.deepEqual(years(), ["2025", "2026"]);
+	assert.notStrictEqual(input(), beforeSecondRemount, "restoring the earlier year remounts the composer again");
+	await act(() => input().focus());
+	assert.equal(choice().value, "custom");
+	assert.equal(due().hidden, false);
+	assert.equal(due().value, "2026-02-24");
+	assert.equal(input().value, "Due draft");
+	assert.doesNotMatch(h.vault.contentOf("Inbox.md") ?? "", /Due draft/, "choosing due dates never writes a task");
+	const filter = quickFilter();
+	await act(async () => {
+		control(opened.container, ".quickEntryPanel button.ok").click();
+		await settle();
+	});
+	assert.match(h.vault.contentOf("Inbox.md") ?? "", /- \[ \] Due draft 📅 2026-02-24/);
+	assert.strictEqual(quickFilter(), filter, "creating the dated task preserves the active priority filter");
+});
+
 test("changing an On Load setting leaves open views as they are", async (t) => {
 	const h = pluginHarness(t);
 	const plugin = await h.load();

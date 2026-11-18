@@ -84,6 +84,7 @@ function EntryFilters({ entry }: { readonly entry: EntryProps }) {
 				draft={entry.draft}
 				defaultFile={entry.defaultFile}
 				newDateStyle={entry.newDateStyle}
+				todayKey={entry.todayKey}
 			/>
 		</div>
 	);

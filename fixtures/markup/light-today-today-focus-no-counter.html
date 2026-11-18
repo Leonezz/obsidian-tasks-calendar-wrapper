@@ -168,10 +168,26 @@
                       </option>
                     </select>
                   </label>
-                  <label>
-                    Due
-                    <input aria-label="Due date for the new task" class="taskDue" type="date" value="">
-                  </label>
+                  <div aria-label="Due date for the new task" class="entryDue" role="group">
+                    <span aria-hidden="true">
+                      Due
+                    </span>
+                    <select aria-label="Choose a due date" class="taskDuePreset">
+                      <option value="">
+                        No date
+                      </option>
+                      <option value="today">
+                        Today
+                      </option>
+                      <option value="tomorrow">
+                        Tomorrow
+                      </option>
+                      <option value="custom">
+                        Choose date…
+                      </option>
+                    </select>
+                    <input aria-label="Due date for the new task" class="taskDue" hidden="" type="date" value="">
+                  </div>
                   <label>
                     <span class="tcw-sr-only">
                       Priority

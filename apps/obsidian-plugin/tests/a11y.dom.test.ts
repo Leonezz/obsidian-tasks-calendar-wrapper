@@ -505,10 +505,22 @@ test("quick entry reveals named metadata on focus, retains it within the panel a
 	const metadata = get(panel, ".entryMeta");
 	const reveal = get(panel, ".entryMetaReveal");
 	const input = get(panel, "input.newTask") as HTMLInputElement;
+	const dueChoice = get(metadata, "select.taskDuePreset") as HTMLSelectElement;
 	const due = get(metadata, "input.taskDue") as HTMLInputElement;
 	const priority = get(metadata, "select.taskPriority") as HTMLSelectElement;
 	const controls = all(metadata, "select, input");
-	assert.equal(controls.length, 3);
+	assert.equal(controls.length, 4);
+	assert.equal(get(metadata, ".entryDue").getAttribute("role"), "group");
+	assert.equal(dueChoice.getAttribute("aria-label"), "Choose a due date");
+	assert.deepEqual(
+		[...dueChoice.options].map((option) => [option.value, option.textContent]),
+		[
+			["", "No date"],
+			["today", "Today"],
+			["tomorrow", "Tomorrow"],
+			["custom", "Choose date…"],
+		],
+	);
 	assert.equal(reveal.getAttribute("aria-hidden"), "true");
 	assert.equal(reveal.hasAttribute("inert"), true);
 	assert.ok(controls.every((control) => !tabOrder(root).includes(control)));
@@ -517,8 +529,16 @@ test("quick entry reveals named metadata on focus, retains it within the panel a
 	assert.equal(reveal.getAttribute("aria-hidden"), "false");
 	assert.equal(reveal.hasAttribute("inert"), false);
 	assert.ok(panel.classList.contains("focus"));
-	assert.ok(controls.every((control) => tabOrder(root).includes(control)));
+	assert.equal(due.hidden, true);
+	assert.ok(!tabOrder(root).includes(due), "the custom date is outside Tab order until requested");
+	assert.ok(controls.filter((control) => control !== due).every((control) => tabOrder(root).includes(control)));
 	assertNames(root, "expanded quick entry");
+	await act(() => {
+		dueChoice.value = "custom";
+		dueChoice.dispatchEvent(new Event("change", { bubbles: true }));
+	});
+	assert.equal(due.hidden, false);
+	assert.strictEqual(document.activeElement, due, "Choose date moves keyboard access to the native date field");
 	await act(() => {
 		const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
 		setter.call(input, "Keep the draft");

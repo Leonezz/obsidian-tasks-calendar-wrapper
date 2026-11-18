@@ -64,6 +64,7 @@ export const STYLE_PROBES = Object.freeze(
 		".quickEntryPanel .fileSelect",
 		".quickEntryPanel .newTask",
 		".quickEntryPanel .ok",
+		".quickEntryPanel .taskDuePreset",
 		".quickEntryPanel .taskDue",
 		".quickEntryPanel .taskPriority",
 		'.task[aria-busy="true"]',

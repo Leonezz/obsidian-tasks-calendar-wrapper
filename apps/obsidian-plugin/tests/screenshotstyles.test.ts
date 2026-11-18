@@ -121,6 +121,7 @@ test("the probes have unique names and the properties are the fixed list", () =>
 			".quickEntryPanel .fileSelect",
 			".quickEntryPanel .newTask",
 			".quickEntryPanel .ok",
+			".quickEntryPanel .taskDuePreset",
 			".quickEntryPanel .taskDue",
 			".quickEntryPanel .taskPriority",
 			'.task[aria-busy="true"]',
@@ -129,8 +130,8 @@ test("the probes have unique names and the properties are the fixed list", () =>
 			'.task[aria-busy="true"] .timeline .icon svg',
 		],
 	);
-	assert.equal(STYLE_PROBES.length, 66);
-	assert.equal(new Set(STYLE_PROBES.map(({ name }) => name)).size, 66);
+	assert.equal(STYLE_PROBES.length, 67);
+	assert.equal(new Set(STYLE_PROBES.map(({ name }) => name)).size, 67);
 	assert.deepEqual(STYLE_PROBES[0], { name: ".taskido", selector: ".taskido" });
 	for (const probe of STYLE_PROBES) assert.equal(probe.name, probe.selector + (probe.pseudo ?? ""));
 	assert.deepEqual(
