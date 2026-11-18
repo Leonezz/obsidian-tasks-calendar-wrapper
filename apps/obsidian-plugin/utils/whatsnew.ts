@@ -15,6 +15,18 @@ export interface SupportLink {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
 	{
+		version: "0.4.0-beta.5",
+		items: [
+			"Date, tag and priority filters now sit above quick entry, under the status cards. Date ranges can be used independently of Focus on today.",
+			"Focus quick entry to see its note, due date and priority options. Moving outside the entry area hides them.",
+			"Choose Today, Tomorrow or a custom due date for a new task, or use No date to remove a due date already in its text. New date and priority values follow your Emoji or Dataview setting.",
+			"Draft text and options survive filter changes. Adding a task keeps your filters, and edits made while an earlier task is being saved are kept.",
+			"Filter by several tags at once: tasks matching any selected tag are shown. Suggestions keep earlier tags and replace only the tag at the cursor.",
+			"The priority menu marks selected levels, stays within the pane and can be closed with Escape.",
+			"Quick entry options and the priority menu open and close smoothly, following your device's setting to reduce motion.",
+		],
+	},
+	{
 		version: "0.4.0-beta.4",
 		items: [
 			"Settings are grouped into Sources, Display, New tasks and Advanced. Live settings update open timelines after a short typing pause; settings used only when opening a timeline or starting Obsidian say so.",
