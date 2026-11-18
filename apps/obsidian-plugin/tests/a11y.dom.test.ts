@@ -40,7 +40,7 @@ const rows = (root: ParentNode) => all(root, ".task");
 const eligibleRows = (root: HTMLElement) =>
 	rows(root).filter((row) => !root.classList.contains("todayFocus") || row.closest(".details.today"));
 const exposedControl = (el: HTMLElement) => {
-	if (el.closest("[hidden]")) return false;
+	if (el.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
 	const details = el.closest("details:not([open])");
 	return !details || el === details.querySelector("summary");
 };
@@ -462,7 +462,7 @@ test("Tab order follows the DOM: Today heading, counters, filters, quick entry, 
 	const root = fixture.root();
 	const stop = defaultStop(root)!;
 	const panel = get(root, ".quickEntryPanel");
-	const metadata = get(panel, ".entryMeta");
+	const metadata = get(panel, ".entryMetaReveal");
 	const expected = () => [
 		get(root, ".todayHeader"),
 		...all(root, ".counter"),
@@ -477,14 +477,16 @@ test("Tab order follows the DOM: Today heading, counters, filters, quick entry, 
 		all(root, "*").every((el) => el.tabIndex <= 0),
 		"no positive tabIndex changes DOM order",
 	);
-	assert.equal(metadata.hidden, true);
+	assert.equal(metadata.getAttribute("aria-hidden"), "true");
+	assert.equal(metadata.hasAttribute("inert"), true);
 	for (const [state, target] of [
 		["collapsed", undefined],
 		["expanded", get(panel, "input.newTask")],
 		["collapsed after external focus", get(root, ".todayHeader")],
 	] as const) {
 		if (target) await focus(target);
-		assert.equal(metadata.hidden, state !== "expanded", state);
+		assert.equal(metadata.getAttribute("aria-hidden"), String(state !== "expanded"), state);
+		assert.equal(metadata.hasAttribute("inert"), state !== "expanded", state);
 		assert.deepEqual(
 			tabOrder(root).map(describe),
 			expected().map(describe),
@@ -501,16 +503,19 @@ test("quick entry reveals named metadata on focus, retains it within the panel a
 	const root = get(fixture.container, ".taskido");
 	const panel = get(root, ".quickEntryPanel");
 	const metadata = get(panel, ".entryMeta");
+	const reveal = get(panel, ".entryMetaReveal");
 	const input = get(panel, "input.newTask") as HTMLInputElement;
 	const due = get(metadata, "input.taskDue") as HTMLInputElement;
 	const priority = get(metadata, "select.taskPriority") as HTMLSelectElement;
 	const controls = all(metadata, "select, input");
 	assert.equal(controls.length, 3);
-	assert.equal(metadata.hidden, true);
+	assert.equal(reveal.getAttribute("aria-hidden"), "true");
+	assert.equal(reveal.hasAttribute("inert"), true);
 	assert.ok(controls.every((control) => !tabOrder(root).includes(control)));
 	assertNames(root, "collapsed quick entry");
 	await focus(input);
-	assert.equal(metadata.hidden, false);
+	assert.equal(reveal.getAttribute("aria-hidden"), "false");
+	assert.equal(reveal.hasAttribute("inert"), false);
 	assert.ok(panel.classList.contains("focus"));
 	assert.ok(controls.every((control) => tabOrder(root).includes(control)));
 	assertNames(root, "expanded quick entry");
@@ -526,18 +531,21 @@ test("quick entry reveals named metadata on focus, retains it within the panel a
 	for (const control of [...controls, get(panel, "button.ok"), input]) {
 		await focus(control);
 		assert.strictEqual(document.activeElement, control);
-		assert.equal(metadata.hidden, false, `${describe(control)} keeps metadata expanded`);
+		assert.equal(reveal.getAttribute("aria-hidden"), "false", `${describe(control)} keeps metadata expanded`);
+		assert.equal(reveal.hasAttribute("inert"), false);
 		assert.ok(panel.classList.contains("focus"));
 	}
 	await focus(get(root, ".todayHeader"));
-	assert.equal(metadata.hidden, true);
+	assert.equal(reveal.getAttribute("aria-hidden"), "true");
+	assert.equal(reveal.hasAttribute("inert"), true);
 	assert.ok(!panel.classList.contains("focus"));
 	assert.ok(controls.every((control) => !tabOrder(root).includes(control)));
 	assert.equal(input.value, "Keep the draft");
 	assert.equal(due.value, "2026-01-20");
 	assert.equal(priority.value, "High");
 	await focus(input);
-	assert.equal(metadata.hidden, false);
+	assert.equal(reveal.getAttribute("aria-hidden"), "false");
+	assert.equal(reveal.hasAttribute("inert"), false);
 	assert.strictEqual(get(panel, ".entryMeta"), metadata, "the same metadata controls are retained");
 	assert.equal(fixture.write.mock.callCount(), 0, "focus changes never submit the task");
 });

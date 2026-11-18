@@ -2,8 +2,9 @@
  * Reads the timeline's server-rendered markup the way scripts/screenshots.mjs read the DOM: one line per displayed
  * year, entry panel element, date and task, in document order (see visible-states.ts). What is displayed is worked out
  * from the stylesheet's rules that hide those elements, applied to the markup's classes: the options that turn the
- * year headers, the counters and the quick entry off. Nothing else in styles.css hides them. A task is highlighted
- * when the Focus behaviour's rule gives it a background.
+ * year headers, the counters and the quick entry off. Hidden, inert and aria-hidden subtrees are omitted immediately,
+ * including decorative controls that can remain painted during an exit transition. A task is highlighted when the
+ * Focus behaviour's rule gives it a background.
  */
 import assert from "node:assert/strict";
 
@@ -109,7 +110,13 @@ export function displayedLines(html: string): Line[] {
 	const lines: Line[] = [];
 	const walk = (element: Element) => {
 		const classes = classesOf(element);
-		if (hides(classes)) return;
+		if (
+			hides(classes) ||
+			"hidden" in element.attrs ||
+			"inert" in element.attrs ||
+			element.attrs["aria-hidden"] === "true"
+		)
+			return;
 		if (classes.includes("year")) lines.push({ line: `year ${textOf(element)}` });
 		else if (classes.includes("todayHeader")) lines.push({ line: `today header "${textOf(element)}"` });
 		else if (classes.includes("counter")) lines.push({ line: `counter ${textOf(element)}` });

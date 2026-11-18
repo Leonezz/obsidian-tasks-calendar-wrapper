@@ -1495,19 +1495,19 @@
             <div class="tagFilterBar">
               <input aria-label="Filter by tags" placeholder="Tags: #work #home" type="search" value="">
             </div>
-            <details class="priorityFilter">
-              <summary aria-label="Filter by priority" data-active="false">
+            <details class="priorityFilter t-acc" data-open="false">
+              <summary aria-expanded="false" aria-label="Filter by priority" data-active="false">
                 <span class="prioritySummary">
                   Priority
                 </span>
-                <span aria-hidden="true" class="priorityChevron">
+                <span aria-hidden="true" class="priorityChevron t-acc-chevron">
                   <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
                     <path d="m6 9 6 6 6-6">
                     </path>
                   </svg>
                 </span>
               </summary>
-              <div aria-label="Filter by priority" class="priorityOptions" role="group">
+              <div aria-hidden="true" aria-label="Filter by priority" class="priorityOptions t-dropdown" data-origin="top-right" inert="" role="group">
                 <label class="priorityOption" data-selected="false">
                   <input type="checkbox" value="Highest">
                   <span class="priorityOptionLabel">
@@ -1586,7 +1586,7 @@
               Clear
             </button>
           </div>
-          <div class="quickEntryPanel">
+          <div class="quickEntryPanel t-acc" data-open="false">
             <div class="entryMain">
               <span aria-hidden="true" class="entryPlus">
                 +
@@ -1596,50 +1596,54 @@
                 Add
               </button>
             </div>
-            <div class="entryMeta" hidden="">
-              <label>
-                Save to
-                <select aria-label="Select a note for the new task" class="fileSelect">
-                  <option value="Inbox.md">
-                    Inbox
-                  </option>
-                  <option value="2026, January 15 - Thursday.md">
-                    2026, January 15 - Thursday
-                  </option>
-                </select>
-              </label>
-              <label>
-                Due
-                <input aria-label="Due date for the new task" class="taskDue" type="date" value="">
-              </label>
-              <label>
-                <span class="tcw-sr-only">
-                  Priority
-                </span>
-                <select aria-label="Priority for the new task" class="taskPriority">
-                  <option value="">
-                    Priority
-                  </option>
-                  <option value="Highest">
-                    Highest
-                  </option>
-                  <option value="High">
-                    High
-                  </option>
-                  <option value="Medium">
-                    Medium
-                  </option>
-                  <option value="No">
-                    None
-                  </option>
-                  <option value="Low">
-                    Low
-                  </option>
-                  <option value="Lowest">
-                    Lowest
-                  </option>
-                </select>
-              </label>
+            <div aria-hidden="true" class="entryMetaReveal t-acc-panel" inert="">
+              <div class="t-acc-panel-inner">
+                <div class="entryMeta">
+                  <label>
+                    Save to
+                    <select aria-label="Select a note for the new task" class="fileSelect">
+                      <option value="Inbox.md">
+                        Inbox
+                      </option>
+                      <option value="2026, January 15 - Thursday.md">
+                        2026, January 15 - Thursday
+                      </option>
+                    </select>
+                  </label>
+                  <label>
+                    Due
+                    <input aria-label="Due date for the new task" class="taskDue" type="date" value="">
+                  </label>
+                  <label>
+                    <span class="tcw-sr-only">
+                      Priority
+                    </span>
+                    <select aria-label="Priority for the new task" class="taskPriority">
+                      <option value="">
+                        Priority
+                      </option>
+                      <option value="Highest">
+                        Highest
+                      </option>
+                      <option value="High">
+                        High
+                      </option>
+                      <option value="Medium">
+                        Medium
+                      </option>
+                      <option value="No">
+                        None
+                      </option>
+                      <option value="Low">
+                        Low
+                      </option>
+                      <option value="Lowest">
+                        Lowest
+                      </option>
+                    </select>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         </div>

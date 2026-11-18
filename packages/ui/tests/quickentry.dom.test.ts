@@ -152,6 +152,7 @@ function entryHarness(
 	};
 	return {
 		container,
+		unmount: async () => act(() => root.render(null)),
 		draft,
 		createCalls,
 		filterCalls,
@@ -397,39 +398,53 @@ test("metadata stays open through composer focus changes and collapses without l
 	const entry = entryHarness(t);
 	await entry.render();
 	const panel = element<HTMLElement>(entry.container, ".quickEntryPanel");
-	const metadata = element<HTMLElement>(entry.container, ".entryMeta");
+	const metadata = element<HTMLElement>(entry.container, ".entryMetaReveal");
 	const input = element<HTMLInputElement>(entry.container, ".newTask");
 	const file = element<HTMLSelectElement>(entry.container, ".fileSelect");
 	const due = element<HTMLInputElement>(entry.container, ".taskDue");
 	const priority = element<HTMLSelectElement>(entry.container, ".taskPriority");
 	const add = element<HTMLButtonElement>(entry.container, "button.ok");
-	assert.equal(metadata.hidden, true, "the idle composer exposes only the task title and Add");
+	assert.equal(metadata.getAttribute("aria-hidden"), "true", "the idle composer exposes only the task title and Add");
+	assert.equal(metadata.hasAttribute("inert"), true);
+	assert.equal(panel.dataset.open, "false");
 	await act(() => input.focus());
-	assert.equal(panel.className, "quickEntryPanel focus");
-	assert.equal(metadata.hidden, false);
+	assert.equal(panel.className, "quickEntryPanel t-acc focus");
+	assert.equal(metadata.getAttribute("aria-hidden"), "false");
+	assert.equal(metadata.hasAttribute("inert"), false);
+	assert.equal(panel.dataset.open, "true");
 	await edit(input, "buy milk");
 	await act(() => file.focus());
-	assert.equal(metadata.hidden, false, "moving keyboard focus to metadata keeps the controls available");
+	assert.equal(
+		metadata.getAttribute("aria-hidden"),
+		"false",
+		"moving keyboard focus to metadata keeps the controls available",
+	);
 	await changeSelect(file, "Inbox.md");
 	assert.equal(document.activeElement, input);
 	await act(() => due.focus());
 	await edit(due, "2026-01-20");
-	assert.equal(metadata.hidden, false);
+	assert.equal(metadata.getAttribute("aria-hidden"), "false");
 	await act(() => priority.focus());
 	await changeSelect(priority, "High");
-	assert.equal(metadata.hidden, false);
+	assert.equal(metadata.getAttribute("aria-hidden"), "false");
 	await act(() => add.focus());
-	assert.equal(metadata.hidden, false, "moving from metadata to Add retains the expanded composer");
-	assert.equal(panel.className, "quickEntryPanel focus");
+	assert.equal(
+		metadata.getAttribute("aria-hidden"),
+		"false",
+		"moving from metadata to Add retains the expanded composer",
+	);
+	assert.equal(panel.className, "quickEntryPanel t-acc focus");
 	await act(() => element<HTMLInputElement>(entry.container, ".tagFilterBar input").focus());
-	assert.equal(metadata.hidden, true, "focus leaving the entire composer hides its options");
-	assert.equal(panel.className, "quickEntryPanel");
+	assert.equal(metadata.getAttribute("aria-hidden"), "true", "focus leaving the entire composer hides its options");
+	assert.equal(panel.className, "quickEntryPanel t-acc");
+	assert.equal(metadata.hasAttribute("inert"), true);
+	assert.equal(panel.dataset.open, "false");
 	assert.equal(input.value, "buy milk");
 	assert.equal(file.value, "Inbox.md");
 	assert.equal(due.value, "2026-01-20");
 	assert.equal(priority.value, "High");
 	await act(() => input.focus());
-	assert.equal(metadata.hidden, false);
+	assert.equal(metadata.getAttribute("aria-hidden"), "false");
 	assert.equal(file.value, "Inbox.md");
 	assert.equal(due.value, "2026-01-20");
 	assert.equal(priority.value, "High");
@@ -438,7 +453,11 @@ test("metadata stays open through composer focus changes and collapses without l
 		add.click();
 	});
 	assert.deepEqual(entry.createCalls, [["Inbox.md", "buy milk ⏫ 📅 2026-01-20"]]);
-	assert.equal(metadata.hidden, false, "Add remains actionable while focus moves from the task input");
+	assert.equal(
+		metadata.getAttribute("aria-hidden"),
+		"false",
+		"Add remains actionable while focus moves from the task input",
+	);
 	assert.equal(input.value, "");
 });
 
@@ -531,6 +550,106 @@ test("closed priority popup leaves placement untouched and removes its open geom
 	await act(() => entry.trigger.click());
 	assert.equal(entry.options.hasAttribute("data-placement"), false);
 	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), "");
+});
+
+async function priorityMotionHarness(t: TestContext) {
+	const entry = await priorityPlacementHarness(t, 40, 300, 250);
+	entry.options.style.setProperty("--tcw-dropdown-close-dur", "0.15s");
+	let reduced = false;
+	const preference = new window.EventTarget() as MediaQueryList;
+	Object.defineProperty(preference, "matches", { get: () => reduced });
+	const originalMatchMedia = Object.getOwnPropertyDescriptor(window, "matchMedia");
+	Object.defineProperty(window, "matchMedia", { configurable: true, value: () => preference });
+	t.after(() => {
+		if (originalMatchMedia) Object.defineProperty(window, "matchMedia", originalMatchMedia);
+		else Reflect.deleteProperty(window, "matchMedia");
+	});
+	const timers = new Map<number, { delay: number; callback: () => void }>();
+	let nextId = 1;
+	t.mock.method(window, "setTimeout", (callback: TimerHandler, delay = 0) => {
+		assert.equal(typeof callback, "function");
+		const id = nextId++;
+		timers.set(id, { delay, callback: callback as () => void });
+		return id;
+	});
+	t.mock.method(window, "clearTimeout", (id: number) => timers.delete(id));
+	return {
+		...entry,
+		timers,
+		reduce: (value: boolean) => {
+			reduced = value;
+			preference.dispatchEvent(new Event("change"));
+		},
+		finish: () => {
+			const [id, timer] = [...timers][0];
+			timers.delete(id);
+			timer.callback();
+		},
+	};
+}
+
+test("priority close excludes its controls immediately while retaining its positioned surface for the CSS exit", async (t) => {
+	const entry = await priorityMotionHarness(t);
+	await act(() => entry.trigger.click());
+	assert.equal(entry.options.classList.contains("is-open"), true);
+	assert.equal(entry.options.getAttribute("aria-hidden"), "false");
+	assert.equal(entry.options.hasAttribute("inert"), false);
+	assert.equal(entry.options.dataset.origin, "bottom-right");
+	const placement = entry.options.style.getPropertyValue("--tcw-priority-menu-max-height");
+	await act(() => {
+		entry.trigger.focus();
+		entry.trigger.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+	});
+	assert.equal(entry.trigger.getAttribute("aria-expanded"), "false");
+	assert.equal(entry.details.dataset.open, "false");
+	assert.equal(entry.options.getAttribute("aria-hidden"), "true");
+	assert.equal(entry.options.hasAttribute("inert"), true);
+	assert.equal(document.activeElement, entry.trigger);
+	assert.equal(entry.options.classList.contains("is-closing"), true);
+	assert.equal(entry.details.open, true, "only visual presence waits for the exit");
+	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), placement);
+	assert.deepEqual(
+		[...entry.timers.values()].map((timer) => timer.delay),
+		[150],
+	);
+	await act(entry.finish);
+	assert.equal(entry.details.open, false);
+	assert.equal(entry.options.classList.contains("is-closing"), false);
+	assert.equal(entry.options.hasAttribute("data-placement"), false);
+});
+
+test("reopening a fading priority popup cancels its dismissal, and unmount cancels pending cleanup", async (t) => {
+	const entry = await priorityMotionHarness(t);
+	await act(() => entry.trigger.click());
+	await act(() => entry.trigger.click());
+	assert.equal(entry.timers.size, 1);
+	await act(() => entry.trigger.click());
+	assert.equal(entry.timers.size, 0);
+	assert.equal(entry.details.open, true);
+	assert.equal(entry.trigger.getAttribute("aria-expanded"), "true");
+	assert.equal(entry.options.classList.contains("is-open"), true);
+	assert.equal(entry.options.hasAttribute("inert"), false);
+	await act(() => entry.trigger.click());
+	assert.equal(entry.timers.size, 1);
+	await entry.unmount();
+	assert.equal(entry.timers.size, 0);
+});
+
+test("reduced motion skips exit presence and finishes an exit when the preference changes", async (t) => {
+	const entry = await priorityMotionHarness(t);
+	entry.reduce(true);
+	await act(() => entry.trigger.click());
+	await act(() => entry.trigger.click());
+	assert.equal(entry.details.open, false);
+	assert.equal(entry.timers.size, 0);
+	entry.reduce(false);
+	await act(() => entry.trigger.click());
+	await act(() => entry.trigger.click());
+	assert.equal(entry.details.open, true);
+	assert.equal(entry.timers.size, 1);
+	await act(() => entry.reduce(true));
+	assert.equal(entry.details.open, false);
+	assert.equal(entry.timers.size, 0);
 });
 
 test("date presets preserve other dimensions and Next 7 days keeps its selected label", async (t) => {

@@ -152,7 +152,8 @@ export function QuickEntry({ taskFiles, defaultFile, draft: suppliedDraft, newDa
 
 	return (
 		<div
-			className={focused ? "quickEntryPanel focus" : "quickEntryPanel"}
+			className={focused ? "quickEntryPanel t-acc focus" : "quickEntryPanel t-acc"}
+			data-open={focused}
 			onFocusCapture={() => setFocused(true)}
 			onBlurCapture={(event) => {
 				if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
@@ -202,52 +203,56 @@ export function QuickEntry({ taskFiles, defaultFile, draft: suppliedDraft, newDa
 					{copy.quickEntry.add}
 				</button>
 			</div>
-			<div className="entryMeta" hidden={!focused}>
-				<label>
-					{copy.quickEntry.saveTo}
-					<select
-						className="fileSelect"
-						aria-label={copy.quickEntry.selectNoteAria}
-						value={filePath}
-						onChange={(event) => {
-							change({ filePath: event.target.value });
-							textInput.current?.focus();
-						}}
-					>
-						{taskFiles.map((file) => (
-							<option value={file} key={file}>
-								{file.replace(/\.md$/i, "")}
-							</option>
-						))}
-					</select>
-				</label>
-				<label>
-					{copy.quickEntry.due}
-					<input
-						className="taskDue"
-						type="date"
-						aria-label={copy.quickEntry.dueAria}
-						value={draft.due}
-						onInput={(event) => changeDue(event.currentTarget.value)}
-						onChange={(event) => changeDue(event.currentTarget.value)}
-					/>
-				</label>
-				<label>
-					<span className="tcw-sr-only">{copy.quickEntry.priority}</span>
-					<select
-						className="taskPriority"
-						aria-label={copy.quickEntry.taskPriorityAria}
-						value={draft.priority}
-						onChange={(event) => change({ priority: event.target.value })}
-					>
-						<option value="">{copy.quickEntry.priority}</option>
-						{priorityNames.map((priority) => (
-							<option value={priority} key={priority}>
-								{priorityText(priority)}
-							</option>
-						))}
-					</select>
-				</label>
+			<div className="entryMetaReveal t-acc-panel" aria-hidden={!focused} {...(!focused ? { inert: "" } : {})}>
+				<div className="t-acc-panel-inner">
+					<div className="entryMeta">
+						<label>
+							{copy.quickEntry.saveTo}
+							<select
+								className="fileSelect"
+								aria-label={copy.quickEntry.selectNoteAria}
+								value={filePath}
+								onChange={(event) => {
+									change({ filePath: event.target.value });
+									textInput.current?.focus();
+								}}
+							>
+								{taskFiles.map((file) => (
+									<option value={file} key={file}>
+										{file.replace(/\.md$/i, "")}
+									</option>
+								))}
+							</select>
+						</label>
+						<label>
+							{copy.quickEntry.due}
+							<input
+								className="taskDue"
+								type="date"
+								aria-label={copy.quickEntry.dueAria}
+								value={draft.due}
+								onInput={(event) => changeDue(event.currentTarget.value)}
+								onChange={(event) => changeDue(event.currentTarget.value)}
+							/>
+						</label>
+						<label>
+							<span className="tcw-sr-only">{copy.quickEntry.priority}</span>
+							<select
+								className="taskPriority"
+								aria-label={copy.quickEntry.taskPriorityAria}
+								value={draft.priority}
+								onChange={(event) => change({ priority: event.target.value })}
+							>
+								<option value="">{copy.quickEntry.priority}</option>
+								{priorityNames.map((priority) => (
+									<option value={priority} key={priority}>
+										{priorityText(priority)}
+									</option>
+								))}
+							</select>
+						</label>
+					</div>
+				</div>
 			</div>
 			{draft.error && (
 				<div className="entryError" role="alert">

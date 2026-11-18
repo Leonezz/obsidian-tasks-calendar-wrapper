@@ -30,8 +30,9 @@ export type TouchTargetMeasurement = {
 
 /**
  * Standalone window function with only document as an external reference. Inside container's .taskido,
- * measure every match passing checkVisibility({ checkVisibilityCSS: true }), preserving target order
- * and one-based selector-match indices, including skipped hidden matches. Intersect its bounding rect
+ * measure every match passing checkVisibility({ checkVisibilityCSS: true }) outside hidden, inert or
+ * aria-hidden subtrees, preserving target order and one-based selector-match indices, including skipped
+ * hidden matches. Intersect its bounding rect
  * with every ancestor's padding box up to and including document.documentElement, independently on
  * each axis whose computed overflow is not visible (using document.defaultView.getComputedStyle).
  * The padding box starts at rect.left/top + clientLeft/Top and spans clientWidth/Height; reported

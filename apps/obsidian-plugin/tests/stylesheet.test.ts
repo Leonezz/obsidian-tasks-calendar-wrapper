@@ -401,7 +401,9 @@ test("capture and progressive metadata retain field affordances and the add acti
 	const metadata = rule(".taskido .entryMeta label");
 	assert.match(metadata.get("border") ?? "", /solid\s+var\(--tcw-color-border,/);
 	assert.equal(metadata.get("border-radius"), "var(--tcw-radius-tool)");
-	assert.equal(rule(".taskido .entryMeta[hidden]").get("display"), "none");
+	assert.equal(rule(".taskido .t-acc-panel").get("grid-template-rows"), "0fr");
+	assert.equal(rule('.taskido .t-acc[data-open="true"] .t-acc-panel').get("grid-template-rows"), "1fr");
+	assert.equal(rule(".taskido .t-acc-panel-inner").get("overflow"), "hidden");
 	assert.equal(rule(".taskido .entryMeta select").get("appearance"), "auto");
 	const add = rule(".taskido .quickEntryPanel .ok");
 	assert.equal(add.get("background"), "var(--tcw-action-bg, var(--interactive-accent))");
@@ -414,6 +416,32 @@ test("capture and progressive metadata retain field affordances and the add acti
 	assert.equal(resolvedTokens(heading.get("font-size") ?? ""), "24px");
 	assert.equal(heading.get("font-weight"), "bold");
 	assert.equal(heading.get("text-align"), "center");
+});
+
+test("all motion lanes are scoped, explicit and disabled for reduced motion", () => {
+	const rules = cssRules(readFileSync("styles.css", "utf8"));
+	const motion = rules.filter(({ body }) => declarations(body).some(([name]) => name === "transition"));
+	assert.ok(motion.length > 0);
+	const reduced = motion.filter(({ atRules }) =>
+		atRules?.some((rule) => /^@media\s+\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)$/.test(rule)),
+	);
+	assert.ok(reduced.length > 0, "the OS preference must disable the full animation, not merely shorten it");
+	const disabled = reduced.flatMap(({ selectors, body }) => {
+		assert.match(body, /transition\s*:\s*none\s*!important/);
+		return selectors;
+	});
+	for (const { selectors, body, atRules } of motion) {
+		assert.ok(
+			selectors.every((selector) => selector.startsWith(".taskido ")),
+			selectors.join(", "),
+		);
+		if (atRules?.some((rule) => rule.includes("prefers-reduced-motion"))) continue;
+		assert.doesNotMatch(body, /transition\s*:\s*all\b/, "unrelated state changes must not become animated");
+		for (const selector of selectors) {
+			const base = selector.replace(/\.t-acc\[data-open="true"\] /, "").replace(/\.is-(?:open|closing)/, "");
+			assert.ok(disabled.includes(base), `${selector} needs a reduced-motion override`);
+		}
+	}
 });
 
 test("priority uses a custom disclosure icon and visible keyboard feedback for its native checkbox rows", () => {

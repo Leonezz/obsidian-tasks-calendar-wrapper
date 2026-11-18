@@ -59,7 +59,11 @@ export function collectTouchTargets({ container, targets }) {
 	if (!root) return [];
 	return targets.flatMap(({ name, selector }) =>
 		[...root.querySelectorAll(selector)].flatMap((element, index) => {
-			if (!element.checkVisibility({ checkVisibilityCSS: true })) return [];
+			if (
+				!element.checkVisibility({ checkVisibilityCSS: true }) ||
+				element.closest('[hidden], [inert], [aria-hidden="true"]')
+			)
+				return [];
 			let { left, top, right, bottom } = element.getBoundingClientRect();
 			for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
 				const style = document.defaultView.getComputedStyle(ancestor);

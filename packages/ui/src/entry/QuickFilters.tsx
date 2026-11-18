@@ -23,6 +23,11 @@ const storedPriorities = (priorities: readonly string[]) =>
 	priorities.flatMap((value) => (value === "No" ? ["No", ""] : [value]));
 const useClientLayoutEffect = typeof document === "undefined" ? React.useEffect : React.useLayoutEffect;
 
+function milliseconds(value: string): number {
+	const duration = Number.parseFloat(value);
+	return Number.isFinite(duration) && duration > 0 ? duration * (value.trim().endsWith("ms") ? 1 : 1000) : 0;
+}
+
 export function QuickFilters({
 	applied,
 	tags,
@@ -42,14 +47,57 @@ export function QuickFilters({
 	const menuElement = React.useRef<HTMLDetailsElement>(null);
 	const menuTrigger = React.useRef<HTMLElement>(null);
 	const menuOptions = React.useRef<HTMLDivElement>(null);
+	// A closing surface stays painted briefly, while its controls stop accepting focus immediately.
+	const [menuPhase, setMenuPhase] = React.useState<"closed" | "open" | "closing">(priorityOpen ? "open" : "closed");
+	const lastPhase = React.useRef(menuPhase);
+	const menuPresent = priorityOpen || menuPhase !== "closed";
+	useClientLayoutEffect(() => {
+		const options = menuOptions.current;
+		const view = options?.ownerDocument.defaultView;
+		if (!options || !view) return;
+		if (priorityOpen) {
+			// Commit the resting scale after native details becomes visible, before starting its entrance.
+			if (lastPhase.current === "closed") void options.offsetWidth;
+			lastPhase.current = "open";
+			setMenuPhase("open");
+			return;
+		}
+		if (lastPhase.current === "closed") return;
+		const reduced = view.matchMedia?.("(prefers-reduced-motion: reduce)");
+		const closeMs = reduced?.matches
+			? 0
+			: milliseconds(view.getComputedStyle(options).getPropertyValue("--tcw-dropdown-close-dur"));
+		const finish = () => {
+			lastPhase.current = "closed";
+			setMenuPhase("closed");
+		};
+		if (!closeMs) {
+			finish();
+			return;
+		}
+		lastPhase.current = "closing";
+		setMenuPhase("closing");
+		const timer = view.setTimeout(finish, closeMs);
+		const reduce = () => {
+			if (!reduced?.matches) return;
+			view.clearTimeout(timer);
+			finish();
+		};
+		reduced?.addEventListener?.("change", reduce);
+		return () => {
+			view.clearTimeout(timer);
+			reduced?.removeEventListener?.("change", reduce);
+		};
+	}, [priorityOpen]);
 	const [menuPlacement, setMenuPlacement] = React.useState<{ side: "above" | "below"; maxHeight: number } | null>(
 		null,
 	);
 	useClientLayoutEffect(() => {
-		if (!priorityOpen) {
+		if (!menuPresent) {
 			setMenuPlacement(null);
 			return;
 		}
+		if (!priorityOpen) return;
 		const trigger = menuTrigger.current;
 		const options = menuOptions.current;
 		const view = trigger?.ownerDocument.defaultView;
@@ -100,7 +148,7 @@ export function QuickFilters({
 			view.visualViewport?.removeEventListener("scroll", measure);
 			observer?.disconnect();
 		};
-	}, [priorityMenu, priorityOpen]);
+	}, [priorityMenu, priorityOpen, menuPresent]);
 	useClientLayoutEffect(() => {
 		const trigger = menuTrigger.current;
 		if (!trigger || !priorityMenu.getSnapshot()) return;
@@ -194,9 +242,10 @@ export function QuickFilters({
 			</select>
 			<TagFilter applied={applied} tags={tags} draft={tagDraft} />
 			<details
-				className="priorityFilter"
+				className="priorityFilter t-acc"
 				ref={menuElement}
-				open={priorityOpen}
+				open={menuPresent}
+				data-open={priorityOpen}
 				onBlur={(event) => {
 					if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node))
 						priorityMenu.setState(false);
@@ -213,6 +262,7 @@ export function QuickFilters({
 					ref={menuTrigger}
 					aria-label={copy.quickEntry.priorityAria}
 					aria-description={priorityLabels.length ? priorityLabels.join(", ") : undefined}
+					aria-expanded={priorityOpen}
 					data-active={priorities.length > 0}
 					onClick={(event) => {
 						event.preventDefault();
@@ -220,16 +270,19 @@ export function QuickFilters({
 					}}
 				>
 					<span className="prioritySummary">{prioritySummary}</span>
-					<span className="priorityChevron" aria-hidden="true">
+					<span className="priorityChevron t-acc-chevron" aria-hidden="true">
 						{chevronDownIcon}
 					</span>
 				</summary>
 				<div
-					className="priorityOptions"
+					className={`priorityOptions t-dropdown${priorityOpen && menuPhase !== "closed" ? " is-open" : !priorityOpen && menuPhase !== "closed" ? " is-closing" : ""}`}
 					role="group"
 					aria-label={copy.quickEntry.priorityAria}
+					aria-hidden={!priorityOpen}
+					{...(!priorityOpen ? { inert: "" } : {})}
 					ref={menuOptions}
 					data-placement={menuPlacement?.side}
+					data-origin={menuPlacement?.side === "above" ? "bottom-right" : "top-right"}
 					style={
 						menuPlacement
 							? ({
