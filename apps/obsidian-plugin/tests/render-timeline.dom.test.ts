@@ -56,7 +56,7 @@ async function select(container: HTMLElement, selector: string, value: string) {
 }
 
 /** Use the native setter so React observes the input event as a user edit. */
-function setDate(input: HTMLInputElement, value: string) {
+function setInput(input: HTMLInputElement, value: string) {
 	const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
 	setter.call(input, value);
 	input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -68,36 +68,31 @@ test("inputs show the applied filter after a reload", async (t) => {
 	const texts = () => [...container.querySelectorAll(".task .content")].map((row) => row.textContent);
 	assert.deepEqual(texts(), ["beta", "alpha"]);
 
-	await select(container, "select.actionName", "filter");
-	await select(container, "select.filterSelector", "date");
-	await select(container, "select.filterSelector", "priority");
-	const dates = container.querySelectorAll<HTMLInputElement>('input[type="date"]');
+	await select(container, "select.dateScope", "custom");
+	const dates = container.querySelectorAll<HTMLInputElement>('.dateRange input[type="date"]');
 	assert.equal(dates.length, 2);
 	await act(() => {
-		setDate(dates[0], "2026-01-19");
-		setDate(dates[1], "2026-01-21");
+		setInput(dates[0], "2026-01-19");
+		setInput(dates[1], "2026-01-21");
 	});
-	await select(container, 'select[name="priorityFilter"]', "High");
-	const apply = container.querySelector<HTMLButtonElement>(".quickEntryPanel button.ok");
+	const apply = container.querySelector<HTMLButtonElement>(".applyDateRange");
 	assert.ok(apply);
 	await act(() => apply.click());
+	const high = container.querySelector<HTMLInputElement>('.priorityOptions input[value="High"]');
+	assert.ok(high);
+	await act(() => high.click());
 
 	await act(async () => {
 		notes["Inbox.md"] = "- [ ] beta, renamed ⏫ 📅 2026-01-20";
 		opened.edited("Inbox.md");
 		await opened.view.onReloadTasks();
 	});
-	assert.equal(container.querySelector<HTMLSelectElement>("select.actionName")?.value, "filter");
+	assert.equal(container.querySelector<HTMLSelectElement>("select.dateScope")?.value, "custom");
 	assert.deepEqual(
-		[...container.querySelectorAll<HTMLInputElement>('input[type="date"]')].map((input) => input.value),
+		[...container.querySelectorAll<HTMLInputElement>('.dateRange input[type="date"]')].map((input) => input.value),
 		["2026-01-19", "2026-01-21"],
 	);
-	const priority = container.querySelector('select[name="priorityFilter"]')?.parentElement;
-	assert.ok(priority);
-	assert.deepEqual(
-		[...priority.querySelectorAll("a")].map((selected) => selected.textContent),
-		["High🎯"],
-	);
+	assert.equal(container.querySelector<HTMLInputElement>('.priorityOptions input[value="High"]')?.checked, true);
 	// The reload changes the task shown while keeping the working priority filter and its controls.
 	assert.ok(bridge.current?.state.tasks.some((task) => task.text.includes("beta, renamed")));
 	assert.deepEqual(texts(), ["beta, renamed"]);
@@ -161,20 +156,19 @@ test("unchanged options keep provider values", async (t) => {
 
 test("an equal quick filter keeps its provider and the unsubmitted draft", async (t) => {
 	const { container, bridge } = await mountTimeline(t, { "A.md": "- [ ] alpha 📅 2026-01-20" });
-	await select(container, "select.actionName", "filter");
-	await select(container, "select.filterSelector", "date");
-	const dates = container.querySelectorAll<HTMLInputElement>('input[type="date"]');
+	await select(container, "select.dateScope", "custom");
+	const dates = container.querySelectorAll<HTMLInputElement>('.dateRange input[type="date"]');
 	await act(() => {
-		setDate(dates[0], "2026-01-19");
-		setDate(dates[1], "2026-01-21");
+		setInput(dates[0], "2026-01-19");
+		setInput(dates[1], "2026-01-21");
 	});
-	const apply = container.querySelector<HTMLButtonElement>(".quickEntryPanel button.ok");
+	const apply = container.querySelector<HTMLButtonElement>(".applyDateRange");
 	assert.ok(apply && bridge.current);
 	await act(() => apply.click());
 	const before = providerValues().QuickEntryHandlerContext;
 	const filter = bridge.current.state.quickFilter;
 	assert.ok(filter);
-	await act(() => setDate(dates[0], "2026-01-18"));
+	await act(() => setInput(dates[0], "2026-01-18"));
 	resetRenderCounts();
 	await act(() => bridge.current!.handleFilterEnable(filter.from, filter.to, [...filter.priorities]));
 	assert.strictEqual(bridge.current.state.quickFilter, filter);
@@ -302,7 +296,8 @@ test("row models last within a day and refresh with the locale and next day", as
 	resetRenderCounts();
 	await act(() => focus.click());
 	assert.equal(rendersOf("TaskItemView"), 0);
-	assert.equal(rendersOf("DateView"), 0);
+	assert.equal(rendersOf("DateView"), 1, "the entry day updates its Focus on today heading");
+	assert.deepEqual(renderedDays(), ["2026-01-15"]);
 	moment.locale("zh-cn");
 	resetRenderCounts();
 	await act(() => focus.click());
@@ -344,7 +339,7 @@ for (const outcome of ["refused", "failed"] as const) {
 		const input = container.querySelector<HTMLInputElement>('.quickEntryPanel input[type="text"]');
 		const submit = container.querySelector<HTMLButtonElement>(".quickEntryPanel button.ok");
 		assert.ok(input && submit);
-		input.value = "keep this draft";
+		await act(() => setInput(input, "keep this draft"));
 		await act(() => submit.click());
 		assert.equal(input.value, "keep this draft", "while the writer is still running");
 		await act(async () => {
@@ -363,12 +358,6 @@ test("quick entry ignores a second submit while the first is pending", async (t)
 	const first = deferred<boolean>();
 	const second = deferred<boolean>();
 	const error = new Error("adding a task failed");
-	let rejection: Promise<void> | undefined;
-	t.mock.method(second.promise, "then", (...callbacks: Parameters<Promise<boolean>["then"]>) => {
-		const chained = Promise.prototype.then.call(second.promise, ...callbacks);
-		rejection = assert.rejects(chained, error);
-		return chained;
-	});
 	const { opened, container } = await mountTimeline(t, { "Inbox.md": "- [ ] older" });
 	await act(() => opened.view.onUpdateOptions({ ...defaultUserOptions, taskFiles: ["Inbox.md"] }));
 	const handlers = providerValues().QuickEntryHandlerContext as ContextType<typeof QuickEntryHandlerContext>;
@@ -382,12 +371,12 @@ test("quick entry ignores a second submit while the first is pending", async (t)
 	const input = container.querySelector<HTMLInputElement>('.quickEntryPanel input[type="text"]');
 	const submit = container.querySelector<HTMLButtonElement>(".quickEntryPanel button.ok");
 	assert.ok(input && submit);
-	input.value = "add once";
+	await act(() => setInput(input, "add once"));
 	resetRenderCounts();
 	await act(() => {
 		submit.click();
 		submit.click();
-		input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true }));
+		input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
 	});
 	assert.equal(create.mock.callCount(), 1);
 	assert.deepEqual(create.mock.calls[0].arguments, ["Inbox.md", "add once"]);
@@ -396,15 +385,14 @@ test("quick entry ignores a second submit while the first is pending", async (t)
 	assert.equal(input.value, "");
 	assert.equal(rendersOf("TaskItemView"), 0);
 	assert.equal(rendersOf("DateView"), 0);
-	input.value = "retry this";
+	await act(() => setInput(input, "retry this"));
 	await act(() => submit.click());
 	assert.equal(create.mock.callCount(), 2);
 	await act(async () => {
 		second.reject(error);
-		assert.ok(rejection, "the handler keeps rejection observable");
-		await rejection;
 	});
 	assert.equal(input.value, "retry this");
+	assert.match(container.querySelector('[role="alert"]')?.textContent ?? "", /draft was kept/);
 	await act(() => submit.click());
 	assert.equal(create.mock.callCount(), 3);
 	assert.equal(input.value, "");

@@ -153,7 +153,7 @@ test("content renders markdown once per display change", async (t) => {
 
 	for (const [operation, selector] of [
 		["counter click", "#todo"],
-		["Focus on today click", '[aria-label="Focus on today"]'],
+		["Focus on today click", ".todayHeader"],
 	]) {
 		before = calls.length;
 		const target = fixture.container.querySelector<HTMLElement>(selector);
@@ -188,11 +188,21 @@ test("turning Focus on today off within one list renders no markdown again", asy
 		"<a><code>x</code></a>",
 	]);
 	const rendered = calls.length;
+	const input = fixture.container.querySelector<HTMLInputElement>("input.newTask");
+	const metadata = fixture.container.querySelector<HTMLElement>(".entryMetaReveal");
+	assert.ok(input && metadata);
+	assert.equal(metadata.getAttribute("aria-hidden"), "true");
+	await act(() => input.focus());
+	assert.equal(metadata.getAttribute("aria-hidden"), "false");
+	assert.equal(calls.length, rendered, "revealing metadata reuses rendered row content");
 	for (const focused of [true, false]) {
 		const focus = fixture.container.querySelector<HTMLElement>(".todayHeader");
 		assert.ok(focus);
+		await act(() => focus.focus());
+		assert.equal(metadata.getAttribute("aria-hidden"), "true");
 		await act(() => focus.click());
 		assert.equal(fixture.root().classList.contains("todayFocus"), focused);
+		assert.equal(focus.getAttribute("aria-pressed"), String(focused));
 		assert.equal(calls.length - rendered, 0, `focus ${focused}`);
 	}
 	assert.deepEqual(contents(), before, "all days return with their rendered content");

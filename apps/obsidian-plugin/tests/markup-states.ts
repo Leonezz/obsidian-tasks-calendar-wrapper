@@ -56,12 +56,10 @@ async function select(fixture: ViewFixture, selector: string, value: string) {
 	});
 }
 
-/** Use the quick-entry controls, including its apply button, rather than injecting bridge state. */
+/** Use the date toolbar and its apply button rather than injecting bridge state. */
 export async function applyQuickFilter(fixture: ViewFixture) {
-	await select(fixture, "select.actionName", "filter");
-	await select(fixture, "select.filterSelector", "date");
-	await select(fixture, "select.filterSelector", "priority");
-	const dates = fixture.root().querySelectorAll<HTMLInputElement>('input[type="date"]');
+	await select(fixture, "select.dateScope", "custom");
+	const dates = fixture.root().querySelectorAll<HTMLInputElement>('.dateRange input[type="date"]');
 	assert.equal(dates.length, 2);
 	await act(() => {
 		const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
@@ -70,7 +68,7 @@ export async function applyQuickFilter(fixture: ViewFixture) {
 			dates[index].dispatchEvent(new Event("input", { bubbles: true }));
 		}
 	});
-	const apply = fixture.root().querySelector<HTMLButtonElement>(".quickEntryPanel button.ok");
+	const apply = fixture.root().querySelector<HTMLButtonElement>(".applyDateRange");
 	assert.ok(apply);
 	await act(() => apply.click());
 }
@@ -93,10 +91,12 @@ export function pendingMarkupEvent(fixture: ViewFixture): WriteEvent {
 export async function reachMarkupState(fixture: ViewFixture, name: string) {
 	if (name.startsWith("light-")) {
 		const state = stateOf(name);
-		for (const selector of [
-			...(state.todayFocus ? ['[aria-label="Focus on today"]'] : []),
-			...(state.counter ? [`#${state.counter}`] : []),
-		]) {
+		if (state.todayFocus) {
+			const today = fixture.root().querySelector<HTMLElement>(".todayHeader");
+			assert.ok(today);
+			await act(() => today.click());
+		}
+		for (const selector of state.counter ? [`#${state.counter}`] : []) {
 			const control = fixture.root().querySelector<HTMLElement>(selector);
 			assert.ok(control, selector);
 			await act(() => control.click());

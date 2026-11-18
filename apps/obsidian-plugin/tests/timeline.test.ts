@@ -142,7 +142,7 @@ test("timeline: Focus on today renders only today's rows", async () => {
 			allWithClass(markup, "details").every((element) => classesOf(element).includes("today")),
 			`${name}: only today's details`,
 		);
-		for (const panel of ["todayHeader", "counters", "quickEntryPanel"])
+		for (const panel of ["quickFilterBar", "counters", "quickEntryPanel"])
 			assert.equal(allWithClass(markup, panel).length, 1, `${name}: ${panel}`);
 	}
 });
@@ -456,6 +456,11 @@ test("timeline: the stylesheet hides nothing the markup reader does not know of"
 			".taskido.noRelative .relative",
 			".taskido.noRepeat .repeat",
 			".taskido.noTag .tag",
+			// Decorative priority chrome is aria-hidden, or is a pseudo-element absent from parsed markup.
+			".taskido .priorityCheck",
+			".taskido .priorityFilter summary::-webkit-details-marker",
+			// The custom date stays mounted for draft continuity; the reader recognizes its hidden attribute.
+			".taskido .entryMeta .taskDue[hidden]",
 			// Settings are outside the timeline's markup.
 			".tasks-calendar-wrapper-settings [hidden]",
 		].sort(),

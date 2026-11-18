@@ -19,6 +19,7 @@ import { TasksTimelineView, TIMELINE_VIEW } from "../src/views";
 import { onTimelineRender } from "./component-harness";
 import { fakeVault, type FakeLeaf } from "./fakevault";
 import { MANIFEST, type StartedPlugin } from "./settings-fixtures";
+import { AbstractInputSuggest } from "./stubs/obsidian";
 
 const notes = {
 	"Inbox.md": "- [ ] visible 📅 2026-01-15\n- [ ] hidden 📅 2026-01-20",
@@ -27,8 +28,8 @@ const onLoad = { defaultFilters: "", defaultTodayFocus: false };
 const settle = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 /** Keeps the plugin's factory and leaf lifecycle, supplying only the DOM Obsidian normally creates. */
-function pluginHarness(t: TestContext) {
-	const vault = fakeVault(notes, { layoutReady: false });
+function pluginHarness(t: TestContext, content: Record<string, string> = notes) {
+	const vault = fakeVault(content, { layoutReady: false });
 	Object.assign(vault.app, { plugins: { plugins: {} } });
 	const containers = new Map<TasksTimelineView, HTMLElement>();
 	const plugins: StartedPlugin[] = [];
@@ -151,9 +152,8 @@ async function select(view: RenderedView, selector: string, value: string) {
 }
 
 async function applyFilter(view: RenderedView) {
-	await select(view, "select.actionName", "filter");
-	await select(view, "select.filterSelector", "date");
-	const inputs = view.container.querySelectorAll<HTMLInputElement>('input[type="date"]');
+	await select(view, "select.dateScope", "custom");
+	const inputs = view.container.querySelectorAll<HTMLInputElement>('.dateRange input[type="date"]');
 	assert.equal(inputs.length, 2);
 	const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
 	assert.ok(setter);
@@ -163,9 +163,9 @@ async function applyFilter(view: RenderedView) {
 			inputs[index].dispatchEvent(new Event("input", { bubbles: true }));
 		}
 	});
-	await click(view, ".quickEntryPanel button.ok");
+	await click(view, ".applyDateRange");
 	const filter = quickFilter();
-	assert.ok(filter, "the Filter button applies a quick filter");
+	assert.ok(filter, "the date-range Apply button applies a quick filter");
 	assert.deepEqual(rows(view), ["visible"]);
 	return filter;
 }
@@ -193,10 +193,12 @@ function writeEntries(h: ReturnType<typeof pluginHarness>) {
 }
 
 async function quickEntry(view: RenderedView) {
-	await select(view, "select.actionName", "append");
 	const input = view.container.querySelector<HTMLInputElement>("input.newTask");
 	assert.ok(input);
-	input.value = "new task";
+	await act(() => {
+		Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(input, "new task");
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+	});
 	await act(async () => {
 		control(view.container, ".quickEntryPanel button.ok").click();
 		await settle();
@@ -221,6 +223,131 @@ test("reopening a view in the same session restores counter and focus", async (t
 	await close(reopened);
 	await close(second);
 	assertState(await h.command(plugin), true, false, "the last of two closed views wins");
+});
+
+test("the restored Today heading preserves applied dates, tags, priorities and the status card", async (t) => {
+	const h = pluginHarness(t);
+	const plugin = await h.load();
+	const opened = await h.command(plugin);
+	await applyFilter(opened);
+	await click(opened, "#todo");
+	await click(opened, '.priorityOptions input[value="No"]');
+	const tag = control(opened.container, '.tagFilterBar input[type="search"]') as HTMLInputElement;
+	await act(() => {
+		Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(tag, "#work");
+		tag.dispatchEvent(new Event("input", { bubbles: true }));
+	});
+	await act(() => tag.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+	const applied = quickFilter();
+	assert.deepEqual(applied, {
+		from: "2026-01-14",
+		to: "2026-01-16",
+		priorities: ["No", ""],
+		tags: ["#work"],
+	});
+	for (const focused of [true, false]) {
+		await click(opened, ".todayHeader");
+		assertState(opened, true, focused, `heading focus ${focused}`);
+		assert.strictEqual(quickFilter(), applied, "the heading preserves the exact applied filter");
+		assert.equal((control(opened.container, "select.dateScope") as HTMLSelectElement).value, "custom");
+		assert.equal(tag.value, "#work");
+		assert.equal(
+			(control(opened.container, '.priorityOptions input[value="No"]') as HTMLInputElement).checked,
+			true,
+		);
+	}
+	await click(opened, ".todayHeader");
+	await select(opened, "select.dateScope", "week");
+	assertState(opened, true, true, "a date preset preserves independent Today focus");
+	assert.deepEqual(quickFilter(), {
+		from: "2026-01-15",
+		to: "2026-01-21",
+		priorities: ["No", ""],
+		tags: ["#work"],
+	});
+});
+
+test("priority multi-selection stays open when filtering removes and restores an earlier year", async (t) => {
+	const h = pluginHarness(t, {
+		"Earlier.md": "- [ ] Earlier 📅 2025-12-31",
+		"Today.md": "- [ ] Today ⏫ 📅 2026-01-15",
+	});
+	const plugin = await h.load({ forward: false, entryPosition: "today" });
+	const opened = await h.command(plugin);
+	const years = () => [...opened.container.querySelectorAll(".year")].map((year) => year.textContent);
+	const menu = () => control(opened.container, "details.priorityFilter") as HTMLDetailsElement;
+	assert.deepEqual(years(), ["2025", "2026"]);
+	await click(opened, ".priorityFilter summary");
+	const original = menu();
+	assert.equal(original.open, true);
+	await click(opened, '.priorityOptions input[value="High"]');
+	assert.deepEqual(years(), ["2026"], "the first priority removes the preceding year");
+	const remounted = menu();
+	assert.notStrictEqual(remounted, original, "the entry actually remounts under its new year position");
+	assert.equal(original.isConnected, false);
+	assert.equal(remounted.open, true, "the remounted menu stays open for the next choice");
+	assert.strictEqual(
+		document.activeElement,
+		control(remounted, "summary"),
+		"keyboard access follows the remounted menu",
+	);
+	assert.equal(control(remounted, ".prioritySummary").textContent, "High");
+	await click(opened, '.priorityOptions input[value="No"]');
+	assert.deepEqual(years(), ["2025", "2026"], "adding None restores the preceding year");
+	assert.equal(menu().open, true, "the second remount also keeps the multi-select open");
+	assert.strictEqual(document.activeElement, control(menu(), "summary"));
+	assert.deepEqual(quickFilter()?.priorities, ["High", "No", ""]);
+	assert.equal(control(menu(), ".prioritySummary").textContent, "Priority (2)");
+	for (const value of ["High", "No"])
+		assert.equal((control(menu(), `input[value="${value}"]`) as HTMLInputElement).checked, true);
+});
+
+test("native tag selection restores the editor and caret after a year remount for another suggestion", async (t) => {
+	const h = pluginHarness(t, {
+		"Earlier.md": "- [ ] Earlier #old 📅 2025-12-31",
+		"Today.md": "- [ ] Today #one #two 📅 2026-01-15",
+	});
+	const plugin = await h.load({ forward: false, entryPosition: "today" });
+	const opened = await h.command(plugin);
+	const editor = () => control(opened.container, '.tagFilterBar input[type="search"]') as HTMLInputElement;
+	const suggestion = () => {
+		const adapter = AbstractInputSuggest.made.at(-1) as AbstractInputSuggest<string>;
+		assert.strictEqual(adapter.textInputEl, editor(), "the native suggester follows the current mounted editor");
+		return adapter;
+	};
+	async function type(text: string) {
+		await act(() => {
+			const input = editor();
+			input.focus();
+			Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(input, text);
+			input.setSelectionRange(text.length, text.length);
+			input.dispatchEvent(new Event("input", { bubbles: true }));
+		});
+	}
+	const original = editor();
+	await type("#o");
+	assert.ok((await suggestion().suggestions()).includes("#one"));
+	await act(() => suggestion().selectSuggestion("#one"));
+	const remounted = editor();
+	assert.notStrictEqual(remounted, original, "removing the earlier year remounts the entry");
+	assert.equal(original.isConnected, false);
+	assert.strictEqual(document.activeElement, remounted);
+	assert.equal(remounted.value, "#one ");
+	assert.equal(remounted.selectionStart, remounted.value.length);
+	assert.equal(remounted.selectionEnd, remounted.value.length);
+	assert.deepEqual(quickFilter()?.tags, ["#one"]);
+	assert.deepEqual(
+		[...opened.container.querySelectorAll(".year")].map((year) => year.textContent),
+		["2026"],
+	);
+	await type("#one #t");
+	assert.deepEqual(await suggestion().suggestions(), ["#two"]);
+	await act(() => suggestion().selectSuggestion("#two"));
+	assert.strictEqual(document.activeElement, editor());
+	assert.equal(editor().value, "#one #two ");
+	assert.equal(editor().selectionStart, editor().value.length);
+	assert.equal(editor().selectionEnd, editor().value.length);
+	assert.deepEqual(quickFilter()?.tags, ["#one", "#two"]);
 });
 
 test("a moved view restores from getState", async (t) => {
@@ -329,26 +456,146 @@ test("the quick filter survives a reload", async (t) => {
 	await act(() => opened.view.onReloadTasks());
 	assert.strictEqual(quickFilter(), filter, "an options push and reload keep the same filter object");
 	assert.deepEqual(rows(opened), ["visible edited"]);
-	assert.equal(opened.container.querySelector<HTMLSelectElement>("select.actionName")?.value, "filter");
+	assert.equal(opened.container.querySelector<HTMLSelectElement>("select.dateScope")?.value, "custom");
 	assert.deepEqual(
-		[...opened.container.querySelectorAll<HTMLInputElement>('input[type="date"]')].map((input) => input.value),
+		[...opened.container.querySelectorAll<HTMLInputElement>('.dateRange input[type="date"]')].map(
+			(input) => input.value,
+		),
 		["2026-01-14", "2026-01-16"],
 	);
 });
 
-test("quick entry still clears the quick filter", async (t) => {
+test("quick entry preserves the quick filter", async (t) => {
 	const h = pluginHarness(t);
 	const plugin = await h.load();
 	const opened = await h.command(plugin);
 	writeEntries(h);
-	await applyFilter(opened);
+	const filter = await applyFilter(opened);
 	await quickEntry(opened);
-	assert.equal(quickFilter(), undefined, "quick entry clears the applied filter");
-	assert.deepEqual(rows(opened).sort(), ["hidden", "new task", "visible"]);
+	assert.strictEqual(quickFilter(), filter, "quick entry preserves the applied filter");
+	assert.deepEqual(rows(opened).sort(), ["new task", "visible"], "forwarding places the new undated task on today");
 	assert.match(h.vault.contentOf("Inbox.md") ?? "", /- \[ \] new task/);
 	await act(() => opened.view.onReloadTasks());
-	assert.equal(quickFilter(), undefined, "the reload keeps the filter cleared");
-	assert.deepEqual(rows(opened).sort(), ["hidden", "new task", "visible"]);
+	assert.strictEqual(quickFilter(), filter, "the reload keeps the same filter");
+	assert.deepEqual(rows(opened).sort(), ["new task", "visible"]);
+});
+
+test("quick-entry due choices survive year remounts and write the selected custom date", async (t) => {
+	const h = pluginHarness(t, {
+		"Earlier.md": "- [ ] Earlier 📅 2025-12-31",
+		"Inbox.md": "- [ ] Today ⏫ 📅 2026-01-15",
+	});
+	const plugin = await h.load({ forward: false, entryPosition: "today" });
+	const opened = await h.command(plugin);
+	writeEntries(h);
+	const input = () => control(opened.container, "input.newTask") as HTMLInputElement;
+	const due = () => control(opened.container, "input.taskDue") as HTMLInputElement;
+	const choice = () => control(opened.container, "select.taskDuePreset") as HTMLSelectElement;
+	const years = () => [...opened.container.querySelectorAll(".year")].map((year) => year.textContent);
+	const original = input();
+	await act(() => {
+		original.focus();
+		Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(original, "Due draft");
+		original.dispatchEvent(new Event("input", { bubbles: true }));
+	});
+	await select(opened, "select.taskDuePreset", "today");
+	assert.equal(due().value, "2026-01-15");
+	assert.equal(due().hidden, true);
+	assert.equal(choice().value, "today");
+	await click(opened, ".priorityFilter summary");
+	await click(opened, '.priorityOptions input[value="High"]');
+	assert.deepEqual(years(), ["2026"]);
+	assert.notStrictEqual(input(), original, "the first priority really remounts the composer under another year");
+	assert.equal(input().value, "Due draft");
+	assert.equal(choice().value, "today");
+	assert.equal(due().value, "2026-01-15", "Today is retained as an absolute due date");
+	await act(() => input().focus());
+	await select(opened, "select.taskDuePreset", "tomorrow");
+	assert.equal(due().value, "2026-01-16");
+	await act(() => control(opened.container, ".todayHeader").focus());
+	assert.equal(control(opened.container, ".entryMetaReveal").getAttribute("aria-hidden"), "true");
+	await act(() => input().focus());
+	assert.equal(choice().value, "tomorrow");
+	await select(opened, "select.taskDuePreset", "none");
+	assert.equal(due().value, "", "No date clears the stored due date");
+	assert.equal(choice().value, "none");
+	await select(opened, "select.taskDuePreset", "custom");
+	assert.strictEqual(document.activeElement, due());
+	assert.equal(due().hidden, false);
+	await act(() => {
+		Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(due(), "2026-02-24");
+		due().dispatchEvent(new Event("input", { bubbles: true }));
+	});
+	const beforeSecondRemount = input();
+	await click(opened, ".priorityFilter summary");
+	await click(opened, '.priorityOptions input[value="No"]');
+	assert.deepEqual(years(), ["2025", "2026"]);
+	assert.notStrictEqual(input(), beforeSecondRemount, "restoring the earlier year remounts the composer again");
+	await act(() => input().focus());
+	assert.equal(choice().value, "custom");
+	assert.equal(due().hidden, false);
+	assert.equal(due().value, "2026-02-24");
+	assert.equal(input().value, "Due draft");
+	assert.doesNotMatch(h.vault.contentOf("Inbox.md") ?? "", /Due draft/, "choosing due dates never writes a task");
+	const filter = quickFilter();
+	await act(async () => {
+		control(opened.container, ".quickEntryPanel button.ok").click();
+		await settle();
+	});
+	assert.match(h.vault.contentOf("Inbox.md") ?? "", /- \[ \] Due draft 📅 2026-02-24/);
+	assert.strictEqual(quickFilter(), filter, "creating the dated task preserves the active priority filter");
+});
+
+test("quick-entry No date removes inline metadata through the real writer and preserves the filter", async (t) => {
+	for (const [style, token] of [
+		["emoji", "📅 2026-01-20"],
+		["dataview", "[due:: 2026-01-20]"],
+	] as const) {
+		for (const route of ["direct", "after Today"] as const) {
+			await t.test(`${style}: ${route}`, async (t) => {
+				const h = pluginHarness(t);
+				const plugin = await h.load({ newDateStyle: style });
+				const opened = await h.command(plugin);
+				writeEntries(h);
+				const filter = await applyFilter(opened);
+				const title = `Cleared capture ${style} ${route}`;
+				const input = control(opened.container, "input.newTask") as HTMLInputElement;
+				await act(() => {
+					input.focus();
+					Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(
+						input,
+						`${title} ${token}`,
+					);
+					input.dispatchEvent(new Event("input", { bubbles: true }));
+				});
+				const choice = control(opened.container, "select.taskDuePreset") as HTMLSelectElement;
+				assert.equal(choice.value, "");
+				if (route === "after Today") {
+					await select(opened, "select.taskDuePreset", "today");
+					assert.equal((control(opened.container, "input.taskDue") as HTMLInputElement).value, "2026-01-15");
+				}
+				await select(opened, "select.taskDuePreset", "none");
+				assert.equal(choice.value, "none");
+				assert.doesNotMatch(
+					h.vault.contentOf("Inbox.md") ?? "",
+					/Cleared capture/,
+					"choosing No date does not write",
+				);
+				await act(async () => {
+					control(opened.container, ".quickEntryPanel button.ok").click();
+					await settle();
+				});
+				const written = (h.vault.contentOf("Inbox.md") ?? "").split("\n").find((line) => line.includes(title));
+				assert.ok(written, "the real plugin writer creates the capture");
+				assert.equal(
+					written.trim(),
+					`- [ ] ${title}`,
+					"the raw inline due date must not return after clearing",
+				);
+				assert.strictEqual(quickFilter(), filter, "clearing and submitting preserve the active filter object");
+			});
+		}
+	}
 });
 
 test("changing an On Load setting leaves open views as they are", async (t) => {
@@ -553,8 +800,8 @@ test("view state actions keep their identity and change only what they name", ()
 		assert.equal(restoredViewState(raw, session), undefined, `invalid saved state ${JSON.stringify(raw)}`);
 });
 
-// Brief-derived: a filter clear and the written list must be visible in the same commit.
-test("quick entry clears the filter and shows the new list in one commit", async (t) => {
+// Every commit keeps the selected filter while the writer refreshes the task list.
+test("quick entry refreshes the list without briefly clearing the filter", async (t) => {
 	const h = pluginHarness(t);
 	const plugin = await h.load();
 	const commits: (string | undefined)[][] = [];
@@ -565,7 +812,10 @@ test("quick entry clears the filter and shows the new list in one commit", async
 			{
 				id: "quick-entry",
 				onRender: () => {
-					if (recording && props.quickFilter === undefined) commits.push(rows(opened));
+					if (recording) {
+						assert.strictEqual(props.quickFilter, filter);
+						commits.push(rows(opened));
+					}
 				},
 			},
 			rendered,
@@ -573,10 +823,11 @@ test("quick entry clears the filter and shows the new list in one commit", async
 	);
 	const opened = await h.command(plugin);
 	writeEntries(h);
-	await applyFilter(opened);
+	const filter = await applyFilter(opened);
 	const frames: (string | undefined)[][] = [];
 	const observer = new window.MutationObserver(() => {
-		if (quickFilter() === undefined) frames.push(rows(opened));
+		assert.strictEqual(quickFilter(), filter);
+		frames.push(rows(opened));
 	});
 	observer.observe(opened.container, { subtree: true, attributes: true, childList: true, characterData: true });
 	try {
@@ -586,13 +837,16 @@ test("quick entry clears the filter and shows the new list in one commit", async
 		recording = false;
 		observer.disconnect();
 	}
-	assert.equal(quickFilter(), undefined);
-	assert.ok(frames.length > 0, "MutationObserver sees the cleared filter's list");
-	assert.ok(commits.length > 0, "the commit probe sees the cleared filter's list");
-	for (const frame of [...frames, ...commits])
-		assert.deepEqual(
-			frame.slice().sort(),
-			["hidden", "new task", "visible"],
-			"no unfiltered old list is committed",
+	assert.strictEqual(quickFilter(), filter);
+	assert.ok(frames.length > 0, "MutationObserver sees the input and list update");
+	assert.ok(commits.length > 0, "the commit probe sees the preserved filter");
+	for (const frame of [...frames, ...commits]) {
+		assert.ok(frame.includes("visible"));
+		assert.ok(
+			frame.every((text) => text === "visible" || text === "new task"),
+			"no unfiltered row is shown",
 		);
+	}
+	assert.deepEqual(rows(opened).sort(), ["new task", "visible"]);
+	assert.match(h.vault.contentOf("Inbox.md") ?? "", /- \[ \] new task/);
 });

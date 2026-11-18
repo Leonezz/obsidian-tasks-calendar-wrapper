@@ -4,16 +4,22 @@ export const TOUCH_TARGETS = [
 	{ name: "row menu", selector: ".task a.menu", required: true },
 	{ name: "modify", selector: ".task a.modify", required: false },
 	{ name: "counter", selector: ".counter", required: true },
-	{ name: "Focus on today", selector: ".todayHeader", required: true },
 	{
 		name: "badge",
 		selector: ".task .info > :is(.tag, .relative, .repeat, .priority, .file)",
 		required: false,
 	},
-	{ name: "quick entry select", selector: ".quickEntryPanel select", required: true },
+	{ name: "quick entry select", selector: ".quickEntryPanel select", required: false },
 	{ name: "quick entry input", selector: ".quickEntryPanel input", required: true },
 	{ name: "quick entry button", selector: ".quickEntryPanel button", required: true },
-	{ name: "tag filter", selector: ".tagFilterBar input", required: false },
+	{ name: "date scope", selector: ".quickFilterBar select", required: true },
+	{ name: "Focus on today", selector: ".todayHeader", required: true },
+	{ name: "tag filter", selector: ".tagFilterBar input", required: true },
+	{ name: "priority filter", selector: ".priorityFilter summary", required: true },
+	{ name: "priority choice", selector: ".priorityOptions label", required: false },
+	{ name: "custom date", selector: ".dateRange input", required: false },
+	{ name: "apply date range", selector: ".applyDateRange", required: false },
+	{ name: "clear filters", selector: ".clearFilters", required: false },
 ];
 
 export const MOBILE_WIDTH = 390;
@@ -53,7 +59,11 @@ export function collectTouchTargets({ container, targets }) {
 	if (!root) return [];
 	return targets.flatMap(({ name, selector }) =>
 		[...root.querySelectorAll(selector)].flatMap((element, index) => {
-			if (!element.checkVisibility({ checkVisibilityCSS: true })) return [];
+			if (
+				!element.checkVisibility({ checkVisibilityCSS: true }) ||
+				element.closest('[hidden], [inert], [aria-hidden="true"]')
+			)
+				return [];
 			let { left, top, right, bottom } = element.getBoundingClientRect();
 			for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
 				const style = document.defaultView.getComputedStyle(ancestor);

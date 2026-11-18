@@ -26,7 +26,7 @@ import { flush, writerHarness } from "./writer-harness";
 
 const tasksPlugin = { "obsidian-tasks-plugin": { apiV1: { editTaskLineModal: async () => "" } } };
 const interactive =
-	'[role="button"], a[href], button, input, select, textarea, .task, .counter, .todayHeader, a.modify, a.menu';
+	'[role="button"], a[href], button, input, select, textarea, summary, .task, .counter, a.modify, a.menu';
 const dateButtons =
 	'a.relative[aria-label^="Due: "], a.relative[aria-label^="Scheduled: "], a.relative[aria-label^="Start: "]';
 const rowControls = `[role="button"], a[href], a.modify, a.menu, ${dateButtons}`;
@@ -39,10 +39,15 @@ function get(root: ParentNode, selector: string): HTMLElement {
 const rows = (root: ParentNode) => all(root, ".task");
 const eligibleRows = (root: HTMLElement) =>
 	rows(root).filter((row) => !root.classList.contains("todayFocus") || row.closest(".details.today"));
+const exposedControl = (el: HTMLElement) => {
+	if (el.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
+	const details = el.closest("details:not([open])");
+	return !details || el === details.querySelector("summary");
+};
 // jsdom reports tabIndex 0 even for anchors without href that cannot take focus.
 const tabOrder = (root: HTMLElement) =>
-	all(root, "a[href], button, input, select, textarea, [tabindex]").filter(
-		(el) => el.tabIndex >= 0 && !el.matches(":disabled") && !el.closest("[hidden]"),
+	all(root, "a[href], button, input, select, textarea, summary, [tabindex]").filter(
+		(el) => el.tabIndex >= 0 && !el.matches(":disabled") && exposedControl(el),
 	);
 const describe = (el: HTMLElement) =>
 	`${el.tagName.toLowerCase()}${el.className ? `.${el.className}` : ""}${el.id ? `#${el.id}` : ""}`;
@@ -148,7 +153,7 @@ function assertRoving(root: HTMLElement, stop: HTMLElement | undefined, name: st
 }
 
 function assertNames(root: HTMLElement, name: string) {
-	const controls = all(root, `${interactive}, ${dateButtons}`);
+	const controls = all(root, `${interactive}, ${dateButtons}`).filter(exposedControl);
 	axe.setup(root);
 	try {
 		const unnamed = controls.filter((el) => !axe.commons.text.accessibleText(el).trim());
@@ -165,9 +170,9 @@ function assertNames(root: HTMLElement, name: string) {
 	} finally {
 		axe.teardown();
 	}
-	for (const box of all(root, 'input[type="checkbox"]'))
+	for (const box of all(root, '.task input[type="checkbox"]'))
 		assert.equal(box.getAttribute("aria-label"), "Complete task");
-	for (const control of all(root, `.counter, .todayHeader, a.modify, a.menu, ${dateButtons}`))
+	for (const control of all(root, `.todayHeader, .counter, a.modify, a.menu, ${dateButtons}`))
 		assert.equal(control.getAttribute("role"), "button", `${name}: ${describe(control)} has button semantics`);
 	for (const tag of all(root, "a.tag")) assert.equal(tag.hasAttribute("role"), false);
 	for (const counter of all(root, ".counter")) {
@@ -178,7 +183,7 @@ function assertNames(root: HTMLElement, name: string) {
 }
 
 async function assertFocusable(root: HTMLElement, name: string) {
-	for (const element of all(root, `${interactive}, ${dateButtons}`)) {
+	for (const element of all(root, `${interactive}, ${dateButtons}`).filter(exposedControl)) {
 		await focus(element);
 		assert.ok(document.activeElement === element, `${name}: ${describe(element)} accepts focus`);
 	}
@@ -260,14 +265,11 @@ test("every interactive element is focusable and has an accessible name", async 
 			}
 			assertNames(fixture.root(), name);
 			if (name === "quick-filter") {
-				for (const [selector, label] of [
-					["select.actionName", "Quick entry action"],
-					["select.filterSelector", "Add a filter"],
-					['select[name="priorityFilter"]', "Filter by priority"],
-					[".dateFilter input:first-of-type", "Show tasks on or after this date"],
-					[".dateFilter input:last-of-type", "Show tasks on or before this date"],
-				])
-					assert.equal(get(fixture.root(), selector).getAttribute("aria-label"), label);
+				const dates = all(fixture.root(), '.dateRange input[type="date"]');
+				assert.deepEqual(
+					dates.map((input) => input.getAttribute("aria-label")),
+					["Show tasks on or after this date", "Show tasks on or before this date"],
+				);
 			}
 			await assertFocusable(fixture.root(), name);
 		});
@@ -277,7 +279,7 @@ test("Space on a focused row writes the same edit as a click", async (t) => {
 	freezeEventClock(t);
 	const mouse = await mountWritingTimeline(t, "Heading\n\n- [ ] Pay\n");
 	const keyboard = await mountWritingTimeline(t, "Heading\n\n- [ ] Pay\n");
-	await click(get(mouse.container, 'input[type="checkbox"]'));
+	await click(get(mouse.container, '.task input[type="checkbox"]'));
 	const event = await key(get(keyboard.container, ".task"), " ");
 	assert.equal(mouse.write.mock.callCount(), 1, "the reference click writes once");
 	assert.equal(keyboard.write.mock.callCount(), 1, "Space must invoke the same writer once");
@@ -455,15 +457,19 @@ test("the ContextMenu keydown alone opens no menu; the native contextmenu event 
 	assert.equal(show.mock.callCount(), 1, "the native contextmenu event opens it once");
 });
 
-test("Tab order follows the DOM: Focus on today, counters, the quick entry, then the list", async (t) => {
+test("Tab order follows the DOM: Today heading, counters, filters, quick entry, then the list", async (t) => {
 	const fixture = await mountState(t);
 	const root = fixture.root();
 	const stop = defaultStop(root)!;
-	const expected = [
+	const panel = get(root, ".quickEntryPanel");
+	const metadata = get(panel, ".entryMetaReveal");
+	const expected = () => [
 		get(root, ".todayHeader"),
 		...all(root, ".counter"),
-		get(root, ".tagFilterBar input"),
-		...all(get(root, ".quickEntryPanel"), "select, input, button"),
+		...all(get(root, ".quickFilterBar"), "select, input, summary, button").filter(
+			(el) => el.tabIndex >= 0 && exposedControl(el),
+		),
+		...all(panel, "select, input, button").filter(exposedControl),
 		stop,
 		...all(stop, rowControls),
 	];
@@ -471,12 +477,106 @@ test("Tab order follows the DOM: Focus on today, counters, the quick entry, then
 		all(root, "*").every((el) => el.tabIndex <= 0),
 		"no positive tabIndex changes DOM order",
 	);
-	assert.deepEqual(
-		tabOrder(root).map(describe),
-		expected.map(describe),
-		"Tab visits Focus today, counters, quick entry, then one row and its controls",
-	);
+	assert.equal(metadata.getAttribute("aria-hidden"), "true");
+	assert.equal(metadata.hasAttribute("inert"), true);
+	for (const [state, target] of [
+		["collapsed", undefined],
+		["expanded", get(panel, "input.newTask")],
+		["collapsed after external focus", get(root, ".todayHeader")],
+	] as const) {
+		if (target) await focus(target);
+		assert.equal(metadata.getAttribute("aria-hidden"), String(state !== "expanded"), state);
+		assert.equal(metadata.hasAttribute("inert"), state !== "expanded", state);
+		assert.deepEqual(
+			tabOrder(root).map(describe),
+			expected().map(describe),
+			`${state}: Tab follows the heading, counters, filters, exposed entry controls, then one row`,
+		);
+	}
 	assertRoving(root, stop, "default Tab order");
+});
+
+test("quick entry reveals named metadata on focus, retains it within the panel and collapses outside", async (t) => {
+	const fixture = await mountWritingTimeline(t, "- [ ] Existing task 📅 2026-01-15", {
+		taskFiles: ["Note.md"],
+	});
+	const root = get(fixture.container, ".taskido");
+	const panel = get(root, ".quickEntryPanel");
+	const metadata = get(panel, ".entryMeta");
+	const reveal = get(panel, ".entryMetaReveal");
+	const input = get(panel, "input.newTask") as HTMLInputElement;
+	const dueChoice = get(metadata, "select.taskDuePreset") as HTMLSelectElement;
+	const due = get(metadata, "input.taskDue") as HTMLInputElement;
+	const priority = get(metadata, "select.taskPriority") as HTMLSelectElement;
+	const controls = all(metadata, "select, input");
+	assert.equal(controls.length, 4);
+	assert.equal(get(metadata, ".entryDue").getAttribute("role"), "group");
+	assert.equal(dueChoice.getAttribute("aria-label"), "Choose a due date");
+	assert.deepEqual(
+		[...dueChoice.options].map((option) => [option.value, option.textContent]),
+		[
+			["", "Due"],
+			["none", "No date"],
+			["today", "Today"],
+			["tomorrow", "Tomorrow"],
+			["custom", "Choose date…"],
+		],
+	);
+	assert.equal(dueChoice.value, "", "an untouched Due control has no clearing intent");
+	assert.equal(dueChoice.options[0].disabled, true);
+	assert.equal(dueChoice.options[0].hidden, true);
+	assert.deepEqual(
+		[...dueChoice.options].filter((option) => !option.disabled).map((option) => option.value),
+		["none", "today", "tomorrow", "custom"],
+		"No date remains selectable as the first direct action",
+	);
+	assert.equal(reveal.getAttribute("aria-hidden"), "true");
+	assert.equal(reveal.hasAttribute("inert"), true);
+	assert.ok(controls.every((control) => !tabOrder(root).includes(control)));
+	assertNames(root, "collapsed quick entry");
+	await focus(input);
+	assert.equal(reveal.getAttribute("aria-hidden"), "false");
+	assert.equal(reveal.hasAttribute("inert"), false);
+	assert.ok(panel.classList.contains("focus"));
+	assert.equal(due.hidden, true);
+	assert.ok(!tabOrder(root).includes(due), "the custom date is outside Tab order until requested");
+	assert.ok(controls.filter((control) => control !== due).every((control) => tabOrder(root).includes(control)));
+	assertNames(root, "expanded quick entry");
+	await act(() => {
+		dueChoice.value = "custom";
+		dueChoice.dispatchEvent(new Event("change", { bubbles: true }));
+	});
+	assert.equal(due.hidden, false);
+	assert.strictEqual(document.activeElement, due, "Choose date moves keyboard access to the native date field");
+	await act(() => {
+		const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+		setter.call(input, "Keep the draft");
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+		setter.call(due, "2026-01-20");
+		due.dispatchEvent(new Event("input", { bubbles: true }));
+		priority.value = "High";
+		priority.dispatchEvent(new Event("change", { bubbles: true }));
+	});
+	for (const control of [...controls, get(panel, "button.ok"), input]) {
+		await focus(control);
+		assert.strictEqual(document.activeElement, control);
+		assert.equal(reveal.getAttribute("aria-hidden"), "false", `${describe(control)} keeps metadata expanded`);
+		assert.equal(reveal.hasAttribute("inert"), false);
+		assert.ok(panel.classList.contains("focus"));
+	}
+	await focus(get(root, ".todayHeader"));
+	assert.equal(reveal.getAttribute("aria-hidden"), "true");
+	assert.equal(reveal.hasAttribute("inert"), true);
+	assert.ok(!panel.classList.contains("focus"));
+	assert.ok(controls.every((control) => !tabOrder(root).includes(control)));
+	assert.equal(input.value, "Keep the draft");
+	assert.equal(due.value, "2026-01-20");
+	assert.equal(priority.value, "High");
+	await focus(input);
+	assert.equal(reveal.getAttribute("aria-hidden"), "false");
+	assert.equal(reveal.hasAttribute("inert"), false);
+	assert.strictEqual(get(panel, ".entryMeta"), metadata, "the same metadata controls are retained");
+	assert.equal(fixture.write.mock.callCount(), 0, "focus changes never submit the task");
 });
 
 test("axe-core finds no violation of the six rules in any of the 42 states", async (t) => {
@@ -580,7 +680,7 @@ test("rows sharing a task id keep distinct names and keyboard stops for each day
 		labels,
 	);
 	assertRoving(root, instances[2], "reload keeps the exact day instance as the stop");
-	await key(get(root, ".todayHeader"), "Enter");
+	await act(() => get(root, ".todayHeader").click());
 	const today = instances[1];
 	assert.ok(today.closest(".details.today"));
 	assertRoving(root, today, "Focus today chooses today's instance of the same task");
@@ -664,19 +764,100 @@ test("Space on a dimmed row or within 300 ms of the list commit writes nothing",
 	assert.deepEqual(fixture.h.events, events);
 });
 
-test("Enter and Space on Focus on today toggle it and aria-pressed", async (t) => {
+test("the restored Today heading exposes its pressed state and supports Enter and Space", async (t) => {
 	const fixture = await mountState(t);
-	const control = get(fixture.root(), '[aria-label="Focus on today"]');
+	const root = fixture.root();
+	const heading = get(root, ".todayHeader");
+	const scope = get(root, "select.dateScope") as HTMLSelectElement;
+	assert.equal(heading.textContent, "Focus on today");
+	assert.equal(heading.getAttribute("role"), "button");
+	assert.equal(heading.getAttribute("aria-label"), "Focus on today");
+	assert.equal(scope.getAttribute("aria-label"), "Filter by date");
+	assert.equal(heading.getAttribute("aria-pressed"), "false");
+	assert.ok(tabOrder(root).includes(heading));
+	assert.ok(heading.compareDocumentPosition(get(root, ".counters")) & Node.DOCUMENT_POSITION_FOLLOWING);
+	assert.equal(root.querySelector(".todayToggle, .dateFilter"), null);
+	for (const [value, focused] of [
+		["Enter", true],
+		[" ", false],
+	] as const) {
+		assert.equal((await key(heading, value)).defaultPrevented, true, `${value} activates the heading once`);
+		assert.equal(root.classList.contains("todayFocus"), focused);
+		assert.equal(heading.getAttribute("aria-pressed"), String(focused));
+		assert.equal(scope.value, "all", "Focus on today does not change the date filter");
+		assert.strictEqual(document.activeElement, heading);
+		const stop = rows(root).find((row) => row.tabIndex === 0);
+		assertRoving(root, stop, "Today heading activation");
+		if (focused && stop) assert.ok(stop.closest(".details.today"));
+	}
+});
+
+test("the native date filter preserves independent Today focus and retains keyboard focus", async (t) => {
+	const fixture = await mountState(t);
+	const control = get(fixture.root(), "select.dateScope") as HTMLSelectElement;
+	assert.equal(control.tagName, "SELECT", "the browser supplies native keyboard selection");
+	assert.deepEqual(
+		[...control.options].map((option) => option.value),
+		["all", "week", "custom"],
+	);
+	await key(get(fixture.root(), ".todayHeader"), "Enter");
+	await focus(control);
+	for (const value of ["week", "custom", "all"]) {
+		await act(() => {
+			control.value = value;
+			control.dispatchEvent(new Event("change", { bubbles: true }));
+		});
+		assert.equal(fixture.root().classList.contains("todayFocus"), true);
+		assert.equal(control.value, value);
+		assert.equal(get(fixture.root(), ".todayHeader").getAttribute("aria-pressed"), "true");
+		assert.strictEqual(document.activeElement, control);
+		const stop = rows(fixture.root()).find((row) => row.tabIndex === 0);
+		assertRoving(fixture.root(), stop, "date selection preserves Today focus");
+		if (stop) assert.ok(stop.closest(".details.today"));
+	}
+});
+
+test("the native priority disclosure exposes named checkboxes and Escape returns focus", async (t) => {
+	const fixture = await mountState(t);
+	const root = fixture.root();
+	const details = get(root, "details.priorityFilter") as HTMLDetailsElement;
+	const summary = get(details, "summary");
+	const options = all(details, 'input[type="checkbox"]');
+	assert.equal(options.length, 6);
+	assert.equal(get(details, ".priorityOptions").getAttribute("role"), "group");
+	assert.equal(get(details, ".priorityOptions").getAttribute("aria-label"), "Filter by priority");
+	assert.equal(get(summary, ".priorityChevron").getAttribute("aria-hidden"), "true");
+	assert.equal(all(details, '.priorityCheck[aria-hidden="true"]').length, 6);
+	assert.equal(summary.tagName, "SUMMARY", "the browser supplies native disclosure keyboard behavior");
 	for (const value of ["Enter", " "])
-		for (const pressed of [true, false]) {
-			const event = await key(control, value);
-			assert.equal(fixture.root().classList.contains("todayFocus"), pressed, `${value} toggles todayFocus`);
-			assert.equal(control.getAttribute("aria-pressed"), String(pressed));
-			assert.equal(event.defaultPrevented, true);
-			const stop = rows(fixture.root()).find((row) => row.tabIndex === 0);
-			assertRoving(fixture.root(), stop, "Focus today toggle");
-			if (pressed && stop) assert.ok(stop.closest(".details.today"));
-		}
+		assert.equal((await key(summary, value)).defaultPrevented, false, `${value} keeps native activation`);
+	assert.ok(
+		options.every((option) => !exposedControl(option)),
+		"closed options are outside the Tab order",
+	);
+	await act(() => summary.click());
+	assert.equal(details.open, true);
+	axe.setup(root);
+	try {
+		assert.deepEqual(
+			options.map((option) => axe.commons.text.accessibleText(option).trim()),
+			["Highest", "High", "Medium", "None", "Low", "Lowest"],
+		);
+	} finally {
+		axe.teardown();
+	}
+	assert.ok(
+		options.every((option) => tabOrder(root).includes(option)),
+		"open options join native Tab order",
+	);
+	await key(options[2], "Escape");
+	assert.equal(details.open, false);
+	assert.strictEqual(document.activeElement, summary);
+	assert.ok(options.every((option) => !tabOrder(root).includes(option)));
+	await act(() => summary.click());
+	assert.equal(details.open, true);
+	await act(() => get(root, ".todayHeader").dispatchEvent(new Event("pointerdown", { bubbles: true })));
+	assert.equal(details.open, false, "a pointer outside the disclosure closes it");
 });
 
 test("badges without their own handler have no role and are not focusable", async (t) => {
@@ -803,26 +984,27 @@ test("the Tab stop stays on its row when the list reorders", async (t) => {
 		assert.equal(row.outerHTML, markup, "an untouched row's attributes do not change");
 });
 
-test("Enter on Focus on today and on a counter render nothing but the Timeline", async (t) => {
+test("Today and counter activation retain the recorded render and provider behavior", async (t) => {
 	const expected = JSON.parse(readFileSync(path.join(FIXTURES, "markup", "render-counts.json"), "utf8")) as {
 		operation: string;
 		renders: Record<string, number>;
 		providers: Record<string, string>;
 	}[];
 	for (const [operation, selector] of [
-		["Focus on today click", '[aria-label="Focus on today"]'],
+		["Focus on today click", ".todayHeader"],
 		["counter click", "#todo"],
 	])
 		await t.test(operation, async (s) => {
 			const counts = countRenders(s);
 			const fixture = await mountState(s);
 			counts.reset();
-			await key(get(fixture.root(), selector), "Enter");
+			const control = get(fixture.root(), selector);
+			await key(control, "Enter");
 			const baseline = expected.find((entry) => entry.operation === operation)!;
 			assert.deepEqual(
 				counts.snapshot(),
 				{ renders: baseline.renders, providers: baseline.providers },
-				`${operation}: Enter matches the recorded click render counts and provider identities`,
+				`${operation}: activation matches recorded render counts and provider identities`,
 			);
 		});
 });

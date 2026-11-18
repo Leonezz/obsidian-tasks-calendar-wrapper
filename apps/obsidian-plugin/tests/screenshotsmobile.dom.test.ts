@@ -69,7 +69,7 @@ function stubGeometry(root: Element) {
 	const points = new Map<string, Element | null>();
 	const expectedHitCalls: string[] = [];
 	for (const [number, { target, element, index }] of matches.entries()) {
-		const rendered = element.closest("[hidden]") === null;
+		const rendered = element.closest('[hidden], [inert], [aria-hidden="true"]') === null;
 		const rect = new window.DOMRect(10 + number * 100, 20 + number * 100, 44 + (number % 7), 50 + (number % 5));
 		Object.defineProperty(element, "checkVisibility", {
 			value: (options: { checkVisibilityCSS?: boolean }) => {
@@ -130,7 +130,9 @@ test("collectTouchTargets measures every rendered target in a markup golden", (t
 	);
 	assert.deepEqual(
 		geometry.rectCalls,
-		geometry.matches.filter(({ element }) => !element.closest("[hidden]")).map(({ element }) => element),
+		geometry.matches
+			.filter(({ element }) => !element.closest('[hidden], [inert], [aria-hidden="true"]'))
+			.map(({ element }) => element),
 	);
 	assert.deepEqual(geometry.hitCalls, geometry.expectedHitCalls);
 });
@@ -145,6 +147,26 @@ function stubTarget(root: Element, selector = "a.menu") {
 	element.getBoundingClientRect = () => new window.DOMRect(10, 20, 44, 44);
 	return element;
 }
+
+test("collectTouchTargets excludes semantically closed controls while their exit is still painted", (t) => {
+	const root = mobilePage(t);
+	const element = stubTarget(root);
+	const wrapper = document.createElement("div");
+	element.before(wrapper);
+	wrapper.append(element);
+	element.getBoundingClientRect = () => {
+		assert.fail("a semantically closed target must not be measured even when checkVisibility returns true");
+	};
+	for (const [attribute, value] of [
+		["hidden", ""],
+		["inert", ""],
+		["aria-hidden", "true"],
+	]) {
+		wrapper.setAttribute(attribute, value);
+		assert.deepEqual(measure(menuTarget), [], `${attribute} excludes the exiting target`);
+		wrapper.removeAttribute(attribute);
+	}
+});
 
 function stubClipping(t: TestContext, element: Element, overflow: string, rect: DOMRect, border = 0) {
 	const styleBefore = element.getAttribute("style");

@@ -1,12 +1,20 @@
 import * as React from "react";
-import { copy, type DayGroup, type ResolvedTask, type TaskRowModel } from "@tasks-calendar-wrapper/core";
+import {
+	copy,
+	type DayGroup,
+	type NewDateStyle,
+	type ResolvedTask,
+	type Store,
+	type TaskRowModel,
+} from "@tasks-calendar-wrapper/core";
 import { Counters, type CounterProps } from "../entry/Counters";
-import { QuickEntry } from "../entry/QuickEntry";
-import { TagFilter } from "../entry/TagFilter";
+import { QuickEntry, type createQuickEntryDraft } from "../entry/QuickEntry";
+import { QuickFilters } from "../entry/QuickFilters";
+import type { createTagFilterDraft } from "../entry/TagFilter";
 import { TodayFocus } from "../entry/TodayFocus";
 import { DayHeader } from "./DayHeader";
 import { DayContent } from "./DayContent";
-import { QuickEntryHandlerContext } from "../contexts";
+import { QuickEntryHandlerContext, type CounterId } from "../contexts";
 import { recordRender } from "../renderprobe";
 import { WindowGap, type WindowDayPlan } from "./Windowed";
 
@@ -20,6 +28,14 @@ export type EntryProps = {
 	readonly taskFiles: readonly string[];
 	/** The tags on the tasks, suggested by the tag filter. */
 	readonly tags: readonly string[];
+	readonly todayFocus?: boolean;
+	readonly todayKey?: string;
+	readonly activeCounter?: CounterId;
+	readonly draft?: ReturnType<typeof createQuickEntryDraft>;
+	readonly tagDraft?: ReturnType<typeof createTagFilterDraft>;
+	readonly priorityMenu?: Store<boolean>;
+	readonly defaultFile?: string;
+	readonly newDateStyle?: NewDateStyle;
 };
 
 type DayProps = {
@@ -52,10 +68,25 @@ export const sameDayProps = (prev: DayProps, next: DayProps): boolean =>
 function EntryFilters({ entry }: { readonly entry: EntryProps }) {
 	const { quickFilter } = React.useContext(QuickEntryHandlerContext);
 	return (
-		<>
-			<TagFilter applied={quickFilter} tags={entry.tags} />
-			<QuickEntry applied={quickFilter} taskFiles={entry.taskFiles} />
-		</>
+		<div className="entryControls">
+			<Counters counters={entry.counters} />
+			<QuickFilters
+				applied={quickFilter}
+				tags={entry.tags}
+				todayFocus={entry.todayFocus}
+				todayKey={entry.todayKey}
+				activeCounter={entry.activeCounter}
+				tagDraft={entry.tagDraft}
+				priorityMenu={entry.priorityMenu}
+			/>
+			<QuickEntry
+				taskFiles={entry.taskFiles}
+				draft={entry.draft}
+				defaultFile={entry.defaultFile}
+				newDateStyle={entry.newDateStyle}
+				todayKey={entry.todayKey}
+			/>
+		</div>
 	);
 }
 
@@ -72,9 +103,12 @@ export const Day = React.memo(function Day(props: DayProps) {
 	const types = day.statuses.join(" ");
 	return (
 		<div ref={window?.ref} {...(window ? { "data-tcw-day": day.key } : {})}>
-			{entry && <TodayFocus visual={copy.timeline.focusOnToday} />}
-			{entry && <Counters counters={entry.counters} />}
-			{entry && <EntryFilters entry={entry} />}
+			{entry && (
+				<>
+					<TodayFocus visual={copy.timeline.focusOnToday} active={entry.todayFocus} />
+					<EntryFilters entry={entry} />
+				</>
+			)}
 			{day.tasks.length > 0 && (
 				<div
 					className={className + (entry === undefined ? " tcw-day" : "")}

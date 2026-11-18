@@ -45,18 +45,17 @@ const semantic: ExpandedFilterSemantic = {
 	entryPosition: "top",
 	counterBehavior: "Filter",
 	controls: {
-		action: "append",
+		dateScope: "all",
 		dates: [],
 		priorityOptions: [],
-		priorityChips: [],
-		filterChips: [],
-		priorityClosedValue: undefined,
-		filterClosedValue: undefined,
+		priorityOpen: false,
+		prioritySummary: "Priority",
+		entryText: "",
 	},
 	applied: null,
 	rows: [],
 };
-const styles = '{"priority chips":{"color":"rgb(1, 2, 3)"}}\n';
+const styles = '{"priority summary":{"color":"rgb(1, 2, 3)"}}\n';
 
 function temporary(t: TestContext) {
 	const folder = mkdtempSync(path.join(tmpdir(), "screenshots-expanded-filter-"));

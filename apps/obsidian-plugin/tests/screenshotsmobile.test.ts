@@ -153,15 +153,25 @@ test("a required target with no element fails, a missing ✏️ does not", () =>
 			".task .timeline label.icon",
 			".task a.menu",
 			".counter",
-			".todayHeader",
-			".quickEntryPanel select",
 			".quickEntryPanel input",
 			".quickEntryPanel button",
+			".quickFilterBar select",
+			".todayHeader",
+			".tagFilterBar input",
+			".priorityFilter summary",
 		],
 	);
 	assert.deepEqual(
 		TOUCH_TARGETS.filter(({ required }) => !required).map(({ selector }) => selector),
-		[".task a.modify", ".task .info > :is(.tag, .relative, .repeat, .priority, .file)", ".tagFilterBar input"],
+		[
+			".task a.modify",
+			".task .info > :is(.tag, .relative, .repeat, .priority, .file)",
+			".quickEntryPanel select",
+			".priorityOptions label",
+			".dateRange input",
+			".applyDateRange",
+			".clearFilters",
+		],
 	);
 	assert.equal(new Set(TOUCH_TARGETS.map(({ name }) => name)).size, TOUCH_TARGETS.length);
 	for (const { name, required } of TOUCH_TARGETS) {

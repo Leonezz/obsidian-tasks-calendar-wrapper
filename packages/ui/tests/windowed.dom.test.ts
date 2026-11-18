@@ -48,6 +48,11 @@ class FakeDate {
 	clone() {
 		return new FakeDate(this.valueOf());
 	}
+	add(amount: number, unit: string) {
+		assert.match(unit, /^days?$/);
+		this.value.setUTCDate(this.date() + amount);
+		return this;
+	}
 	format(format = "YYYY-MM-DD") {
 		const year = String(this.year()).padStart(4, "0");
 		const month = String(this.month() + 1).padStart(2, "0");
@@ -217,8 +222,15 @@ function harness(t: TestContext, count = 2_000, popup = false) {
 			return rect((collapsedMargins ? 20 : 0) + flowOffset - viewport.scrollTop, 22);
 		if (this.classList.contains("todayHeader"))
 			return rect((collapsedMargins ? 62 : 22) + flowOffset - viewport.scrollTop, 30);
+		if (this.classList.contains("entryControls"))
+			return rect(
+				(collapsedMargins ? 112 : 52) + flowOffset - viewport.scrollTop,
+				150 + entryExtraHeight + (collapsedMargins ? 20 : 0),
+			);
 		if (this.classList.contains("counters"))
-			return rect((collapsedMargins ? 112 : 52) + flowOffset - viewport.scrollTop, 90);
+			return rect((collapsedMargins ? 112 : 52) + flowOffset - viewport.scrollTop, 60);
+		if (this.classList.contains("quickFilterBar"))
+			return rect((collapsedMargins ? 172 : 112) + flowOffset - viewport.scrollTop, 30);
 		if (this.classList.contains("quickEntryPanel"))
 			return rect((collapsedMargins ? 222 : 142) + flowOffset - viewport.scrollTop, 60 + entryExtraHeight);
 		if (this.classList.contains("dateLine"))
@@ -372,7 +384,7 @@ function harness(t: TestContext, count = 2_000, popup = false) {
 			contentPadding = padding;
 			const style = doc.createElement("style");
 			style.textContent =
-				".year{margin:20px 0}.todayHeader{margin:10px 0}.counters{margin:20px 0}.quickEntryPanel{margin:0 0 20px}.dateLine{margin:10px 0}";
+				".year{margin:20px 0}.todayHeader{margin:10px 0}.quickFilterBar{margin:10px 0}.counters{margin:20px 0}.quickEntryPanel{margin:0 0 20px}.dateLine{margin:10px 0}";
 			doc.head.append(style);
 			t.after(() => style.remove());
 		},
@@ -430,7 +442,10 @@ test("the entry panel stays mounted when scrolled away and modes change", async 
 	const f = harness(t);
 	await f.render();
 	const input = f.container.querySelector<HTMLInputElement>("input.newTask")!;
-	input.value = "keep the draft";
+	await act(() => {
+		input.value = "keep the draft";
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+	});
 	await act(() => input.focus());
 	await f.scrollTo(60_240);
 	assert.strictEqual(f.container.querySelector("input.newTask"), input);
@@ -690,7 +705,7 @@ test("a popout with no window dimensions bounds zero and oversized temporary lay
 test("adopting the same viewport cancels its pending reveal and rebinds to the new owner window", async (t) => {
 	const f = harness(t);
 	await f.render(f.items(), { useYearHeader: false });
-	const prefix = [".todayHeader", ".counters", ".tagFilterBar", ".quickEntryPanel"].map((selector) => {
+	const prefix = [".todayHeader", ".entryControls"].map((selector) => {
 		const element = f.container.querySelector<HTMLElement>(selector);
 		assert.ok(element);
 		return element;

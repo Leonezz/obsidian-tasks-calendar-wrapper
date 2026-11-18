@@ -31,6 +31,7 @@ const declarations = (body: string) =>
 test("legacy classes unused by timeline controls have no stylesheet rules", () => {
 	const css = readFileSync("styles.css", "utf8");
 	assert.doesNotMatch(css, /\.(?:noDone|noUnplanned|noColor)\b/);
+	assert.doesNotMatch(css, /\.(?:todayToggle|dateFilter)\b/);
 });
 
 test("view scope remains on cascade-sensitive rules rather than every timeline rule", () => {
@@ -44,7 +45,7 @@ test("view scope remains on cascade-sensitive rules rather than every timeline r
 		".taskido .task .external-link",
 		".taskido .task.overdue .timeline .icon svg",
 		".taskido .task.done .timeline .icon svg",
-		".taskido .quickEntryPanel .left",
+		".taskido .entryMain",
 		".taskido .details.today",
 	])
 		assert.ok(
@@ -183,6 +184,9 @@ test("live legacy and Obsidian defaults resolve on their consuming element", () 
 			"--tcw-control-shadow": "var(--input-shadow)",
 			"--tcw-control-border-width": "var(--input-border-width)",
 			"--tcw-entry-bg": "var(--background-modifier-form-field)",
+			"--tcw-action-bg": "var(--interactive-accent)",
+			"--tcw-action-fg": "var(--text-on-accent)",
+			"--tcw-action-hover-bg": "var(--interactive-accent-hover)",
 			"--tcw-option-bg": "var(--background-primary)",
 			"--tcw-checkbox-size": "var(--checkbox-size)",
 			"--tcw-badge-fg": "var(--tcw-color-muted, var(--text-muted))",
@@ -339,13 +343,25 @@ test("windowed gaps preserve measured height without receiving input", () => {
 	assert.match(root.body, /(?:^|[;\s])overflow-anchor\s*:\s*none\s*;/);
 });
 
-test("the focus ring is drawn only on :focus-visible from --tcw-focus-ring", () => {
+test("focus rings use :focus-visible while the enclosing entry field follows focus-within", () => {
 	const rules = cssRules(readFileSync("styles.css", "utf8"));
 	const scoped = rules.filter(({ selectors }) => selectors.some((selector) => /\.taskido\b/.test(selector)));
 	assert.deepEqual(
-		scoped.flatMap(({ selectors }) => selectors.filter((selector) => /:focus(?!-visible)/.test(selector))),
+		scoped.flatMap(({ selectors }) => selectors.filter((selector) => /:focus(?!-visible|-within)/.test(selector))),
 		[],
-		"timeline focus styles must use :focus-visible, never :focus",
+		"timeline controls must use :focus-visible, never :focus",
+	);
+	const containers = scoped.filter(({ selectors }) =>
+		selectors.some((selector) => selector.includes(":focus-within")),
+	);
+	assert.deepEqual(
+		containers.map(({ selectors }) => selectors),
+		[[".taskido .entryMain:focus-within"]],
+	);
+	assert.deepEqual(
+		properties(containers[0].body),
+		["border-color"],
+		"the container changes its border, not the focus ring",
 	);
 	assert.ok(
 		rules.some(
@@ -362,6 +378,96 @@ test("the focus ring is drawn only on :focus-visible from --tcw-focus-ring", () 
 				/(?:^|[;\s])outline\s*:[^;{}]*var\(\s*--tcw-focus-ring\s*\)/.test(body),
 		),
 		"a timeline :focus-visible outline must use var(--tcw-focus-ring)",
+	);
+});
+
+test("capture and progressive metadata retain field affordances and the add action keeps its accent contrast", () => {
+	const rules = cssRules(readFileSync("styles.css", "utf8"));
+	const rule = (selector: string) => {
+		const match = rules.find(({ selectors }) => selectors.includes(selector));
+		assert.ok(match, selector);
+		return new Map(declarations(match.body));
+	};
+	const main = rule(".taskido .entryMain");
+	assert.match(main.get("border") ?? "", /solid\s+var\(--tcw-color-border,\s*var\(--background-modifier-border\)\)/);
+	assert.equal(main.get("border-radius"), "var(--tcw-radius-entry)");
+	assert.equal(main.get("background"), "var(--tcw-entry-bg, var(--background-modifier-form-field))");
+	assert.equal(resolvedTokens(main.get("min-height") ?? ""), "40px");
+	const panel = rule(".taskido .quickEntryPanel");
+	assert.ok(!panel.has("border-top"), "a second separator must not compete with the input boundary");
+	const reset = rule(".taskido .quickEntryPanel :is(input, select, button)");
+	for (const property of ["border", "background", "box-shadow"])
+		assert.ok(!reset.has(property), `${property}: shared geometry must not erase control affordances`);
+	const metadata = rule(".taskido .entryMeta label");
+	assert.match(metadata.get("border") ?? "", /solid\s+var\(--tcw-color-border,/);
+	assert.equal(metadata.get("border-radius"), "var(--tcw-radius-tool)");
+	assert.match(rule(".taskido .entryMeta .entryDue").get("border") ?? "", /solid\s+var\(--tcw-color-border,/);
+	assert.equal(rule(".taskido .entryMeta .taskDue[hidden]").get("display"), "none");
+	assert.equal(rule(".taskido .t-acc-panel").get("grid-template-rows"), "0fr");
+	assert.equal(rule('.taskido .t-acc[data-open="true"] .t-acc-panel').get("grid-template-rows"), "1fr");
+	assert.equal(rule(".taskido .t-acc-panel-inner").get("overflow"), "hidden");
+	assert.equal(rule(".taskido .entryMeta select").get("appearance"), "auto");
+	const add = rule(".taskido .quickEntryPanel .ok");
+	assert.equal(add.get("background"), "var(--tcw-action-bg, var(--interactive-accent))");
+	assert.equal(add.get("color"), "var(--tcw-action-fg, var(--text-on-accent))");
+	assert.equal(
+		rule(".taskido.todayFocus .todayHeader").get("color"),
+		"var(--tcw-color-focus, var(--taskido-color-focus))",
+	);
+	const heading = rule(".taskido .todayHeader");
+	assert.equal(resolvedTokens(heading.get("font-size") ?? ""), "24px");
+	assert.equal(heading.get("font-weight"), "bold");
+	assert.equal(heading.get("text-align"), "center");
+});
+
+test("all motion lanes are scoped, explicit and disabled for reduced motion", () => {
+	const rules = cssRules(readFileSync("styles.css", "utf8"));
+	const motion = rules.filter(({ body }) => declarations(body).some(([name]) => name === "transition"));
+	assert.ok(motion.length > 0);
+	const reduced = motion.filter(({ atRules }) =>
+		atRules?.some((rule) => /^@media\s+\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)$/.test(rule)),
+	);
+	assert.ok(reduced.length > 0, "the OS preference must disable the full animation, not merely shorten it");
+	const disabled = reduced.flatMap(({ selectors, body }) => {
+		assert.match(body, /transition\s*:\s*none\s*!important/);
+		return selectors;
+	});
+	for (const { selectors, body, atRules } of motion) {
+		assert.ok(
+			selectors.every((selector) => selector.startsWith(".taskido ")),
+			selectors.join(", "),
+		);
+		if (atRules?.some((rule) => rule.includes("prefers-reduced-motion"))) continue;
+		assert.doesNotMatch(body, /transition\s*:\s*all\b/, "unrelated state changes must not become animated");
+		for (const selector of selectors) {
+			const base = selector.replace(/\.t-acc\[data-open="true"\] /, "").replace(/\.is-(?:open|closing)/, "");
+			assert.ok(disabled.includes(base), `${selector} needs a reduced-motion override`);
+		}
+	}
+});
+
+test("priority uses a custom disclosure icon and visible keyboard feedback for its native checkbox rows", () => {
+	const rules = cssRules(readFileSync("styles.css", "utf8"));
+	const body = (selector: string) => {
+		const match = rules.find(({ selectors }) => selectors.includes(selector));
+		assert.ok(match, selector);
+		return new Map(declarations(match.body));
+	};
+	assert.equal(body(".taskido .priorityFilter summary").get("list-style"), "none");
+	assert.equal(body(".taskido .priorityFilter summary::-webkit-details-marker").get("display"), "none");
+	const checkbox = body(".taskido .priorityOptions input");
+	assert.equal(checkbox.get("position"), "absolute");
+	assert.equal(checkbox.get("opacity"), "0");
+	assert.ok(!checkbox.has("display"), "the native checkbox remains keyboard- and screen-reader-accessible");
+	assert.ok(!checkbox.has("pointer-events"), "the native checkbox remains the pointer target");
+	assert.equal(body(".taskido .priorityOption:has(input:focus-visible)").get("outline"), "var(--tcw-focus-ring)");
+	assert.equal(body('.taskido .priorityOption[data-selected="true"] .priorityCheck').get("visibility"), "visible");
+	assert.equal(body(".taskido .priorityOptions").get("max-height"), "var(--tcw-priority-menu-max-height)");
+	assert.equal(body(".taskido .priorityOptions").get("overflow-y"), "auto");
+	assert.equal(body('.taskido .priorityOptions[data-placement="above"]').get("top"), "auto");
+	assert.equal(
+		body('.taskido .priorityOptions[data-placement="above"]').get("bottom"),
+		"calc(100% + var(--tcw-space-3))",
 	);
 });
 
@@ -483,7 +589,7 @@ test("mobile rules do not change glyph sizes or the strip width", () => {
 	);
 });
 
-test("the hover rules keep their selectors and declarations", () => {
+test("hover feedback keeps native task and entry controls within the hover media query", () => {
 	const hover = cssRules(readFileSync("styles.css", "utf8"))
 		.filter(({ selectors }) => selectors.some((selector) => selector.includes(":hover")))
 		.map(({ selectors, body }) => ({ selectors, body: whitespace(resolvedTokens(body)) }));
@@ -496,9 +602,26 @@ test("the hover rules keep their selectors and declarations", () => {
 `),
 		},
 		{
-			selectors: [".taskido .quickEntryPanel select:hover", ".taskido .quickEntryPanel button:hover"],
+			selectors: [
+				".taskido .quickEntryPanel select:hover",
+				".taskido .quickFilterBar summary:hover",
+				".taskido .clearFilters:hover",
+			],
 			body: whitespace(`
 	color: var(--text-normal);
+`),
+		},
+		{
+			selectors: [".taskido .quickEntryPanel .ok:hover"],
+			body: whitespace(`
+	background: var(--interactive-accent-hover);
+	color: var(--text-on-accent);
+`),
+		},
+		{
+			selectors: [".taskido .priorityOptions label:hover"],
+			body: whitespace(`
+	background: var(--background-modifier-hover);
 `),
 		},
 		{

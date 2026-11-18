@@ -12,13 +12,12 @@ export type ExpandedFilterSemantic = {
 	entryPosition: string;
 	counterBehavior: string;
 	controls: {
-		action: string | undefined;
+		dateScope: string | undefined;
 		dates: string[];
-		priorityOptions: { value: string; label: string }[];
-		priorityChips: string[];
-		filterChips: string[];
-		priorityClosedValue: string | undefined;
-		filterClosedValue: string | undefined;
+		priorityOptions: { value: string; label: string; checked: boolean }[];
+		priorityOpen: boolean;
+		prioritySummary: string | undefined;
+		entryText: string | undefined;
 	};
 	applied: { from?: string; to?: string; priorities: string[]; tags: string[] } | null;
 	rows: { day: string; path: string; line: number; marker: string | null; busy: boolean; text: string }[];

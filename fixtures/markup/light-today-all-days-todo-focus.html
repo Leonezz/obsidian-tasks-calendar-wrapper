@@ -1145,68 +1145,214 @@
         <div aria-label="Focus on today" aria-pressed="false" class="todayHeader" role="button" tabindex="0">
           Focus on today
         </div>
-        <div class="counters">
-          <div aria-label="Toggle to-do counter" aria-pressed="true" class="counter" id="todo" role="button" tabindex="0">
-            <div class="count">
-              65
+        <div class="entryControls">
+          <div class="counters">
+            <div aria-label="Toggle to-do counter" aria-pressed="true" class="counter" id="todo" role="button" tabindex="0">
+              <div class="count">
+                65
+              </div>
+              <div class="label">
+                To-do
+              </div>
             </div>
-            <div class="label">
-              To-do
+            <div aria-label="Toggle overdue counter" aria-pressed="false" class="counter" id="overdue" role="button" tabindex="0">
+              <div class="count">
+                19
+              </div>
+              <div class="label">
+                Overdue
+              </div>
             </div>
-          </div>
-          <div aria-label="Toggle overdue counter" aria-pressed="false" class="counter" id="overdue" role="button" tabindex="0">
-            <div class="count">
-              19
-            </div>
-            <div class="label">
-              Overdue
-            </div>
-          </div>
-          <div aria-label="Toggle unplanned counter" aria-pressed="false" class="counter" id="unplanned" role="button" tabindex="0">
-            <div class="count">
-              85
-            </div>
-            <div class="label">
-              Unplanned
-            </div>
-          </div>
-        </div>
-        <div class="tagFilterBar">
-          <input aria-label="Show only tasks with this tag" placeholder="Filter by tag: #home" type="search" value="">
-        </div>
-        <div class="quickEntryPanel">
-          <div class="left">
-            <div class="actionSelect">
-              <select aria-label="Quick entry action" class="actionName" name="Action">
-                <option value="append">
-                  New task
-                </option>
-                <option value="filter">
-                  Filter
-                </option>
-              </select>
-              <select aria-label="Select a note for the new task" class="fileSelect" name="File name">
-                <option selected="" title="Inbox.md" value="Inbox.md">
-                  📄 Inbox
-                </option>
-                <option title="2026, January 15 - Thursday.md" value="2026, January 15 - Thursday.md">
-                  📄 2026, January 15 - Thursday
-                </option>
-              </select>
-            </div>
-            <div class="left">
-              <input class="newTask" placeholder="Enter a task" type="text">
+            <div aria-label="Toggle unplanned counter" aria-pressed="false" class="counter" id="unplanned" role="button" tabindex="0">
+              <div class="count">
+                85
+              </div>
+              <div class="label">
+                Unplanned
+              </div>
             </div>
           </div>
-          <div class="right">
-            <button aria-label="Add task to selected note" class="ok">
-              <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
-                <polyline points="9 10 4 15 9 20">
-                </polyline>
-                <path d="M20 4v7a4 4 0 0 1-4 4H4">
-                </path>
-              </svg>
+          <div class="quickFilterBar">
+            <select aria-label="Filter by date" class="dateScope">
+              <option value="all">
+                All dates
+              </option>
+              <option value="week">
+                Next 7 days
+              </option>
+              <option value="custom">
+                Custom range
+              </option>
+            </select>
+            <div class="tagFilterBar">
+              <input aria-label="Filter by tags" placeholder="Tags: #work #home" type="search" value="">
+            </div>
+            <details class="priorityFilter t-acc" data-open="false">
+              <summary aria-expanded="false" aria-label="Filter by priority" data-active="false">
+                <span class="prioritySummary">
+                  Priority
+                </span>
+                <span aria-hidden="true" class="priorityChevron t-acc-chevron">
+                  <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="m6 9 6 6 6-6">
+                    </path>
+                  </svg>
+                </span>
+              </summary>
+              <div aria-hidden="true" aria-label="Filter by priority" class="priorityOptions t-dropdown" data-origin="top-right" inert="" role="group">
+                <label class="priorityOption" data-selected="false">
+                  <input type="checkbox" value="Highest">
+                  <span class="priorityOptionLabel">
+                    Highest
+                  </span>
+                  <span aria-hidden="true" class="priorityCheck">
+                    <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="m5 12 4 4L19 6">
+                      </path>
+                    </svg>
+                  </span>
+                </label>
+                <label class="priorityOption" data-selected="false">
+                  <input type="checkbox" value="High">
+                  <span class="priorityOptionLabel">
+                    High
+                  </span>
+                  <span aria-hidden="true" class="priorityCheck">
+                    <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="m5 12 4 4L19 6">
+                      </path>
+                    </svg>
+                  </span>
+                </label>
+                <label class="priorityOption" data-selected="false">
+                  <input type="checkbox" value="Medium">
+                  <span class="priorityOptionLabel">
+                    Medium
+                  </span>
+                  <span aria-hidden="true" class="priorityCheck">
+                    <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="m5 12 4 4L19 6">
+                      </path>
+                    </svg>
+                  </span>
+                </label>
+                <label class="priorityOption" data-selected="false">
+                  <input type="checkbox" value="No">
+                  <span class="priorityOptionLabel">
+                    None
+                  </span>
+                  <span aria-hidden="true" class="priorityCheck">
+                    <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="m5 12 4 4L19 6">
+                      </path>
+                    </svg>
+                  </span>
+                </label>
+                <label class="priorityOption" data-selected="false">
+                  <input type="checkbox" value="Low">
+                  <span class="priorityOptionLabel">
+                    Low
+                  </span>
+                  <span aria-hidden="true" class="priorityCheck">
+                    <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="m5 12 4 4L19 6">
+                      </path>
+                    </svg>
+                  </span>
+                </label>
+                <label class="priorityOption" data-selected="false">
+                  <input type="checkbox" value="Lowest">
+                  <span class="priorityOptionLabel">
+                    Lowest
+                  </span>
+                  <span aria-hidden="true" class="priorityCheck">
+                    <svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="m5 12 4 4L19 6">
+                      </path>
+                    </svg>
+                  </span>
+                </label>
+              </div>
+            </details>
+            <button aria-label="Clear all filters" class="clearFilters" type="button">
+              Clear
             </button>
+          </div>
+          <div class="quickEntryPanel t-acc" data-open="false">
+            <div class="entryMain">
+              <span aria-hidden="true" class="entryPlus">
+                +
+              </span>
+              <input aria-label="New task" class="newTask" placeholder="Enter a task" type="text" value="">
+              <button aria-label="Add task to selected note" class="ok" type="button">
+                Add
+              </button>
+            </div>
+            <div aria-hidden="true" class="entryMetaReveal t-acc-panel" inert="">
+              <div class="t-acc-panel-inner">
+                <div class="entryMeta">
+                  <label>
+                    Save to
+                    <select aria-label="Select a note for the new task" class="fileSelect">
+                      <option value="Inbox.md">
+                        Inbox
+                      </option>
+                      <option value="2026, January 15 - Thursday.md">
+                        2026, January 15 - Thursday
+                      </option>
+                    </select>
+                  </label>
+                  <div aria-label="Due date for the new task" class="entryDue" role="group">
+                    <select aria-label="Choose a due date" class="taskDuePreset">
+                      <option disabled="" hidden="" value="">
+                        Due
+                      </option>
+                      <option value="none">
+                        No date
+                      </option>
+                      <option value="today">
+                        Today
+                      </option>
+                      <option value="tomorrow">
+                        Tomorrow
+                      </option>
+                      <option value="custom">
+                        Choose date…
+                      </option>
+                    </select>
+                    <input aria-label="Due date for the new task" class="taskDue" hidden="" type="date" value="">
+                  </div>
+                  <label>
+                    <span class="tcw-sr-only">
+                      Priority
+                    </span>
+                    <select aria-label="Priority for the new task" class="taskPriority">
+                      <option value="">
+                        Priority
+                      </option>
+                      <option value="Highest">
+                        Highest
+                      </option>
+                      <option value="High">
+                        High
+                      </option>
+                      <option value="Medium">
+                        Medium
+                      </option>
+                      <option value="No">
+                        None
+                      </option>
+                      <option value="Low">
+                        Low
+                      </option>
+                      <option value="Lowest">
+                        Lowest
+                      </option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="details today" data-types="overdue due scheduled start process unplanned" data-year="2026">

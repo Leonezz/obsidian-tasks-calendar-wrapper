@@ -86,7 +86,7 @@ export const rowLine = (status: string, highlighted: boolean, badges: readonly s
 
 /** The lines of the entry panel. */
 export const entryLines = (counts: { readonly todo: number; readonly overdue: number; readonly unplanned: number }) => [
-	`today header "Focus on today"`,
+	'today header "Focus on today"',
 	`counter ${counts.todo} To-do`,
 	`counter ${counts.overdue} Overdue`,
 	`counter ${counts.unplanned} Unplanned`,

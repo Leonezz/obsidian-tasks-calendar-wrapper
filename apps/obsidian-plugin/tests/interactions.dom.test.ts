@@ -11,6 +11,7 @@ import { QuickEntryHandlerContext, TaskItemEventHandlersContext } from "@tasks-c
 import { mountView, onTimelineRender } from "./component-harness";
 import { notesApp } from "./view-harness";
 import { AbstractInputSuggest, Platform } from "./stubs/obsidian";
+import { TagSuggest } from "../timeline/src/tagsuggest";
 
 // Inline Note.md has the action badges; Done.md supplies a noninteractive relative badge, Other.md an unplanned row.
 const sourceLine = "- [ ] all badges #work ⏫ 🔁 every day 🛫 2026-01-13 ⏳ 2026-01-14 📅 2026-01-16";
@@ -23,7 +24,7 @@ const position = {
 const modelArgs = { id: "Note.md:0", sourceLine, statusMarker: " " };
 const openArgs = ["Note.md", position, "click"];
 type Call = { handler: string; args: unknown[] };
-type Gesture = "click" | "contextmenu" | "keyup" | "change";
+type Gesture = "click" | "contextmenu" | "keydown" | "change";
 type Interaction = {
 	name: string;
 	selector: string;
@@ -35,7 +36,7 @@ type Interaction = {
 	options?: Partial<UserOption>;
 	mobile?: boolean;
 	guarded?: boolean;
-	prepare?: "append" | "filter" | "filter-mode" | "dates" | "priorities" | "tags";
+	prepare?: "append" | "filter" | "dates" | "tags";
 	rootClass?: string;
 	value?: string;
 	checkLocal?: (fixture: Mounted) => void;
@@ -170,16 +171,6 @@ const interactions: Interaction[] = [
 		})),
 	),
 	{
-		name: "Focus on today toggles todayFocus and a second click clears it",
-		selector: "div.todayHeader",
-		event: "click",
-		handler: "root class",
-		args: ["todayFocus"],
-		openNote: false,
-		defaultPrevented: false,
-		rootClass: "todayFocus",
-	},
-	{
 		name: "the quick entry button calls handleCreateNewTask with the selected note and text",
 		selector: ".quickEntryPanel button.ok",
 		event: "click",
@@ -190,21 +181,21 @@ const interactions: Interaction[] = [
 		prepare: "append",
 	},
 	{
-		name: "Enter keyup calls handleCreateNewTask with the selected note and text",
+		name: "Enter keydown calls handleCreateNewTask with the selected note and text",
 		selector: ".quickEntryPanel input.newTask",
-		event: "keyup",
+		event: "keydown",
 		handler: "handleCreateNewTask",
 		args: ["Other.md", "a new task"],
 		openNote: false,
-		defaultPrevented: false,
+		defaultPrevented: true,
 		prepare: "append",
 	},
 	{
-		name: "the filter button calls handleFilterEnable with dates and priorities",
-		selector: ".quickEntryPanel button.ok",
+		name: "the date-range Apply button calls handleFilterEnable with the selected dates",
+		selector: ".applyDateRange",
 		event: "click",
 		handler: "handleFilterEnable",
-		args: ["2026-01-10", "2026-01-20", ["High", "Medium"], []],
+		args: ["2026-01-10", "2026-01-20", [], []],
 		openNote: false,
 		defaultPrevented: false,
 		prepare: "filter",
@@ -212,11 +203,11 @@ const interactions: Interaction[] = [
 	{
 		name: "Enter in the tag filter calls handleFilterEnable with the typed tag and its #",
 		selector: ".tagFilterBar input",
-		event: "keyup",
+		event: "keydown",
 		handler: "handleFilterEnable",
 		args: [undefined, undefined, [], ["#home"]],
 		openNote: false,
-		defaultPrevented: false,
+		defaultPrevented: true,
 		prepare: "tags",
 		// Shown although the quick entry panel is not.
 		options: { useQuickEntry: false },
@@ -236,52 +227,36 @@ const interactions: Interaction[] = [
 		},
 	},
 	{
-		name: "changing the quick entry action shows the filter controls without submitting",
-		selector: "select.actionName",
+		name: "choosing a custom date range reveals its inputs while keeping task entry available",
+		selector: "select.dateScope",
 		event: "change",
-		value: "filter",
+		value: "custom",
 		handler: "none",
 		args: [],
 		openNote: false,
 		defaultPrevented: false,
 		checkLocal: (fixture) => {
-			assert.ok(fixture.root().querySelector("select.filterSelector"));
-			assert.equal(fixture.root().querySelector("input.newTask"), null);
+			assert.equal(fixture.root().querySelectorAll('.dateRange input[type="date"]').length, 2);
+			assert.ok(fixture.root().querySelector("input.newTask"));
 		},
 	},
 	{
-		name: "changing the filter type adds date inputs without submitting",
-		selector: "select.filterSelector",
-		event: "change",
-		value: "date",
-		handler: "none",
-		args: [],
+		name: "checking a priority applies that filter without submitting a task",
+		selector: '.priorityOptions input[value="High"]',
+		event: "click",
+		handler: "handleFilterEnable",
+		args: [undefined, undefined, ["High"], []],
 		openNote: false,
 		defaultPrevented: false,
-		prepare: "filter-mode",
-		checkLocal: (fixture) => assert.equal(fixture.root().querySelectorAll('input[type="date"]').length, 2),
-	},
-	{
-		name: "changing a priority marks the draft selection without submitting",
-		selector: 'select[name="priorityFilter"]',
-		event: "change",
-		value: "High",
-		handler: "none",
-		args: [],
-		openNote: false,
-		defaultPrevented: false,
-		prepare: "priorities",
-		checkLocal: (fixture) =>
-			assert.equal(fixture.root().querySelector('select[name="priorityFilter"] + a')?.textContent, "High🎯"),
 	},
 	...(
 		[
-			["from", "first-of-type", "2026-01-10"],
-			["to", "last-of-type", "2026-01-20"],
+			["from", "Show tasks on or after this date", "2026-01-10"],
+			["to", "Show tasks on or before this date", "2026-01-20"],
 		] as const
-	).map(([field, nth, value]) => ({
+	).map(([field, aria, value]) => ({
 		name: `changing the ${field} date updates the draft without submitting`,
-		selector: `.dateFilter input:${nth}`,
+		selector: `.dateRange input[aria-label="${aria}"]`,
 		event: "change" as const,
 		value,
 		handler: "none",
@@ -290,7 +265,10 @@ const interactions: Interaction[] = [
 		defaultPrevented: false,
 		prepare: "dates" as const,
 		checkLocal: (fixture: Mounted) =>
-			assert.equal(fixture.root().querySelector(`.dateFilter input:${nth}`)?.getAttribute("value"), value),
+			assert.equal(
+				fixture.root().querySelector<HTMLInputElement>(`.dateRange input[aria-label="${aria}"]`)?.value,
+				value,
+			),
 	})),
 ];
 
@@ -377,8 +355,8 @@ async function dispatch(fixture: Mounted, row: Pick<Interaction, "selector" | "e
 	const target = fixture.root().querySelector<HTMLElement>(row.selector);
 	assert.ok(target, row.selector);
 	const event =
-		row.event === "keyup"
-			? new KeyboardEvent("keyup", { key: "Enter", bubbles: true, cancelable: true })
+		row.event === "keydown"
+			? new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
 			: row.event === "change"
 				? new Event("change", { bubbles: true, cancelable: true })
 				: new MouseEvent(row.event, { bubbles: true, cancelable: true, view: window });
@@ -412,7 +390,12 @@ async function select(fixture: Mounted, selector: string, value: string) {
 async function prepare(fixture: Mounted, mode?: Interaction["prepare"]) {
 	if (mode === "append") {
 		await select(fixture, "select.fileSelect", "Other.md");
-		fixture.root().querySelector<HTMLInputElement>("input.newTask")!.value = "a new task";
+		await act(() => {
+			const input = fixture.root().querySelector<HTMLInputElement>("input.newTask");
+			assert.ok(input);
+			Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(input, "a new task");
+			input.dispatchEvent(new Event("input", { bubbles: true }));
+		});
 	} else if (mode === "tags") {
 		const input = fixture.root().querySelector<HTMLInputElement>(".tagFilterBar input");
 		assert.ok(input);
@@ -422,16 +405,9 @@ async function prepare(fixture: Mounted, mode?: Interaction["prepare"]) {
 		});
 		assert.deepEqual(fixture.calls, [], "typing changes the draft without submitting it");
 	} else if (mode) {
-		await select(fixture, "select.actionName", "filter");
-		if (mode === "filter-mode") return;
-		if (mode === "priorities") {
-			await select(fixture, "select.filterSelector", "priority");
-			return;
-		}
-		await select(fixture, "select.filterSelector", "date");
+		await select(fixture, "select.dateScope", "custom");
 		if (mode === "dates") return;
-		await select(fixture, "select.filterSelector", "priority");
-		const dates = fixture.root().querySelectorAll<HTMLInputElement>('input[type="date"]');
+		const dates = fixture.root().querySelectorAll<HTMLInputElement>('.dateRange input[type="date"]');
 		assert.equal(dates.length, 2);
 		await act(() => {
 			const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
@@ -440,8 +416,6 @@ async function prepare(fixture: Mounted, mode?: Interaction["prepare"]) {
 				dates[index].dispatchEvent(new Event("input", { bubbles: true }));
 			}
 		});
-		await select(fixture, 'select[name="priorityFilter"]', "High");
-		await select(fixture, 'select[name="priorityFilter"]', "Medium");
 	}
 }
 
@@ -477,6 +451,39 @@ for (const row of interactions) {
 	});
 }
 
+test("choosing custom dates preserves the independent Focus on today state", async (t) => {
+	const fixture = await mountInteractions(t);
+	const scope = fixture.root().querySelector<HTMLSelectElement>("select.dateScope");
+	const heading = fixture.root().querySelector<HTMLElement>(".todayHeader");
+	assert.ok(scope && heading);
+	assert.deepEqual(
+		[...scope.options].map((option) => option.value),
+		["all", "week", "custom"],
+	);
+	await act(() => heading.click());
+	await select(fixture, "select.dateScope", "custom");
+	assert.equal(fixture.root().classList.contains("todayFocus"), true);
+	assert.equal(heading.getAttribute("aria-pressed"), "true");
+	assert.equal(scope.value, "custom");
+	assert.equal(fixture.root().querySelectorAll(".dateRange input").length, 2);
+	assert.deepEqual(fixture.calls, [], "neither focus nor an unsubmitted date draft calls the writer or filter");
+});
+
+test("the restored Today heading toggles focus without submitting, clearing filters or opening a task", async (t) => {
+	const fixture = await mountInteractions(t);
+	const heading = fixture.root().querySelector<HTMLElement>(".todayHeader");
+	const scope = fixture.root().querySelector<HTMLSelectElement>("select.dateScope");
+	assert.ok(heading && scope);
+	assert.equal(heading.textContent, "Focus on today");
+	for (const focused of [true, false]) {
+		await act(() => heading.click());
+		assert.equal(fixture.root().classList.contains("todayFocus"), focused);
+		assert.equal(heading.getAttribute("aria-pressed"), String(focused));
+		assert.equal(scope.value, "all");
+		assert.deepEqual(fixture.calls, []);
+	}
+});
+
 test("the tag filter suggests the tasks' tags and applies the one picked", async (t) => {
 	const fixture = await mountInteractions(t, { useQuickEntry: false });
 	const input = fixture.root().querySelector<HTMLInputElement>(".tagFilterBar input");
@@ -490,8 +497,82 @@ test("the tag filter suggests the tasks' tags and applies the one picked", async
 	assert.deepEqual(await suggest.suggestions(), []);
 	await act(() => suggest.selectSuggestion("#work"));
 	assert.deepEqual(fixture.calls, [{ handler: "handleFilterEnable", args: [undefined, undefined, [], ["#work"]] }]);
-	assert.equal(input!.value, "#work");
+	assert.equal(input!.value, "#work ");
+	assert.equal(document.activeElement, input);
+	assert.equal(input!.selectionStart, input!.value.length);
 	assert.equal(suggest.isOpen, false);
+});
+
+test("native tag suggestions continue through second and third tags without replacing earlier picks", async (t) => {
+	const input = document.body.appendChild(document.createElement("input"));
+	input.type = "search";
+	t.after(() => input.remove());
+	const picks: string[] = [];
+	const native = new TagSuggest(
+		{} as never,
+		input,
+		() => ["#home", "#work", "#项目/阶段"],
+		(text) => picks.push(text),
+	);
+	const suggest = native as unknown as AbstractInputSuggest<string>;
+	input.focus();
+	for (const [prefix, tag, text] of [
+		["#ho", "#home", "#home "],
+		["#home #wo", "#work", "#home #work "],
+		["#home #work #项目/阶", "#项目/阶段", "#home #work #项目/阶段 "],
+	]) {
+		input.value = prefix;
+		input.setSelectionRange(prefix.length, prefix.length);
+		assert.deepEqual(await suggest.suggestions(), [tag]);
+		native.selectSuggestion(tag);
+		assert.equal(input.value, text);
+		assert.equal(input.selectionStart, text.length);
+		assert.equal(document.activeElement, input);
+	}
+	assert.deepEqual(picks, ["#home ", "#home #work ", "#home #work #项目/阶段 "]);
+});
+
+test("native tag selection replaces the token at the caret and preserves surrounding tags and separators", async (t) => {
+	const input = document.body.appendChild(document.createElement("input"));
+	input.type = "search";
+	t.after(() => input.remove());
+	const picks: string[] = [];
+	const native = new TagSuggest(
+		{} as never,
+		input,
+		() => ["#home", "#work", "#项目/阶段"],
+		(text) => picks.push(text),
+	);
+	const suggest = native as unknown as AbstractInputSuggest<string>;
+	input.value = "#home  #woSuffix \t#项目/阶段";
+	const caret = input.value.indexOf("Suffix");
+	input.setSelectionRange(caret, caret);
+	assert.deepEqual(await suggest.suggestions(), ["#work"]);
+	native.selectSuggestion("#work");
+	assert.equal(input.value, "#home  #work \t#项目/阶段");
+	assert.equal(input.selectionStart, "#home  #work".length);
+	assert.deepEqual(picks, ["#home  #work \t#项目/阶段"]);
+	input.setSelectionRange(3, 3);
+	assert.deepEqual(await suggest.suggestions(), ["#home"]);
+	native.selectSuggestion("#home");
+	assert.equal(input.value, "#home  #work \t#项目/阶段");
+});
+
+test("native tag selection ignores an Enter that confirms IME composition", (t) => {
+	const input = document.body.appendChild(document.createElement("input"));
+	input.type = "search";
+	t.after(() => input.remove());
+	input.value = "#home #项目/阶";
+	const picks: string[] = [];
+	const suggest = new TagSuggest(
+		{} as never,
+		input,
+		() => ["#项目/阶段"],
+		(text) => picks.push(text),
+	);
+	suggest.selectSuggestion("#项目/阶段", new KeyboardEvent("keydown", { key: "Enter", isComposing: true }));
+	assert.equal(input.value, "#home #项目/阶");
+	assert.deepEqual(picks, []);
 });
 
 test("a click within 300 ms of the list commit is ignored", async (t) => {

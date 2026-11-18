@@ -180,7 +180,8 @@ test("a store change between render and subscribe is caught", async (t) => {
 });
 
 test("onListCommitted reports each reloadId once, in commit order", async (t) => {
-	const pause = pauseList(t, (props) => props.tasks.length > 2 && props.quickFilter !== undefined);
+	let pauseNewList = true;
+	const pause = pauseList(t, (props) => pauseNewList && props.tasks.length > 2);
 	const f = await mountTimeline(t);
 	assert.deepEqual(f.reports, [1]);
 	await act(() => f.reload("- [ ] a\n- [ ] b"));
@@ -194,17 +195,22 @@ test("onListCommitted reports each reloadId once, in commit order", async (t) =>
 	assert.ok(f.container.querySelector(".taskido.noRelative"));
 	assert.equal(f.store.getSnapshot().reloadId, 4);
 	await act(() => f.bridge.current!.handleFilterEnable(undefined, undefined, [], ["#later"]));
+	const filter = f.bridge.current!.state.quickFilter;
 	assertRows(f.container, []);
 	assert.deepEqual(f.reports, [1, 2]);
-	await act(() => f.reload("- [ ] a\n- [ ] b\n- [ ] c"));
+	await act(() => f.reload("- [ ] a\n- [ ] b\n- [ ] c #later"));
 	assert.ok(pause.attempts() > 0);
 	assert.deepEqual(f.reports, [1, 2]);
+	// Let the urgent write refresh render, while the earlier transition's gate stays unresolved.
+	pauseNewList = false;
 	await act(async () => assert.equal(await f.bridge.current!.handleCreateNewTask("Note.md", "new"), true));
-	assertRows(f.container, ["a", "b", "c"]);
+	assertRows(f.container, ["c"]);
+	assert.equal(f.bridge.current!.state.quickFilter, filter);
 	assert.equal(f.bridge.current!.state.reloadId, 5);
 	assert.deepEqual(f.reports, [1, 2, 5]);
 	await act(pause.resolve);
-	assertRows(f.container, ["a", "b", "c"]);
+	assertRows(f.container, ["c"]);
+	assert.equal(f.bridge.current!.state.quickFilter, filter);
 	assert.deepEqual(f.reports, [1, 2, 5]);
 });
 
@@ -281,26 +287,29 @@ test("a reload that ends before the transition renders, with the same list shown
 	assert.deepEqual(f.reports, [1, 3]);
 });
 
-test("quick entry during a pending list transition stays urgent and the transition does not restore the quick filter", async (t) => {
-	const pause = pauseList(t, (props) => props.tasks.length > 2 && props.quickFilter !== undefined);
+test("quick entry during a pending list transition stays urgent and preserves the quick filter through replay", async (t) => {
+	let pauseNewList = true;
+	const pause = pauseList(t, (props) => pauseNewList && props.tasks.length > 2);
 	const f = await mountTimeline(t, "- [ ] a 📅 2026-01-15\n- [ ] b 📅 2026-01-16");
 	// An inclusive today-only range keeps a and leaves out tomorrow's b.
 	await act(() => f.bridge.current!.handleFilterEnable("2026-01-15", "2026-01-15", []));
+	const filter = f.bridge.current!.state.quickFilter;
 	assertRows(f.container, ["a"]);
 	await act(() => f.reload("- [ ] a 📅 2026-01-15\n- [ ] b 📅 2026-01-16\n- [ ] c 📅 2026-01-15"));
 	assert.ok(pause.attempts() > 0);
 	assertRows(f.container, ["a"]);
 	await act(() => {
 		// The quick entry's successful-write update must commit before the pending transition can replay.
+		pauseNewList = false;
 		flushSync(() => f.bridge.current!.onUpdateTasks());
-		assert.equal(f.bridge.current!.state.quickFilter, undefined);
+		assert.equal(f.bridge.current!.state.quickFilter, filter);
 		assert.equal(f.bridge.current!.state.tasks, f.store.getSnapshot().tasks);
-		assertRows(f.container, ["a", "c", "b"]);
+		assertRows(f.container, ["a", "c"]);
 		assert.deepEqual(f.reports, [1, 2]);
 	});
 	await act(pause.resolve);
-	assert.equal(f.bridge.current!.state.quickFilter, undefined);
-	assertRows(f.container, ["a", "c", "b"]);
+	assert.equal(f.bridge.current!.state.quickFilter, filter);
+	assertRows(f.container, ["a", "c"]);
 	assert.deepEqual(f.reports, [1, 2]);
 });
 

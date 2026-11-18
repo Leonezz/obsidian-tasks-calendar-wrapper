@@ -1,12 +1,20 @@
-// Pins quick entry's submission, focus and applied-filter draft rules, plus shortcut and MultiSelect behavior.
+// Quick capture and filtering stay independent, including across keyed timeline remounts.
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { act, createElement, type ContextType } from "react";
 import { createRoot } from "react-dom/client";
-import type { DateValue, QuickFilter } from "@tasks-calendar-wrapper/core";
-import { HostContext, QuickEntryHandlerContext } from "../src/contexts";
+import {
+	copy,
+	type DateValue,
+	type MomentFactory,
+	type NewDateStyle,
+	type QuickFilter,
+} from "@tasks-calendar-wrapper/core";
+import { HostContext, QuickEntryHandlerContext, ViewActionsContext, type CounterId } from "../src/contexts";
 import type { UiHost } from "../src/host";
-import { QuickEntry } from "../src/entry/QuickEntry";
+import { createQuickEntryDraft, QuickEntry } from "../src/entry/QuickEntry";
+import { QuickFilters } from "../src/entry/QuickFilters";
+import { TodayFocus } from "../src/entry/TodayFocus";
 import { MultiSelect, type MultiSelectProps } from "../src/entry/MultiSelect";
 
 function mountRoot(t: TestContext) {
@@ -32,46 +40,149 @@ function deferred<T>() {
 	return { promise, resolve, reject };
 }
 
-function entryHarness(t: TestContext, create = () => Promise.resolve(true)) {
+class TestDate {
+	private day: Date;
+	constructor(value: string | number) {
+		this.day = new Date(typeof value === "string" ? value.trim() + "T00:00:00Z" : value);
+	}
+	year() {
+		return this.day.getUTCFullYear();
+	}
+	month() {
+		return this.day.getUTCMonth();
+	}
+	date() {
+		return this.day.getUTCDate();
+	}
+	valueOf() {
+		return this.day.valueOf();
+	}
+	isValid() {
+		return !Number.isNaN(this.valueOf());
+	}
+	clone() {
+		return new TestDate(this.valueOf());
+	}
+	add(value: number) {
+		this.day.setUTCDate(this.date() + value);
+		return this;
+	}
+}
+
+function entryHarness(
+	t: TestContext,
+	create: () => Promise<boolean> = () => Promise.resolve(true),
+	newDateStyle: NewDateStyle = "emoji",
+) {
 	const { container, root } = mountRoot(t);
+	const draft = createQuickEntryDraft();
 	const createCalls: [string, string][] = [];
 	const filterCalls: Parameters<ContextType<typeof QuickEntryHandlerContext>["handleFilterEnable"]>[] = [];
+	const counterCalls: CounterId[] = [];
+	let applied: QuickFilter | undefined;
+	let todayFocus = false;
+	let activeCounter: CounterId | undefined;
+	let key = 0;
 	let nowCalls = 0;
-	const today = { year: () => 2026, month: () => 0, date: () => 15 } as DateValue;
+	let nowDay = "2026-01-15";
+	let todayKey = nowDay;
+	const moment = Object.assign(
+		(value: Parameters<MomentFactory>[0]) => new TestDate(value as string) as unknown as ReturnType<MomentFactory>,
+		{ locale: () => "en" },
+	);
 	const host: UiHost = {
 		isMobile: false,
 		now: () => {
 			nowCalls++;
-			return today;
+			return new TestDate(nowDay) as unknown as DateValue;
 		},
-		moment: Object.assign(() => assert.fail("QuickEntry does not create a moment"), {
-			locale: () => assert.fail("QuickEntry does not read the moment locale"),
-		}),
-		renderMarkdown: () => assert.fail("QuickEntry does not render markdown"),
+		moment,
+		renderMarkdown: () => assert.fail("quick capture does not render markdown"),
 	};
+	const paint = () =>
+		root.render(
+			createElement(
+				HostContext.Provider,
+				{ value: host },
+				createElement(
+					ViewActionsContext.Provider,
+					{
+						value: {
+							toggleTodayFocus: () => {
+								todayFocus = !todayFocus;
+								paint();
+							},
+							toggleCounter: (id) => {
+								counterCalls.push(id);
+								activeCounter = activeCounter === id ? undefined : id;
+								paint();
+							},
+						},
+					},
+					createElement(
+						QuickEntryHandlerContext.Provider,
+						{ value: handlers },
+						createElement(TodayFocus, { visual: copy.timeline.focusOnToday, active: todayFocus }),
+						createElement(QuickFilters, {
+							applied,
+							tags: ["#work", "#home"],
+							todayFocus,
+							activeCounter,
+							todayKey,
+						}),
+						createElement(QuickEntry, {
+							applied,
+							taskFiles: ["Notes/Work.md", "Inbox.md"],
+							draft,
+							key,
+							newDateStyle,
+							todayKey,
+						}),
+					),
+				),
+			),
+		);
 	const handlers: ContextType<typeof QuickEntryHandlerContext> = {
 		handleCreateNewTask: (path, text) => {
 			createCalls.push([path, text]);
 			return create();
 		},
-		handleFilterEnable: (...args) => filterCalls.push(args),
+		handleFilterEnable: (...args) => {
+			filterCalls.push(args);
+			applied = { from: args[0], to: args[1], priorities: args[2], tags: args[3] };
+			paint();
+		},
 	};
-	const render = async (applied?: QuickFilter) => {
-		await act(() =>
-			root.render(
-				createElement(
-					HostContext.Provider,
-					{ value: host },
-					createElement(
-						QuickEntryHandlerContext.Provider,
-						{ value: handlers },
-						createElement(QuickEntry, { applied, taskFiles: ["Notes/Work.md", "Inbox.md"] }),
-					),
-				),
-			),
-		);
+	return {
+		container,
+		unmount: async () => act(() => root.render(null)),
+		draft,
+		createCalls,
+		filterCalls,
+		counterCalls,
+		nowCalls: () => nowCalls,
+		setClock: (day: string) => {
+			nowDay = day;
+		},
+		setDay: async (day: string) => {
+			nowDay = day;
+			todayKey = day;
+			await act(paint);
+		},
+		todayFocus: () => todayFocus,
+		render: async (filter?: QuickFilter) => {
+			applied = filter;
+			await act(paint);
+		},
+		remount: async () => {
+			key++;
+			await act(paint);
+		},
+		counter: async (id: CounterId) => {
+			activeCounter = id;
+			await act(paint);
+		},
 	};
-	return { container, render, createCalls, filterCalls, nowCalls: () => nowCalls };
 }
 
 function element<T extends Element>(container: Element, selector: string): T {
@@ -80,8 +191,11 @@ function element<T extends Element>(container: Element, selector: string): T {
 	return found;
 }
 
-function enter(input: HTMLInputElement) {
-	input.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true }));
+async function edit(input: HTMLInputElement, value: string) {
+	await act(() => {
+		Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(input, value);
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+	});
 }
 
 async function changeSelect(select: HTMLSelectElement, value: string) {
@@ -91,262 +205,843 @@ async function changeSelect(select: HTMLSelectElement, value: string) {
 	});
 }
 
-async function editDate(input: HTMLInputElement, value: string) {
-	await act(() => {
-		const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
-		setter.call(input, value);
-		input.dispatchEvent(new Event("input", { bubbles: true }));
+async function editDue(entry: ReturnType<typeof entryHarness>, value: string) {
+	await changeSelect(element(entry.container, ".taskDuePreset"), "custom");
+	await edit(element(entry.container, ".taskDue"), value);
+}
+
+async function enter(input: HTMLInputElement, isComposing = false) {
+	await act(async () => {
+		input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", isComposing, bubbles: true }));
+		await Promise.resolve();
 	});
 }
 
-test("Enter submits once", async (t) => {
+test("the composer stays available while filters change and submits through its own action", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render({ priorities: ["High"], tags: ["#work"] });
+	assert.equal(entry.container.querySelector("select.actionName"), null);
+	const input = element<HTMLInputElement>(entry.container, "input.newTask");
+	const submit = element<HTMLButtonElement>(entry.container, "button.ok");
+	assert.equal(submit.textContent, "Add");
+	assert.equal(submit.getAttribute("aria-label"), "Add task to selected note");
+	await edit(input, "buy milk");
+	await act(() => element<HTMLElement>(entry.container, ".todayHeader").click());
+	assert.equal(input.value, "buy milk");
+	await enter(input);
+	assert.deepEqual(entry.createCalls, [["Notes/Work.md", "buy milk"]]);
+	assert.deepEqual(entry.filterCalls, []);
+	assert.equal(input.value, "");
+});
+
+test("IME confirmation never submits or expands the composing text", async (t) => {
 	const entry = entryHarness(t);
 	await entry.render();
 	const input = element<HTMLInputElement>(entry.container, "input.newTask");
-	input.value = "buy milk";
-	await act(() => input.dispatchEvent(new KeyboardEvent("keyup", { key: "Escape", bubbles: true })));
+	await act(() => input.dispatchEvent(new window.CompositionEvent("compositionstart", { bubbles: true })));
+	await edit(input, "输入中的任务 today ");
+	assert.equal(input.value, "输入中的任务 today ");
+	assert.equal(entry.nowCalls(), 0);
+	await enter(input, true);
 	assert.deepEqual(entry.createCalls, []);
-	await act(() => enter(input));
-	assert.deepEqual(entry.createCalls, [["Notes/Work.md", "buy milk"]]);
+	await act(() => input.dispatchEvent(new window.CompositionEvent("compositionend", { bubbles: true })));
+	await enter(input);
+	assert.deepEqual(entry.createCalls, [["Notes/Work.md", "输入中的任务 today"]]);
 });
 
-test("the submit label follows the quick entry action without changing either handler", async (t) => {
-	const entry = entryHarness(t);
-	await entry.render();
-	const action = element<HTMLSelectElement>(entry.container, "select.actionName");
-	const submit = element<HTMLButtonElement>(entry.container, "button.ok");
-	assert.equal(submit.getAttribute("aria-label"), "Add task to selected note");
-	await changeSelect(action, "filter");
-	assert.equal(element(entry.container, "button.ok"), submit);
-	assert.equal(submit.getAttribute("aria-label"), "Apply filters");
-	await act(() => submit.click());
-	assert.deepEqual(entry.filterCalls, [["", "", [], []]]);
-	assert.deepEqual(entry.createCalls, []);
-	await changeSelect(action, "append");
-	assert.equal(element(entry.container, "button.ok"), submit);
-	assert.equal(submit.getAttribute("aria-label"), "Add task to selected note");
-	element<HTMLInputElement>(entry.container, "input.newTask").value = "buy milk";
-	await act(() => submit.click());
-	assert.deepEqual(entry.createCalls, [["Notes/Work.md", "buy milk"]]);
-	assert.deepEqual(entry.filterCalls, [["", "", [], []]]);
-});
-
-test("a second Enter while pending is ignored", async (t) => {
+test("pending capture survives remount and never clears a newer draft", async (t) => {
 	const pending = deferred<boolean>();
 	const entry = entryHarness(t, () => pending.promise);
 	await entry.render();
-	const input = element<HTMLInputElement>(entry.container, "input.newTask");
-	const submit = element<HTMLButtonElement>(entry.container, "button.ok");
-	input.value = "add once";
-	await act(() => {
-		enter(input);
-		enter(input);
-		submit.click();
-	});
-	assert.deepEqual(entry.createCalls, [["Notes/Work.md", "add once"]]);
-	assert.equal(input.value, "add once");
-	await act(async () => pending.resolve(false));
-	await act(() => enter(input));
-	assert.deepEqual(entry.createCalls, [
-		["Notes/Work.md", "add once"],
-		["Notes/Work.md", "add once"],
-	]);
+	await edit(element(entry.container, "input.newTask"), "first task");
+	await enter(element(entry.container, "input.newTask"));
+	await edit(element(entry.container, "input.newTask"), "next task");
+	await entry.remount();
+	await enter(element(entry.container, "input.newTask"));
+	await act(() => element<HTMLButtonElement>(entry.container, "button.ok").click());
+	assert.equal(entry.createCalls.length, 1);
+	assert.equal(element<HTMLInputElement>(entry.container, "input.newTask").value, "next task");
+	await act(async () => pending.resolve(true));
+	assert.equal(element<HTMLInputElement>(entry.container, "input.newTask").value, "next task");
+	assert.equal(entry.draft.getSnapshot().pending, false);
+	assert.match(element(entry.container, ".entryStatus").textContent!, /Added to Work/);
 });
 
-test("input cleared only after a written result", async (t) => {
+test("refused and rejected captures keep the draft; a later successful write clears it", async (t) => {
 	const refused = deferred<boolean>();
 	const failed = deferred<boolean>();
 	const written = deferred<boolean>();
 	let result = refused.promise;
-	const error = new Error("adding a task failed");
-	let rejection: Promise<void> | undefined;
-	t.mock.method(failed.promise, "then", (...callbacks: Parameters<Promise<boolean>["then"]>) => {
-		const chained = Promise.prototype.then.call(failed.promise, ...callbacks);
-		rejection = assert.rejects(chained, error);
-		return chained;
-	});
 	const entry = entryHarness(t, () => result);
 	await entry.render();
 	const input = element<HTMLInputElement>(entry.container, "input.newTask");
-	input.value = "keep this draft";
-	await act(() => enter(input));
-	assert.equal(input.value, "keep this draft", "pending");
+	await edit(input, "keep this draft");
+	await enter(input);
 	await act(async () => refused.resolve(false));
-	assert.equal(input.value, "keep this draft", "refused");
+	assert.equal(input.value, "keep this draft");
 	result = failed.promise;
-	await act(() => enter(input));
-	await act(async () => {
-		failed.reject(error);
-		assert.ok(rejection, "the handler keeps rejection observable");
-		await rejection;
-	});
-	assert.equal(input.value, "keep this draft", "rejected");
+	await enter(input);
+	await act(async () => failed.reject(new Error("write failed")));
+	assert.equal(input.value, "keep this draft");
+	assert.match(element(entry.container, ".entryError").textContent!, /draft was kept/);
 	result = written.promise;
-	await act(() => enter(input));
+	await enter(input);
 	await act(async () => written.resolve(true));
-	assert.equal(input.value, "", "written");
-	assert.equal(entry.createCalls.length, 3);
+	assert.equal(input.value, "");
 });
 
-test(".focus class on focus and blur", async (t) => {
+test("completion preserves the title when creation metadata changes during a pending write", async (t) => {
+	for (const [selector, value] of [
+		[".fileSelect", "Inbox.md"],
+		[".taskDue", "2026-01-21"],
+		[".taskDuePreset", "custom"],
+		[".taskPriority", "High"],
+	]) {
+		await t.test(selector, async (t) => {
+			const pending = deferred<boolean>();
+			const entry = entryHarness(t, () => pending.promise);
+			await entry.render();
+			await edit(element(entry.container, ".newTask"), "same title, new capture details");
+			await enter(element(entry.container, ".newTask"));
+			const control = element<HTMLInputElement | HTMLSelectElement>(entry.container, selector);
+			if (control instanceof window.HTMLSelectElement) await changeSelect(control, value);
+			else await editDue(entry, value);
+			await act(async () => pending.resolve(true));
+			assert.equal(
+				element<HTMLInputElement>(entry.container, ".newTask").value,
+				"same title, new capture details",
+			);
+			assert.equal(control.value, value);
+		});
+	}
+});
+
+test("a clear-only due change during a pending write preserves the newer draft and its intent", async (t) => {
+	const pending = deferred<boolean>();
+	const entry = entryHarness(t, () => pending.promise);
+	await entry.render();
+	const text = "dated task 📅 2026-01-16";
+	await edit(element(entry.container, ".newTask"), text);
+	await enter(element(entry.container, ".newTask"));
+	assert.equal(entry.createCalls[0][1], text);
+	await changeSelect(element(entry.container, ".taskDuePreset"), "none");
+	await entry.remount();
+	await act(async () => pending.resolve(true));
+	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, text);
+	assert.equal(entry.draft.getSnapshot().due, "");
+	assert.equal(entry.draft.getSnapshot().clearDue, true);
+	await enter(element(entry.container, ".newTask"));
+	assert.equal(entry.createCalls[1][1], "dated task");
+	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, "");
+	assert.equal(entry.draft.getSnapshot().clearDue, false);
+});
+
+test("title, destination and creation metadata survive an explicit remount", async (t) => {
 	const entry = entryHarness(t);
 	await entry.render();
-	const panel = element<HTMLDivElement>(entry.container, ".quickEntryPanel");
-	const input = element<HTMLInputElement>(entry.container, "input.newTask");
-	const file = element<HTMLSelectElement>(entry.container, "select.fileSelect");
-	assert.equal(panel.className, "quickEntryPanel");
-	await act(() => input.focus());
-	assert.equal(panel.className, "quickEntryPanel focus");
-	await act(() => input.blur());
-	assert.equal(panel.className, "quickEntryPanel");
-	await act(() => file.focus());
-	assert.equal(panel.className, "quickEntryPanel");
-	await changeSelect(file, "Inbox.md");
-	assert.equal(document.activeElement, input);
-	assert.equal(panel.className, "quickEntryPanel focus");
-	await act(() => input.blur());
-	assert.equal(panel.className, "quickEntryPanel");
+	await edit(element(entry.container, "input.newTask"), "write a proposal");
+	await changeSelect(element(entry.container, ".fileSelect"), "Inbox.md");
+	await editDue(entry, "2026-01-20");
+	await changeSelect(element(entry.container, ".taskPriority"), "Highest");
+	await entry.remount();
+	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, "write a proposal");
+	assert.equal(element<HTMLSelectElement>(entry.container, ".fileSelect").value, "Inbox.md");
+	assert.equal(element<HTMLInputElement>(entry.container, ".taskDue").value, "2026-01-20");
+	assert.equal(element<HTMLSelectElement>(entry.container, ".taskPriority").value, "Highest");
+	await enter(element(entry.container, ".newTask"));
+	assert.deepEqual(entry.createCalls, [["Inbox.md", "write a proposal 🔺 📅 2026-01-20"]]);
+});
+
+test("creation controls replace existing date and priority rather than duplicating them", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render();
+	await edit(element(entry.container, ".newTask"), "buy milk 📅 2026-01-16 ⏫ #work ^milk");
+	await editDue(entry, "2026-01-20");
+	await changeSelect(element(entry.container, ".taskPriority"), "Low");
+	await enter(element(entry.container, ".newTask"));
+	assert.deepEqual(entry.createCalls, [["Notes/Work.md", "buy milk 📅 2026-01-20 🔽 #work ^milk"]]);
+	await edit(element(entry.container, ".newTask"), "buy milk [due:: 2026-01-16] [priority:: high]");
+	await editDue(entry, "2026-01-21");
+	await changeSelect(element(entry.container, ".taskPriority"), "Lowest");
+	await enter(element(entry.container, ".newTask"));
+	assert.equal(entry.createCalls[1][1], "buy milk [due:: 2026-01-21] [priority:: lowest]");
+});
+
+test("No date removes an inline due field while preserving comments, other metadata and the block ID", async (t) => {
+	for (const style of ["emoji", "dataview"] as const) {
+		for (const todayFirst of [false, true]) {
+			await t.test(`${style}, after Today ${todayFirst}`, async (t) => {
+				const entry = entryHarness(t, undefined, style);
+				await entry.render();
+				const comment = "%% 📅 2040-01-01 [due:: 2040-01-02] %%";
+				const other = style === "emoji" ? "⏳ 2026-01-14 ⏫" : "[scheduled:: 2026-01-14] [priority:: high]";
+				const due = style === "emoji" ? "📅 2026-01-16" : "[due:: 2026-01-16]";
+				await edit(element(entry.container, ".newTask"), `dated task ${comment} ${due} ${other} #work ^dated`);
+				if (todayFirst) await changeSelect(element(entry.container, ".taskDuePreset"), "today");
+				await changeSelect(element(entry.container, ".taskDuePreset"), "none");
+				await entry.remount();
+				await enter(element(entry.container, ".newTask"));
+				assert.equal(entry.createCalls[0][1], `dated task ${comment} ${other} #work ^dated`);
+				assert.equal(
+					entry.draft.getSnapshot().clearDue,
+					false,
+					"an unchanged success resets explicit clear intent",
+				);
+			});
+		}
+	}
+});
+
+test("untouched due controls and opening a custom editor preserve the title's inline date", async (t) => {
+	for (const style of ["emoji", "dataview"] as const) {
+		for (const custom of [false, true]) {
+			await t.test(`${style}, custom ${custom}`, async (t) => {
+				const entry = entryHarness(t, undefined, style);
+				await entry.render();
+				const text = style === "emoji" ? "dated task 📅 2026-01-16" : "dated task [due:: 2026-01-16]";
+				await edit(element(entry.container, ".newTask"), text);
+				if (custom) await changeSelect(element(entry.container, ".taskDuePreset"), "custom");
+				await enter(element(entry.container, ".newTask"));
+				assert.equal(entry.createCalls[0][1], text);
+			});
+		}
+	}
+});
+
+test("custom date clearing removes inline dates and opening custom after No date retains that intent", async (t) => {
+	for (const style of ["emoji", "dataview"] as const) {
+		await t.test(style, async (t) => {
+			const entry = entryHarness(t, undefined, style);
+			await entry.render();
+			const text = style === "emoji" ? "dated task 📅 2026-01-16" : "dated task [due:: 2026-01-16]";
+			await edit(element(entry.container, ".newTask"), text);
+			await changeSelect(element(entry.container, ".taskDuePreset"), "custom");
+			await edit(element(entry.container, ".taskDue"), "");
+			await enter(element(entry.container, ".newTask"));
+			assert.equal(entry.createCalls[0][1], "dated task", "an explicit empty input clears the inline field");
+			await edit(element(entry.container, ".newTask"), text);
+			await changeSelect(element(entry.container, ".taskDuePreset"), "none");
+			await changeSelect(element(entry.container, ".taskDuePreset"), "custom");
+			await enter(element(entry.container, ".newTask"));
+			assert.equal(entry.createCalls[1][1], "dated task", "changing presentation does not revoke No date");
+			await edit(element(entry.container, ".newTask"), text);
+			await changeSelect(element(entry.container, ".taskDuePreset"), "none");
+			await editDue(entry, "2026-01-21");
+			assert.equal(entry.draft.getSnapshot().clearDue, false, "a nonempty custom date replaces clear intent");
+			await edit(element(entry.container, ".taskDue"), "");
+			await enter(element(entry.container, ".newTask"));
+			assert.equal(
+				entry.createCalls[2][1],
+				"dated task",
+				"clearing a populated custom input also clears inline metadata",
+			);
+		});
+	}
+});
+
+test("No date refuses ambiguous or unreadable inline due metadata without losing its clear intent", async (t) => {
+	for (const text of ["dated task 📅 2026-01-16 [due:: 2026-01-17]", "dated task [due:: tomorrow]"]) {
+		await t.test(text, async (t) => {
+			const entry = entryHarness(t);
+			await entry.render();
+			await edit(element(entry.container, ".newTask"), text);
+			await changeSelect(element(entry.container, ".taskDuePreset"), "none");
+			await enter(element(entry.container, ".newTask"));
+			assert.deepEqual(entry.createCalls, []);
+			assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, text);
+			assert.equal(entry.draft.getSnapshot().clearDue, true);
+			assert.match(element(entry.container, '[role="alert"]').textContent!, /cannot be changed safely/);
+		});
+	}
+});
+
+test("ambiguous metadata refuses capture and preserves the complete draft", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render();
+	await edit(element(entry.container, ".newTask"), "keep ⏫ 🔽");
+	await changeSelect(element(entry.container, ".taskPriority"), "Highest");
+	await enter(element(entry.container, ".newTask"));
+	assert.deepEqual(entry.createCalls, []);
+	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, "keep ⏫ 🔽");
+	assert.match(element(entry.container, '[role="alert"]').textContent!, /cannot be changed safely/);
+});
+
+test("new metadata follows the configured Dataview style while existing emoji fields keep theirs", async (t) => {
+	const entry = entryHarness(t, undefined, "dataview");
+	await entry.render();
+	await edit(element(entry.container, ".newTask"), "new task");
+	await editDue(entry, "2026-01-20");
+	await changeSelect(element(entry.container, ".taskPriority"), "High");
+	await enter(element(entry.container, ".newTask"));
+	assert.equal(entry.createCalls[0][1], "new task [priority:: high]  [due:: 2026-01-20]");
+	await edit(element(entry.container, ".newTask"), "keep emoji 📅 2026-01-16");
+	await editDue(entry, "2026-01-21");
+	await changeSelect(element(entry.container, ".taskPriority"), "Low");
+	await enter(element(entry.container, ".newTask"));
+	assert.equal(entry.createCalls[1][1], "keep emoji 📅 2026-01-21 🔽");
+});
+
+test("input-only date edits survive another control before the browser commits change", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render();
+	await changeSelect(element(entry.container, ".taskDuePreset"), "custom");
+	const due = element<HTMLInputElement>(entry.container, ".taskDue");
+	await act(() => {
+		due.value = "2026-01-20";
+		due.dispatchEvent(new Event("input", { bubbles: true }));
+	});
+	await act(() => element<HTMLElement>(entry.container, ".todayHeader").click());
+	assert.equal(due.value, "2026-01-20");
+	assert.equal(entry.draft.getSnapshot().due, "2026-01-20");
+	await changeSelect(element(entry.container, ".dateScope"), "custom");
+	const dates = entry.container.querySelectorAll<HTMLInputElement>(".dateRange input");
+	await act(() => {
+		for (const [index, value] of ["2026-01-10", "2026-01-20"].entries()) {
+			dates[index].value = value;
+			dates[index].dispatchEvent(new Event("input", { bubbles: true }));
+		}
+	});
+	await act(() => element<HTMLButtonElement>(entry.container, ".applyDateRange").click());
+	assert.deepEqual(entry.filterCalls.at(-1), ["2026-01-10", "2026-01-20", [], []]);
+	assert.equal(entry.todayFocus(), true, "applying a range retains the independent focus mode");
+});
+
+test("shortcuts read the current clock for each non-composing input, not for rendering", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render();
+	assert.equal(entry.nowCalls(), 0);
+	const input = element<HTMLInputElement>(entry.container, ".newTask");
+	await edit(input, "buy milk today ");
+	assert.equal(input.value, "buy milk 2026-01-15 ");
+	assert.equal(entry.nowCalls(), 1);
+	await entry.render();
+	assert.equal(entry.nowCalls(), 1);
+	await edit(input, "unchanged text");
+	assert.equal(entry.nowCalls(), 2);
+});
+
+test("due choices set absolute dates without submitting or changing filters", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render({ from: "2026-01-10", to: "2026-01-20", priorities: ["High"], tags: ["#work"] });
+	const choice = element<HTMLSelectElement>(entry.container, ".taskDuePreset");
+	const due = element<HTMLInputElement>(entry.container, ".taskDue");
+	assert.deepEqual(
+		[...choice.options].map((option) => option.value),
+		["", "none", "today", "tomorrow", "custom"],
+	);
+	assert.equal(choice.options[0].textContent, "Due");
+	assert.equal(choice.options[0].disabled, true);
+	assert.equal(choice.options[0].hidden, true);
+	assert.deepEqual(
+		[...choice.options].filter((option) => !option.disabled).map((option) => option.textContent),
+		["No date", "Today", "Tomorrow", "Choose date…"],
+	);
+	assert.equal(choice.value, "");
+	assert.equal(due.hidden, true);
+	assert.equal(entry.nowCalls(), 0);
+	await act(() => element<HTMLInputElement>(entry.container, ".newTask").focus());
+	await changeSelect(choice, "today");
+	assert.equal(entry.draft.getSnapshot().due, "2026-01-15");
+	assert.equal(choice.value, "today");
+	assert.equal(due.hidden, true);
+	assert.equal(entry.nowCalls(), 1);
+	await changeSelect(choice, "tomorrow");
+	assert.equal(entry.draft.getSnapshot().due, "2026-01-16");
+	assert.equal(choice.value, "tomorrow");
+	assert.equal(entry.nowCalls(), 2);
+	await changeSelect(choice, "custom");
+	assert.equal(entry.draft.getSnapshot().dueBasis, undefined);
+	assert.equal(due.hidden, false);
+	assert.equal(due.value, "2026-01-16", "custom editing starts from the selected absolute date");
+	assert.equal(document.activeElement, due);
+	await edit(due, "2030-07-04");
+	assert.equal(entry.draft.getSnapshot().due, "2030-07-04");
+	assert.equal(choice.value, "custom");
+	await changeSelect(choice, "none");
+	assert.equal(choice.value, "none");
+	assert.equal(entry.draft.getSnapshot().due, "");
+	assert.equal(entry.draft.getSnapshot().customDue, false);
+	assert.equal(entry.draft.getSnapshot().dueBasis, undefined);
+	assert.equal(due.value, "");
+	assert.equal(due.hidden, true);
+	assert.equal(entry.nowCalls(), 2, "custom editing, clearing and rendering do not read the clock");
+	assert.deepEqual(entry.filterCalls, []);
 	assert.deepEqual(entry.createCalls, []);
 });
 
-test("applied filter re-derived when the prop changes", async (t) => {
-	const a: QuickFilter = { from: "2026-01-10", to: "2026-01-20", priorities: ["High"], tags: ["#work"] };
-	const b: QuickFilter = { to: "2026-02-20", priorities: [], tags: ["#home"] };
-	// Brief-derived cases pin reference identity and resets even without an edit between applied values.
-	const cases: [string, (QuickFilter | undefined)[], string][] = [
-		["same object keeps edits", [a], "2026-01-12"],
-		["equal new object resets", [{ ...a, priorities: [...a.priorities], tags: [...a.tags!] }], a.from!],
-		["A to undefined clears dates", [undefined], ""],
-		["A to B to A resets", [b, a], a.from!],
-		["A to undefined to A resets without an intervening edit", [undefined, a], a.from!],
-	];
-	for (const [name, changes, expectedFrom] of cases) {
-		await t.test(name, async (t) => {
+test("due shortcuts use the action clock and calendar-day arithmetic across boundaries", async (t) => {
+	for (const [day, tomorrow] of [
+		["2026-01-31", "2026-02-01"],
+		["2026-12-31", "2027-01-01"],
+		["2028-02-28", "2028-02-29"],
+	]) {
+		await t.test(day, async (t) => {
 			const entry = entryHarness(t);
-			await entry.render(a);
-			const dates = () => [...entry.container.querySelectorAll<HTMLInputElement>('input[type="date"]')];
-			const assertMountChoices = () => {
-				assert.equal(element<HTMLSelectElement>(entry.container, "select.actionName").value, "filter");
-				assert.deepEqual(
-					[...entry.container.querySelectorAll("select.filterSelector ~ a")].map((item) => item.textContent),
-					["📆 Date🎯", "⏫ Priority🎯"],
-				);
-				assert.equal(dates().length, 2);
-				assert.ok(entry.container.querySelector('select[name="priorityFilter"]'));
-			};
-			assertMountChoices();
-			await editDate(dates()[0], "2026-01-12");
-			assert.equal(dates()[0].value, "2026-01-12");
-			for (const applied of changes) {
-				await entry.render(applied);
-				assertMountChoices();
-				if (applied !== a) {
-					assert.deepEqual(
-						dates().map((input) => input.value),
-						[applied?.from ?? "", applied?.to ?? ""],
-					);
-				}
-			}
-			const applied = changes[changes.length - 1];
-			assert.deepEqual(
-				dates().map((input) => input.value),
-				[expectedFrom, applied?.to ?? ""],
+			await entry.setDay(day);
+			assert.equal(entry.nowCalls(), 0);
+			await changeSelect(element(entry.container, ".taskDuePreset"), "tomorrow");
+			assert.equal(entry.draft.getSnapshot().due, tomorrow);
+			assert.equal(element<HTMLSelectElement>(entry.container, ".taskDuePreset").value, "tomorrow");
+			entry.setClock(tomorrow);
+			await changeSelect(element(entry.container, ".taskDuePreset"), "today");
+			assert.equal(
+				entry.draft.getSnapshot().due,
+				tomorrow,
+				"Today reads the clock at selection, not the render day",
 			);
-			await act(() => element<HTMLButtonElement>(entry.container, "button.ok").click());
-			assert.deepEqual(entry.filterCalls, [
-				[expectedFrom, applied?.to ?? "", [...(applied?.priorities ?? [])], [...(applied?.tags ?? [])]],
-			]);
+			assert.equal(entry.nowCalls(), 2);
+			assert.equal(element<HTMLSelectElement>(entry.container, ".taskDuePreset").value, "today");
 		});
 	}
-	await t.test("append and empty filter types remain the mount values", async (t) => {
-		const entry = entryHarness(t);
-		await entry.render();
-		await entry.render(a);
-		assert.equal(element<HTMLSelectElement>(entry.container, "select.actionName").value, "append");
-		assert.ok(entry.container.querySelector("input.newTask"));
-		await changeSelect(element<HTMLSelectElement>(entry.container, "select.actionName"), "filter");
-		assert.deepEqual([...entry.container.querySelectorAll("select.filterSelector ~ a")], []);
-		assert.equal(entry.container.querySelector(".dateFilter"), null);
-		assert.equal(entry.container.querySelector('select[name="priorityFilter"]'), null);
-	});
 });
 
-test("the priority select offers the six names", async (t) => {
+test("preset labels follow the selection clock through a stale timeline day and keyed remount", async (t) => {
 	const entry = entryHarness(t);
-	await entry.render({ priorities: ["High"] });
-	const select = element<HTMLSelectElement>(entry.container, 'select[name="priorityFilter"]');
-	assert.deepEqual(
-		[...select.options].map((option) => [option.value, option.textContent?.trim()]),
-		[
-			["+", "Add priority"],
-			["Highest", "Highest"],
-			["High", "High🎯"],
-			["Medium", "Medium"],
-			["No", "None"],
-			["Low", "Low"],
-			["Lowest", "Lowest"],
-		],
-	);
+	await entry.setDay("2026-12-31");
+	entry.setClock("2027-01-01");
+	await changeSelect(element(entry.container, ".taskDuePreset"), "today");
+	const original = element<HTMLSelectElement>(entry.container, ".taskDuePreset");
+	assert.equal(original.value, "today");
+	assert.equal(entry.draft.getSnapshot().due, "2027-01-01");
+	await entry.remount();
+	const remounted = element<HTMLSelectElement>(entry.container, ".taskDuePreset");
+	assert.notEqual(remounted, original);
+	assert.equal(remounted.value, "today");
+	await entry.setDay("2027-01-01");
+	assert.equal(remounted.value, "today");
+	assert.equal(entry.draft.getSnapshot().due, "2027-01-01");
+	await entry.setDay("2027-01-02");
+	assert.equal(remounted.value, "custom");
+	assert.equal(entry.draft.getSnapshot().due, "2027-01-01");
+	assert.equal(entry.nowCalls(), 1);
 });
 
-test("priority choices submit task labels, and None includes both stored forms", async (t) => {
-	const entry = entryHarness(t);
-	await entry.render({ from: "2026-01-10", to: "2026-01-20", priorities: [], tags: ["#work"] });
-	await changeSelect(element<HTMLSelectElement>(entry.container, "select.filterSelector"), "priority");
-	const select = element<HTMLSelectElement>(entry.container, 'select[name="priorityFilter"]');
-	const submit = () => act(() => element<HTMLButtonElement>(entry.container, "button.ok").click());
-	await changeSelect(select, "High");
-	await submit();
-	assert.deepEqual(entry.filterCalls.at(-1), ["2026-01-10", "2026-01-20", ["High"], ["#work"]]);
-	await changeSelect(select, "No");
-	await changeSelect(select, "Lowest");
-	await submit();
-	assert.deepEqual(entry.filterCalls.at(-1), ["2026-01-10", "2026-01-20", ["High", "No", "", "Lowest"], ["#work"]]);
-	await changeSelect(select, "No");
-	await changeSelect(select, "+");
-	await submit();
-	assert.deepEqual(entry.filterCalls.at(-1), ["2026-01-10", "2026-01-20", ["High", "Lowest"], ["#work"]]);
+test("refreshing only a due preset label does not turn an unchanged pending capture into a new draft", async (t) => {
+	const pending = deferred<boolean>();
+	const entry = entryHarness(t, () => pending.promise);
+	await entry.render();
+	await edit(element(entry.container, ".newTask"), "same absolute due date");
+	await changeSelect(element(entry.container, ".taskDuePreset"), "tomorrow");
+	await enter(element(entry.container, ".newTask"));
+	entry.setClock("2026-01-16");
+	await changeSelect(element(entry.container, ".taskDuePreset"), "today");
+	assert.equal(entry.draft.getSnapshot().due, "2026-01-16");
+	assert.equal(element<HTMLSelectElement>(entry.container, ".taskDuePreset").value, "today");
+	await act(async () => pending.resolve(true));
+	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, "");
+	assert.equal(entry.draft.getSnapshot().due, "");
+	assert.equal(entry.draft.getSnapshot().dueBasis, undefined);
 });
 
-test("an applied None filter restores as one selectable choice", async (t) => {
+test("a changed timeline day updates relative labels without moving the chosen due date", async (t) => {
 	const entry = entryHarness(t);
-	for (const priorities of [[""], ["No"], ["No", ""], ["", "No"]]) {
-		await entry.render({ priorities });
-		assert.deepEqual(
-			[...entry.container.querySelectorAll('select[name="priorityFilter"] ~ a')].map((item) => item.textContent),
-			["None🎯"],
-		);
-		await act(() => element<HTMLButtonElement>(entry.container, "button.ok").click());
-		assert.deepEqual(entry.filterCalls.at(-1), ["", "", ["No", ""], []]);
+	await entry.setDay("2026-12-31");
+	await changeSelect(element(entry.container, ".taskDuePreset"), "tomorrow");
+	await entry.setDay("2027-01-01");
+	assert.equal(entry.draft.getSnapshot().due, "2027-01-01");
+	assert.equal(element<HTMLSelectElement>(entry.container, ".taskDuePreset").value, "today");
+	await entry.setDay("2027-01-02");
+	assert.equal(entry.draft.getSnapshot().due, "2027-01-01");
+	assert.equal(element<HTMLSelectElement>(entry.container, ".taskDuePreset").value, "custom");
+	assert.equal(element<HTMLInputElement>(entry.container, ".taskDue").hidden, false);
+	assert.equal(entry.nowCalls(), 1);
+});
+
+test("empty custom date editing survives a keyed remount and closes only when another choice is made", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render();
+	await changeSelect(element(entry.container, ".taskDuePreset"), "custom");
+	const original = element<HTMLInputElement>(entry.container, ".taskDue");
+	assert.equal(original.value, "");
+	assert.equal(original.hidden, false);
+	await entry.remount();
+	const remounted = element<HTMLInputElement>(entry.container, ".taskDue");
+	assert.notEqual(remounted, original);
+	assert.equal(remounted.value, "");
+	assert.equal(remounted.hidden, false);
+	assert.equal(element<HTMLSelectElement>(entry.container, ".taskDuePreset").value, "custom");
+	await changeSelect(element(entry.container, ".taskDuePreset"), "today");
+	assert.equal(remounted.hidden, true);
+	assert.equal(entry.draft.getSnapshot().customDue, false);
+});
+
+test("due presets are written in the selected metadata format and reset after an unchanged successful capture", async (t) => {
+	for (const style of ["emoji", "dataview"] as const) {
+		await t.test(style, async (t) => {
+			const entry = entryHarness(t, undefined, style);
+			await entry.render();
+			await edit(element(entry.container, ".newTask"), "a dated task");
+			await changeSelect(element(entry.container, ".taskDuePreset"), "tomorrow");
+			await enter(element(entry.container, ".newTask"));
+			assert.equal(
+				entry.createCalls[0][1],
+				style === "emoji" ? "a dated task 📅 2026-01-16" : "a dated task  [due:: 2026-01-16]",
+			);
+			assert.equal(entry.draft.getSnapshot().due, "");
+			assert.equal(entry.draft.getSnapshot().customDue, false);
+			assert.equal(entry.draft.getSnapshot().dueBasis, undefined);
+			assert.equal(element<HTMLSelectElement>(entry.container, ".taskDuePreset").value, "");
+			assert.equal(element<HTMLInputElement>(entry.container, ".taskDue").hidden, true);
+		});
 	}
-	await changeSelect(element<HTMLSelectElement>(entry.container, 'select[name="priorityFilter"]'), "No");
-	await act(() => element<HTMLButtonElement>(entry.container, "button.ok").click());
-	assert.deepEqual(entry.filterCalls.at(-1), ["", "", [], []], "deselecting None removes both stored forms");
 });
 
-// Brief-derived: the clock is read for each input event, not while rendering the panel.
-test("input expands shortcuts against host.now() at each input event", async (t) => {
+test("metadata stays open through composer focus changes and collapses without losing selected values", async (t) => {
 	const entry = entryHarness(t);
 	await entry.render();
-	assert.equal(entry.nowCalls(), 0);
-	await entry.render();
-	assert.equal(entry.nowCalls(), 0);
-	const input = element<HTMLInputElement>(entry.container, "input.newTask");
-	await act(() => {
-		input.value = "buy milk today ";
-		input.dispatchEvent(new Event("input", { bubbles: true }));
-	});
-	assert.equal(input.value, "buy milk 2026-01-15 ");
-	assert.equal(entry.nowCalls(), 1);
+	const panel = element<HTMLElement>(entry.container, ".quickEntryPanel");
+	const metadata = element<HTMLElement>(entry.container, ".entryMetaReveal");
+	const input = element<HTMLInputElement>(entry.container, ".newTask");
+	const file = element<HTMLSelectElement>(entry.container, ".fileSelect");
+	const due = element<HTMLInputElement>(entry.container, ".taskDue");
+	const priority = element<HTMLSelectElement>(entry.container, ".taskPriority");
+	const add = element<HTMLButtonElement>(entry.container, "button.ok");
+	assert.equal(metadata.getAttribute("aria-hidden"), "true", "the idle composer exposes only the task title and Add");
+	assert.equal(metadata.hasAttribute("inert"), true);
+	assert.equal(panel.dataset.open, "false");
+	await act(() => input.focus());
+	assert.equal(panel.className, "quickEntryPanel t-acc focus");
+	assert.equal(metadata.getAttribute("aria-hidden"), "false");
+	assert.equal(metadata.hasAttribute("inert"), false);
+	assert.equal(panel.dataset.open, "true");
+	await edit(input, "buy milk");
+	await act(() => file.focus());
+	assert.equal(
+		metadata.getAttribute("aria-hidden"),
+		"false",
+		"moving keyboard focus to metadata keeps the controls available",
+	);
+	await changeSelect(file, "Inbox.md");
 	assert.equal(document.activeElement, input);
-	await entry.render();
-	assert.equal(entry.nowCalls(), 1);
-	await act(() => {
-		input.value = "unchanged text";
-		input.dispatchEvent(new Event("input", { bubbles: true }));
+	await changeSelect(element(entry.container, ".taskDuePreset"), "custom");
+	await act(() => due.focus());
+	await edit(due, "2026-01-20");
+	assert.equal(metadata.getAttribute("aria-hidden"), "false");
+	await act(() => priority.focus());
+	await changeSelect(priority, "High");
+	assert.equal(metadata.getAttribute("aria-hidden"), "false");
+	await act(() => add.focus());
+	assert.equal(
+		metadata.getAttribute("aria-hidden"),
+		"false",
+		"moving from metadata to Add retains the expanded composer",
+	);
+	assert.equal(panel.className, "quickEntryPanel t-acc focus");
+	await act(() => element<HTMLInputElement>(entry.container, ".tagFilterBar input").focus());
+	assert.equal(metadata.getAttribute("aria-hidden"), "true", "focus leaving the entire composer hides its options");
+	assert.equal(panel.className, "quickEntryPanel t-acc");
+	assert.equal(metadata.hasAttribute("inert"), true);
+	assert.equal(panel.dataset.open, "false");
+	assert.equal(input.value, "buy milk");
+	assert.equal(file.value, "Inbox.md");
+	assert.equal(due.value, "2026-01-20");
+	assert.equal(priority.value, "High");
+	await act(() => input.focus());
+	assert.equal(metadata.getAttribute("aria-hidden"), "false");
+	assert.equal(file.value, "Inbox.md");
+	assert.equal(due.value, "2026-01-20");
+	assert.equal(priority.value, "High");
+	await act(async () => {
+		add.focus();
+		add.click();
 	});
-	assert.equal(input.value, "unchanged text");
-	assert.equal(entry.nowCalls(), 2);
+	assert.deepEqual(entry.createCalls, [["Inbox.md", "buy milk ⏫ 📅 2026-01-20"]]);
+	assert.equal(
+		metadata.getAttribute("aria-hidden"),
+		"false",
+		"Add remains actionable while focus moves from the task input",
+	);
+	assert.equal(input.value, "");
+});
+
+test("priority filters retain six levels and None includes both stored representations", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render({ priorities: ["High"], tags: ["#work"] });
+	const choices = [...entry.container.querySelectorAll<HTMLInputElement>(".priorityOptions input")];
+	assert.deepEqual(
+		choices.map((input) => input.value),
+		["Highest", "High", "Medium", "No", "Low", "Lowest"],
+	);
+	await act(() => element<HTMLInputElement>(entry.container, '.priorityOptions input[value="No"]').click());
+	assert.deepEqual(entry.filterCalls.at(-1), [undefined, undefined, ["High", "No", ""], ["#work"]]);
+	await act(() => element<HTMLInputElement>(entry.container, '.priorityOptions input[value="Lowest"]').click());
+	assert.deepEqual(entry.filterCalls.at(-1), [undefined, undefined, ["High", "No", "", "Lowest"], ["#work"]]);
+	await act(() => element<HTMLInputElement>(entry.container, '.priorityOptions input[value="No"]').click());
+	assert.deepEqual(entry.filterCalls.at(-1), [undefined, undefined, ["High", "Lowest"], ["#work"]]);
+	for (const values of [[""], ["No"], ["No", ""], ["", "No"]]) {
+		await entry.render({ priorities: values });
+		assert.equal(element<HTMLInputElement>(entry.container, '.priorityOptions input[value="No"]').checked, true);
+		assert.equal(element(entry.container, ".priorityFilter summary").textContent, "None");
+	}
+});
+
+async function priorityPlacementHarness(t: TestContext, clipTop: number, clipHeight: number, triggerTop: number) {
+	const entry = entryHarness(t);
+	await entry.render();
+	const details = element<HTMLDetailsElement>(entry.container, ".priorityFilter");
+	const trigger = element<HTMLElement>(entry.container, ".priorityFilter summary");
+	const options = element<HTMLElement>(entry.container, ".priorityOptions");
+	const geometry = { clipTop, clipHeight, triggerTop, measurements: 0 };
+	entry.container.style.overflowY = "hidden";
+	entry.container.getBoundingClientRect = () => new window.DOMRect(0, geometry.clipTop, 300, geometry.clipHeight + 4);
+	Object.defineProperty(entry.container, "clientTop", { configurable: true, value: 2 });
+	Object.defineProperty(entry.container, "clientHeight", { configurable: true, get: () => geometry.clipHeight });
+	trigger.getBoundingClientRect = () => {
+		geometry.measurements++;
+		return new window.DOMRect(180, geometry.triggerTop, 100, 32);
+	};
+	details.getBoundingClientRect = () => new window.DOMRect(180, geometry.triggerTop, 100, 32);
+	options.getBoundingClientRect = () => new window.DOMRect(100, geometry.triggerTop + 37, 180, 202);
+	Object.defineProperty(options, "scrollHeight", { configurable: true, value: 200 });
+	const computedStyle = window.getComputedStyle.bind(window);
+	t.mock.method(window, "getComputedStyle", (target: Element, pseudo?: string | null) => {
+		const style = computedStyle(target, pseudo);
+		if (target !== options) return style;
+		return new Proxy(style, {
+			get(value, property) {
+				if (property === "top" || property === "bottom") return "37px";
+				if (property === "borderTopWidth" || property === "borderBottomWidth") return "1px";
+				return Reflect.get(value, property, value);
+			},
+		});
+	});
+	return { ...entry, details, trigger, options, geometry };
+}
+
+test("priority popup flips above a lower trigger within its clipping ancestor and follows resize", async (t) => {
+	const entry = await priorityPlacementHarness(t, 40, 300, 250);
+	await act(() => entry.trigger.click());
+	assert.equal(entry.details.open, true);
+	assert.equal(entry.options.dataset.placement, "above");
+	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), "203px");
+	entry.geometry.triggerTop = 80;
+	await act(() => window.dispatchEvent(new Event("resize")));
+	assert.equal(entry.options.dataset.placement, "below");
+	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), "225px");
+});
+
+test("priority popup bounds its scrolling surface when neither side fits all six options", async (t) => {
+	const entry = await priorityPlacementHarness(t, 100, 140, 150);
+	await act(() => entry.trigger.click());
+	assert.equal(entry.options.dataset.placement, "below");
+	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), "55px");
+	assert.ok(entry.options.scrollHeight > 55);
+	assert.equal(entry.options.querySelectorAll('input[type="checkbox"]').length, 6);
+	entry.geometry.clipHeight = 240;
+	await act(() => entry.container.dispatchEvent(new Event("scroll")));
+	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), "155px");
+});
+
+test("closed priority popup leaves placement untouched and removes its open geometry", async (t) => {
+	const entry = await priorityPlacementHarness(t, 40, 300, 250);
+	assert.equal(entry.options.hasAttribute("data-placement"), false);
+	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), "");
+	await act(() => window.dispatchEvent(new Event("resize")));
+	assert.equal(entry.geometry.measurements, 0);
+	await act(() => entry.trigger.click());
+	assert.equal(entry.options.dataset.placement, "above");
+	await act(() => entry.trigger.click());
+	assert.equal(entry.options.hasAttribute("data-placement"), false);
+	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), "");
+});
+
+async function priorityMotionHarness(t: TestContext) {
+	const entry = await priorityPlacementHarness(t, 40, 300, 250);
+	entry.options.style.setProperty("--tcw-dropdown-close-dur", "0.15s");
+	let reduced = false;
+	const preference = new window.EventTarget() as MediaQueryList;
+	Object.defineProperty(preference, "matches", { get: () => reduced });
+	const originalMatchMedia = Object.getOwnPropertyDescriptor(window, "matchMedia");
+	Object.defineProperty(window, "matchMedia", { configurable: true, value: () => preference });
+	t.after(() => {
+		if (originalMatchMedia) Object.defineProperty(window, "matchMedia", originalMatchMedia);
+		else Reflect.deleteProperty(window, "matchMedia");
+	});
+	const timers = new Map<number, { delay: number; callback: () => void }>();
+	let nextId = 1;
+	t.mock.method(window, "setTimeout", (callback: TimerHandler, delay = 0) => {
+		assert.equal(typeof callback, "function");
+		const id = nextId++;
+		timers.set(id, { delay, callback: callback as () => void });
+		return id;
+	});
+	t.mock.method(window, "clearTimeout", (id: number) => timers.delete(id));
+	return {
+		...entry,
+		timers,
+		reduce: (value: boolean) => {
+			reduced = value;
+			preference.dispatchEvent(new Event("change"));
+		},
+		finish: () => {
+			const [id, timer] = [...timers][0];
+			timers.delete(id);
+			timer.callback();
+		},
+	};
+}
+
+test("priority close excludes its controls immediately while retaining its positioned surface for the CSS exit", async (t) => {
+	const entry = await priorityMotionHarness(t);
+	await act(() => entry.trigger.click());
+	assert.equal(entry.options.classList.contains("is-open"), true);
+	assert.equal(entry.options.getAttribute("aria-hidden"), "false");
+	assert.equal(entry.options.hasAttribute("inert"), false);
+	assert.equal(entry.options.dataset.origin, "bottom-right");
+	const placement = entry.options.style.getPropertyValue("--tcw-priority-menu-max-height");
+	await act(() => {
+		entry.trigger.focus();
+		entry.trigger.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+	});
+	assert.equal(entry.trigger.getAttribute("aria-expanded"), "false");
+	assert.equal(entry.details.dataset.open, "false");
+	assert.equal(entry.options.getAttribute("aria-hidden"), "true");
+	assert.equal(entry.options.hasAttribute("inert"), true);
+	assert.equal(document.activeElement, entry.trigger);
+	assert.equal(entry.options.classList.contains("is-closing"), true);
+	assert.equal(entry.details.open, true, "only visual presence waits for the exit");
+	assert.equal(entry.options.style.getPropertyValue("--tcw-priority-menu-max-height"), placement);
+	assert.deepEqual(
+		[...entry.timers.values()].map((timer) => timer.delay),
+		[150],
+	);
+	await act(entry.finish);
+	assert.equal(entry.details.open, false);
+	assert.equal(entry.options.classList.contains("is-closing"), false);
+	assert.equal(entry.options.hasAttribute("data-placement"), false);
+});
+
+test("reopening a fading priority popup cancels its dismissal, and unmount cancels pending cleanup", async (t) => {
+	const entry = await priorityMotionHarness(t);
+	await act(() => entry.trigger.click());
+	await act(() => entry.trigger.click());
+	assert.equal(entry.timers.size, 1);
+	await act(() => entry.trigger.click());
+	assert.equal(entry.timers.size, 0);
+	assert.equal(entry.details.open, true);
+	assert.equal(entry.trigger.getAttribute("aria-expanded"), "true");
+	assert.equal(entry.options.classList.contains("is-open"), true);
+	assert.equal(entry.options.hasAttribute("inert"), false);
+	await act(() => entry.trigger.click());
+	assert.equal(entry.timers.size, 1);
+	await entry.unmount();
+	assert.equal(entry.timers.size, 0);
+});
+
+test("reduced motion skips exit presence and finishes an exit when the preference changes", async (t) => {
+	const entry = await priorityMotionHarness(t);
+	entry.reduce(true);
+	await act(() => entry.trigger.click());
+	await act(() => entry.trigger.click());
+	assert.equal(entry.details.open, false);
+	assert.equal(entry.timers.size, 0);
+	entry.reduce(false);
+	await act(() => entry.trigger.click());
+	await act(() => entry.trigger.click());
+	assert.equal(entry.details.open, true);
+	assert.equal(entry.timers.size, 1);
+	await act(() => entry.reduce(true));
+	assert.equal(entry.details.open, false);
+	assert.equal(entry.timers.size, 0);
+});
+
+test("date presets preserve other dimensions and Next 7 days keeps its selected label", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render({ priorities: ["High"], tags: ["#work"] });
+	await changeSelect(element(entry.container, ".dateScope"), "week");
+	assert.deepEqual(entry.filterCalls.at(-1), ["2026-01-15", "2026-01-21", ["High"], ["#work"]]);
+	assert.equal(element<HTMLSelectElement>(entry.container, ".dateScope").value, "week");
+	await entry.remount();
+	assert.equal(element<HTMLSelectElement>(entry.container, ".dateScope").value, "week");
+	await act(() => element<HTMLElement>(entry.container, ".todayHeader").click());
+	assert.equal(entry.todayFocus(), true);
+	assert.deepEqual(entry.filterCalls.at(-1), ["2026-01-15", "2026-01-21", ["High"], ["#work"]]);
+	assert.equal(element<HTMLSelectElement>(entry.container, ".dateScope").value, "week");
+	await changeSelect(element(entry.container, ".dateScope"), "all");
+	assert.equal(entry.todayFocus(), true, "date presets do not turn focus off");
+	assert.deepEqual(entry.filterCalls.at(-1), [undefined, undefined, ["High"], ["#work"]]);
+	await changeSelect(element(entry.container, ".dateScope"), "week");
+	assert.equal(entry.todayFocus(), true, "date presets do not turn focus on or off");
+	assert.deepEqual(entry.filterCalls.at(-1), ["2026-01-15", "2026-01-21", ["High"], ["#work"]]);
+});
+
+test("the original Focus on today heading preserves the explicit range and capture draft", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render({ from: "2026-01-10", to: "2026-01-20", priorities: ["High", "No", ""], tags: ["#work"] });
+	await entry.counter("todo");
+	await edit(element(entry.container, ".newTask"), "keep this capture draft");
+	await edit(element(entry.container, ".taskDue"), "2026-01-25");
+	const today = element<HTMLElement>(entry.container, ".todayHeader");
+	assert.equal(today.textContent, "Focus on today");
+	assert.equal(today.getAttribute("aria-label"), "Focus on today");
+	assert.equal(today.getAttribute("role"), "button");
+	assert.equal(today.tabIndex, 0);
+	assert.equal(today.getAttribute("aria-pressed"), "false");
+	assert.equal(today.hidden, false);
+	assert.equal(today.closest("details"), null, "the toggle is outside collapsed menus");
+	assert.equal(
+		element<HTMLSelectElement>(entry.container, ".dateScope").getAttribute("aria-label"),
+		"Filter by date",
+	);
+	assert.deepEqual(
+		[...element<HTMLSelectElement>(entry.container, ".dateScope").options].map((option) => option.value),
+		["all", "week", "custom"],
+	);
+	await act(() => today.click());
+	assert.equal(entry.todayFocus(), true);
+	assert.equal(today.getAttribute("aria-pressed"), "true");
+	assert.equal(element<HTMLSelectElement>(entry.container, ".dateScope").value, "custom");
+	assert.deepEqual(entry.filterCalls, [], "the original focus action leaves the date/tag/priority query intact");
+	assert.deepEqual(
+		[...entry.container.querySelectorAll<HTMLInputElement>(".dateRange input")].map((input) => input.value),
+		["2026-01-10", "2026-01-20"],
+	);
+	assert.deepEqual(entry.counterCalls, [], "focusing today retains the selected status card");
+	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, "keep this capture draft");
+	assert.equal(element<HTMLInputElement>(entry.container, ".taskDue").value, "2026-01-25");
+	await act(() => today.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+	assert.equal(entry.todayFocus(), false);
+	assert.equal(today.getAttribute("aria-pressed"), "false");
+	assert.equal(element<HTMLSelectElement>(entry.container, ".dateScope").value, "custom");
+	assert.deepEqual(entry.filterCalls, []);
+	assert.deepEqual(entry.counterCalls, []);
+	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, "keep this capture draft");
+	const space = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
+	await act(() => today.dispatchEvent(space));
+	assert.equal(entry.todayFocus(), true);
+	assert.equal(space.defaultPrevented, true, "Space activates the heading without scrolling the page");
+	assert.deepEqual(entry.filterCalls, []);
+});
+
+test("custom ranges validate both endpoints and do not apply reversed or incomplete dates", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render({ priorities: ["High"], tags: ["#work"] });
+	await changeSelect(element(entry.container, ".dateScope"), "custom");
+	await act(() => element<HTMLButtonElement>(entry.container, ".applyDateRange").click());
+	assert.match(element(entry.container, ".filterError").textContent!, /both a start and an end/);
+	assert.equal(entry.filterCalls.length, 0);
+	const dates = entry.container.querySelectorAll<HTMLInputElement>(".dateRange input");
+	await edit(dates[0], "2026-01-20");
+	await edit(dates[1], "2026-01-10");
+	await act(() => element<HTMLButtonElement>(entry.container, ".applyDateRange").click());
+	assert.match(element(entry.container, ".filterError").textContent!, /End date/);
+	assert.equal(entry.filterCalls.length, 0);
+	await edit(dates[1], "2026-01-25");
+	await act(() => element<HTMLButtonElement>(entry.container, ".applyDateRange").click());
+	assert.deepEqual(entry.filterCalls.at(-1), ["2026-01-20", "2026-01-25", ["High"], ["#work"]]);
+});
+
+test("clear resets capture-independent filters, today focus and the selected category", async (t) => {
+	const entry = entryHarness(t);
+	await entry.render({ priorities: ["High"], tags: ["#work"] });
+	await edit(element(entry.container, ".newTask"), "keep my draft");
+	await entry.counter("todo");
+	await act(() => element<HTMLElement>(entry.container, ".todayHeader").click());
+	await act(() => element<HTMLButtonElement>(entry.container, ".clearFilters").click());
+	assert.equal(entry.todayFocus(), false);
+	assert.deepEqual(entry.counterCalls, ["todo"]);
+	assert.deepEqual(entry.filterCalls.at(-1), [undefined, undefined, [], []]);
+	assert.equal(element<HTMLInputElement>(entry.container, ".newTask").value, "keep my draft");
 });
 
 // Brief-derived: generic values pin the selection contract independently of today's priority names.

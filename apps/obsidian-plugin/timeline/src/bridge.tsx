@@ -66,7 +66,7 @@ export function ObsidianBridge(
 		return unsubscribe;
 	}, [props.store]);
 
-	// Dispatch instead of useStore so quick entry's filter clear renders with its list update.
+	// Keep filter updates in the same reducer as the rendered list.
 	React.useLayoutEffect(() => {
 		const onStateChanged = () => {
 			const { quickFilter } = props.viewState.store.getSnapshot();

@@ -56,13 +56,14 @@ export function expandedFilterPlan(themes = "default") {
 export const EXPANDED_FILTER_PROBES = Object.freeze([
 	...STYLE_PROBES,
 	...[
-		".quickEntryPanel .filterSelector",
-		".quickEntryPanel .dateFilter",
-		'.quickEntryPanel input[type="date"]:first-of-type',
-		'.quickEntryPanel input[type="date"]:last-of-type',
-		'.quickEntryPanel select[name="priorityFilter"]',
-		'.quickEntryPanel select[name="priorityFilter"] + a',
-		'.quickEntryPanel select[name="priorityFilter"] ~ a:last-child',
+		".quickFilterBar .dateRange",
+		".dateRange label:first-of-type input",
+		".dateRange label:last-of-type input",
+		".applyDateRange",
+		".priorityFilter",
+		".priorityOptions",
+		'.priorityOptions input[value="High"]',
+		'.priorityOptions input[value="No"]',
 	].map((selector) => Object.freeze({ name: selector, selector })),
 ]);
 
@@ -87,25 +88,43 @@ export async function applyExpandedFilter({ viewType }) {
 		element.dispatchEvent(new view.Event("change", { bubbles: true }));
 		await sleep(20);
 	};
-	await select("select.actionName", "filter");
-	await until(() => root.querySelector("select.filterSelector"), "the filter selector");
-	await select("select.filterSelector", "date");
-	await until(() => root.querySelectorAll('input[type="date"]').length === 2, "both date inputs");
-	await select("select.filterSelector", "priority");
-	await until(() => root.querySelector('select[name="priorityFilter"]'), "the priority selector");
-	const dates = root.querySelectorAll('input[type="date"]');
+	await select("select.dateScope", "custom");
+	await until(() => root.querySelectorAll(".dateRange input").length === 2, "both filter date inputs");
+	const dates = root.querySelectorAll(".dateRange input");
 	for (const [index, value] of ["2026-01-10", "2026-01-20"].entries()) {
 		Object.getOwnPropertyDescriptor(view.HTMLInputElement.prototype, "value").set.call(dates[index], value);
 		dates[index].dispatchEvent(new view.Event("input", { bubbles: true }));
 		await sleep(20);
 	}
-	await select('select[name="priorityFilter"]', "High");
-	await select('select[name="priorityFilter"]', "No");
-	await select("select.filterSelector", "+");
-	await select('select[name="priorityFilter"]', "+");
-	const button = root.querySelector(".quickEntryPanel button.ok");
-	if (!button) throw new Error("The expanded-filter apply button is missing.");
+	const button = root.querySelector(".applyDateRange");
+	if (!button) throw new Error("The expanded-filter date apply button is missing.");
 	button.click();
+	await until(() => {
+		const filter = app.workspace.getLeavesOfType(viewType)[0]?.view?.viewState?.store?.getSnapshot()?.quickFilter;
+		return filter?.from === "2026-01-10" && filter.to === "2026-01-20";
+	}, "the applied date range");
+	await sleep(20);
+	for (const value of ["High", "No"]) {
+		// Applying a filter may remove a year and remount the entry controls under its new year key.
+		const priority = root.querySelector("details.priorityFilter");
+		const summary = priority?.querySelector("summary");
+		if (!priority || !summary) throw new Error("The expanded-filter priority menu is missing.");
+		if (!priority.open) summary.click();
+		await until(() => priority.open, "the open priority menu");
+		const choice = priority.querySelector(`input[value="${value}"]`);
+		if (!choice) throw new Error(`The expanded-filter priority ${value} is missing.`);
+		if (!choice.checked) choice.click();
+		await sleep(20);
+		await until(() => {
+			const filter = app.workspace
+				.getLeavesOfType(viewType)[0]
+				?.view?.viewState?.store?.getSnapshot()?.quickFilter;
+			return (
+				root.querySelector(`.priorityOptions input[value="${value}"]`)?.checked &&
+				filter?.priorities.includes(value)
+			);
+		}, `the applied ${value} priority`);
+	}
 	await until(() => {
 		const state = app.workspace.getLeavesOfType(viewType)[0]?.view?.viewState?.store?.getSnapshot();
 		return (
@@ -114,6 +133,9 @@ export async function applyExpandedFilter({ viewType }) {
 			JSON.stringify(state.quickFilter.priorities) === '["High","No",""]'
 		);
 	}, "the applied quick filter, not its draft");
+	const priority = root.querySelector("details.priorityFilter");
+	if (priority?.open) priority.querySelector("summary").click();
+	await until(() => !root.querySelector("details.priorityFilter")?.open, "the closed priority menu");
 	root.ownerDocument.activeElement?.blur();
 	return true;
 }
@@ -126,10 +148,10 @@ export function collectExpandedFilter({ viewType }) {
 	const content = document.querySelector(`.workspace-leaf-content[data-type="${viewType}"] > .view-content`);
 	const root = content?.querySelector(".taskido");
 	const panel = root?.querySelector(".quickEntryPanel");
-	if (!state || !options || !root || !panel)
+	const filters = root?.querySelector(".quickFilterBar");
+	if (!state || !options || !root || !panel || !filters)
 		throw new Error("The expanded-filter host stores or panel are unavailable.");
-	const priority = panel.querySelector('select[name="priorityFilter"]');
-	const types = panel.querySelector("select.filterSelector");
+	const priority = filters.querySelector("details.priorityFilter");
 	const rows = [...root.querySelectorAll(".task")].map((row) => {
 		const file = row.querySelector("a.file[aria-label]")?.getAttribute("aria-label");
 		const line = row.getAttribute("data-line");
@@ -161,20 +183,16 @@ export function collectExpandedFilter({ viewType }) {
 			entryPosition: options.entryPosition,
 			counterBehavior: options.counterBehavior,
 			controls: {
-				action: panel.querySelector("select.actionName")?.value,
-				dates: [...panel.querySelectorAll('input[type="date"]')].map((input) => input.value),
-				priorityOptions: [...(priority?.options ?? [])].map((option) => ({
-					value: option.value,
-					label: option.textContent.trim(),
+				dateScope: filters.querySelector("select.dateScope")?.value,
+				dates: [...filters.querySelectorAll(".dateRange input")].map((input) => input.value),
+				priorityOptions: [...(priority?.querySelectorAll('input[type="checkbox"]') ?? [])].map((input) => ({
+					value: input.value,
+					label: input.closest("label")?.querySelector(".priorityOptionLabel")?.textContent.trim() ?? "",
+					checked: input.checked,
 				})),
-				priorityChips: [...(priority?.closest(".MultiSelect")?.querySelectorAll("a") ?? [])].map((a) =>
-					a.textContent.trim(),
-				),
-				filterChips: [...(types?.closest(".MultiSelect")?.querySelectorAll("a") ?? [])].map((a) =>
-					a.textContent.trim(),
-				),
-				priorityClosedValue: priority?.value,
-				filterClosedValue: types?.value,
+				priorityOpen: Boolean(priority?.open),
+				prioritySummary: priority?.querySelector(".prioritySummary")?.textContent.trim(),
+				entryText: panel.querySelector("input.newTask")?.value,
 			},
 			applied: applied
 				? {
@@ -207,21 +225,19 @@ export function assertExpandedFilter({ semantic, geometry }) {
 		tags: [],
 	});
 	assert.deepEqual(semantic.controls, {
-		action: "filter",
+		dateScope: "custom",
 		dates: ["2026-01-10", "2026-01-20"],
 		priorityOptions: [
-			{ value: "+", label: "Add priority" },
-			{ value: "Highest", label: "Highest" },
-			{ value: "High", label: "High🎯" },
-			{ value: "Medium", label: "Medium" },
-			{ value: "No", label: "None🎯" },
-			{ value: "Low", label: "Low" },
-			{ value: "Lowest", label: "Lowest" },
+			{ value: "Highest", label: "Highest", checked: false },
+			{ value: "High", label: "High", checked: true },
+			{ value: "Medium", label: "Medium", checked: false },
+			{ value: "No", label: "None", checked: true },
+			{ value: "Low", label: "Low", checked: false },
+			{ value: "Lowest", label: "Lowest", checked: false },
 		],
-		priorityChips: ["High🎯", "None🎯"],
-		filterChips: ["📆 Date🎯", "⏫ Priority🎯"],
-		priorityClosedValue: "+",
-		filterClosedValue: "+",
+		priorityOpen: false,
+		prioritySummary: "Priority (2)",
+		entryText: "",
 	});
 	assert.equal(geometry.viewport.width, 600);
 	assert.equal(geometry.viewport.deviceScaleFactor, 1);
