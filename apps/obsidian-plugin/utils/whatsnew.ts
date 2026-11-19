@@ -15,6 +15,17 @@ export interface SupportLink {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
 	{
+		version: "0.4.0-beta.6",
+		items: [
+			"Settings add section shortcuts, smaller option groups and contextual controls. Navigation scrolls with the page instead of covering the settings below it.",
+			"Add files and folders as removable chips, with vault search suggestions or a path you enter yourself. Paste several comma-separated or newline-separated paths at once.",
+			"Add tags inline with vault suggestions or paste several at once. Invalid tag drafts stay in the editor, and renaming a tag color cannot overwrite another tag's color.",
+			"Use aligned To-do, Done and Cancelled presets when choosing which task statuses to hide, or keep your own checkbox markers.",
+			"Open the display preview to see the same task appearance as the timeline, including date formatting, checkbox style, visible details and tag colors. The sample is read-only and creates no note.",
+			"Settings show saving and saved feedback, with Retry if a save fails. Saving keeps the focused input and preserves newer drafts while earlier changes are being saved.",
+		],
+	},
+	{
 		version: "0.4.0-beta.5",
 		items: [
 			"Date, tag and priority filters now sit above quick entry, under the status cards. Date ranges can be used independently of Focus on today.",

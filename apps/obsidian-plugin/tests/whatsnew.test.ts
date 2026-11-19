@@ -12,14 +12,23 @@ test("the version in manifest.json has release notes", async () => {
 	assert.ok(note && note.items.length > 0, `add release notes for ${manifest.version} to utils/whatsnew.ts`);
 });
 
-test("the beta.5 entry is first and an update from beta.4 shows only its new notes", async () => {
+test("the beta.6 entry is first and an update from beta.5 shows only its new notes", async () => {
 	const { notesSince } = await import("@tasks-calendar-wrapper/core");
 	const { RELEASE_NOTES } = await import("../utils/whatsnew");
-	assert.equal(RELEASE_NOTES[0].version, "0.4.0-beta.5");
+	assert.equal(RELEASE_NOTES[0].version, "0.4.0-beta.6");
 	assert.ok(RELEASE_NOTES[0].items.length > 0);
 	assert.ok(RELEASE_NOTES[0].items.every((item) => item.trim().length > 0));
 	assert.equal(new Set(RELEASE_NOTES.map((note) => note.version)).size, RELEASE_NOTES.length);
-	assert.deepEqual(notesSince(RELEASE_NOTES, "0.4.0-beta.4", "0.4.0-beta.5"), [RELEASE_NOTES[0]]);
+	assert.deepEqual(notesSince(RELEASE_NOTES, "0.4.0-beta.5", "0.4.0-beta.6"), [RELEASE_NOTES[0]]);
+	assert.deepEqual(notesSince(RELEASE_NOTES, "", "0.4.0-beta.6"), [RELEASE_NOTES[0]]);
+});
+
+test("an update to beta.5 still shows only its own notes after newer beta notes are prepared", async () => {
+	const { notesSince } = await import("@tasks-calendar-wrapper/core");
+	const { RELEASE_NOTES } = await import("../utils/whatsnew");
+	const beta5 = RELEASE_NOTES.find((note) => note.version === "0.4.0-beta.5");
+	assert.ok(beta5);
+	assert.deepEqual(notesSince(RELEASE_NOTES, "0.4.0-beta.4", "0.4.0-beta.5"), [beta5]);
 });
 
 test("an update to beta.4 still shows only its own notes after newer beta notes are prepared", async () => {
@@ -30,7 +39,7 @@ test("an update to beta.4 still shows only its own notes after newer beta notes 
 	assert.deepEqual(notesSince(RELEASE_NOTES, "0.4.0-beta.3", "0.4.0-beta.4"), [beta4]);
 });
 
-test("the prepared beta.5 notes do not appear for stable versions", async () => {
+test("the prepared beta notes do not appear for stable versions", async () => {
 	const { notesSince } = await import("@tasks-calendar-wrapper/core");
 	const { RELEASE_NOTES } = await import("../utils/whatsnew");
 	assert.deepEqual(
