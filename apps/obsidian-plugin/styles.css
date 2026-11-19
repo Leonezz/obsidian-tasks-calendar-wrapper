@@ -1278,8 +1278,8 @@
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
-	flex: 0 1 22rem;
-	width: 22rem;
+	flex: 0 1 18rem;
+	width: 18rem;
 	min-width: 0;
 	max-width: 100%;
 	gap: var(--tcw-settings-space-3);
