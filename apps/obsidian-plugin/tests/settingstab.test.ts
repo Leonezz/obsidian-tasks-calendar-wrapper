@@ -476,11 +476,16 @@ test("the display preview follows metadata visibility without writing a sample t
 	const preview = container.children.find(
 		(child) => child instanceof FakeElement && child.cls === "tcw-settings-preview",
 	) as FakeElement;
+	assert.equal(preview.tag, "details");
+	assert.equal(preview.attr.open, undefined, "the sample starts collapsed");
+	assert.equal((preview.children[0] as FakeElement).textContent, "Preview display changes");
+	Reflect.set(preview, "open", true);
 	assert.ok(preview.textContent.includes("Today"));
 	const toggle = valueControls(container).find((found) => found.row === "Use relative date")!.control;
 	await toggle.change(false);
 	assert.ok(!preview.textContent.includes("Today"));
 	assert.ok(preview.textContent.includes("Plan the next step"));
+	assert.equal(Reflect.get(preview, "open"), true, "updating the sample preserves the disclosure state");
 });
 
 test("global Retry refreshes tag chips while preserving a newer input draft", async (t) => {

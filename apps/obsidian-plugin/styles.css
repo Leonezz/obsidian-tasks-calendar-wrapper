@@ -100,13 +100,11 @@
 /* Warnings in palette modals use the same token with their own text-error fallback. */
 .tasks-calendar-wrapper-settings {
 	--tcw-color-warning: initial;
-	--tcw-settings-background: initial;
 	--tcw-settings-border: initial;
 	--tcw-settings-muted: initial;
 	--tcw-settings-font-small: initial;
 	--tcw-settings-error: initial;
 	--tcw-settings-weight: initial;
-	--tcw-settings-radius-m: initial;
 	--tcw-settings-radius-s: initial;
 	--tcw-settings-on-accent: initial;
 	--tcw-settings-accent: initial;
@@ -119,7 +117,6 @@
 	--tcw-settings-space-6: var(--size-4-6);
 	--tcw-settings-control-height: var(--size-4-8);
 	--tcw-settings-touch-target: 44px;
-	--tcw-settings-nav-clearance: 5rem;
 	--tcw-settings-input-min: 6rem;
 }
 
@@ -1156,14 +1153,11 @@
 }
 
 .tasks-calendar-wrapper-settings .tcw-settings-nav {
-	position: sticky;
-	top: 0;
-	z-index: 5;
+	position: static;
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--tcw-settings-space-3);
 	padding: var(--tcw-settings-space-4) 0;
-	background: var(--tcw-settings-background, var(--background-primary));
 	border-bottom: var(--tcw-settings-border-width) solid var(--tcw-settings-border, var(--background-modifier-border));
 }
 
@@ -1181,7 +1175,7 @@
 }
 
 .tasks-calendar-wrapper-settings .tcw-settings-heading {
-	scroll-margin-top: var(--tcw-settings-nav-clearance);
+	scroll-margin-top: var(--tcw-settings-space-4);
 }
 
 .tasks-calendar-wrapper-settings .tcw-settings-subheading {
@@ -1192,12 +1186,22 @@
 }
 
 .tasks-calendar-wrapper-settings .tcw-settings-preview {
-	padding: var(--tcw-settings-space-5);
-	border: var(--tcw-settings-border-width) solid var(--tcw-settings-border, var(--background-modifier-border));
-	border-radius: var(--tcw-settings-radius-m, var(--radius-m));
+	margin: var(--tcw-settings-space-4) 0;
 }
 
-.tasks-calendar-wrapper-settings .tcw-settings-preview-title,
+.tasks-calendar-wrapper-settings .tcw-settings-preview > summary {
+	width: fit-content;
+	padding: var(--tcw-settings-space-4) 0;
+	cursor: pointer;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-preview-content {
+	margin: var(--tcw-settings-space-4) 0;
+	padding-left: var(--tcw-settings-space-5);
+	border-left: var(--tcw-settings-border-width) solid var(--tcw-settings-border, var(--background-modifier-border));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-preview > summary,
 .tasks-calendar-wrapper-settings .tcw-setting-hint,
 .tasks-calendar-wrapper-settings .tcw-settings-preview small {
 	color: var(--tcw-settings-muted, var(--text-muted));
@@ -1260,11 +1264,49 @@
 	margin: var(--tcw-settings-space-3) 0;
 }
 
-.tasks-calendar-wrapper-settings .tcw-settings-status-control,
-.tasks-calendar-wrapper-settings .tcw-settings-status-presets {
-	display: flex;
+.tasks-calendar-wrapper-settings .setting-item:has(> .tcw-settings-status-control) {
 	flex-wrap: wrap;
+	gap: var(--tcw-settings-space-4);
+}
+
+.tasks-calendar-wrapper-settings .setting-item:has(> .tcw-settings-status-control) > .setting-item-info {
+	flex: 1 1 16rem;
+	min-width: 0;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-status-control {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	flex: 0 1 22rem;
+	width: 22rem;
+	min-width: 0;
+	max-width: 100%;
 	gap: var(--tcw-settings-space-3);
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-status-control > input {
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-status-presets {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	width: 100%;
+	gap: var(--tcw-settings-space-3);
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-status-presets button {
+	min-width: 0;
+	min-height: var(--tcw-settings-control-height);
+	height: auto;
+	padding-inline: var(--tcw-settings-space-3);
+	white-space: normal;
+	overflow-wrap: anywhere;
+	font-size: var(--tcw-settings-font-small, var(--font-ui-small));
 }
 
 .tasks-calendar-wrapper-settings .tcw-settings-status-presets button[aria-pressed="true"] {
@@ -1324,9 +1366,6 @@ body.is-mobile .tasks-calendar-wrapper-settings input {
 	}
 	.tasks-calendar-wrapper-settings .setting-item-control:has(> .tcw-settings-tags) {
 		max-width: 100%;
-	}
-	.tasks-calendar-wrapper-settings .tcw-settings-nav {
-		position: static;
 	}
 }
 

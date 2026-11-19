@@ -417,9 +417,9 @@
 			"emptyPathLabel": "Empty path",
 			"pathInputHint": "Choose a path or type one. Press Enter to add; paste several paths separated by commas or new lines.",
 			"statusPresets": {
-				"todo": "To-do [ ]",
-				"done": "Done [x]",
-				"cancelled": "Cancelled [-]"
+				"todo": "To-do",
+				"done": "Done",
+				"cancelled": "Cancelled"
 			},
 			"navigationAria": "Settings sections",
 			"autosaveHint": "Changes are saved automatically.",
@@ -435,8 +435,8 @@
 				"quickEntry": "Quick entry",
 				"dailyNotes": "Daily notes"
 			},
-			"preview": "Preview",
-			"previewHint": "Sample task using your display settings.",
+			"preview": "Preview display changes",
+			"previewHint": "Example only. Shows how date headings and task details will look.",
 			"previewTask": "Plan the next step",
 			"previewNote": "Project notes",
 			"previewSection": "Next actions",

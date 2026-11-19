@@ -166,7 +166,9 @@ export function renderSettings(containerEl: HTMLElement, rows: readonly SettingR
 			heading.addClass("tcw-settings-heading");
 			headings.set(row.group, heading);
 			if (row.group === "display") {
-				preview = containerEl.createDiv("tcw-settings-preview");
+				const disclosure = containerEl.createEl("details", { cls: "tcw-settings-preview" });
+				disclosure.createEl("summary", { text: copy.settings.tab.preview });
+				preview = disclosure.createDiv("tcw-settings-preview-content");
 				drawPreview(preview, tab.options());
 			}
 		} else {
@@ -191,7 +193,6 @@ export function renderSettings(containerEl: HTMLElement, rows: readonly SettingR
 /** A read-only example: no sample task is written to the vault. */
 function drawPreview(container: HTMLElement, options: UserOption): void {
 	container.empty();
-	container.createEl("div", { text: copy.settings.tab.preview, cls: "tcw-settings-preview-title" });
 	const dateFormat = typeof options.dateFormat === "string" ? options.dateFormat : "YYYY-MM-DD";
 	container.createEl("div", {
 		text: moment().format(dateFormat),
