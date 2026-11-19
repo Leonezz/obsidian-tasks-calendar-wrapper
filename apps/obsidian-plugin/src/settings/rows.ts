@@ -145,7 +145,7 @@ export function rowDescription(row: SettingRowOf<"setting">, messages: RowMessag
 		if (row.spec.codec === pathListCodec)
 			fragment.createEl("p", {
 				text: copy.settings.tab.pathFilterWarning,
-				cls: "tasks-calendar-wrapper-setting-warning",
+				cls: "tcw-setting-hint",
 			});
 		if (applies) fragment.appendText(` ${applies}`);
 		for (const message of warnings)

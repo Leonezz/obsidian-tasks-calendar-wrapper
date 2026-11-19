@@ -100,6 +100,27 @@
 /* Warnings in palette modals use the same token with their own text-error fallback. */
 .tasks-calendar-wrapper-settings {
 	--tcw-color-warning: initial;
+	--tcw-settings-background: initial;
+	--tcw-settings-border: initial;
+	--tcw-settings-muted: initial;
+	--tcw-settings-font-small: initial;
+	--tcw-settings-error: initial;
+	--tcw-settings-weight: initial;
+	--tcw-settings-radius-m: initial;
+	--tcw-settings-radius-s: initial;
+	--tcw-settings-on-accent: initial;
+	--tcw-settings-accent: initial;
+	--tcw-settings-border-width: 1px;
+	--tcw-settings-space-1: var(--size-2-1);
+	--tcw-settings-space-2: var(--size-2-2);
+	--tcw-settings-space-3: var(--size-2-3);
+	--tcw-settings-space-4: var(--size-4-2);
+	--tcw-settings-space-5: var(--size-4-3);
+	--tcw-settings-space-6: var(--size-4-6);
+	--tcw-settings-control-height: var(--size-4-8);
+	--tcw-settings-touch-target: 44px;
+	--tcw-settings-nav-clearance: 5rem;
+	--tcw-settings-input-min: 6rem;
 }
 
 .tasks-calendar-wrapper-whats-new {
@@ -1132,6 +1153,181 @@
 /* Warning note in setting descriptions, e.g. the path filters. */
 .tasks-calendar-wrapper-setting-warning {
 	color: var(--tcw-color-warning, var(--text-error));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-nav {
+	position: sticky;
+	top: 0;
+	z-index: 5;
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--tcw-settings-space-3);
+	padding: var(--tcw-settings-space-4) 0;
+	background: var(--tcw-settings-background, var(--background-primary));
+	border-bottom: var(--tcw-settings-border-width) solid var(--tcw-settings-border, var(--background-modifier-border));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-save-status {
+	display: flex;
+	align-items: center;
+	gap: var(--tcw-settings-space-4);
+	min-height: var(--tcw-settings-control-height);
+	color: var(--tcw-settings-muted, var(--text-muted));
+	font-size: var(--tcw-settings-font-small, var(--font-ui-small));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-save-status[data-failed="true"] {
+	color: var(--tcw-settings-error, var(--text-error));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-heading {
+	scroll-margin-top: var(--tcw-settings-nav-clearance);
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-subheading {
+	margin: var(--tcw-settings-space-6) 0 var(--tcw-settings-space-4);
+	color: var(--tcw-settings-muted, var(--text-muted));
+	font-size: var(--tcw-settings-font-small, var(--font-ui-small));
+	font-weight: var(--tcw-settings-weight, var(--font-semibold));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-preview {
+	padding: var(--tcw-settings-space-5);
+	border: var(--tcw-settings-border-width) solid var(--tcw-settings-border, var(--background-modifier-border));
+	border-radius: var(--tcw-settings-radius-m, var(--radius-m));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-preview-title,
+.tasks-calendar-wrapper-settings .tcw-setting-hint,
+.tasks-calendar-wrapper-settings .tcw-settings-preview small {
+	color: var(--tcw-settings-muted, var(--text-muted));
+	font-size: var(--tcw-settings-font-small, var(--font-ui-small));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-preview-task,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-metadata {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--tcw-settings-space-3) var(--tcw-settings-space-5);
+	margin: var(--tcw-settings-space-4) 0;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-preview-date {
+	margin-top: var(--tcw-settings-space-4);
+	font-weight: var(--tcw-settings-weight, var(--font-semibold));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-preview-metadata {
+	color: var(--tcw-settings-muted, var(--text-muted));
+	font-size: var(--tcw-settings-font-small, var(--font-ui-small));
+}
+
+.tasks-calendar-wrapper-settings .tcw-setting-path-list {
+	width: 100%;
+	min-width: 0;
+}
+
+.tasks-calendar-wrapper-settings .tcw-setting-chips,
+.tasks-calendar-wrapper-settings .tcw-settings-tags,
+.tasks-calendar-wrapper-settings .tcw-settings-palette {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--tcw-settings-space-3);
+}
+
+.tasks-calendar-wrapper-settings .setting-item-control:has(> .tcw-settings-tags) {
+	flex-wrap: wrap;
+	max-width: 55%;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-tags {
+	flex-basis: 100%;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-tag-chip > .setting-item-info,
+.tasks-calendar-wrapper-settings .tcw-settings-palette-chip > .setting-item-info {
+	display: none;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-tag-chip > .setting-item-control {
+	gap: var(--tcw-settings-space-2);
+}
+
+.tasks-calendar-wrapper-settings .tcw-setting-path-editor {
+	display: flex;
+	gap: var(--tcw-settings-space-3);
+	margin: var(--tcw-settings-space-3) 0;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-status-control,
+.tasks-calendar-wrapper-settings .tcw-settings-status-presets {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--tcw-settings-space-3);
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-status-presets button[aria-pressed="true"] {
+	color: var(--tcw-settings-on-accent, var(--text-on-accent));
+	background: var(--tcw-settings-accent, var(--interactive-accent));
+}
+
+.tasks-calendar-wrapper-settings .tcw-setting-path-editor input,
+.tasks-calendar-wrapper-settings .tcw-settings-tag-input {
+	width: 100%;
+	min-width: var(--tcw-settings-input-min);
+}
+
+.tasks-calendar-wrapper-settings .tcw-setting-chip,
+.tasks-calendar-wrapper-settings .tcw-settings-tag-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--tcw-settings-space-2);
+	max-width: 100%;
+	padding: var(--tcw-settings-space-1) var(--tcw-settings-space-2) var(--tcw-settings-space-1)
+		var(--tcw-settings-space-4);
+	border: var(--tcw-settings-border-width) solid var(--tcw-settings-border, var(--background-modifier-border));
+	border-radius: var(--tcw-settings-radius-s, var(--radius-s));
+	font-size: var(--tcw-settings-font-small, var(--font-ui-small));
+	overflow-wrap: anywhere;
+}
+
+.tasks-calendar-wrapper-settings .tcw-setting-chip button,
+.tasks-calendar-wrapper-settings .tcw-settings-tag-chip button {
+	flex-shrink: 0;
+	min-width: var(--tcw-settings-space-6);
+	min-height: var(--tcw-settings-space-6);
+	padding: 0 var(--tcw-settings-space-2);
+	box-shadow: none;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-palette > .setting-item {
+	padding: 0;
+	border: 0;
+	background: none;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-palette-chip {
+	max-width: 100%;
+	overflow-wrap: anywhere;
+}
+
+body.is-mobile .tasks-calendar-wrapper-settings button,
+body.is-mobile .tasks-calendar-wrapper-settings input {
+	min-height: var(--tcw-settings-touch-target);
+}
+
+@media (max-width: 600px) {
+	.tasks-calendar-wrapper-settings .setting-item-control {
+		min-width: 0;
+		flex-wrap: wrap;
+	}
+	.tasks-calendar-wrapper-settings .setting-item-control:has(> .tcw-settings-tags) {
+		max-width: 100%;
+	}
+	.tasks-calendar-wrapper-settings .tcw-settings-nav {
+		position: static;
+	}
 }
 
 /* What's new dialog: the star and support buttons wrap and stay centred. */

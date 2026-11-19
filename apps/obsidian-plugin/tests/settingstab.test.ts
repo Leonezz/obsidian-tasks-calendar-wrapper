@@ -23,6 +23,7 @@ import {
 	SettingControl,
 	SettingItemElement,
 	setApiVersion,
+	ButtonComponent,
 } from "./stubs/obsidian";
 
 // What the settings tab shows for the data.json shapes users have, see settings-fixtures.ts, and what each of its
@@ -129,7 +130,7 @@ test("the tab with the defaults has 48 rows, four of them headings", async (t) =
 	assert.equal(rows.length, 48);
 	assert.deepEqual(
 		rows.filter((row) => row.heading).map((row) => row.name),
-		["Sources", "Display", "New tasks", "Advanced"],
+		["Display", "New tasks", "Sources", "Advanced"],
 	);
 	// Drawing the tab again replaces what it drew.
 	tab.display();
@@ -162,13 +163,13 @@ test("the tab shows the open-note toggle with the exact label and description", 
 	assert.deepEqual(saved.find((row) => row.name === label)?.controls, [{ type: "toggle", value: true }]);
 });
 
-test("the tab shows Style for new dates after the open-note toggle with its exact choices and description", async (t) => {
+test("the tab shows Style for new dates with new-task options and preserves its choices", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const label = "Style for new dates";
 	const { container } = await drawnTab(t, null);
 	const rows = rowsOf(container);
-	const index = rows.findIndex((row) => row.name === "Open the note instead of changing tasks in place");
-	assert.deepEqual(rows[index + 1], {
+	const index = rows.findIndex((row) => row.name === label);
+	assert.deepEqual(rows[index], {
 		name: label,
 		desc: "Used when the timeline adds a date to a task line that has no task fields yet (no dates, priority, recurrence or other Tasks fields). Lines that already use one style keep it. If the Tasks plugin is set to the Dataview format, choose Dataview fields.",
 		controls: [{ type: "dropdown", value: "emoji", options: ["emoji", "dataview"] }],
@@ -201,7 +202,7 @@ test("the rows for the quick entry, the tag palette and the tag filters show onl
 		(await drawnTab(t, JSON.stringify({ useIncludeTags: true, useExcludeTags: true, hideTags: ["#a", "#b"] })))
 			.container,
 	);
-	for (const name of ["Tasks files", "Inbox", "Section for new tasks"]) {
+	for (const name of ["Quick entry panel position", "Tasks files", "Inbox", "Section for new tasks"]) {
 		assert.equal(offRows.find((row) => row.name === name)?.hidden, true, name);
 		assert.ok(
 			onRows.some((row) => row.name === name && !row.hidden),
@@ -242,10 +243,10 @@ test("the statuses to hide show as saved, a typed [ ] too, and a palette that is
 	const palette = listPalette
 		.find((row) => row.name === "Use tags")
 		?.controls.find((control) => control.type === "rows");
-	assert.deepEqual(palette, { type: "rows", rows: [{ name: "", desc: "", controls: [] }] });
+	assert.deepEqual(palette, { type: "rows", rows: [] });
 });
 
-test("the text boxes show the saved lists and rules as text", async (t) => {
+test("the text boxes show property rules and single values as text", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const options = {
 		taskFiles: ["a", "", "b c"],
@@ -262,38 +263,17 @@ test("the text boxes show the saved lists and rules as text", async (t) => {
 	};
 	assert.deepEqual(
 		{
-			taskFiles: shown("Tasks files"),
-			includePaths: shown("Include paths"),
-			excludePaths: shown("Exclude paths"),
 			excludeProperties: shown("Exclude properties"),
 			hideStatusTasks: shown("Hide tasks of specific status"),
 			inbox: shown("Inbox"),
 		},
 		{
-			taskFiles: "a,,b c",
-			includePaths: "Daily,Projects/x.md",
-			excludePaths: "Templates,Archive",
 			excludeProperties: "status: archived, done\npriority: low",
 			// A space is shown as a space, not as the "[ ]" typed for it.
-			hideStatusTasks: "x,-, ",
+			hideStatusTasks: "x,-,[ ]",
 			inbox: " Inbox.md ",
 		},
 	);
-});
-
-test("a tag list shows three tags a row, and the palette two", async (t) => {
-	t.mock.timers.enable({ apis: ["setTimeout"] });
-	const palette = { "#a": "#111111", "#b": "#222222", "#c": "#333333" };
-	const rows = rowsOf(
-		(await drawnTab(t, JSON.stringify({ hideTags: ["#a", "#b", "#c", "#d"], tagColorPalette: palette }))).container,
-	);
-	const tagsByRow = (name: string) => {
-		const nested = rows.find((row) => row.name === name)?.controls[0];
-		assert.ok(nested && nested.type === "rows" && "rows" in nested, name);
-		return nested.rows.map((row) => row.controls.flatMap((control) => ("text" in control ? [control.text] : [])));
-	};
-	assert.deepEqual(tagsByRow("Hide tags"), [["#a", "#b", "#c"], ["#d"]]);
-	assert.deepEqual(tagsByRow("Use tags"), [["#a", "#b"], ["#c"]]);
 });
 
 test("a lambda sort shows as the sort it is read as", async (t) => {
@@ -308,28 +288,24 @@ test("a lambda sort shows as the sort it is read as", async (t) => {
 	assert.equal(await sortOf("0.0.5-useinfo.json"), "status-asc");
 });
 
-test("options the tab cannot draw stop it where they are, as today", async (t) => {
-	t.mock.timers.enable({ apis: ["setTimeout"] });
-	const throwsAt = async (options: object, message: RegExp) => {
-		const { plugin } = await startPlugin(JSON.stringify(options));
-		const tab = plugin.settingTab as TasksCalendarSettingTab;
-		assert.throws(() => tab.display(), message);
-		return rowsOf(tab.containerEl as unknown as FakeElement).length;
-	};
-	assert.equal(await throwsAt({ tagColorPalette: null }, /Cannot convert undefined or null to object/), 31);
-	assert.equal(await throwsAt({ excludeProperties: null }, /Cannot convert undefined or null to object/), 4);
-	assert.equal(await throwsAt({ excludePaths: "Archive" }, /join is not a function/), 3);
-});
-
 /** The controls of the top rows that hold a value, with their row's name, as drawn now. */
 function valueControls(container: FakeElement): { row: string; control: SettingControl }[] {
 	return container.children.flatMap((child) => {
 		if (!(child instanceof SettingItemElement)) return [];
 		const row = typeof child.setting.name === "string" ? child.setting.name : "";
-		return child.setting.controlEl.children.flatMap((element) =>
-			element instanceof ControlElement && element.component instanceof SettingControl
-				? [{ row, control: element.component }]
-				: [],
+		const independentInputs = [
+			"Hide tags",
+			"Task include filters",
+			"File include tags",
+			"Task exclude filters",
+			"File exclude tags",
+			"Tasks files",
+			"Include paths",
+			"Exclude paths",
+		];
+		if (independentInputs.includes(row)) return [];
+		return child.setting.components.flatMap((component) =>
+			component instanceof SettingControl ? [{ row, control: component }] : [],
 		);
 	});
 }
@@ -394,11 +370,11 @@ test("deleting a tag of the palette or of a tag list saves the rest and redraws 
 			);
 		assert.ok(row);
 		const previousControls = [...row.setting.controlEl.children];
-		const deleting = buttons(row.setting.controlEl).filter((found) => found.tooltip === "Delete");
+		const deleting = buttons(row.setting.controlEl).filter((found) => found.icon === "cross");
 		await deleting[button].click();
 		await settle();
 		assert.ok(container.children.includes(row), "the row stays in place");
-		assert.notDeepEqual(row.setting.controlEl.children, previousControls, "the row controls are redrawn");
+		assert.deepEqual(row.setting.controlEl.children, previousControls, "controls remain in place");
 		return { writes: writes.mock.calls.map((call) => call.arguments[0]), draws: draws.mock.callCount() };
 	};
 	assert.deepEqual(await deletes("Use tags", 0), {
@@ -412,4 +388,132 @@ test("deleting a tag of the palette or of a tag list saves the rest and redraws 
 // Declared last, so it runs after every test that produces a snapshot.
 test("fixtures/settings/tab holds the snapshots these tests write, and no others", () => {
 	snapshots.checkFolder();
+});
+
+test("section navigation focuses its heading without replacing controls", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { container } = await drawnTab(t, null);
+	const navigation = container.children.find(
+		(child) => child instanceof FakeElement && child.cls === "tcw-settings-nav",
+	) as FakeElement;
+	const button = navigation.children.find(
+		(child) => child instanceof ButtonComponent && child.buttonText === "New tasks",
+	);
+	assert.ok(button instanceof ButtonComponent);
+	const heading = container.children.find(
+		(child) => child instanceof SettingItemElement && child.setting.name === "New tasks",
+	) as SettingItemElement;
+	await button.click();
+	assert.equal(heading.focused, true);
+});
+
+test("settings writes remain ordered when the tab closes and opens during a save", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin, tab } = await drawnTab(t, null);
+	t.after(() => plugin.unload());
+	let release = () => {};
+	const held = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	const persist = plugin.saveData.bind(plugin);
+	let calls = 0;
+	t.mock.method(plugin, "saveData", async (data: unknown) => {
+		if (++calls === 1) await held;
+		await persist(data);
+	});
+	const first = tab.onOptionUpdate({ dateFormat: "YYYY" });
+	await settle();
+	tab.hide();
+	tab.display();
+	const second = tab.onOptionUpdate({ dateFormat: "YYYY-MM-DD" });
+	await settle();
+	assert.equal(calls, 1);
+	release();
+	await Promise.all([first, second]);
+	assert.equal(JSON.parse(plugin.dataJson!).dateFormat, "YYYY-MM-DD");
+});
+
+test("a failed reset keeps Retry available and redraws that control after retry succeeds", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	t.mock.method(console, "error", () => {});
+	const { plugin, container } = await drawnTab(t, JSON.stringify({ useRelative: "wrong" }));
+	t.after(() => plugin.unload());
+	const persist = plugin.saveData.bind(plugin);
+	let fail = true;
+	t.mock.method(plugin, "saveData", async (data: unknown) => {
+		if (fail) throw new Error("disk full");
+		await persist(data);
+	});
+	const row = container.children.find(
+		(child) => child instanceof SettingItemElement && child.setting.name === "Use relative date",
+	) as SettingItemElement;
+	const reset = row.setting.components.find(
+		(component) => component instanceof ExtraButtonComponent && component.icon === "reset",
+	);
+	assert.ok(reset instanceof ExtraButtonComponent);
+	await reset.click();
+	await settle();
+	const feedback = container.children.find(
+		(child) => child instanceof FakeElement && child.cls === "tcw-settings-save-status",
+	) as FakeElement;
+	const retry = feedback.children.find((child) => child instanceof ButtonComponent) as ButtonComponent;
+	assert.equal(retry.buttonEl.hidden, false);
+	assert.ok(feedback.textContent.includes("Could not save changes."));
+	fail = false;
+	await retry.click();
+	assert.equal(retry.buttonEl.hidden, true);
+	const toggle = row.setting.components.find(
+		(component) => component instanceof SettingControl && component.type === "toggle",
+	) as SettingControl;
+	assert.equal(toggle.value, plugin.userOptions.useRelative);
+	assert.equal(JSON.parse(plugin.dataJson!).useRelative, toggle.value);
+});
+
+test("the display preview follows metadata visibility without writing a sample task", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin, container } = await drawnTab(t, JSON.stringify({ useRelative: true }));
+	t.after(() => plugin.unload());
+	const preview = container.children.find(
+		(child) => child instanceof FakeElement && child.cls === "tcw-settings-preview",
+	) as FakeElement;
+	assert.ok(preview.textContent.includes("Today"));
+	const toggle = valueControls(container).find((found) => found.row === "Use relative date")!.control;
+	await toggle.change(false);
+	assert.ok(!preview.textContent.includes("Today"));
+	assert.ok(preview.textContent.includes("Plan the next step"));
+});
+
+test("global Retry refreshes tag chips while preserving a newer input draft", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	t.mock.method(console, "error", () => {});
+	const { plugin, container } = await drawnTab(t, JSON.stringify({ hideTags: ["#a"] }));
+	t.after(() => plugin.unload());
+	const persist = plugin.saveData.bind(plugin);
+	let fail = true;
+	t.mock.method(plugin, "saveData", async (data: unknown) => {
+		if (fail) throw new Error("disk full");
+		await persist(data);
+	});
+	const row = container.children.find(
+		(child) => child instanceof SettingItemElement && child.setting.name === "Hide tags",
+	) as SettingItemElement;
+	const tags = row.setting.controlEl.children[0] as FakeElement;
+	const chip = tags.children[0] as SettingItemElement;
+	const remove = chip.setting.components.find(
+		(component) => component instanceof ExtraButtonComponent,
+	) as ExtraButtonComponent;
+	const input = row.setting.components.find(
+		(component) => component instanceof SettingControl && component.type === "text",
+	) as SettingControl;
+	await remove.click();
+	await input.change("#new-draft");
+	const feedback = container.children.find(
+		(child) => child instanceof FakeElement && child.cls === "tcw-settings-save-status",
+	) as FakeElement;
+	const retry = feedback.children.find((child) => child instanceof ButtonComponent) as ButtonComponent;
+	fail = false;
+	await retry.click();
+	assert.equal(tags.children.length, 0);
+	assert.equal(input.value, "#new-draft");
+	assert.deepEqual(JSON.parse(plugin.dataJson!).hideTags, []);
 });

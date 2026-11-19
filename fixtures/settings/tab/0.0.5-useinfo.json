@@ -3,134 +3,10 @@
     "container": "vertical-tab-content tasks-calendar-wrapper-settings"
   },
   {
-    "name": "Sources",
-    "desc": "",
-    "heading": true,
-    "controls": []
-  },
-  {
-    "name": "Include paths",
-    "desc": "Include tasks match specific paths (folders, files).<p class=\"tasks-calendar-wrapper-setting-warning\">NOTE that no prefix or trailing '/' needed, unless you want to filter the entire vault out.</p>",
-    "controls": [
-      {
-        "type": "textarea",
-        "value": "",
-        "placeholder": "comma separated file paths, e.g.: path1,path2/path3,path4.md"
-      }
-    ]
-  },
-  {
-    "name": "Exclude paths",
-    "desc": "Exclude tasks match specific paths (folders, files).<p class=\"tasks-calendar-wrapper-setting-warning\">NOTE that no prefix or trailing '/' needed, unless you want to filter the entire vault out.</p>",
-    "controls": [
-      {
-        "type": "textarea",
-        "value": "",
-        "placeholder": "comma separated file paths, e.g.: path1,path2/path3,path4.md"
-      }
-    ]
-  },
-  {
-    "name": "Exclude properties",
-    "desc": "Exclude tasks of files whose frontmatter property has one of these values. One property per line, values separated by commas.",
-    "controls": [
-      {
-        "type": "textarea",
-        "value": "",
-        "placeholder": "status: archived, done"
-      }
-    ]
-  },
-  {
-    "name": "Use include tags",
-    "desc": "Use tags filters to filter tasks without specific tags out or not.",
-    "controls": [
-      {
-        "type": "toggle",
-        "value": false
-      }
-    ]
-  },
-  {
-    "name": "Task include filters",
-    "desc": "Filter tasks with specific tags, only tasks with one or more of these tags are displayed.",
-    "hidden": true,
-    "controls": []
-  },
-  {
-    "name": "File include tags",
-    "desc": "Filter tasks in specific files which contains one or more of these tags to be displayed.",
-    "hidden": true,
-    "controls": []
-  },
-  {
-    "name": "Use exclude tags",
-    "desc": "Use tags filters to filters tasks with specific tags out or not.",
-    "controls": [
-      {
-        "type": "toggle",
-        "value": false
-      }
-    ]
-  },
-  {
-    "name": "Task exclude filters",
-    "desc": "Filter tasks without specific tags, only tasks **without any** if these tags are displayed.",
-    "hidden": true,
-    "controls": []
-  },
-  {
-    "name": "File exclude tags",
-    "desc": "Filter tasks in specific files which **does not** contains any of these tags to be displayed.",
-    "hidden": true,
-    "controls": []
-  },
-  {
-    "name": "Hide tasks of specific status",
-    "desc": "Provide comma split status markers, e.g.,: x, - Use [ ] if you would like to hide all tasks with marker [ ] or status todo.",
-    "controls": [
-      {
-        "type": "text",
-        "value": "x,-",
-        "placeholder": "Status markers split by comma. e.g.,: x, -."
-      }
-    ]
-  },
-  {
-    "name": "Hide subtasks",
-    "desc": "Hide task items that are nested under another list item.",
-    "controls": [
-      {
-        "type": "toggle",
-        "value": false
-      }
-    ]
-  },
-  {
-    "name": "Filter empty",
-    "desc": "Filter empty items out or not. If not, the raw text will be displayed.",
-    "controls": [
-      {
-        "type": "toggle",
-        "value": true
-      }
-    ]
-  },
-  {
     "name": "Display",
     "desc": "",
     "heading": true,
     "controls": []
-  },
-  {
-    "name": "Use builtin style",
-    "desc": "Use builtin styles (the marker icons for task status) or not. If disabled, styles defined by the theme you are using will be used.",
-    "controls": [
-      {
-        "type": "toggle",
-        "value": true
-      }
-    ]
   },
   {
     "name": "Newest first",
@@ -143,18 +19,8 @@
     ]
   },
   {
-    "name": "Enable year header",
-    "desc": "Display the year on top of tasks of that year or not.",
-    "controls": [
-      {
-        "type": "toggle",
-        "value": true
-      }
-    ]
-  },
-  {
     "name": "Sort by",
-    "desc": "Specify how you would like the taks item to be sorted inside a date.",
+    "desc": "Choose the order of tasks within each date.",
     "controls": [
       {
         "type": "dropdown",
@@ -177,13 +43,33 @@
     ]
   },
   {
+    "name": "Enable year header",
+    "desc": "Display the year on top of tasks of that year or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
     "name": "Date format",
-    "desc": "Specify format you would like to use for dates. Note that the format should be of moment format. See <a href=\"https://momentjs.com/docs/#/displaying/format/\">docs of moment.js</a> for more details.<p>Today in this format: Thursday, Jan, 15</p>",
+    "desc": "Date headings use this Moment format. See <a href=\"https://momentjs.com/docs/#/displaying/format/\">docs of moment.js</a> for more details.<p>Today in this format: Thursday, Jan, 15</p>",
     "controls": [
       {
         "type": "moment-format",
         "value": "dddd, MMM, D",
         "placeholder": "e.g.: YYYY-MM-DD"
+      }
+    ]
+  },
+  {
+    "name": "Use relative date",
+    "desc": "Use relative date to describe the task dates or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
       }
     ]
   },
@@ -198,8 +84,8 @@
     ]
   },
   {
-    "name": "Forward tasks from past",
-    "desc": "Forward overdue tasks from the past and all unplanned tasks to display them on the today panel or not.",
+    "name": "Use builtin style",
+    "desc": "Use builtin styles (the marker icons for task status) or not. If disabled, styles defined by the theme you are using will be used.",
     "controls": [
       {
         "type": "toggle",
@@ -208,18 +94,151 @@
     ]
   },
   {
-    "name": "Forward started and scheduled tasks",
-    "desc": "Also show tasks that have started or were scheduled before today on the today panel. They are shown there instead of on their own date.",
+    "name": "Use priority",
+    "desc": "Display the priority information of tasks or not.",
     "controls": [
       {
         "type": "toggle",
-        "value": false
+        "value": true
       }
     ]
   },
   {
-    "name": "Forward undated done tasks",
-    "desc": "Show done tasks that have no date at all on the today panel. Turn it off to keep them out of the timeline.",
+    "name": "Use recurrence",
+    "desc": "Display the recurrence information of tasks or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Use tags",
+    "desc": "Display the tags of tasks or not. Color palette can be defined for tags!",
+    "controls": [
+      {
+        "type": "rows",
+        "rows": [
+          {
+            "name": "",
+            "desc": "",
+            "controls": [
+              {
+                "type": "tag",
+                "text": "#TODO",
+                "style": "color: #339988"
+              },
+              {
+                "type": "extra-button",
+                "icon": "cross",
+                "tooltip": "Remove #TODO"
+              },
+              {
+                "type": "extra-button",
+                "icon": "pencil",
+                "tooltip": "Edit color for #TODO"
+              }
+            ]
+          },
+          {
+            "name": "",
+            "desc": "",
+            "controls": [
+              {
+                "type": "tag",
+                "text": "#TEST",
+                "style": "color: #998877"
+              },
+              {
+                "type": "extra-button",
+                "icon": "cross",
+                "tooltip": "Remove #TEST"
+              },
+              {
+                "type": "extra-button",
+                "icon": "pencil",
+                "tooltip": "Edit color for #TEST"
+              }
+            ]
+          },
+          {
+            "name": "",
+            "desc": "",
+            "controls": [
+              {
+                "type": "tag",
+                "text": "#work",
+                "style": "color: #e03131"
+              },
+              {
+                "type": "extra-button",
+                "icon": "cross",
+                "tooltip": "Remove #work"
+              },
+              {
+                "type": "extra-button",
+                "icon": "pencil",
+                "tooltip": "Edit color for #work"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "extra-button",
+        "icon": "plus-with-circle",
+        "tooltip": "Add a palette"
+      },
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Hide tags",
+    "desc": "Hide these tag badges on the timeline. The tags remain in your notes.",
+    "controls": [
+      {
+        "type": "rows",
+        "rows": []
+      },
+      {
+        "type": "text",
+        "value": "",
+        "placeholder": "#tag"
+      },
+      {
+        "type": "button",
+        "icon": "",
+        "tooltip": "Add a tag"
+      }
+    ]
+  },
+  {
+    "name": "Use filename",
+    "desc": "Display which file the task is from or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Use section",
+    "desc": "Display which section the task is from or not.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
+      }
+    ]
+  },
+  {
+    "name": "Use modify badge",
+    "desc": "Display the badge that opens a task in the Tasks plugin dialog or not.",
     "controls": [
       {
         "type": "toggle",
@@ -229,7 +248,7 @@
   },
   {
     "name": "Enable counters and filters panel",
-    "desc": "Use counters and filters on the quick entry panel or not.",
+    "desc": "Show the status cards and filter controls above quick entry.",
     "controls": [
       {
         "type": "toggle",
@@ -239,7 +258,7 @@
   },
   {
     "name": "Behavior of counters and filters panel",
-    "desc": "Set the default behavior of the counter and filter buttons. Available choices are: *Filter* to filter other items out, or *Focus* to make selected items more clear.",
+    "desc": "Filter shows matching tasks only. Focus keeps all tasks and highlights matches.",
     "controls": [
       {
         "type": "dropdown",
@@ -278,8 +297,8 @@
     ]
   },
   {
-    "name": "Use relative date",
-    "desc": "Use relative date to describe the task dates or not.",
+    "name": "Forward tasks from past",
+    "desc": "Forward overdue tasks from the past and all unplanned tasks to display them on the today panel or not.",
     "controls": [
       {
         "type": "toggle",
@@ -288,146 +307,18 @@
     ]
   },
   {
-    "name": "Use recurrence",
-    "desc": "Display the recurrence information of tasks or not.",
+    "name": "Forward started and scheduled tasks",
+    "desc": "Also show tasks that have started or were scheduled before today on the today panel. They are shown there instead of on their own date.",
     "controls": [
       {
         "type": "toggle",
-        "value": true
+        "value": false
       }
     ]
   },
   {
-    "name": "Use priority",
-    "desc": "Display the priority information of tasks or not.",
-    "controls": [
-      {
-        "type": "toggle",
-        "value": true
-      }
-    ]
-  },
-  {
-    "name": "Use tags",
-    "desc": "Display the tags of tasks or not. Color palette can be defined for tags!",
-    "controls": [
-      {
-        "type": "rows",
-        "rows": [
-          {
-            "name": "",
-            "desc": "",
-            "controls": [
-              {
-                "type": "tag",
-                "text": "#TODO",
-                "style": "color: #339988"
-              },
-              {
-                "type": "extra-button",
-                "icon": "cross",
-                "tooltip": "Delete"
-              },
-              {
-                "type": "extra-button",
-                "icon": "pencil",
-                "tooltip": "Edit"
-              },
-              {
-                "type": "tag",
-                "text": "#TEST",
-                "style": "color: #998877"
-              },
-              {
-                "type": "extra-button",
-                "icon": "cross",
-                "tooltip": "Delete"
-              },
-              {
-                "type": "extra-button",
-                "icon": "pencil",
-                "tooltip": "Edit"
-              }
-            ]
-          },
-          {
-            "name": "",
-            "desc": "",
-            "controls": [
-              {
-                "type": "tag",
-                "text": "#work",
-                "style": "color: #e03131"
-              },
-              {
-                "type": "extra-button",
-                "icon": "cross",
-                "tooltip": "Delete"
-              },
-              {
-                "type": "extra-button",
-                "icon": "pencil",
-                "tooltip": "Edit"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "type": "extra-button",
-        "icon": "plus-with-circle",
-        "tooltip": "Add a palette"
-      },
-      {
-        "type": "toggle",
-        "value": true
-      }
-    ]
-  },
-  {
-    "name": "Hide tags",
-    "desc": "Specify which tags are not necessary to display with a tag badge, note that all tag texts are remove from the displayed item text by default. Also note that the tags are just hided, not removed from the item.",
-    "controls": [
-      {
-        "type": "rows",
-        "rows": [
-          {
-            "name": "",
-            "desc": "",
-            "controls": []
-          }
-        ]
-      },
-      {
-        "type": "extra-button",
-        "icon": "plus-with-circle",
-        "tooltip": "Add a tag"
-      }
-    ]
-  },
-  {
-    "name": "Use filename",
-    "desc": "Display which file the task is from or not.",
-    "controls": [
-      {
-        "type": "toggle",
-        "value": true
-      }
-    ]
-  },
-  {
-    "name": "Use section",
-    "desc": "Display which section the task is from or not.",
-    "controls": [
-      {
-        "type": "toggle",
-        "value": true
-      }
-    ]
-  },
-  {
-    "name": "Use modify badge",
-    "desc": "Display the badge that opens a task in the Tasks plugin dialog or not.",
+    "name": "Forward undated done tasks",
+    "desc": "Show done tasks that have no date at all on the today panel. Turn it off to keep them out of the timeline.",
     "controls": [
       {
         "type": "toggle",
@@ -443,7 +334,7 @@
   },
   {
     "name": "Enable quick entry panel",
-    "desc": "Use quick entry panel or not.",
+    "desc": "Show the input for adding tasks from the timeline.",
     "controls": [
       {
         "type": "toggle",
@@ -453,7 +344,7 @@
   },
   {
     "name": "Quick entry panel position",
-    "desc": "Where you like the entry panel to be, * Top means on top of the view, * Bottom means on bottom of the view, * Today means in today's view.",
+    "desc": "Place quick entry at the top, at the bottom, or alongside today.",
     "controls": [
       {
         "type": "dropdown",
@@ -468,12 +359,12 @@
   },
   {
     "name": "Tasks files",
-    "desc": "Task Files you would like to specify explicitly for quick entry panel. make sure paths are separated by , .",
+    "desc": "Choose the notes available as destinations in quick entry.",
     "controls": [
       {
-        "type": "textarea",
-        "value": "",
-        "placeholder": "comma separated file paths, e.g.: path1,path2"
+        "type": "paths",
+        "paths": [],
+        "draft": ""
       }
     ]
   },
@@ -483,7 +374,8 @@
     "controls": [
       {
         "type": "text",
-        "value": "Inbox.md"
+        "value": "Inbox.md",
+        "placeholder": "Search or enter a path…"
       }
     ]
   },
@@ -498,22 +390,155 @@
     ]
   },
   {
+    "name": "Style for new dates",
+    "desc": "Used when the timeline adds a date to a task line that has no task fields yet (no dates, priority, recurrence or other Tasks fields). Lines that already use one style keep it. If the Tasks plugin is set to the Dataview format, choose Dataview fields.",
+    "controls": [
+      {
+        "type": "dropdown",
+        "value": "emoji",
+        "options": [
+          "emoji",
+          "dataview"
+        ]
+      }
+    ]
+  },
+  {
     "name": "Daily note folder",
     "desc": "Specify the folder where the daily notes are saved.",
     "controls": [
       {
         "type": "text",
-        "value": "Daily"
+        "value": "Daily",
+        "placeholder": "Search or enter a path…"
       }
     ]
   },
   {
     "name": "Daily note format",
-    "desc": "Daily note file format. The format sould be of moment format, see <a href=\"https://momentjs.com/docs/#/displaying/format/\">docs of moment.js</a> for more details.<p>Today in this format: 2026-01-15</p>",
+    "desc": "Daily note names use this Moment format. See <a href=\"https://momentjs.com/docs/#/displaying/format/\">docs of moment.js</a> for more details.<p>Today in this format: 2026-01-15</p>",
     "controls": [
       {
         "type": "moment-format",
         "value": "YYYY-MM-DD"
+      }
+    ]
+  },
+  {
+    "name": "Sources",
+    "desc": "",
+    "heading": true,
+    "controls": []
+  },
+  {
+    "name": "Include paths",
+    "desc": "Include tasks match specific paths (folders, files).<p class=\"tcw-setting-hint\">Paths match part of a note path. Use vault-relative paths without a leading or trailing slash.</p>",
+    "controls": [
+      {
+        "type": "paths",
+        "paths": [],
+        "draft": ""
+      }
+    ]
+  },
+  {
+    "name": "Exclude paths",
+    "desc": "Exclude tasks match specific paths (folders, files).<p class=\"tcw-setting-hint\">Paths match part of a note path. Use vault-relative paths without a leading or trailing slash.</p>",
+    "controls": [
+      {
+        "type": "paths",
+        "paths": [],
+        "draft": ""
+      }
+    ]
+  },
+  {
+    "name": "Exclude properties",
+    "desc": "Exclude tasks of files whose frontmatter property has one of these values. One property per line, values separated by commas.",
+    "controls": [
+      {
+        "type": "textarea",
+        "value": "",
+        "placeholder": "status: archived, done"
+      }
+    ]
+  },
+  {
+    "name": "Use include tags",
+    "desc": "Show only tasks or notes matching the tags you choose.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": false
+      }
+    ]
+  },
+  {
+    "name": "Task include filters",
+    "desc": "Filter tasks with specific tags, only tasks with one or more of these tags are displayed.",
+    "hidden": true,
+    "controls": []
+  },
+  {
+    "name": "File include tags",
+    "desc": "Filter tasks in specific files which contains one or more of these tags to be displayed.",
+    "hidden": true,
+    "controls": []
+  },
+  {
+    "name": "Use exclude tags",
+    "desc": "Hide tasks or notes matching the tags you choose.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": false
+      }
+    ]
+  },
+  {
+    "name": "Task exclude filters",
+    "desc": "Filter tasks without specific tags, only tasks **without any** if these tags are displayed.",
+    "hidden": true,
+    "controls": []
+  },
+  {
+    "name": "File exclude tags",
+    "desc": "Filter tasks in specific files which **does not** contains any of these tags to be displayed.",
+    "hidden": true,
+    "controls": []
+  },
+  {
+    "name": "Hide tasks of specific status",
+    "desc": "Hide tasks with these checkbox markers. Separate markers with commas; use [ ] for unfinished tasks.",
+    "controls": [
+      {
+        "type": "text",
+        "value": "x,-",
+        "placeholder": "Status markers split by comma. e.g.,: x, -."
+      },
+      {
+        "type": "rows",
+        "rows": []
+      }
+    ]
+  },
+  {
+    "name": "Hide subtasks",
+    "desc": "Hide task items that are nested under another list item.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": false
+      }
+    ]
+  },
+  {
+    "name": "Filter empty",
+    "desc": "Filter empty items out or not. If not, the raw text will be displayed.",
+    "controls": [
+      {
+        "type": "toggle",
+        "value": true
       }
     ]
   },
@@ -530,20 +555,6 @@
       {
         "type": "toggle",
         "value": false
-      }
-    ]
-  },
-  {
-    "name": "Style for new dates",
-    "desc": "Used when the timeline adds a date to a task line that has no task fields yet (no dates, priority, recurrence or other Tasks fields). Lines that already use one style keep it. If the Tasks plugin is set to the Dataview format, choose Dataview fields.",
-    "controls": [
-      {
-        "type": "dropdown",
-        "value": "emoji",
-        "options": [
-          "emoji",
-          "dataview"
-        ]
       }
     ]
   },

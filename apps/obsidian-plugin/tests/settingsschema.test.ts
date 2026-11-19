@@ -62,7 +62,14 @@ const TAG_ROWS: Readonly<Record<string, Key>> = {
 
 /** The option each row of the tab sets: the one its control saves, or the tags it lists. */
 const keyOfRow = (row: string): Key | undefined =>
-	TAG_ROWS[row] ?? (Object.keys(recorded.find((change) => change.row === row)?.writes[0] ?? {})[0] as Key);
+	TAG_ROWS[row] ??
+	(
+		{ "Tasks files": "taskFiles", "Include paths": "includePaths", "Exclude paths": "excludePaths" } as Record<
+			string,
+			Key
+		>
+	)[row] ??
+	(Object.keys(recorded.find((change) => change.row === row)?.writes[0] ?? {})[0] as Key);
 
 test("the schema has one entry for each option, in the defaults' order", () => {
 	assert.deepEqual(
@@ -86,7 +93,7 @@ test("openNoteInsteadOfInPlace defaults to false and is an advanced toggle read 
 	});
 });
 
-test("newDateStyle defaults to emoji and follows the open-note toggle as an advanced dropdown read on push", () => {
+test("newDateStyle defaults to emoji and is grouped with new-task settings", () => {
 	assert.equal(defaultUserOptions.newDateStyle, "emoji");
 	assert.deepEqual(specOf("newDateStyle"), {
 		key: "newDateStyle",
@@ -94,7 +101,9 @@ test("newDateStyle defaults to emoji and follows the open-note toggle as an adva
 		control: "dropdown",
 		copy: "newDateStyle",
 		options: { emoji: "emoji", dataview: "dataview" },
-		group: "advanced",
+		group: "newTasks",
+		section: "quickEntry",
+		order: 45,
 		redrawsTab: false,
 		readWhen: "push",
 	});
@@ -221,7 +230,10 @@ test("each control of the tab is the one the schema names, and never draws the t
 		seen.add(key);
 	}
 	// Every option shown with one of these controls was recorded.
-	const recordable = settingsSchema.filter((spec) => Object.values(CONTROL_OF_RECORDED).includes(spec.control));
+	const chipPaths = ["includePaths", "excludePaths", "taskFiles"];
+	const recordable = settingsSchema.filter(
+		(spec) => Object.values(CONTROL_OF_RECORDED).includes(spec.control) && !chipPaths.includes(spec.key),
+	);
 	assert.deepEqual(
 		recordable.map((spec) => spec.key).filter((key) => !seen.has(key)),
 		[],
@@ -253,10 +265,16 @@ test("the boxes of the tab show the codec's text of the options saved", async (t
 		for (const row of rows) {
 			const key = keyOfRow(row.name);
 			const codec = key && specOf(key).codec;
-			if (!key || !codec || row.hidden) continue;
+			if (!key || !codec || row.hidden || ["includePaths", "excludePaths", "taskFiles"].includes(key)) continue;
 			const control = row.controls.find((found) => "value" in found);
 			assert.ok(control && "value" in control, row.name);
-			assert.equal(control.value, codec.format(plugin.userOptions[key]), `${fixture}: ${row.name}`);
+			assert.equal(
+				control.value,
+				key === "hideStatusTasks"
+					? plugin.userOptions.hideStatusTasks.map((marker) => (marker === " " ? "[ ]" : marker)).join(",")
+					: codec.format(plugin.userOptions[key]),
+				`${fixture}: ${row.name}`,
+			);
 			shown += 1;
 		}
 	}
@@ -266,7 +284,7 @@ test("the boxes of the tab show the codec's text of the options saved", async (t
 test("a row shows only while the option the schema names for it is on", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const parents = [...new Set(settingsSchema.flatMap((spec) => (spec.shownWhen ? [spec.shownWhen] : [])))];
-	assert.deepEqual(parents.sort(), ["useExcludeTags", "useIncludeTags", "useQuickEntry", "useTags"]);
+	assert.deepEqual(parents.sort(), ["useCounters", "useExcludeTags", "useIncludeTags", "useQuickEntry", "useTags"]);
 	const allOn = Object.fromEntries(parents.map((parent) => [parent, true]));
 	const shownKeys = async (options: object) =>
 		(await drawnTab(JSON.stringify(options))).rows

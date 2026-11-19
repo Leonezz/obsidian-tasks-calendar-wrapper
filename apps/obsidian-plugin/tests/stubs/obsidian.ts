@@ -6,6 +6,20 @@ import moment from "moment";
 
 export { moment };
 
+/** The public helper returns inline and frontmatter tags with their # prefix. */
+export function getAllTags(cache: { tags?: { tag: string }[]; frontmatter?: { tags?: string | string[] } }): string[] {
+	const frontmatter = cache.frontmatter?.tags;
+	const tags = Array.isArray(frontmatter)
+		? frontmatter
+		: typeof frontmatter === "string"
+			? frontmatter.split(/[\s,]+/)
+			: [];
+	return [
+		...(cache.tags ?? []).map(({ tag }) => tag),
+		...tags.filter(Boolean).map((tag) => (tag.startsWith("#") ? tag : `#${tag}`)),
+	];
+}
+
 /** Tests can change the current Obsidian device flags and restore them afterwards. */
 export const Platform = { isMobile: false, isDesktop: true, isPhone: false, isTablet: false };
 
@@ -187,7 +201,10 @@ export class FakeElement {
 	cls: string;
 	children: (FakeElement | ButtonComponent)[] = [];
 	focused = false;
-	readonly attr: Readonly<Record<string, string | number | boolean | null>>;
+	tabIndex = 0;
+	readonly style: Record<string, string> = {};
+	private parent?: FakeElement;
+	readonly attr: Record<string, string | number | boolean | null>;
 	private readonly listeners = new Map<string, ((event: Event) => unknown)[]>();
 
 	constructor(
@@ -219,6 +236,28 @@ export class FakeElement {
 		this.listeners.set(name, [...(this.listeners.get(name) ?? []), listener]);
 	}
 
+	removeEventListener(name: string, listener: (event: Event) => unknown): void {
+		this.listeners.set(
+			name,
+			(this.listeners.get(name) ?? []).filter((found) => found !== listener),
+		);
+	}
+
+	setAttribute(name: string, value: string): void {
+		this.attr[name] = value;
+	}
+	getAttribute(name: string): string | number | boolean | null {
+		return this.attr[name] ?? null;
+	}
+	removeAttribute(name: string): void {
+		delete this.attr[name];
+	}
+	scrollIntoView(): void {}
+	remove(): void {
+		if (this.parent) this.parent.children = this.parent.children.filter((child) => child !== this);
+		this.parent = undefined;
+	}
+
 	dispatchEvent(event: Event): boolean {
 		for (const listener of this.listeners.get(event.type) ?? []) listener(event);
 		return !event.defaultPrevented;
@@ -247,6 +286,8 @@ export class FakeElement {
 	}
 
 	appendChild<T extends FakeElement>(child: T): T {
+		child.remove();
+		child.parent = this;
 		this.children = [...this.children, child];
 		return child;
 	}
@@ -261,6 +302,10 @@ export class FakeElement {
 
 	createDiv(info?: FakeElementInfo): FakeElement {
 		return this.createEl("div", info);
+	}
+
+	createSpan(info?: FakeElementInfo): FakeElement {
+		return this.createEl("span", info);
 	}
 }
 
@@ -442,6 +487,9 @@ export class SettingControl {
 
 /** As Obsidian's ToggleComponent: setting another value calls the change handler. */
 export class ToggleComponent extends SettingControl {
+	get toggleEl(): ControlElement {
+		return this.el;
+	}
 	constructor(containerEl: FakeElement) {
 		super(containerEl, "toggle", false);
 	}
@@ -456,13 +504,24 @@ export class ToggleComponent extends SettingControl {
 
 /** As Obsidian's text inputs: a value that is not a string is ignored, and the input stays as it was. */
 export class TextComponent extends SettingControl {
+	get inputEl(): ControlElement {
+		return this.el;
+	}
 	constructor(containerEl: FakeElement, type = "text") {
 		super(containerEl, type, "");
 	}
 
 	setValue(value: unknown): this {
-		if (typeof value === "string") this.value = value;
+		if (typeof value === "string") {
+			this.value = value;
+			this.el.value = value;
+		}
 		return this;
+	}
+
+	change(value: unknown): unknown {
+		if (typeof value === "string") this.el.value = value;
+		return super.change(value);
 	}
 }
 
@@ -480,6 +539,9 @@ export class MomentFormatComponent extends TextComponent {
 
 /** As a select element: a value none of the options has selects nothing, and the dropdown shows "". */
 export class DropdownComponent extends SettingControl {
+	get selectEl(): ControlElement {
+		return this.el;
+	}
 	options: Readonly<Record<string, string>> = {};
 
 	constructor(containerEl: FakeElement) {
@@ -514,6 +576,7 @@ export class ExtraButtonComponent {
 	readonly el: ControlElement;
 	icon = "lucide-settings";
 	tooltip = "";
+	disabled = false;
 	private clickHandler?: () => unknown;
 
 	constructor(containerEl: FakeElement) {
@@ -530,6 +593,11 @@ export class ExtraButtonComponent {
 		return this;
 	}
 
+	setDisabled(disabled: boolean): this {
+		this.disabled = disabled;
+		return this;
+	}
+
 	onClick(handler: () => unknown): this {
 		this.clickHandler = handler;
 		return this;
@@ -537,7 +605,7 @@ export class ExtraButtonComponent {
 
 	/** Not in Obsidian: presses the button. Returns what the handler returns. */
 	click(): unknown {
-		return this.clickHandler?.();
+		return this.disabled ? undefined : this.clickHandler?.();
 	}
 }
 

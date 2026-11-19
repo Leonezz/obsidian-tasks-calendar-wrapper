@@ -252,16 +252,16 @@ export const copy = freezeCopy({
 		excludePaths: {
 			name: "Exclude paths",
 			desc: "Exclude tasks match specific paths (folders, files).",
-			placeholder: "comma separated file paths, e.g.: path1,path2/path3,path4.md",
+			placeholder: "Search or enter a path…",
 		},
 		includePaths: {
 			name: "Include paths",
 			desc: "Include tasks match specific paths (folders, files).",
-			placeholder: "comma separated file paths, e.g.: path1,path2/path3,path4.md",
+			placeholder: "Search or enter a path…",
 		},
 		useIncludeTags: {
 			name: "Use include tags",
-			desc: "Use tags filters to filter tasks without specific tags out or not.",
+			desc: "Show only tasks or notes matching the tags you choose.",
 		},
 		taskIncludeTags: {
 			name: "Task include filters",
@@ -273,7 +273,7 @@ export const copy = freezeCopy({
 		},
 		useExcludeTags: {
 			name: "Use exclude tags",
-			desc: "Use tags filters to filters tasks with specific tags out or not.",
+			desc: "Hide tasks or notes matching the tags you choose.",
 		},
 		taskExcludeTags: {
 			name: "Task exclude filters",
@@ -294,7 +294,7 @@ export const copy = freezeCopy({
 		},
 		dailyNoteFormat: {
 			name: "Daily note format",
-			desc: "Daily note file format. The format sould be of moment format, see ",
+			desc: "Daily note names use this Moment format. See ",
 			descAfterLink: " for more details.",
 		},
 		sectionForNewTasks: {
@@ -303,7 +303,7 @@ export const copy = freezeCopy({
 		},
 		hideTags: {
 			name: "Hide tags",
-			desc: "Specify which tags are not necessary to display with a tag badge, note that all tag texts are remove from the displayed item text by default. Also note that the tags are just hided, not removed from the item.",
+			desc: "Hide these tag badges on the timeline. The tags remain in your notes.",
 		},
 		forward: {
 			name: "Forward tasks from past",
@@ -319,7 +319,7 @@ export const copy = freezeCopy({
 		},
 		sort: {
 			name: "Sort by",
-			desc: "Specify how you would like the taks item to be sorted inside a date.",
+			desc: "Choose the order of tasks within each date.",
 			options: {
 				statusAsc: "status (ascending)",
 				statusDesc: "status (descending)",
@@ -337,7 +337,7 @@ export const copy = freezeCopy({
 		},
 		dateFormat: {
 			name: "Date format",
-			desc: "Specify format you would like to use for dates. Note that the format should be of moment format. See ",
+			desc: "Date headings use this Moment format. See ",
 			descAfterLink: " for more details.",
 			placeholder: "e.g.: YYYY-MM-DD",
 		},
@@ -347,21 +347,21 @@ export const copy = freezeCopy({
 		},
 		taskFiles: {
 			name: "Tasks files",
-			desc: "Task Files you would like to specify explicitly for quick entry panel. make sure paths are separated by , .",
-			placeholder: "comma separated file paths, e.g.: path1,path2",
+			desc: "Choose the notes available as destinations in quick entry.",
+			placeholder: "Search or enter a note path…",
 		},
 		tagColorPalette: {
 			addTooltip: "Add a palette",
 			name: "Tag and color",
-			desc: "Enter tag text (# included) in the text input and select color in the color selector.",
+			desc: "Enter one tag, including #, and choose its color.",
 		},
 		useCounters: {
 			name: "Enable counters and filters panel",
-			desc: "Use counters and filters on the quick entry panel or not.",
+			desc: "Show the status cards and filter controls above quick entry.",
 		},
 		counterBehavior: {
 			name: "Behavior of counters and filters panel",
-			desc: "Set the default behavior of the counter and filter buttons. Available choices are: *Filter* to filter other items out, or *Focus* to make selected items more clear.",
+			desc: "Filter shows matching tasks only. Focus keeps all tasks and highlights matches.",
 			options: {
 				filter: "Filter",
 				focus: "Focus",
@@ -369,11 +369,11 @@ export const copy = freezeCopy({
 		},
 		useQuickEntry: {
 			name: "Enable quick entry panel",
-			desc: "Use quick entry panel or not.",
+			desc: "Show the input for adding tasks from the timeline.",
 		},
 		entryPosition: {
 			name: "Quick entry panel position",
-			desc: "Where you like the entry panel to be, * Top means on top of the view, * Bottom means on bottom of the view, * Today means in today's view.",
+			desc: "Place quick entry at the top, at the bottom, or alongside today.",
 			options: {
 				today: "today",
 				top: "top",
@@ -430,7 +430,7 @@ export const copy = freezeCopy({
 		},
 		hideStatusTasks: {
 			name: "Hide tasks of specific status",
-			desc: "Provide comma split status markers, e.g.,: x, - Use [ ] if you would like to hide all tasks with marker [ ] or status todo.",
+			desc: "Hide tasks with these checkbox markers. Separate markers with commas; use [ ] for unfinished tasks.",
 			placeholder: "Status markers split by comma. e.g.,: x, -.",
 		},
 		hideSubTasks: {
@@ -461,6 +461,45 @@ export const copy = freezeCopy({
 		},
 		tab: {
 			addTagTooltip: "Add a tag",
+			addTagLabel: "Add tag",
+			cancelLabel: "Cancel",
+			saveLabel: "Save",
+			tagPlaceholder: "#tag",
+			removeTag: (p: { tag: string }) => `Remove ${p.tag}`,
+			editTagColor: (p: { tag: string }) => `Edit color for ${p.tag}`,
+			addPathLabel: "Add",
+			rootFolder: "Vault root",
+			removeGlyph: "×",
+			previewCheckboxGlyph: "○",
+			pathPlaceholder: "Search or enter a path…",
+			removePath: (p: { path: string }) => `Remove ${p.path}`,
+			emptyPathLabel: "Empty path",
+			pathInputHint:
+				"Choose a path or type one. Press Enter to add; paste several paths separated by commas or new lines.",
+			statusPresets: { todo: "To-do [ ]", done: "Done [x]", cancelled: "Cancelled [-]" },
+			navigationAria: "Settings sections",
+			autosaveHint: "Changes are saved automatically.",
+			saving: "Saving…",
+			saved: "Saved",
+			unsaved: "Could not save changes.",
+			retry: "Retry",
+			sections: {
+				dates: "Sorting and dates",
+				information: "Task information",
+				filters: "Status and filters",
+				today: "Tasks shown under today",
+				quickEntry: "Quick entry",
+				dailyNotes: "Daily notes",
+			},
+			preview: "Preview",
+			previewHint: "Sample task using your display settings.",
+			previewTask: "Plan the next step",
+			previewNote: "Project notes",
+			previewSection: "Next actions",
+			previewTag: "#work",
+			previewRelative: "Today",
+			previewRecurrence: "Every week",
+			previewPriority: "High priority",
 			resetToDefault: "Reset to default",
 			wrongType: (p: { actual: string; expected: string }) =>
 				`Saved value is ${p.actual}, expected ${p.expected}. It is used as is.`,
@@ -478,17 +517,15 @@ export const copy = freezeCopy({
 			momentPreview: (p: { sample: string }) => `Today in this format: ${p.sample}`,
 			propertyRuleSkipped: (p: { line: number }) =>
 				`Line ${p.line} is skipped: it needs a property, a colon and a value.`,
-			deleteTooltip: "Delete",
-			editTooltip: "Edit",
 			pathFilterWarning:
-				"NOTE that no prefix or trailing '/' needed, unless you want to filter the entire vault out.",
+				"Paths match part of a note path. Use vault-relative paths without a leading or trailing slash.",
 			momentDocsLink: "docs of moment.js",
 			saveFailed: "Failed to save the timeline settings. See the developer console for details.",
 			saveTooltip: "Save",
 			emptyColor: "The color seems to be empty, maybe you forget to click the color picker.",
 			cancelTooltip: "Cancel",
 			tagModalName: "Tag",
-			tagModalDesc: "Enter tag text (# included) in the text input and select color in the color selector.",
+			tagModalDesc: "Enter one tag, including #. For example, #work or #work/project.",
 			tagExists: (p: { tag: string }) => `Tag ${p.tag} already exists.`,
 			invalidTag: (p: { tag: string }) => `${p.tag} seems not a valid tag.`,
 		},

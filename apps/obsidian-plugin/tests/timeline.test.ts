@@ -463,6 +463,8 @@ test("timeline: the stylesheet hides nothing the markup reader does not know of"
 			".taskido .entryMeta .taskDue[hidden]",
 			// Settings are outside the timeline's markup.
 			".tasks-calendar-wrapper-settings [hidden]",
+			".tasks-calendar-wrapper-settings .tcw-settings-tag-chip > .setting-item-info",
+			".tasks-calendar-wrapper-settings .tcw-settings-palette-chip > .setting-item-info",
 		].sort(),
 	);
 });

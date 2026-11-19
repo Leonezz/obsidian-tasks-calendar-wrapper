@@ -95,6 +95,7 @@ export type Control = (
 	| { type: string; value: unknown; placeholder?: string; options?: string[] }
 	| { type: "extra-button" | "button"; icon: string; tooltip: string }
 	| { type: "tag"; text: string; style?: unknown }
+	| { type: "paths"; paths: string[]; draft: string }
 	| { type: "rows"; rows: Row[] }
 ) & { hidden?: true };
 
@@ -150,7 +151,17 @@ function controlOf(child: FakeElement | ButtonComponent): Control {
 			...(control instanceof DropdownComponent ? { options: Object.keys(control.options) } : {}),
 		};
 	}
-	if (child.cls === "tag")
+	if (child.cls === "tcw-setting-path-list") {
+		const chips = child.children[0] as FakeElement;
+		const editor = child.children[1] as FakeElement;
+		return {
+			type: "paths",
+			paths: chips.children.map((chip) => ((chip as FakeElement).children[0] as FakeElement).textContent),
+			draft: (editor.children[0] as FakeElement).value,
+			...hidden,
+		};
+	}
+	if (child.cls.split(/\s+/).includes("tag"))
 		return {
 			type: "tag",
 			...hidden,
