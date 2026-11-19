@@ -465,6 +465,21 @@ test("timeline: the stylesheet hides nothing the markup reader does not know of"
 			".tasks-calendar-wrapper-settings [hidden]",
 			".tasks-calendar-wrapper-settings .tcw-settings-tag-chip > .setting-item-info",
 			".tasks-calendar-wrapper-settings .tcw-settings-palette-chip > .setting-item-info",
+			// The real sample rows share the view-scoped option-hiding declarations.
+			...[
+				".taskido.noYear .year",
+				".taskido.noRepeat .repeat",
+				".taskido.noModify .modify",
+				".taskido.noTag .tag",
+				".taskido.noPriority .priority",
+				".taskido.noFile .task .file",
+				".taskido.noHeader .task .header",
+				".taskido.noFile .task .info > .file",
+				".taskido.noInfo .task .line:nth-child(2)",
+				".taskido.noRelative .relative",
+				".taskido.noQuickEntry .quickEntryPanel",
+				".taskido.noCounters .counters",
+			].map((selector) => `.tasks-calendar-wrapper-settings .tcw-settings-preview-surface ${selector}`),
 		].sort(),
 	);
 });

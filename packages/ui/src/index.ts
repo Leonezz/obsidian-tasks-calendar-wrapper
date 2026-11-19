@@ -20,7 +20,7 @@ export {
 } from "./contexts";
 export { useStore } from "./hooks/useStore";
 export { useTransitionedStore } from "./hooks/useTransitionedStore";
-export { Timeline, type TimelineProps, type TimelineOptions } from "./timeline/Timeline";
+export { Timeline, timelineDisplayClasses, type TimelineProps, type TimelineOptions } from "./timeline/Timeline";
 export { YearHeader } from "./timeline/YearHeader";
 export { DayHeader } from "./timeline/DayHeader";
 export { Year } from "./timeline/Year";

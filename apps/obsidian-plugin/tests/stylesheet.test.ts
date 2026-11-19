@@ -89,6 +89,22 @@ test("view scope remains on cascade-sensitive rules rather than every timeline r
 	scoped('.taskido .task[aria-busy="true"] .timeline .icon svg', "stroke", "currentColor");
 });
 
+test("the settings preview shares every view-scoped rule with the timeline", () => {
+	const timeline = '.workspace-leaf-content[data-type="tasks_timeline_view"]';
+	const preview = ".tasks-calendar-wrapper-settings .tcw-settings-preview-surface";
+	// Keep the original scope visible to cssRules, whose normal reader removes that prefix.
+	const original = ".tcw-original-timeline-scope";
+	const rules = cssRules(readFileSync("styles.css", "utf8").replaceAll(timeline, original));
+	let shared = 0;
+	for (const { selectors } of rules) {
+		for (const selector of selectors.filter((value) => value.startsWith(`${original} `))) {
+			assert.ok(selectors.includes(selector.replace(original, preview)), `${selector}: missing preview alias`);
+			shared++;
+		}
+	}
+	assert.ok(shared > 0, "the timeline has cascade-sensitive rules to share");
+});
+
 function timelineTokens(): Map<string, string> {
 	return new Map(
 		cssRules(readFileSync("styles.css", "utf8"))
@@ -612,7 +628,10 @@ test("hover feedback keeps native task and entry controls within the hover media
 `),
 		},
 		{
-			selectors: [".taskido .quickEntryPanel .ok:hover"],
+			selectors: [
+				".taskido .quickEntryPanel .ok:hover",
+				".tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .quickEntryPanel .ok:hover",
+			],
 			body: whitespace(`
 	background: var(--interactive-accent-hover);
 	color: var(--text-on-accent);

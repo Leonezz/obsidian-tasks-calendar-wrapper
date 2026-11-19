@@ -73,6 +73,48 @@ export type TimelineOptions = ResolveSettings &
 		readonly newDateStyle?: NewDateStyle;
 	};
 
+/** The display switches shared by timelines and read-only previews. */
+export function timelineDisplayClasses(
+	options: Pick<
+		TimelineOptions,
+		| "useCounters"
+		| "useQuickEntry"
+		| "useYearHeader"
+		| "useFileBadge"
+		| "usePriority"
+		| "useRecurrence"
+		| "useRelative"
+		| "useSection"
+		| "useTags"
+		| "useModifyBadge"
+	>,
+): string {
+	const styles = new Array<string>();
+	if (!options.useCounters) styles.push("noCounters");
+	if (!options.useQuickEntry) styles.push("noQuickEntry");
+	if (!options.useYearHeader) styles.push("noYear");
+	if (
+		!options.useFileBadge &&
+		!options.usePriority &&
+		!options.useRecurrence &&
+		!options.useRelative &&
+		!options.useSection &&
+		!options.useTags
+	)
+		styles.push("noInfo");
+	else {
+		if (!options.useFileBadge) styles.push("noFile");
+		if (!options.usePriority) styles.push("noPriority");
+		if (!options.useRecurrence) styles.push("noRepeat");
+		if (!options.useRelative) styles.push("noRelative");
+		if (!options.useSection) styles.push("noHeader");
+		if (!options.useTags) styles.push("noTag");
+		if (!options.useModifyBadge) styles.push("noModify");
+	}
+
+	return [...new Set(styles)].join(" ");
+}
+
 export type TimelineProps = {
 	readonly userOptions: TimelineOptions;
 	readonly viewState: Store<ViewState>;
@@ -479,30 +521,7 @@ export function Timeline(props: TimelineProps) {
 	});
 	useClientLayoutEffect(() => window.commit(root.current));
 
-	const styles = new Array<string>();
-	if (!props.userOptions.useCounters) styles.push("noCounters");
-	if (!props.userOptions.useQuickEntry) styles.push("noQuickEntry");
-	if (!props.userOptions.useYearHeader) styles.push("noYear");
-	if (
-		!props.userOptions.useFileBadge &&
-		!props.userOptions.usePriority &&
-		!props.userOptions.useRecurrence &&
-		!props.userOptions.useRelative &&
-		!props.userOptions.useSection &&
-		!props.userOptions.useTags
-	)
-		styles.push("noInfo");
-	else {
-		if (!props.userOptions.useFileBadge) styles.push("noFile");
-		if (!props.userOptions.usePriority) styles.push("noPriority");
-		if (!props.userOptions.useRecurrence) styles.push("noRepeat");
-		if (!props.userOptions.useRelative) styles.push("noRelative");
-		if (!props.userOptions.useSection) styles.push("noHeader");
-		if (!props.userOptions.useTags) styles.push("noTag");
-		if (!props.userOptions.useModifyBadge) styles.push("noModify");
-	}
-
-	const baseStyles = [...new Set(styles)].join(" ");
+	const baseStyles = timelineDisplayClasses(props.userOptions);
 	const counterFilter = counterClass(counterFilterValue, props.userOptions.counterBehavior);
 	const todayFocusClass = todayFocus ? "todayFocus" : "";
 	const userOptionValue = optionsFor(memo, userOptions, now);

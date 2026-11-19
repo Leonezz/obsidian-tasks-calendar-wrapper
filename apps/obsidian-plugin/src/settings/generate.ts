@@ -7,7 +7,7 @@ import { renderers } from "./controls";
 import { renderTagPalette } from "./controls/tagPalette";
 import { rowDescription, settingRows, type RowMessages, type SettingRow, type SettingRowOf } from "./rows";
 import { reportSaveError } from "./save";
-import { moment } from "../../utils/moment";
+import { mountSettingsPreview } from "./preview";
 
 /** The tab's live options and existing save paths, shared by its controls. */
 export interface SettingsTabActions {
@@ -62,7 +62,7 @@ export function renderSettings(containerEl: HTMLElement, rows: readonly SettingR
 	retry.buttonEl.hidden = true;
 	let sequence = 0;
 	let failed: { update: Partial<UserOption>; resetRow?: keyof UserOption } | undefined;
-	let preview: HTMLElement | undefined;
+	let preview: ReturnType<typeof mountSettingsPreview> | undefined;
 	const showStatus = (text: string, failed = false) => {
 		status.setText(text);
 		retry.buttonEl.hidden = !failed;
@@ -86,7 +86,7 @@ export function renderSettings(containerEl: HTMLElement, rows: readonly SettingR
 			showStatus(copy.settings.tab.saved);
 		}
 		const options = tab.options();
-		if (preview) drawPreview(preview, options);
+		preview?.update(options);
 		for (const row of settingRows(settingsSchema, options, settingIssues(options, settingsSchema))) {
 			if (row.kind === "heading") continue;
 			const state = drawn.get(row.key);
@@ -168,8 +168,9 @@ export function renderSettings(containerEl: HTMLElement, rows: readonly SettingR
 			if (row.group === "display") {
 				const disclosure = containerEl.createEl("details", { cls: "tcw-settings-preview" });
 				disclosure.createEl("summary", { text: copy.settings.tab.preview });
-				preview = disclosure.createDiv("tcw-settings-preview-content");
-				drawPreview(preview, tab.options());
+				preview = mountSettingsPreview(disclosure.createDiv("tcw-settings-preview-content"), tab.plugin);
+				tab.registerCleanup?.(preview.destroy);
+				preview.update(tab.options());
 			}
 		} else {
 			const section = row.spec.section;
@@ -188,34 +189,4 @@ export function renderSettings(containerEl: HTMLElement, rows: readonly SettingR
 			if (row.shown) drawControl(state);
 		}
 	}
-}
-
-/** A read-only example: no sample task is written to the vault. */
-function drawPreview(container: HTMLElement, options: UserOption): void {
-	container.empty();
-	const dateFormat = typeof options.dateFormat === "string" ? options.dateFormat : "YYYY-MM-DD";
-	container.createEl("div", {
-		text: moment().format(dateFormat),
-		cls: "tcw-settings-preview-date",
-	});
-	const task = container.createDiv("tcw-settings-preview-task");
-	if (options.useBuiltinStyle)
-		task.createEl("span", { text: copy.settings.tab.previewCheckboxGlyph, attr: { "aria-hidden": "true" } });
-	else task.createEl("input", { attr: { type: "checkbox", disabled: true, "aria-hidden": "true" } });
-	task.createEl("span", { text: copy.settings.tab.previewTask });
-	const metadata = container.createDiv("tcw-settings-preview-metadata");
-	if (options.useRelative) metadata.createEl("span", { text: copy.settings.tab.previewRelative });
-	if (options.usePriority) metadata.createEl("span", { text: copy.settings.tab.previewPriority });
-	if (options.useRecurrence) metadata.createEl("span", { text: copy.settings.tab.previewRecurrence });
-	if (options.useFileBadge) metadata.createEl("span", { text: copy.settings.tab.previewNote });
-	if (options.useSection) metadata.createEl("span", { text: copy.settings.tab.previewSection });
-	if (options.useTags) {
-		const palette = options.tagColorPalette;
-		const tag = Object.keys(palette ?? {})[0] ?? copy.settings.tab.previewTag;
-		if (!Array.isArray(options.hideTags) || !options.hideTags.includes(tag)) {
-			const badge = metadata.createEl("span", { text: tag, cls: "tag" });
-			if (palette && typeof palette[tag] === "string") badge.style.color = palette[tag];
-		}
-	}
-	container.createEl("small", { text: copy.settings.tab.previewHint });
 }

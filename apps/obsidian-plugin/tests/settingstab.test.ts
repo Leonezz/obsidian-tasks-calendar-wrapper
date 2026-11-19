@@ -4,6 +4,9 @@ import "./setup";
 
 import { test, type TestContext } from "node:test";
 import assert from "node:assert/strict";
+import type { ReactElement } from "react";
+import type { UserOption } from "../src/useroptions";
+import { roots } from "./stubs/react-dom-client";
 
 import type { TasksCalendarSettingTab } from "../src/settings";
 import {
@@ -469,7 +472,7 @@ test("a failed reset keeps Retry available and redraws that control after retry 
 	assert.equal(JSON.parse(plugin.dataJson!).useRelative, toggle.value);
 });
 
-test("the display preview follows metadata visibility without writing a sample task", async (t) => {
+test("the real preview updates one React root and keeps its disclosure open", async (t) => {
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const { plugin, container } = await drawnTab(t, JSON.stringify({ useRelative: true }));
 	t.after(() => plugin.unload());
@@ -479,13 +482,48 @@ test("the display preview follows metadata visibility without writing a sample t
 	assert.equal(preview.tag, "details");
 	assert.equal(preview.attr.open, undefined, "the sample starts collapsed");
 	assert.equal((preview.children[0] as FakeElement).textContent, "Preview display changes");
+	const previewRoot = roots.find((root) => root.container === preview.children[1]);
+	assert.ok(previewRoot);
+	assert.equal(previewRoot.rendered.length, 1);
 	Reflect.set(preview, "open", true);
-	assert.ok(preview.textContent.includes("Today"));
 	const toggle = valueControls(container).find((found) => found.row === "Use relative date")!.control;
 	await toggle.change(false);
-	assert.ok(!preview.textContent.includes("Today"));
-	assert.ok(preview.textContent.includes("Plan the next step"));
+	assert.equal(previewRoot.rendered.length, 2);
+	const rendered = previewRoot.rendered.at(-1) as ReactElement<{ options: UserOption }>;
+	assert.equal(rendered.props.options.useRelative, false);
 	assert.equal(Reflect.get(preview, "open"), true, "updating the sample preserves the disclosure state");
+});
+
+test("preview roots and Markdown owners are disposed when settings close, redraw or unload", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { plugin, tab, container } = await drawnTab(t, null);
+	const removed = t.mock.method(plugin, "removeChild");
+	const currentRoot = () =>
+		[...roots]
+			.reverse()
+			.find((root) =>
+				container.children.some(
+					(child) =>
+						child instanceof FakeElement &&
+						child.cls === "tcw-settings-preview" &&
+						child.children[1] === root.container,
+				),
+			)!;
+	const first = currentRoot();
+	assert.ok(first);
+	tab.hide();
+	assert.equal(first.unmounted, true);
+	assert.equal(removed.mock.callCount(), 1);
+	assert.equal(Reflect.get(removed.mock.calls[0].arguments[0], "loaded"), false);
+	tab.display();
+	const second = currentRoot();
+	assert.notEqual(first, second);
+	tab.display();
+	assert.equal(second.unmounted, true);
+	const third = currentRoot();
+	assert.equal(third.unmounted, false);
+	plugin.unload();
+	assert.equal(third.unmounted, true);
 });
 
 test("global Retry refreshes tag chips while preserving a newer input draft", async (t) => {

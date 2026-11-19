@@ -360,6 +360,34 @@ test("a locale change discards models", async (t) => {
 	assert.equal(timeline.model.mock.callCount(), 0);
 });
 
+test("display switches preserve the shared information-line and individual-badge behavior", async (t) => {
+	const timeline = timelineHarness(t);
+	const hidden = {
+		...options,
+		useCounters: false,
+		useQuickEntry: false,
+		useYearHeader: false,
+		useFileBadge: false,
+		usePriority: false,
+		useRecurrence: false,
+		useRelative: false,
+		useSection: false,
+		useTags: false,
+		useModifyBadge: false,
+	};
+	await timeline.render({ userOptions: hidden });
+	const root = timeline.container.querySelector<HTMLElement>(".taskido");
+	assert.ok(root);
+	for (const name of ["noCounters", "noQuickEntry", "noYear", "noInfo"])
+		assert.ok(root.classList.contains(name), name);
+	assert.equal(root.classList.contains("noModify"), false, "the entire information line is already hidden");
+	await timeline.render({ userOptions: { ...hidden, useTags: true } });
+	assert.equal(root.classList.contains("noInfo"), false);
+	assert.equal(root.classList.contains("noTag"), false);
+	for (const name of ["noFile", "noPriority", "noRepeat", "noRelative", "noHeader", "noModify"])
+		assert.ok(root.classList.contains(name), name);
+});
+
 // Brief-derived tests pin commit timing, provider identity, initial state and component shape.
 test("the click clock stays at mount and moves only when the rendered ids change", async (t) => {
 	let commitTime = 1000;
