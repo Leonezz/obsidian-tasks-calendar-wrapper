@@ -100,6 +100,24 @@
 /* Warnings in palette modals use the same token with their own text-error fallback. */
 .tasks-calendar-wrapper-settings {
 	--tcw-color-warning: initial;
+	--tcw-settings-border: initial;
+	--tcw-settings-muted: initial;
+	--tcw-settings-font-small: initial;
+	--tcw-settings-error: initial;
+	--tcw-settings-weight: initial;
+	--tcw-settings-radius-s: initial;
+	--tcw-settings-on-accent: initial;
+	--tcw-settings-accent: initial;
+	--tcw-settings-border-width: 1px;
+	--tcw-settings-space-1: var(--size-2-1);
+	--tcw-settings-space-2: var(--size-2-2);
+	--tcw-settings-space-3: var(--size-2-3);
+	--tcw-settings-space-4: var(--size-4-2);
+	--tcw-settings-space-5: var(--size-4-3);
+	--tcw-settings-space-6: var(--size-4-6);
+	--tcw-settings-control-height: var(--size-4-8);
+	--tcw-settings-touch-target: 44px;
+	--tcw-settings-input-min: 6rem;
 }
 
 .tasks-calendar-wrapper-whats-new {
@@ -137,7 +155,8 @@
  * Links and badges inherit their color unless a scoped rule (tag, overdue, done) sets one.
  * Keep the view prefix and repeated class: together they lift this above the unscoped file-color rule below.
  */
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.taskido.taskido a {
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.taskido.taskido a,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido.taskido.taskido a {
 	color: inherit;
 }
 
@@ -363,7 +382,17 @@
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.cancelled .info .repeat,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.cancelled .info .priority,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.cancelled .info .relative,
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.cancelled .info .file {
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.cancelled .info .file,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task.done .info .tag,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task.done .info .repeat,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task.done .info .priority,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task.done .info .relative,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task.done .info .file,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task.cancelled .info .tag,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task.cancelled .info .repeat,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task.cancelled .info .priority,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task.cancelled .info .relative,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task.cancelled .info .file {
 	color: var(--tcw-color-muted, var(--text-muted));
 }
 
@@ -458,7 +487,12 @@
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .repeat,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .priority,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .relative,
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .file {
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .file,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task .info .tag,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task .info .repeat,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task .info .priority,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task .info .relative,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task .info .file {
 	line-height: 1;
 	border-radius: var(--tcw-radius-info);
 }
@@ -472,7 +506,8 @@
 }
 
 /* Per-tag colors must stay above the shared link-inherit rule. */
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .tag {
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task .info .tag,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task .info .tag {
 	color: var(--tag-color);
 	background: var(--tcw-badge-bg);
 }
@@ -493,7 +528,8 @@
 }
 
 /* The overdue badge must also stay above the shared link-inherit rule. */
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.overdue .info .relative {
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task.overdue .info .relative,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task.overdue .info .relative {
 	color: var(--tcw-color-overdue, var(--taskido-color-overdue));
 }
 
@@ -772,7 +808,8 @@
 	font: inherit;
 }
 
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel .newTask {
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel .newTask,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .quickEntryPanel .newTask {
 	width: 100%;
 	min-height: var(--tcw-input-height);
 	padding: 0;
@@ -784,7 +821,8 @@
 	color: var(--tcw-color-text, var(--text-normal));
 }
 
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel .ok {
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel .ok,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .quickEntryPanel .ok {
 	padding: 0 var(--tcw-space-4);
 	margin-left: var(--tcw-space-3);
 	border: none;
@@ -820,7 +858,8 @@
 	white-space: nowrap;
 }
 
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .entryMeta :is(input, select) {
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .entryMeta :is(input, select),
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .entryMeta :is(input, select) {
 	width: auto;
 	padding: 0 var(--tcw-space-3);
 	border: none;
@@ -831,7 +870,8 @@
 	color: inherit;
 }
 
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .entryMeta select {
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .entryMeta select,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .entryMeta select {
 	appearance: auto;
 	background-image: none;
 }
@@ -965,7 +1005,8 @@
 		color: var(--tcw-color-text, var(--text-normal));
 	}
 
-	.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel .ok:hover {
+	.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .quickEntryPanel .ok:hover,
+	.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .quickEntryPanel .ok:hover {
 		background: var(--tcw-action-hover-bg, var(--interactive-accent-hover));
 		color: var(--tcw-action-fg, var(--text-on-accent));
 	}
@@ -1075,7 +1116,19 @@
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noInfo .task .line:nth-child(2),
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noRelative .relative,
 .workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noQuickEntry .quickEntryPanel,
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noCounters .counters {
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido.noCounters .counters,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido.noYear .year,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido.noRepeat .repeat,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido.noModify .modify,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido.noTag .tag,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido.noPriority .priority,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido.noFile .task .file,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido.noHeader .task .header,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido.noFile .task .info > .file,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido.noInfo .task .line:nth-child(2),
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido.noRelative .relative,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido.noQuickEntry .quickEntryPanel,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido.noCounters .counters {
 	display: none;
 }
 
@@ -1091,11 +1144,20 @@
 	.taskido
 	.task[aria-busy="true"]
 	.info
+	> :is(.tag, .repeat, .priority, .relative, .file),
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task[aria-busy="true"] .content,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task[aria-busy="true"] .content a,
+.tasks-calendar-wrapper-settings
+	.tcw-settings-preview-surface
+	.taskido
+	.task[aria-busy="true"]
+	.info
 	> :is(.tag, .repeat, .priority, .relative, .file) {
 	color: inherit;
 }
 
-.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task[aria-busy="true"] .timeline .icon svg {
+.workspace-leaf-content[data-type="tasks_timeline_view"] .taskido .task[aria-busy="true"] .timeline .icon svg,
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido .task[aria-busy="true"] .timeline .icon svg {
 	color: inherit;
 	stroke: currentColor;
 }
@@ -1132,6 +1194,207 @@
 /* Warning note in setting descriptions, e.g. the path filters. */
 .tasks-calendar-wrapper-setting-warning {
 	color: var(--tcw-color-warning, var(--text-error));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-nav {
+	position: static;
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--tcw-settings-space-3);
+	padding: var(--tcw-settings-space-4) 0;
+	border-bottom: var(--tcw-settings-border-width) solid var(--tcw-settings-border, var(--background-modifier-border));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-save-status {
+	display: flex;
+	align-items: center;
+	gap: var(--tcw-settings-space-4);
+	min-height: var(--tcw-settings-control-height);
+	color: var(--tcw-settings-muted, var(--text-muted));
+	font-size: var(--tcw-settings-font-small, var(--font-ui-small));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-save-status[data-failed="true"] {
+	color: var(--tcw-settings-error, var(--text-error));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-heading {
+	scroll-margin-top: var(--tcw-settings-space-4);
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-subheading {
+	margin: var(--tcw-settings-space-6) 0 var(--tcw-settings-space-4);
+	color: var(--tcw-settings-muted, var(--text-muted));
+	font-size: var(--tcw-settings-font-small, var(--font-ui-small));
+	font-weight: var(--tcw-settings-weight, var(--font-semibold));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-preview {
+	margin: var(--tcw-settings-space-4) 0;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-preview > summary {
+	width: fit-content;
+	padding: var(--tcw-settings-space-4) 0;
+	cursor: pointer;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-preview-content {
+	margin: var(--tcw-settings-space-4) 0;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-preview > summary,
+.tasks-calendar-wrapper-settings .tcw-setting-hint,
+.tasks-calendar-wrapper-settings .tcw-settings-preview small {
+	color: var(--tcw-settings-muted, var(--text-muted));
+	font-size: var(--tcw-settings-font-small, var(--font-ui-small));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-preview-surface .taskido {
+	margin-bottom: 0;
+}
+
+.tasks-calendar-wrapper-settings .tcw-setting-path-list {
+	width: 100%;
+	min-width: 0;
+}
+
+.tasks-calendar-wrapper-settings .tcw-setting-chips,
+.tasks-calendar-wrapper-settings .tcw-settings-tags,
+.tasks-calendar-wrapper-settings .tcw-settings-palette {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--tcw-settings-space-3);
+}
+
+.tasks-calendar-wrapper-settings .setting-item-control:has(> .tcw-settings-tags) {
+	flex-wrap: wrap;
+	max-width: 55%;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-tags {
+	flex-basis: 100%;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-tag-chip > .setting-item-info,
+.tasks-calendar-wrapper-settings .tcw-settings-palette-chip > .setting-item-info {
+	display: none;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-tag-chip > .setting-item-control {
+	gap: var(--tcw-settings-space-2);
+}
+
+.tasks-calendar-wrapper-settings .tcw-setting-path-editor {
+	display: flex;
+	gap: var(--tcw-settings-space-3);
+	margin: var(--tcw-settings-space-3) 0;
+}
+
+.tasks-calendar-wrapper-settings .setting-item:has(> .tcw-settings-status-control) {
+	flex-wrap: wrap;
+	gap: var(--tcw-settings-space-4);
+}
+
+.tasks-calendar-wrapper-settings .setting-item:has(> .tcw-settings-status-control) > .setting-item-info {
+	flex: 1 1 16rem;
+	min-width: 0;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-status-control {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	flex: 0 1 18rem;
+	width: 18rem;
+	min-width: 0;
+	max-width: 100%;
+	gap: var(--tcw-settings-space-3);
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-status-control > input {
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-status-presets {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	width: 100%;
+	gap: var(--tcw-settings-space-3);
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-status-presets button {
+	min-width: 0;
+	min-height: var(--tcw-settings-control-height);
+	height: auto;
+	padding-inline: var(--tcw-settings-space-3);
+	white-space: normal;
+	overflow-wrap: anywhere;
+	font-size: var(--tcw-settings-font-small, var(--font-ui-small));
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-status-presets button[aria-pressed="true"] {
+	color: var(--tcw-settings-on-accent, var(--text-on-accent));
+	background: var(--tcw-settings-accent, var(--interactive-accent));
+}
+
+.tasks-calendar-wrapper-settings .tcw-setting-path-editor input,
+.tasks-calendar-wrapper-settings .tcw-settings-tag-input {
+	width: 100%;
+	min-width: var(--tcw-settings-input-min);
+}
+
+.tasks-calendar-wrapper-settings .tcw-setting-chip,
+.tasks-calendar-wrapper-settings .tcw-settings-tag-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--tcw-settings-space-2);
+	max-width: 100%;
+	padding: var(--tcw-settings-space-1) var(--tcw-settings-space-2) var(--tcw-settings-space-1)
+		var(--tcw-settings-space-4);
+	border: var(--tcw-settings-border-width) solid var(--tcw-settings-border, var(--background-modifier-border));
+	border-radius: var(--tcw-settings-radius-s, var(--radius-s));
+	font-size: var(--tcw-settings-font-small, var(--font-ui-small));
+	overflow-wrap: anywhere;
+}
+
+.tasks-calendar-wrapper-settings .tcw-setting-chip button,
+.tasks-calendar-wrapper-settings .tcw-settings-tag-chip button {
+	flex-shrink: 0;
+	min-width: var(--tcw-settings-space-6);
+	min-height: var(--tcw-settings-space-6);
+	padding: 0 var(--tcw-settings-space-2);
+	box-shadow: none;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-palette > .setting-item {
+	padding: 0;
+	border: 0;
+	background: none;
+}
+
+.tasks-calendar-wrapper-settings .tcw-settings-palette-chip {
+	max-width: 100%;
+	overflow-wrap: anywhere;
+}
+
+body.is-mobile .tasks-calendar-wrapper-settings button,
+body.is-mobile .tasks-calendar-wrapper-settings input {
+	min-height: var(--tcw-settings-touch-target);
+}
+
+@media (max-width: 600px) {
+	.tasks-calendar-wrapper-settings .setting-item-control {
+		min-width: 0;
+		flex-wrap: wrap;
+	}
+	.tasks-calendar-wrapper-settings .setting-item-control:has(> .tcw-settings-tags) {
+		max-width: 100%;
+	}
 }
 
 /* What's new dialog: the star and support buttons wrap and stay centred. */

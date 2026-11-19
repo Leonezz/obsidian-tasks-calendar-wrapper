@@ -14,9 +14,13 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 	plugin: TasksCalendarWrapper;
 	/** The settings show this tab: from Obsidian's display() until its hide(). */
 	private shown = false;
+	private readonly cleanups = new Set<() => void>();
+	private saves: Promise<void> = Promise.resolve();
+	private generation = 0;
 	constructor(app: App, plugin: TasksCalendarWrapper) {
 		super(app, plugin);
 		this.plugin = plugin;
+		plugin.register(() => this.disposeControls());
 	}
 
 	/** Draws the tab again with the options now, if the settings show it. */
@@ -26,12 +30,21 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 
 	hide(): void {
 		this.shown = false;
+		this.disposeControls();
+	}
+
+	private disposeControls(): void {
+		for (const cleanup of this.cleanups) cleanup();
+		this.cleanups.clear();
 	}
 
 	async onOptionUpdate(updatePart: Partial<UserOption>, refreashSettingPage = false) {
-		await this.plugin.writeOptions(updatePart);
+		const generation = this.generation;
+		const saving = this.saves.catch(() => {}).then(() => this.plugin.writeOptions(updatePart));
+		this.saves = saving;
+		await saving;
 		// The settings may have closed while it saved.
-		if (refreashSettingPage) this.redrawIfShown();
+		if (refreashSettingPage && generation === this.generation) this.redrawIfShown();
 	}
 
 	/** Saves options from a callback that cannot wait for the result, reporting failures to the user. */
@@ -40,6 +53,8 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
+		this.disposeControls();
+		const generation = ++this.generation;
 		this.shown = true;
 		const { containerEl } = this;
 
@@ -49,7 +64,11 @@ export class TasksCalendarSettingTab extends PluginSettingTab {
 		renderSettings(containerEl, settingRows(settingsSchema, options, settingIssues(options, settingsSchema)), {
 			plugin: this.plugin,
 			options: () => this.plugin.userOptions,
-			isShown: () => this.shown,
+			isShown: () => this.shown && generation === this.generation,
+			registerCleanup: (cleanup) => {
+				if (this.shown && generation === this.generation) this.cleanups.add(cleanup);
+				else cleanup();
+			},
 			save: (update, redraw) => this.onOptionUpdate(update, redraw),
 			saveInBackground: (update, redraw) => this.saveOptionsInBackground(update, redraw),
 		});

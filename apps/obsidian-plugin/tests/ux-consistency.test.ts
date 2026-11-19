@@ -45,7 +45,7 @@ describe("Settings", () => {
 	});
 	it("settings are grouped into Sources, Display, New tasks and Advanced", () => {
 		assert.deepEqual(Object.values(copy.settings.groups), ["Sources", "Display", "New tasks", "Advanced"]);
-		assert.deepEqual(settingGroups, ["sources", "display", "newTasks", "advanced"]);
+		assert.deepEqual(settingGroups, ["display", "newTasks", "sources", "advanced"]);
 		coveredBy("tests/settingrows.test.ts", "the rows sit in the four approved groups, in the approved order");
 	});
 	it("settings headings and labels use sentence case", () => {

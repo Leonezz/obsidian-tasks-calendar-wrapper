@@ -64,8 +64,20 @@ function nestedButtons(setting: Setting, icon: string): ExtraButtonComponent[] {
 	return settingsIn(container).flatMap((line) => extraButtons(line, icon));
 }
 
-function addButton(setting: Setting): ExtraButtonComponent {
+const inlineTagButtons = new WeakMap<ButtonComponent, Setting>();
+type SettingsButton = ExtraButtonComponent | ButtonComponent;
+
+function addButton(setting: Setting): SettingsButton {
 	const buttons = extraButtons(setting, "plus-with-circle");
+	if (buttons.length === 0) {
+		const inline = setting.components.find(
+			(component): component is ButtonComponent =>
+				component instanceof ButtonComponent && component.tooltip === copy.settings.tab.addTagTooltip,
+		);
+		assert.ok(inline, "inline tag entry has an Add tag button");
+		inlineTagButtons.set(inline, setting);
+		return inline;
+	}
 	assert.equal(buttons.length, 1);
 	return buttons[0];
 }
@@ -79,7 +91,14 @@ function valueControl(setting: Setting, type: string): SettingControl {
 }
 
 /** Opens the real dialog through its button, types into its controls, and presses Save. */
-async function saveDialog(t: TestContext, button: ExtraButtonComponent, tag: string, color?: string) {
+async function saveDialog(t: TestContext, button: SettingsButton, tag: string, color?: string) {
+	const inline = button instanceof ButtonComponent ? inlineTagButtons.get(button) : undefined;
+	if (inline) {
+		await valueControl(inline, "text").change(tag);
+		await button.click();
+		await settle();
+		return;
+	}
 	const opened = t.mock.method(Modal.prototype, "open");
 	await button.click();
 	assert.equal(opened.mock.callCount(), 1);
@@ -190,12 +209,7 @@ test("editing a palette tag replaces it and adding one appends it, each redrawin
 		tagColorPalette: { "#TODO": "#ff0000", "#TEST": "#00ff00" },
 	});
 	const row = settingNamed(container, copy.settings.useTags.name);
-	const saves = async (
-		button: ExtraButtonComponent,
-		tag: string,
-		color: string,
-		expected?: Record<string, string>,
-	) => {
+	const saves = async (button: SettingsButton, tag: string, color: string, expected?: Record<string, string>) => {
 		const writes = t.mock.method(plugin, "writeOptions");
 		const draws = t.mock.method(tab, "display");
 		await saveDialog(t, button, tag, color);
@@ -279,8 +293,9 @@ test("the row model of each data.json shape lists the rows the tab shows, in ord
 
 test("a row is shown exactly while the option its spec names in shownWhen is on", () => {
 	const children = {
-		useQuickEntry: ["taskFiles", "inbox", "sectionForNewTasks"],
-		useTags: ["tagColorPalette"],
+		useCounters: ["counterBehavior"],
+		useQuickEntry: ["entryPosition", "taskFiles", "inbox", "sectionForNewTasks"],
+		useTags: ["tagColorPalette", "hideTags"],
 		useIncludeTags: ["taskIncludeTags", "fileIncludeTags"],
 		useExcludeTags: ["taskExcludeTags", "fileExcludeTags"],
 	};
@@ -355,68 +370,11 @@ test("the palette has no row of its own and shows in the row of Use tags", () =>
 	}
 });
 
-test("every order hint is needed and rows without one keep the schema's order", () => {
-	const hints = {
-		openViewOnStartup: 41.1,
-		showWhatsNewOnUpdate: 41.2,
-		useBuiltinStyle: 17.1,
-		newestFirst: 17.2,
-		useYearHeader: 17.3,
-		filterEmpty: 43.5,
-		includePaths: 3.5,
-		excludeProperties: 5.5,
-		dailyNoteFolder: 30.4,
-		dailyNoteFormat: 30.5,
-		sectionForNewTasks: 30.3,
-		hideTags: 36.5,
-		sort: 17.4,
-		dateFormat: 17.5,
-		inbox: 30.2,
-		taskFiles: 30.1,
-		defaultTodayFocus: 28.2,
-		defaultFilters: 28.1,
-		convert24HourTimePrefix: 17.6,
-	};
-	assert.deepEqual(
-		Object.fromEntries(
-			settingsSchema.filter((spec) => spec.order !== undefined).map((spec) => [spec.key, spec.order]),
-		),
-		hints,
-	);
-	const options = {
-		...defaultUserOptions,
-		useQuickEntry: true,
-		useTags: true,
-		useIncludeTags: true,
-		useExcludeTags: true,
-	};
-	const rows = settingRows(settingsSchema, options, []);
-	const order = (rows: readonly SettingRow[]) => rows.flatMap((row) => (row.kind === "setting" ? [row.key] : []));
-	for (const key of Object.keys(hints)) {
-		const schema = settingsSchema.map((spec) => {
-			if (spec.key !== key) return spec;
-			const { order, ...withoutOrder } = spec;
-			assert.notEqual(order, undefined, key);
-			return withoutOrder;
-		});
-		assert.notDeepEqual(order(settingRows(schema, options, [])), order(rows), key);
-	}
-	for (const group of settingGroups) {
-		const unhinted = settingsSchema
-			.filter(
-				(spec) =>
-					spec.group === group &&
-					spec.control !== "none" &&
-					spec.control !== "tagPalette" &&
-					spec.order === undefined,
-			)
-			.map((spec) => spec.key);
-		assert.deepEqual(
-			order(rows).filter((key) => unhinted.includes(key)),
-			unhinted,
-			group,
-		);
-	}
+test("display subsections stay contiguous and follow the intended reading order", () => {
+	const rows = settingRows(settingsSchema, defaultUserOptions, []);
+	const sections = rows.flatMap((row) => (row.kind === "setting" && row.spec.section ? [row.spec.section] : []));
+	const changes = sections.filter((section, index) => section !== sections[index - 1]);
+	assert.deepEqual(changes, ["dates", "information", "filters", "today", "quickEntry", "dailyNotes"]);
 });
 
 test("each row carries the issue settingIssues finds for its key", async (t) => {
@@ -447,7 +405,7 @@ test("the row model formats no values, so a draw that throws still throws in its
 			assert.ok(rows.length > 0);
 		});
 	}
-	const parents = new Set(["useQuickEntry", "useTags", "useIncludeTags", "useExcludeTags"]);
+	const parents = new Set(["useCounters", "useQuickEntry", "useTags", "useIncludeTags", "useExcludeTags"]);
 	const options = new Proxy(defaultUserOptions, {
 		get(target, key) {
 			assert.ok(typeof key === "string" && parents.has(key), `the row model read ${String(key)}`);
@@ -457,7 +415,13 @@ test("the row model formats no values, so a draw that throws still throws in its
 	assert.doesNotThrow(() => settingRows(settingsSchema, options, []));
 });
 
-const allParentsOn = { useQuickEntry: true, useTags: true, useIncludeTags: true, useExcludeTags: true };
+const allParentsOn = {
+	useCounters: true,
+	useQuickEntry: true,
+	useTags: true,
+	useIncludeTags: true,
+	useExcludeTags: true,
+};
 const wrongTypedOptions = { useTags: "yes", hideTags: "#later", sort: ["due-asc"] };
 const issueInputs = () => [
 	...FIXTURE_NAMES.map((name) => ({ name, data: readFixture(name) })),
@@ -504,7 +468,7 @@ function settingForIssue(container: FakeElement, key: string): Setting {
 	return settingNamed(container, copy.settings[spec.copy].name);
 }
 
-async function openDialog(t: TestContext, button: ExtraButtonComponent) {
+async function openDialog(t: TestContext, button: SettingsButton) {
 	const opened = t.mock.method(Modal.prototype, "open");
 	await button.click();
 	assert.equal(opened.mock.callCount(), 1);
@@ -648,7 +612,11 @@ test("typing in a text field keeps focus (display is not re-run)", async (t) => 
 		assert.ok(spec.copy);
 		const setting = settingNamed(container, copy.settings[spec.copy].name);
 		const type =
-			spec.control === "textArea" ? "textarea" : spec.control === "momentFormat" ? "moment-format" : "text";
+			spec.control === "textArea" && !["includePaths", "excludePaths", "taskFiles"].includes(spec.key)
+				? "textarea"
+				: spec.control === "momentFormat"
+					? "moment-format"
+					: "text";
 		const control = valueControl(setting, type);
 		control.el.focus();
 		for (const input of ["", "YYYY", "DD.MM."]) {
@@ -660,10 +628,11 @@ test("typing in a text field keeps focus (display is not re-run)", async (t) => 
 		}
 	}
 	const dependents = {
-		useQuickEntry: ["taskFiles", "inbox", "sectionForNewTasks"],
+		useQuickEntry: ["entryPosition", "taskFiles", "inbox", "sectionForNewTasks"],
 		useIncludeTags: ["taskIncludeTags", "fileIncludeTags"],
 		useExcludeTags: ["taskExcludeTags", "fileExcludeTags"],
-		useTags: [],
+		useTags: ["hideTags"],
+		useCounters: ["counterBehavior"],
 	} as const;
 	const paletteRow = settingNamed(container, copy.settings.useTags.name);
 	const palette = paletteContainer(paletteRow);
@@ -686,7 +655,7 @@ test("typing in a text field keeps focus (display is not re-run)", async (t) => 
 			}
 			assert.equal(Reflect.get(palette, "hidden"), parent === "useTags" && !enabled, "palette visibility");
 			assert.equal(
-				Reflect.get(paletteAdd.el, "hidden"),
+				Reflect.get(paletteAdd instanceof ButtonComponent ? paletteAdd.buttonEl : paletteAdd.el, "hidden"),
 				parent === "useTags" && !enabled,
 				"palette add visibility",
 			);
@@ -758,6 +727,35 @@ test("the moment preview follows the input", async (t) => {
 test("the rows sit in the four approved groups, in the approved order", () => {
 	const rows = settingRows(settingsSchema, { ...defaultUserOptions, ...allParentsOn }, []);
 	const expected: readonly ["sources" | "display" | "newTasks" | "advanced", string][] = [
+		["display", "newestFirst"],
+		["display", "sort"],
+		["display", "useYearHeader"],
+		["display", "dateFormat"],
+		["display", "useRelative"],
+		["display", "convert24HourTimePrefix"],
+		["display", "useBuiltinStyle"],
+		["display", "usePriority"],
+		["display", "useRecurrence"],
+		["display", "useTags"],
+		["display", "hideTags"],
+		["display", "useFileBadge"],
+		["display", "useSection"],
+		["display", "useModifyBadge"],
+		["display", "useCounters"],
+		["display", "counterBehavior"],
+		["display", "defaultFilters"],
+		["display", "defaultTodayFocus"],
+		["display", "forward"],
+		["display", "forwardPastStartAndScheduled"],
+		["display", "forwardUndatedDone"],
+		["newTasks", "useQuickEntry"],
+		["newTasks", "entryPosition"],
+		["newTasks", "taskFiles"],
+		["newTasks", "inbox"],
+		["newTasks", "sectionForNewTasks"],
+		["newTasks", "newDateStyle"],
+		["newTasks", "dailyNoteFolder"],
+		["newTasks", "dailyNoteFormat"],
 		["sources", "includePaths"],
 		["sources", "excludePaths"],
 		["sources", "excludeProperties"],
@@ -770,36 +768,7 @@ test("the rows sit in the four approved groups, in the approved order", () => {
 		["sources", "hideStatusTasks"],
 		["sources", "hideSubTasks"],
 		["sources", "filterEmpty"],
-		["display", "useBuiltinStyle"],
-		["display", "newestFirst"],
-		["display", "useYearHeader"],
-		["display", "sort"],
-		["display", "dateFormat"],
-		["display", "convert24HourTimePrefix"],
-		["display", "forward"],
-		["display", "forwardPastStartAndScheduled"],
-		["display", "forwardUndatedDone"],
-		["display", "useCounters"],
-		["display", "counterBehavior"],
-		["display", "defaultFilters"],
-		["display", "defaultTodayFocus"],
-		["display", "useRelative"],
-		["display", "useRecurrence"],
-		["display", "usePriority"],
-		["display", "useTags"],
-		["display", "hideTags"],
-		["display", "useFileBadge"],
-		["display", "useSection"],
-		["display", "useModifyBadge"],
-		["newTasks", "useQuickEntry"],
-		["newTasks", "entryPosition"],
-		["newTasks", "taskFiles"],
-		["newTasks", "inbox"],
-		["newTasks", "sectionForNewTasks"],
-		["newTasks", "dailyNoteFolder"],
-		["newTasks", "dailyNoteFormat"],
 		["advanced", "openNoteInsteadOfInPlace"],
-		["advanced", "newDateStyle"],
 		["advanced", "openViewOnStartup"],
 		["advanced", "showWhatsNewOnUpdate"],
 	];
@@ -810,7 +779,7 @@ test("the rows sit in the four approved groups, in the approved order", () => {
 	);
 	assert.deepEqual(
 		rows.flatMap((row) => (row.kind === "heading" ? [row.name] : [])),
-		["Sources", "Display", "New tasks", "Advanced"],
+		["Display", "New tasks", "Sources", "Advanced"],
 	);
 });
 
@@ -853,10 +822,9 @@ test("a hidden row draws no value, so a broken value in it throws nowhere until 
 	);
 	const originalRows = settingsIn(container);
 	const draws = t.mock.method(tab, "display");
-	await assert.rejects(
-		async () => valueControl(settingNamed(container, copy.settings.useIncludeTags.name), "toggle").change(true),
-		/forEach is not a function/,
-	);
+	t.mock.method(console, "error", () => {});
+	await valueControl(settingNamed(container, copy.settings.useIncludeTags.name), "toggle").change(true);
+	assert.ok(Notice.shown.includes(copy.settings.tab.saveFailed));
 	assert.equal(draws.mock.callCount(), 0, "showing the broken row does not redraw other rows");
 	assert.equal(Reflect.get(setting.settingEl, "hidden"), false, "the broken row is now visible");
 	const issue = settingIssues(plugin.userOptions, settingsSchema).find((issue) => issue.key === "taskIncludeTags");
@@ -906,10 +874,7 @@ test("an invalid tag in a tag list shows inline under the list and writes nothin
 		const writes = t.mock.method(plugin, "writeOptions");
 		const draws = t.mock.method(tab, "display");
 		await saveDialog(t, addButton(setting), "nohash");
-		assert.ok(
-			markup(setting.desc).includes(warningParagraph("nohash seems not a valid tag.")),
-			`${key}: invalid tag is inline`,
-		);
+		assert.ok(markup(setting.desc).includes("nohash seems not a valid tag."), `${key}: invalid tag is inline`);
 		assert.deepEqual(Notice.shown, [], key);
 		assert.equal(writes.mock.callCount(), 0, key);
 		assert.equal(draws.mock.callCount(), 0, key);
@@ -931,7 +896,7 @@ test("an invalid palette tag shows inline in its dialog, which stays open", asyn
 		await valueControl(setting, "color").change("#123456");
 		await save.click();
 		assert.ok(
-			markup(setting.desc).includes(warningParagraph("nohash seems not a valid tag.")),
+			markup(setting.desc).includes("nohash seems not a valid tag."),
 			"the palette dialog shows the invalid tag inline",
 		);
 		assert.equal(closed.mock.callCount(), 0, "the palette dialog stays open");
@@ -965,7 +930,7 @@ test("the palette dialog's invalid-tag message clears once the tag is edited", a
 	const { setting, save } = await openDialog(t, addButton(palette));
 	await valueControl(setting, "text").change("nohash");
 	await save.click();
-	assert.ok(markup(setting.desc).includes(warningParagraph("nohash seems not a valid tag.")));
+	assert.ok(markup(setting.desc).includes("nohash seems not a valid tag."));
 	await valueControl(setting, "text").change("#fixed");
 	assert.equal(markup(setting.desc), markup(copy.settings.tagColorPalette.desc));
 });
