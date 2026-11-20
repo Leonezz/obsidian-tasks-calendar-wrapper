@@ -15,6 +15,25 @@ export interface SupportLink {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
 	{
+		version: "0.4.0",
+		items: [
+			"This version needs Obsidian 1.11.4 or later. The rebuilt plugin also supports older desktop installers and iOS 15 and 16.",
+			'Complete or reopen tasks directly from the timeline, with Undo and Open note. Tasks 7.2.0 or later handles recurring tasks; an older Tasks opens the note instead. Without Tasks, in-place completion supports non-recurring tasks. Turn on "Open the note instead of changing tasks in place" to keep the earlier behavior.',
+			"The edit button opens Tasks' task editor over the timeline, with Undo after saving. This needs Tasks 7.21.0 or later; with an older Tasks, the button opens the task's note.",
+			"Change or remove a task's due, scheduled or start date from its date badge or context menu. Choose Emoji or Dataview fields for newly added dates; existing task fields keep their format.",
+			"Focus quick entry to reveal its note, due date and priority options. Choose Today, Tomorrow, a custom date or No date. Drafts and options survive filter changes, and newer edits are kept while an earlier task is being saved.",
+			"Date, tag and priority filters sit below the status cards and above quick entry. Match any of several selected tags, filter by all six priority levels, and use date ranges independently of Focus on today. Counter behavior can filter tasks or highlight them while keeping the rest visible.",
+			"Each open timeline keeps its own counter, Focus on today and quick filters. Reopening a timeline in the same plugin session restores its counter and Focus on today; quick filters are cleared.",
+			"Settings have section shortcuts and contextual options, searchable file and folder chips, inline tag suggestions, batch paste and aligned status presets. Invalid tag drafts stay editable, duplicate palette names cannot overwrite another color, and invalid saved values offer Reset to default.",
+			"The read-only display preview uses the timeline's actual task row and follows date, checkbox, detail and tag color settings. Settings show saving feedback and Retry while preserving focus and newer drafts.",
+			"Live settings update timelines after a short typing pause. Changes from Sync or other tools also take effect without reopening the timeline. New options include Newest First, excluding notes by property values, and controlling whether undated done tasks are forwarded to today while Forward Tasks From Past is on.",
+			"Large timelines read changed notes, redraw changed rows and render nearby tasks as you scroll. With Focus on today, dates outside the focused view are no longer kept as hidden page elements; custom CSS that depends on those elements may need updating.",
+			"Use Tab to reach controls, arrow keys and Home/End to move between tasks, Enter to open a note, Space to activate the status control, and Shift+F10 for the date menu. Mobile controls have larger touch targets, and entry and menu transitions follow reduced-motion settings.",
+			"Dates and quick-entry date words work with languages such as Arabic and Persian. Week and time-zone changes update weekly daily notes at once, and additional Tasks date emoji are recognized.",
+			"Task changes preserve concurrent note edits and write nothing when a task cannot be changed safely. If another edit or sync changes a task back shortly after saving, a notice offers to redo the change. Failed quick-entry saves keep the draft, missing notes use an Obsidian confirmation dialog, and opening a task preserves an existing note's view mode; Cmd/Ctrl-click opens a new tab.",
+		],
+	},
+	{
 		version: "0.4.0-beta.6",
 		items: [
 			"Settings add section shortcuts, smaller option groups and contextual controls. Navigation scrolls with the page instead of covering the settings below it.",

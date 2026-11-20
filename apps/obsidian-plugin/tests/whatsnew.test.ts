@@ -12,15 +12,34 @@ test("the version in manifest.json has release notes", async () => {
 	assert.ok(note && note.items.length > 0, `add release notes for ${manifest.version} to utils/whatsnew.ts`);
 });
 
-test("the beta.6 entry is first and an update from beta.5 shows only its new notes", async () => {
+test("the stable 0.4.0 entry is first and store updates or fresh installs show its cumulative notes", async () => {
 	const { notesSince } = await import("@tasks-calendar-wrapper/core");
 	const { RELEASE_NOTES } = await import("../utils/whatsnew");
-	assert.equal(RELEASE_NOTES[0].version, "0.4.0-beta.6");
+	assert.equal(RELEASE_NOTES[0].version, "0.4.0");
 	assert.ok(RELEASE_NOTES[0].items.length > 0);
 	assert.ok(RELEASE_NOTES[0].items.every((item) => item.trim().length > 0));
 	assert.equal(new Set(RELEASE_NOTES.map((note) => note.version)).size, RELEASE_NOTES.length);
-	assert.deepEqual(notesSince(RELEASE_NOTES, "0.4.0-beta.5", "0.4.0-beta.6"), [RELEASE_NOTES[0]]);
-	assert.deepEqual(notesSince(RELEASE_NOTES, "", "0.4.0-beta.6"), [RELEASE_NOTES[0]]);
+	assert.deepEqual(notesSince(RELEASE_NOTES, "0.3.7", "0.4.0"), [RELEASE_NOTES[0]]);
+	assert.deepEqual(notesSince(RELEASE_NOTES, "", "0.4.0"), [RELEASE_NOTES[0]]);
+});
+
+test("updates from every 0.4.0 beta show only the stable release's cumulative notes", async () => {
+	const { notesSince } = await import("@tasks-calendar-wrapper/core");
+	const { RELEASE_NOTES } = await import("../utils/whatsnew");
+	const stable = RELEASE_NOTES.find((note) => note.version === "0.4.0");
+	assert.ok(stable);
+	for (let beta = 1; beta <= 6; beta++) {
+		assert.deepEqual(notesSince(RELEASE_NOTES, `0.4.0-beta.${beta}`, "0.4.0"), [stable]);
+	}
+});
+
+test("an update to beta.6 or a beta fresh install still shows only its own notes", async () => {
+	const { notesSince } = await import("@tasks-calendar-wrapper/core");
+	const { RELEASE_NOTES } = await import("../utils/whatsnew");
+	const beta6 = RELEASE_NOTES.find((note) => note.version === "0.4.0-beta.6");
+	assert.ok(beta6);
+	assert.deepEqual(notesSince(RELEASE_NOTES, "0.4.0-beta.5", "0.4.0-beta.6"), [beta6]);
+	assert.deepEqual(notesSince(RELEASE_NOTES, "", "0.4.0-beta.6"), [beta6]);
 });
 
 test("an update to beta.5 still shows only its own notes after newer beta notes are prepared", async () => {
